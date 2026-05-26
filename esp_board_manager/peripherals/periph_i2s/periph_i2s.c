@@ -109,7 +109,19 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
      * This limitation can be resolved after I2S support full-duplex mode automatically.
      **/
     if (i2s_chan_handles[config->port].chan_out == NULL && i2s_chan_handles[config->port].chan_in == NULL) {
-        err = i2s_new_channel(&chan_cfg, &i2s_chan_handles[config->port].chan_out, &i2s_chan_handles[config->port].chan_in);
+#if CONFIG_SOC_I2S_SUPPORTS_PDM
+        /* PDM simplex: RX-only or TX-only must not allocate the unused direction.
+         * esp_codec_dev treats pair_chan as a live duplex peer; an uninitialized TX
+         * handle breaks open/reconfig and causes i2s_channel_read() timeouts. */
+        if (config->mode == I2S_COMM_MODE_PDM && config->direction == I2S_DIR_RX) {
+            err = i2s_new_channel(&chan_cfg, NULL, &i2s_chan_handles[config->port].chan_in);
+        } else if (config->mode == I2S_COMM_MODE_PDM && config->direction == I2S_DIR_TX) {
+            err = i2s_new_channel(&chan_cfg, &i2s_chan_handles[config->port].chan_out, NULL);
+        } else
+#endif
+        {
+            err = i2s_new_channel(&chan_cfg, &i2s_chan_handles[config->port].chan_out, &i2s_chan_handles[config->port].chan_in);
+        }
     }
     if (config->mode == I2S_COMM_MODE_STD) {
         if (config->direction == I2S_DIR_TX && !i2s_chan_handles[config->port].out_en) {
