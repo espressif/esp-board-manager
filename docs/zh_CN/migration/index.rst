@@ -11,5 +11,6 @@
    :maxdepth: 1
 
    from-manual-board-init
+   migrate-to-0.6
    version-migration
 

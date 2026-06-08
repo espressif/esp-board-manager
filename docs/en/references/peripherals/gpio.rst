@@ -161,10 +161,10 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``: amplifier, backlight, SD card power, and mute GPIOs.
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_peripherals.yaml``: SD card power, headphone detection, amplifier, LED, and SD card detect GPIOs.
-- ``esp_board_manager/boards/esp32_c5_spot/board_peripherals.yaml``: amplifier, power control, codec power, and IMU interrupt GPIOs.
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: boot button GPIO.
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``: amplifier, backlight, SD card power, and mute GPIOs.
+- ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``: SD card power, headphone detection, amplifier, LED, and SD card detect GPIOs.
+- ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``: amplifier, power control, codec power, and IMU interrupt GPIOs.
+- ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: boot button GPIO.
 
 Notes
 -----

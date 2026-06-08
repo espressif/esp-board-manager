@@ -175,8 +175,8 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_s31_korvo1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
-- ``esp_board_manager/boards/esp32_s31_function_coreboard_1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
+- ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``: SPI mode ``led_strip`` test configuration.
 
 Notes

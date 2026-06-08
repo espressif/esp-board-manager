@@ -50,6 +50,9 @@ DEV_DISPLAY_LCD_IO_LIST = {
 }
 
 IDF_VERSION_WITH_SPI_PSRAM_DMA_DIRECT = (6, 1, 0)
+# esp_lcd_i80_bus_config_t.flags.allow_pd was added in ESP-IDF v6.0.1,
+# it is not present in the v6.0.0 release.
+IDF_VERSION_WITH_I80_ALLOW_PD = (6, 0, 1)
 
 def _iter_peripheral_names(peripherals_list):
     """Yield normalized peripheral names from YAML list items."""
@@ -94,6 +97,9 @@ def _warn_ignored_idf6_field(device_name: str, field_path: str) -> None:
 
 def _warn_ignored_idf61_field(device_name: str, field_path: str) -> None:
     print(f"YAML WARNING: LCD display device {device_name} field '{field_path}' requires ESP-IDF v6.1 or later and will be ignored.")
+
+def _warn_ignored_idf601_field(device_name: str, field_path: str) -> None:
+    print(f"YAML WARNING: LCD display device {device_name} field '{field_path}' requires ESP-IDF v6.0.1 or later and will be ignored.")
 
 def get_includes() -> list:
     """Return list of required include headers for LCD Display device"""
@@ -477,7 +483,7 @@ def parse_rgb_3wire_spi_sub_config(full_config: dict = None, peripherals_dict=No
 def parse_i80_sub_config(full_config: dict = None, peripherals_dict=None) -> dict:
     """Parse I80 sub configuration."""
     sub_config = full_config.get('config', {})
-    idf_major = get_idf_version()[0]
+    idf_version = get_idf_version()
 
     bus_config = sub_config.get('bus_config', {})
     bus_flags = bus_config.get('flags', {})
@@ -490,12 +496,12 @@ def parse_i80_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
         'max_transfer_bytes': bus_config.get('max_transfer_bytes', 4092),
         'dma_burst_size': bus_config.get('dma_burst_size', 64),
     }
-    if idf_major >= 6:
+    if idf_version >= IDF_VERSION_WITH_I80_ALLOW_PD:
         bus_config_parsed['flags'] = {
             'allow_pd': bool(bus_flags.get('allow_pd', False)),
         }
     elif bus_flags.get('allow_pd', False):
-        _warn_ignored_idf6_field(full_config.get('name'), 'bus_config.flags.allow_pd')
+        _warn_ignored_idf601_field(full_config.get('name'), 'bus_config.flags.allow_pd')
 
     io_config = sub_config.get('io_config', {})
     io_config_parsed = {

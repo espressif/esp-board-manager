@@ -8,15 +8,19 @@
 .. code-block:: bash
 
    # amend 目录是绝对路径或相对路径，其中必须包含 board_amend.yaml
-   idf.py bmgr -b esp32_s3_korvo2_v3 -a path/to/my_amend
+   idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
 
    # amend 目录放在所选开发板目录下时，可直接传入子目录名
-   # 例如：boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd
+   # 例如：esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd
    idf.py bmgr -b esp32_s3_lcd_ev_board -a sub_board_800_480_lcd
 
-``-a`` 接受绝对路径或相对路径；常规 IDF 工程中相对路径以项目根目录为基准。 **若 amend 目录放在所选开发板目录下，也可以只传入子目录名，BMGR 会在该开发板目录内查找对应子目录。**
+``-a`` 接受绝对路径或相对路径；相对路径以当前工作目录（``cwd``）为基准。 **若 amend 目录放在所选开发板目录下，也可以只传入子目录名，BMGR 会在该开发板目录内查找对应子目录。**
 
-同一主板的不同子板、屏幕模组或小范围硬件变体，建议统一放在该板子目录下（例如 ``boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``），使用时只传入子目录名，不受工程所在路径的影响。
+同一主板的不同子板、屏幕模组或小范围硬件变体，建议统一放在该开发板目录下（例如 ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``），使用时只传入子目录名，不受工程所在路径的影响。
+
+.. note::
+
+   除了上面显式的 ``-a``，BMGR 还支持\ **按开发板名自动发现并应用 amend**\ （auto-amend），适合在多板示例工程中让所有开发板共用同一条命令。详见下文 :ref:`auto-amend` 一节。
 
 amend 目录的基本结构：
 
@@ -86,7 +90,7 @@ YAML 片段合并规则
 跨板复用功能模块
 ------------------
 
-``apply:`` 支持相对路径，以 ``board_amend.yaml`` 所在目录为基准，可以跳出 amend 目录引用工程其他位置的文件。利用这个特性，可以将通用的外设和设备配置拆成独立的 YAML 与源码片段，集中存放在共享目录下，再由不同开发板的 amend 按需引用——相当于用可复用的功能模块拼装出完整的板级配置。
+``apply:`` 支持相对路径，以 ``board_amend.yaml`` 所在目录为基准，可以跳出 amend 目录引用工程其他位置的文件。利用这个特性，可以将通用的外设和设备配置拆成独立的 YAML 与源码片段，集中存放在共享目录下，再由不同开发板的 amend 按需引用。这相当于用可复用的功能模块组合出完整的板级配置。
 
 例如将气体传感器的适配拆成独立片段，放在工程共享目录：
 
@@ -120,4 +124,66 @@ YAML 片段合并规则
      - ../sensors/gas_sensor/gas_sensor.c
      - extra_periph.yaml   # 本板特有的额外调整
 
-随着共享目录中功能模块的积累，新开发板的适配可以越来越多地依赖已有模块——在 ``apply:`` 中组合所需片段，而非从头编写重复的 YAML 内容。
+随着共享目录中功能模块的积累，新开发板的适配可以越来越多地依赖已有模块：在 ``apply:`` 中组合所需片段，而非从头编写重复的 YAML 内容。
+
+.. _auto-amend:
+
+自动 amend（auto-amend）
+--------------------------
+
+除了显式 ``-a``，BMGR 还支持\ **按开发板名自动发现并应用 amend**\ 。在扫描路径下（包括 ``-c/--customer-path`` 指定的目录），若存在一个\ **目录名与所选开发板同名、包含** ``board_amend.yaml`` **、且本身不是完整开发板目录**\ 的目录，BMGR 会自动把它作为该板的 amend 应用，无需传 ``-a``。
+
+约定的目录结构为 ``<扫描根>/<开发板名>/board_amend.yaml``：
+
+.. code-block:: text
+
+   board_overlays/                       # 用 -c 指向这里
+     esp32_s3_box_3/
+       board_amend.yaml
+       box_tweak.yaml
+     esp32_p4_function_ev_board/
+       board_amend.yaml
+       p4_tweak.yaml
+
+自动 amend 目录内 ``board_amend.yaml`` 的写法、片段合并规则、源码覆盖与跨板复用，与显式 ``-a`` 一致（``apply:`` 仍是唯一真相）。
+
+要点：
+
+- ``-c/--customer-path`` 支持用分号分隔的多个路径，例如 ``-c "overlays_a;overlays_b"``，按顺序扫描，靠后的路径优先级更高。
+- 显式 ``-a`` 与自动 amend 可以叠加，显式 ``-a`` 优先级最高（最后应用，覆盖自动 amend）。
+- 完整开发板目录即使包含 ``board_amend.yaml``，也会被当作开发板处理，不会被当作 auto-amend 应用到自身。
+- 自动发现最多向扫描根下递归 3 层。
+- 设置环境变量 ``ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND=1`` 可关闭自动发现，仅保留显式 ``-a``。
+
+在 demo 中使用 amend 的两种方式
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+编写一个支持多块开发板的示例工程时，自动 amend 的主要价值是\ **让所有开发板共用同一条命令**。
+
+**方式一：所有开发板共用同一个 amend**
+
+当所有目标板需要打同一套补丁（例如统一打开某项调试配置、追加同一个外接模块）时，用显式 ``-a`` 指向同一个 amend 目录即可，各板命令中 amend 部分保持一致：
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3             -a path/to/common_amend
+   idf.py bmgr -b esp32_p4_function_ev_board -a path/to/common_amend
+
+**方式二：不同开发板用不同 amend，但命令保持一致**
+
+当每块开发板需要各自不同的补丁时，过去只能给每块板写不同的 ``-a`` 路径，命令各不相同，容易混乱。改用自动 amend 后，只需把各板的 overlay 统一收在一个根目录下，按板名建子目录：
+
+.. code-block:: text
+
+   board_overlays/
+     esp32_s3_box_3/board_amend.yaml                # box 专属补丁
+     esp32_p4_function_ev_board/board_amend.yaml    # p4 专属补丁
+
+然后所有开发板使用\ **相同**\ 的命令，只改 ``-b`` 的板名，``-c`` 始终指向同一个 overlay 根，BMGR 会按板名自动匹配并应用对应的 amend：
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3             -c board_overlays
+   idf.py bmgr -b esp32_p4_function_ev_board -c board_overlays
+
+没有为某块板准备 overlay 时，该命令会正常生成 base 板，不会报错。这样在 CI 或多板演示脚本里，只需对板名列表循环执行同一条命令，无需为每块板维护不同的 amend 参数。

@@ -53,3 +53,44 @@ BMGR 不通过在 ``menuconfig`` 中逐项手动选择设备或外设来组织�
 
 - 当表现为功能与预期不一致时，优先检查 ``gen_board_periph_config.c`` 与 ``gen_board_device_config.c``。
 - 当表现为编译失败或依赖求解异常时，优先检查 ``components/gen_bmgr_codes`` 目录下生成物是否完整、``board_manager.defaults`` 中的能力符号是否符合预期，以及 ``sdkconfig`` 与 ``board_manager.defaults`` 是否一致。
+
+board_manager.defaults 与 Kconfig.projbuild 的合并与覆盖
+----------------------------------------------------------------------
+
+``board_manager.defaults`` 是 BMGR 接入 ESP-IDF 编译配置的板级 defaults 文件。BMGR 根据当前开发板的 YAML 生成 ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_<DEV>_SUB_<SUB>_SUPPORT`` 等能力符号，并通过该文件参与后续构建，控制设备、外设和设备子类型相关代码是否进入编译。因此，不建议用户在工程 ``sdkconfig.defaults`` 中手写这些 BMGR 管理的能力符号；板级差异应放在 ``sdkconfig.defaults.board`` 或 amend 中统一管理。
+
+执行 ``idf.py bmgr -b <board> [-a <amend>]`` 时，BMGR 按以下顺序组装出最终的 ``board_manager.defaults`` 与 ``Kconfig.projbuild``，\ **后写覆盖前写**\ ：
+
+1. BMGR 自动生成段：``CONFIG_IDF_TARGET``、``CONFIG_ESP_BOARD_<BOARD>=y``、``CONFIG_ESP_BOARD_NAME``，以及根据 YAML 解析得到的 ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_<DEV>_SUB_<SUB>_SUPPORT`` 能力符号。
+2. 板目录下的 ``sdkconfig.defaults.board`` 与 ``Kconfig.projbuild``\ （如存在）。
+3. ``board_amend.yaml`` 清单 ``apply:`` 中列出的 ``sdkconfig.defaults.board`` 与 ``Kconfig.projbuild`` 片段，\ **严格按 apply: 中出现的先后顺序**\ 逐一追加。如需让某个片段覆盖其他 amend 片段，请将其写在 ``apply:`` 列表更靠后的位置。
+
+当 ``board_manager.defaults`` 内出现同名 ``CONFIG_*`` 冲突时，BMGR 保留最后一次出现的值，并将更早的同名行改写为形如 ``# BMGR_CONFIG_OVERRIDE by <section>: <原行>`` 的注释，便于排查覆盖关系。``Kconfig.projbuild`` 为纯文本顺序串联，每段前会插入 ``# --- <label>: <path> ---`` 标记说明来源。
+
+.. note::
+
+   ``board_amend.yaml`` 清单中的 ``sdkconfig.defaults.board`` 与 ``Kconfig.projbuild`` 必须显式列在 ``apply:`` 中才会参与合并。放在 amend 目录但未列出的文件会被忽略并输出 INFO 日志。详细规则见 :doc:`/create-board/amend`。
+
+构建集成：SDKCONFIG_DEFAULTS 优先级
+----------------------------------------------------------------------
+
+构建时，ESP-IDF 读取一组 ``SDKCONFIG_DEFAULTS``\ 。这组文件由 ``SDKCONFIG_DEFAULTS`` 环境变量或 CMake 变量声明。
+
+当工程 ``sdkconfig`` 不存在时，BMGR 通过 ``idf.py`` 的全局回调（global callback）组装 ``SDKCONFIG_DEFAULTS``\ ，后续的编译行为将按列表顺序读取 defaults，\ **靠后的文件优先级更高**\ ：
+
+1. 工程 ``sdkconfig.defaults``\ （最低）
+2. ``components/gen_bmgr_codes/board_manager.defaults``\ （板级，含 amend）
+3. 环境变量 ``SDKCONFIG_DEFAULTS``
+4. ``-D SDKCONFIG_DEFAULTS``\ （最高）
+
+因此，\ **板级默认值始终高于工程通用** ``sdkconfig.defaults``\ 。工程 defaults 不能覆盖普通板级默认项。如需板级差异化覆盖，请使用 amend（auto-amend 或 ``-a/--amend``）。
+
+.. warning::
+
+   板级硬件或变体覆盖请使用 amend，不要依赖工程 ``sdkconfig.defaults`` 覆盖开发板配置。工程 ``sdkconfig.defaults`` 适合写与开发板不相关的项目级配置；CI 或临时覆盖请使用环境变量或 ``-D SDKCONFIG_DEFAULTS=``。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition、应用层开关等）请放到板目录下的 ``sdkconfig.defaults.board``，随开发板统一管理。
+
+切换开发板时，``idf.py bmgr -b <other_board>`` 会重新生成 ``board_manager.defaults`` 与 ``Kconfig.projbuild``，并备份与清理旧 ``sdkconfig`` 中由上一块开发板写入的能力宏。
+
+.. note::
+
+   除显式 ``-a/--amend`` 外，BMGR 还支持 **auto-amend（自动 amend）**\ ：在与开发板相同的扫描路径（含 ``-c`` 路径）下，自动查找名字等于当前选中板名、且包含 ``board_amend.yaml``\ 、且本身不是完整开发板目录的目录（约定 ``<scan_root>/<board_name>/board_amend.yaml``），并自动应用为该板的 amend。``-c/--customer-path`` 现支持分号分隔的多路径（如 ``-c "overlays_a;overlays_b"``），后者优先级更高。这样把各板的 overlay 放在同一根目录下并统一指定 ``-c``\ ，所有开发板即可共用相同的命令。显式 ``-a/--amend`` 优先级最高，会覆盖所有 auto-amend；设置 ``ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND=1`` 可关闭自动发现。详见 :doc:`/create-board/amend`。

@@ -1,9 +1,18 @@
 dependencies:
+  espressif/esp_boards:
+    version: "*"
+    override_path: ../../../esp_boards
+  espressif/esp_friends_boards:
+    version: "*"
+    override_path: ../../../esp_friends_boards
+  espressif/m5stack_boards:
+    version: "*"
+    override_path: ../../../m5stack_boards
   espressif/esp_lcd_touch: ^1.1.2
   espressif/esp_lvgl_port: '*'
   espressif/esp_new_jpeg: "*"
   espressif/esp_video:
-    version: "^2.0.0"
+    version: "^2.1.0"
     rules:
       - if: "$CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True"
   joltwallet/littlefs:

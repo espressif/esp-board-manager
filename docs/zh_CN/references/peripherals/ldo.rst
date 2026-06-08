@@ -105,10 +105,10 @@ LDO channel 完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：``ldo_mipi`` 配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``：``ldo_mipi`` 配置。
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：``ldo_mipi`` 配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：``ldo_mipi`` 配置。
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
 
 注意事项
 ------------

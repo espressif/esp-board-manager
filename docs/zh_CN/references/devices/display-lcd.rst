@@ -240,6 +240,53 @@ RGB + 3-wire SPI（``sub_type: rgb_3wire_spi``）
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 18            # [TO_BE_CONFIRMED]
 
+RGB 自定义用户帧缓冲区
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``rgb`` 与 ``rgb_3wire_spi`` 类型的 LCD 在 ESP-IDF v6.0 及以上版本支持 ``user_fbs_func`` 字段。该字段不是函数指针，而是通过 ``DEVICE_EXTRA_FUNC_REGISTER`` 注册的板级回调名称，用于向 RGB LCD 驱动提供应用或板级代码管理的帧缓冲区。
+
+在 ``board_devices.yaml`` 中，将 ``user_fbs_func`` 写在 ``rgb_panel_config`` 下：
+
+.. code-block:: yaml
+
+    devices:
+      - name: display_lcd
+        type: display_lcd
+        sub_type: rgb
+        config:
+          rgb_panel_config:
+            num_fbs: 2
+            user_fbs_func: lcd_rgb_user_fbs
+
+板级代码需要注册同名回调：
+
+.. code-block:: c
+
+   #include "dev_display_lcd.h"
+   #include "esp_board_extra_func_entry.h"
+
+   static int lcd_rgb_user_fbs(const dev_display_lcd_config_t *lcd_cfg,
+                               dev_display_lcd_rgb_user_fbs_action_t action,
+                               void *user_fbs[ESP_RGB_LCD_PANEL_MAX_FB_NUM])
+   {
+       switch (action) {
+       case DEV_DISPLAY_LCD_RGB_USER_FBS_GET:
+           /* Allocate or assign board-provided frame buffers, then fill user_fbs[]. */
+           return 0;
+       case DEV_DISPLAY_LCD_RGB_USER_FBS_RELEASE:
+           /* Release resources acquired during GET if needed. */
+           return 0;
+       default:
+           return -1;
+       }
+   }
+
+   DEVICE_EXTRA_FUNC_REGISTER(lcd_rgb_user_fbs, lcd_rgb_user_fbs);
+
+BMGR 在创建 RGB panel 前调用该回调，并将返回的指针传入 ``esp_lcd_rgb_panel_config_t.user_fbs`` 字段。初始化失败或设备反初始化时，BMGR 再次调用该回调。``GET`` 分支需填入与 ``num_fbs`` 匹配的有效帧缓冲区指针；回调返回非 0 时当作内存申请失败。
+
+使用该字段时，帧缓冲区数量、大小、对齐方式和内存能力需与分辨率、颜色格式、ESP-IDF RGB LCD 驱动要求以及 ``num_fbs`` 配置一致。未使用用户帧缓冲区时，将 ``user_fbs_func`` 留空，由驱动按 ``num_fbs`` 和 ``fb_in_psram`` 等配置管理帧缓冲区。
+
 .. _display-lcd-parlio:
 
 PARLIO（``sub_type: parlio``）
@@ -757,14 +804,13 @@ PARLIO 完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：``dsi`` 屏配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：``dsi`` 和 ``ldo`` 外设配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/setup_device.c``：DSI panel 工厂函数。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``：``spi`` 屏配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：SPI 外设配置。
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``：``rgb_3wire_spi`` 屏配置。
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``：``rgb`` 屏 amend 配置。
-- ``esp_board_manager/boards/esp_sensair_halo/board_devices.yaml``：``parlio`` 屏配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``dsi`` 屏配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：``dsi`` 和 ``ldo`` 外设配置。
+- ``esp_boards/esp32_p4_function_ev_board/setup_device.c``：DSI panel 工厂函数。
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：``spi`` 屏配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：SPI 外设配置。
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``：``rgb_3wire_spi`` 屏配置。
+- ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``：``rgb`` 屏 amend 配置。
 
 注意事项
 ------------

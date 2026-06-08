@@ -104,8 +104,8 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_c5_spot/board_devices.yaml``: configures a ``gpio_ctrl`` device.
-- ``esp_board_manager/boards/esp32_c5_spot/board_peripherals.yaml``: configures the ``gpio`` peripheral referenced by ``gpio_ctrl``.
+- ``esp_friends_boards/esp32_c5_spot/board_devices.yaml``: configures a ``gpio_ctrl`` device.
+- ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``: configures the ``gpio`` peripheral referenced by ``gpio_ctrl``.
 - ``esp_board_manager/test_apps/test_single_board/board_devices.yaml``: ``gpio_ctrl`` configuration in the test board.
 - ``esp_board_manager/test_apps/test_single_board/board_peripherals.yaml``: ``gpio`` peripheral configuration in the test board.
 

@@ -3,7 +3,7 @@ FAQ
 
 :link_to_translation:`en:[English]`
 
-FAQ 面向已能正常运行 BMGR 但遇到问题的用户，沉淀高频报错的定位思路、应查看的文件以及推荐处理动作。建议先按阶段判断问题所在层级，再按具体报错现象继续定位，避免直接进入业务代码层排查。
+FAQ 汇总 BMGR 常见报错、排查入口和处理方法。遇到问题时，先判断问题发生在生成、编译还是运行时阶段，再按具体现象定位。
 
 - **生成阶段**：开发板选择错误、YAML 不完整、依赖描述不正确、生成产物缺失。
 - **编译阶段**：缺宏、缺组件、缺生成文件、链接失败。
@@ -25,9 +25,20 @@ idf.py bmgr 或 idf.py gen-bmgr-config 命令未找到
 
 **推荐动作**
 
-1. 确认主组件清单中已声明 ``espressif/esp_board_manager`` 依赖，并执行过 ``idf.py menuconfig`` 或 ``idf.py build``，由组件管理器将组件下载到 ``managed_components/``。
-2. 重新启动终端会话或重新执行 ``source export.sh``，使 ESP-IDF 环境变量生效。
-3. ESP-IDF v6.0 及以上版本采用组件自带 ``idf_ext.py`` 的自动发现机制，工程必须能够识别 ``esp_board_manager`` 组件；v6.0 以下版本需确认 ``IDF_EXTRA_ACTIONS_PATH`` 已正确设置。
+1. 推荐使用 ``esp-bmgr-assist``，省去手动配置 ``IDF_EXTRA_ACTIONS_PATH``。在已激活的 ESP-IDF Python 环境中执行 ``pip install esp-bmgr-assist``；当提示需要更新时，执行 ``pip install --upgrade esp-bmgr-assist``。
+2. 如果已安装 ``esp-bmgr-assist`` 后仍然报错，先查看命令输出中的具体错误信息。常见原因包括：执行命令的目录不是标准 ESP-IDF 工程目录，或依赖组件存在芯片限制导致依赖解析失败。详细排查方式见 :doc:`/tools/esp-bmgr-assist`。
+3. 如需手动设置 ``IDF_EXTRA_ACTIONS_PATH``，可使用以下命令检查路径配置是否正确。输出应包含 ``esp_board_manager`` 组件目录；多个路径使用 ``;`` 分隔。
+
+   .. code-block:: text
+
+      # Linux / macOS
+      echo $IDF_EXTRA_ACTIONS_PATH
+
+      # Windows PowerShell
+      echo $env:IDF_EXTRA_ACTIONS_PATH
+
+      # Windows CMD
+      echo %IDF_EXTRA_ACTIONS_PATH%
 
 找不到 esp_board_manager 组件路径
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +137,7 @@ undefined reference to g_esp_board_*
 
 **推荐动作**
 
-1. 先使用 ``idf.py bmgr -x``\ （等价于旧命令 ``idf.py gen-bmgr-config -x`` 或 ``python gen_bmgr_config_codes.py -x``）清理生成产物。该命令会删除生成的 ``.c`` 与 ``.h``，重置 ``gen_bmgr_codes/CMakeLists.txt`` 与 ``idf_component.yml``，并移除 ``board_manager.defaults``。
+1. 先使用 ``idf.py bmgr -x``\ （等价于旧命令 ``idf.py gen-bmgr-config -x``）清理生成产物。该命令会删除生成的 ``.c`` 与 ``.h``，重置 ``gen_bmgr_codes/CMakeLists.txt`` 与 ``idf_component.yml``，并移除 ``board_manager.defaults``。
 2. 再执行 ``idf.py bmgr -b <board>`` 重新生成。
 3. 若仍报错，参照 `IDF Component Manager Manifest 文档 <https://docs.espressif.com/projects/idf-component-manager/en/latest/reference/manifest_file.html#dependencies>`_ 检查 device YAML 中 ``dependencies`` 字段的写法。
 
@@ -148,19 +159,17 @@ undefined reference to g_esp_board_*
 2. 不要在工程 ``sdkconfig.defaults`` 中手写 BMGR 的设备、外设或设备子类型能力符号；这些符号应仅来自 BMGR 生成的 ``board_manager.defaults``。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition 等）放到板目录下的 ``sdkconfig.defaults.board``。
 3. 如需回到当前开发板的默认值，可删除工程 ``sdkconfig``，重新执行 ``idf.py build`` 让 ``board_manager.defaults`` 再次生效。
 
-修改 YAML 后运行结果无变化
+修改配置后运行结果无变化
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **可能原因**
 
-- 未执行 ``idf.py bmgr``。
-- 修改的是 YAML 还是修改的是运行时配置，两者生效阶段不同。
-- 设备已被初始化过；运行时修改 config 通常需要 deinit 后再 init 才能让驱动重新读取。
+- 修改的是 YAML ，修改后未执行 ``idf.py bmgr``。
 
 **推荐动作**
 
-1. 先重新执行 ``idf.py bmgr -b <board>``，确认 ``components/gen_bmgr_codes`` 已刷新。
-2. 如果修改的是运行时覆盖（override），对相关设备调用一次 :cpp:func:`esp_board_manager_deinit_device_by_name`，再调用 :cpp:func:`esp_board_manager_init_device_by_name`。
+1. 如果修改的是 YAML，先重新执行 ``idf.py bmgr -b <board>``，确认 ``components/gen_bmgr_codes`` 已刷新。
+2. 如果修改的是 ``gen_board_device_config.c`` 和 ``gen_board_periph_config.c``，请在测试通过后将修改同步回 YAML，避免下次 ``idf.py bmgr`` 覆盖。
 
 运行时无法获取句柄或配置
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

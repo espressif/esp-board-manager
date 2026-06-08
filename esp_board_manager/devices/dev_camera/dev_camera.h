@@ -11,12 +11,30 @@
 #include "esp_video_init.h"
 #if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
 #include "esp_cam_ctlr_dvp.h"
-#include "esp_cam_sensor_xclk.h"
 #endif  /* CONFIG_SOC_LCDCAM_CAM_SUPPORTED */
 
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
+
+/**
+ * @brief  CSI XCLK configuration.
+ *
+ *         Keep the esp_clock_router_cfg field shape stable for generated board
+ *         configs. When CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER is disabled,
+ *         this fallback type lets configs compile, but CSI XCLK will not be
+ *         generated at runtime.
+ */
+#if CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
+typedef esp_cam_sensor_xclk_config_t dev_camera_csi_xclk_config_t;
+#else
+typedef struct {
+    struct {
+        gpio_num_t  xclk_pin;      /*!< GPIO number to be mapped soc_root_clk signal source */
+        uint32_t    xclk_freq_hz;  /*!< XCLK output frequency (Hz) */
+    } esp_clock_router_cfg;
+} dev_camera_csi_xclk_config_t;
+#endif  /* CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER */
 
 /**
  * @brief  CSI configuration structure (placeholder)
@@ -25,15 +43,13 @@ extern "C" {
  *         a camera device over CSI interface, including I2C configuration and GPIO pins.
  */
 typedef struct {
-    const char *i2c_name;       /*!< I2C bus name */
-    uint32_t    i2c_freq;       /*!< I2C frequency */
-    const char *ldo_name;       /*!< LDO peripheral name */
-    gpio_num_t  reset_io;       /*!< GPIO io for reset signal */
-    gpio_num_t  pwdn_io;        /*!< GPIO io for power down signal */
-    bool        dont_init_ldo;  /*!< If true, MIPI-CSI video device will not initialize the LDO; otherwise, MIPI-CSI video device will initialize the LDO */
-#if CONFIG_SOC_LCDCAM_CAM_SUPPORTED
-    esp_cam_sensor_xclk_config_t  xclk_config;  /*!< XCLK configuration */
-#endif  /* CONFIG_SOC_LCDCAM_CAM_SUPPORTED */
+    const char                   *i2c_name;       /*!< I2C bus name */
+    uint32_t                      i2c_freq;       /*!< I2C frequency */
+    const char                   *ldo_name;       /*!< LDO peripheral name */
+    gpio_num_t                    reset_io;       /*!< GPIO io for reset signal */
+    gpio_num_t                    pwdn_io;        /*!< GPIO io for power down signal */
+    bool                          dont_init_ldo;  /*!< If true, MIPI-CSI video device will not initialize the LDO; otherwise, MIPI-CSI video device will initialize the LDO */
+    dev_camera_csi_xclk_config_t  xclk_config;    /*!< XCLK configuration */
 } dev_camera_sub_csi_cfg;
 
 #if CONFIG_ESP_BOARD_DEV_CAMERA_SUB_SPI_SUPPORT

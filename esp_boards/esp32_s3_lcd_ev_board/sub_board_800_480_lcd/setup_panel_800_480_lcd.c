@@ -22,12 +22,13 @@
 #include "esp_log.h"
 
 #if __has_include(<esp_lcd_touch_gt1151.h>)
+#define HAS_GT1151  1
 #include "esp_lcd_touch_gt1151.h"
 #endif  /* __has_include(<esp_lcd_touch_gt1151.h>) */
 
 static const char *TAG = "S3_LCD_EV_BOARD_800_480_LCD_SETUP";
 
-#if __has_include(<esp_lcd_touch_gt1151.h>)
+#if defined(HAS_GT1151)
 esp_err_t lcd_touch_factory_entry_t(const esp_lcd_panel_io_handle_t io,
                                     const esp_lcd_touch_config_t *config,
                                     esp_lcd_touch_handle_t *tp)
@@ -38,4 +39,4 @@ esp_err_t lcd_touch_factory_entry_t(const esp_lcd_panel_io_handle_t io,
     }
     return ret;
 }
-#endif  /* __has_include(<esp_lcd_touch_gt1151.h>) */
+#endif  /* defined(HAS_GT1151) */

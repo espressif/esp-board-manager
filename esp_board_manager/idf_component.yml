@@ -1,4 +1,4 @@
-version: 0.5.15
+version: 0.6.0
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -15,6 +15,9 @@ examples:
   - path: examples/display_lvgl
 
 dependencies:
+  espressif/esp_boards:
+    version: "*"
+
   espressif/esp_codec_dev:
     require: public
     version: ~1.5
@@ -25,7 +28,6 @@ dependencies:
     require: public
     version: "*"
     matches:
-      - if: "$CONFIG{ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT} == True"
       - if: "$CONFIG{ESP_BOARD_DEV_LCD_TOUCH_SUPPORT} == True"
 
   espressif/esp_io_expander:
@@ -36,7 +38,7 @@ dependencies:
 
   espressif/esp_video:
     require: public
-    version: "^2.0.0"
+    version: "^2.1.0"
     matches:
       - if: "$CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True"
 

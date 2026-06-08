@@ -240,6 +240,54 @@ The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 18            # [TO_BE_CONFIRMED]
 
+RGB User Frame Buffers
+^^^^^^^^^^^^^^^^^^^^^^
+
+The ``rgb`` and ``rgb_3wire_spi`` modes support the ``user_fbs_func`` field on ESP-IDF v6.0 and later. This field is not a function pointer. It is the name of a board-level callback registered with ``DEVICE_EXTRA_FUNC_REGISTER`` and is used to provide frame buffers managed by the application or board-level code to the RGB LCD driver.
+
+In ``board_devices.yaml``, place ``user_fbs_func`` under ``rgb_panel_config``:
+
+.. code-block:: yaml
+
+    devices:
+      - name: display_lcd
+        type: display_lcd
+        sub_type: rgb
+        config:
+          rgb_panel_config:
+            num_fbs: 2
+            user_fbs_func: lcd_rgb_user_fbs
+
+Board-level code must register a callback with the same name:
+
+.. code-block:: c
+
+   #include "dev_display_lcd.h"
+   #include "esp_board_extra_func_entry.h"
+
+   static int lcd_rgb_user_fbs(const dev_display_lcd_config_t *lcd_cfg,
+                               dev_display_lcd_rgb_user_fbs_action_t action,
+                               void *user_fbs[ESP_RGB_LCD_PANEL_MAX_FB_NUM])
+   {
+       switch (action) {
+       case DEV_DISPLAY_LCD_RGB_USER_FBS_GET:
+           /* Allocate or assign board-provided frame buffers, then fill user_fbs[]. */
+           return 0;
+       case DEV_DISPLAY_LCD_RGB_USER_FBS_RELEASE:
+           /* Release resources acquired during GET if needed. */
+           return 0;
+       default:
+           return -1;
+       }
+   }
+
+   DEVICE_EXTRA_FUNC_REGISTER(lcd_rgb_user_fbs, lcd_rgb_user_fbs);
+
+Before creating the RGB panel, BMGR calls this callback with ``DEV_DISPLAY_LCD_RGB_USER_FBS_GET`` and passes the returned pointers to ``esp_lcd_rgb_panel_config_t.user_fbs``. If initialization fails or the device is deinitialized, BMGR calls the callback again with ``DEV_DISPLAY_LCD_RGB_USER_FBS_RELEASE``. The ``GET`` branch must fill valid frame buffer pointers matching ``num_fbs``. If the callback returns a non-zero value, LCD device initialization fails.
+
+When this field is used, the number, size, alignment, and memory capabilities of the frame buffers must match the resolution, color format, ESP-IDF RGB LCD driver requirements, and the ``num_fbs`` configuration. If user-owned frame buffers are not required, leave ``user_fbs_func`` empty and let the driver manage frame buffers according to ``num_fbs``, ``fb_in_psram``, and related settings.
+
+
 .. _display-lcd-parlio:
 
 PARLIO (``sub_type: parlio``)
@@ -757,14 +805,13 @@ Code Reference
 Board-level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: ``dsi`` display configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: ``dsi`` and ``ldo`` peripheral configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/setup_device.c``: DSI panel factory function.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``: ``spi`` display configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: SPI peripheral configuration.
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``: ``rgb_3wire_spi`` display configuration.
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``: ``rgb`` display amend configuration.
-- ``esp_board_manager/boards/esp_sensair_halo/board_devices.yaml``: ``parlio`` display configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: ``dsi`` display configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``dsi`` and ``ldo`` peripheral configuration.
+- ``esp_boards/esp32_p4_function_ev_board/setup_device.c``: DSI panel factory function.
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ``spi`` display configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: SPI peripheral configuration.
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``: ``rgb_3wire_spi`` display configuration.
+- ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``: ``rgb`` display amend configuration.
 
 Notes
 -----

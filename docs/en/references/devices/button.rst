@@ -357,10 +357,10 @@ Code Reference
 Board-level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``
+- ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``
 
 Notes
@@ -388,5 +388,30 @@ Use :cpp:func:`esp_board_manager_get_device_handle` to obtain the device handle.
    } dev_button_handles_t;
 
 ``num_buttons`` is the number of buttons actually initialized; ``button_handles`` can be passed to the callback registration interface of the ``espressif/button`` component.
+
+Use :cpp:func:`esp_board_device_callback_register` to register a button callback by device name. This API uses the initialized ``button`` device handle and registers the same ``button_cb_t`` on all button handles under that device, according to the events enabled in ``events_cfg``. The target device must already be initialized before this API is called.
+
+.. code-block:: c
+
+   #include "dev_button.h"
+   #include "esp_board_device.h"
+
+   static void button_event_handler(void *button_handle, void *user_data)
+   {
+       button_handle_t btn = (button_handle_t)button_handle;
+       button_event_t event = iot_button_get_event(btn);
+
+       ESP_LOGI(TAG, "button event: %s, user_data: %s",
+                iot_button_get_event_str(event),
+                (const char *)user_data);
+   }
+
+   void app_register_button_callback(void)
+   {
+       ESP_ERROR_CHECK(esp_board_device_callback_register(
+           "gpio_button_0", button_event_handler, NULL));
+   }
+
+When ``user_data`` is ``NULL``, BMGR uses a default value: single-button devices use the device ``name``, and ``adc_multi`` devices use the string from ``button_labels`` corresponding to the button index. To pass application-specific context, provide the pointer as the third argument.
 
 Related declarations are in ``esp_board_manager/devices/dev_button/dev_button.h``.

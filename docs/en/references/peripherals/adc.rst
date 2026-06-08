@@ -272,10 +272,10 @@ Reference Code
 Board Examples
 --------------
 
-- ``esp_board_manager/boards/esp32_c3_lyra/board_peripherals.yaml``: Internal ADC audio input using a continuous peripheral.
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``: ADC button using a one-shot peripheral.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: ADC button using a one-shot peripheral.
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_peripherals.yaml``: ADC button using a one-shot peripheral.
+- ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``: Internal ADC audio input using a continuous peripheral.
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: ADC button using a one-shot peripheral.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: ADC button using a one-shot peripheral.
+- ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``: ADC button using a one-shot peripheral.
 
 Notes
 -----

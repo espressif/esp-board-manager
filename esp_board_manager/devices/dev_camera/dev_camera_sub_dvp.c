@@ -49,7 +49,7 @@ int dev_camera_sub_dvp_init(void *cfg, int cfg_size, void **device_handle)
         ESP_LOGE(TAG, "Failed to allocate memory");
         goto cleanup;
     }
-    ret = esp_video_init(&cam_config);
+    ret = esp_video_init_with_flags(&cam_config, ESP_VIDEO_INIT_FLAGS_DVP);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize DVP camera driver: %s", esp_err_to_name(ret));
         free(handle);
@@ -70,9 +70,8 @@ int dev_camera_sub_dvp_deinit(void *device_handle)
     dev_camera_handle_t *handle = (dev_camera_handle_t *)device_handle;
     ESP_LOGI(TAG, "Deinitializing DVP camera...");
 
-    // Deinitialize DVP camera
-    // In the current version of esp_video(1.4.0), it will deinit all cameras that have been initialized
-    esp_err_t ret = esp_video_deinit();
+    // Deinitialize only the DVP camera resources.
+    esp_err_t ret = esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_DVP);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to deinitialize DVP camera: %s", esp_err_to_name(ret));
     }

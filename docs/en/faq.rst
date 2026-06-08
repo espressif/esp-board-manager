@@ -3,7 +3,7 @@ FAQ
 
 :link_to_translation:`zh_CN:[中文]`
 
-The FAQ targets users who can already run BMGR normally but encounter problems. It consolidates troubleshooting approaches, files to inspect, and recommended actions for frequently reported errors. It is recommended to first identify the phase of the problem, then continue troubleshooting based on the specific error, rather than diving directly into business code.
+The FAQ summarizes common BMGR errors, troubleshooting entry points, and recommended actions. When a problem occurs, first determine whether it happens during generation, compilation, or runtime, then narrow it down by symptom instead of jumping straight into application code.
 
 - **Generation phase**: Wrong board selection, incomplete YAML, incorrect dependency description, missing generated artifacts.
 - **Compilation phase**: Missing macros, missing components, missing generated files, link failure.
@@ -25,9 +25,20 @@ Generation Phase
 
 **Recommended Actions**
 
-1. Confirm that the main component manifest declares the ``espressif/esp_board_manager`` dependency, and that ``idf.py menuconfig`` or ``idf.py build`` has been run to let the component manager download the component to ``managed_components/``.
-2. Restart the terminal session or re-run ``source export.sh`` to apply the ESP-IDF environment variables.
-3. ESP-IDF v6.0 and above uses the auto-discovery mechanism with the component's own ``idf_ext.py``; the project must be able to recognize the ``esp_board_manager`` component. Versions below v6.0 require ``IDF_EXTRA_ACTIONS_PATH`` to be set correctly.
+1. Use ``esp-bmgr-assist`` to avoid manually configuring ``IDF_EXTRA_ACTIONS_PATH``. In an activated ESP-IDF Python environment, run ``pip install esp-bmgr-assist``; when an update is requested, run ``pip install --upgrade esp-bmgr-assist``.
+2. If the error persists after installing ``esp-bmgr-assist``, first check the exact error message printed by the command. Common causes include running the command outside a standard ESP-IDF project directory, or dependency resolution failing because a dependency component has target restrictions. For details, see :doc:`/tools/esp-bmgr-assist`.
+3. If you need to set ``IDF_EXTRA_ACTIONS_PATH`` manually, use the following commands to check whether the path is configured correctly. The output should include the ``esp_board_manager`` component directory; separate multiple paths with ``;``.
+
+   .. code-block:: text
+
+      # Linux / macOS
+      echo $IDF_EXTRA_ACTIONS_PATH
+
+      # Windows PowerShell
+      echo $env:IDF_EXTRA_ACTIONS_PATH
+
+      # Windows CMD
+      echo %IDF_EXTRA_ACTIONS_PATH%
 
 ``esp_board_manager`` Component Path Not Found
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +137,7 @@ Typical errors:
 
 **Recommended Actions**
 
-1. First use ``idf.py bmgr -x`` (equivalent to the old command ``idf.py gen-bmgr-config -x`` or ``python gen_bmgr_config_codes.py -x``) to clean generated artifacts. This command deletes the generated ``.c`` and ``.h`` files, resets ``gen_bmgr_codes/CMakeLists.txt`` and ``idf_component.yml``, and removes ``board_manager.defaults``.
+1. First use ``idf.py bmgr -x`` (equivalent to the old command ``idf.py gen-bmgr-config -x``) to clean generated artifacts. This command deletes the generated ``.c`` and ``.h`` files, resets ``gen_bmgr_codes/CMakeLists.txt`` and ``idf_component.yml``, and removes ``board_manager.defaults``.
 2. Then run ``idf.py bmgr -b <board>`` to regenerate.
 3. If errors persist, refer to the `IDF Component Manager Manifest documentation <https://docs.espressif.com/projects/idf-component-manager/en/latest/reference/manifest_file.html#dependencies>`_ to check the syntax of the ``dependencies`` field in the device YAML.
 
@@ -148,19 +159,17 @@ Abnormal Behavior or sdkconfig Inconsistency After Switching Boards
 2. Do not manually write BMGR device, peripheral, or device sub-type capability symbols into the project ``sdkconfig.defaults``; these symbols should come only from the BMGR-generated ``board_manager.defaults``. Board-specific regular sdkconfig items (PSRAM, Flash, partition, etc.) should be placed in ``sdkconfig.defaults.board`` under the board directory.
 3. To return to the current board's default values, delete the project ``sdkconfig`` and re-run ``idf.py build`` to let ``board_manager.defaults`` take effect again.
 
-No Runtime Change After YAML Modification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+No Runtime Change After Configuration Modification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Possible Causes**
 
-- ``idf.py bmgr`` has not been run.
-- The modification is to YAML versus runtime configuration; the two take effect at different phases.
-- The device has already been initialized; runtime modification of config usually requires a deinit followed by init to let the driver re-read the configuration.
+- The modified file is YAML, but ``idf.py bmgr`` has not been run after the modification.
 
 **Recommended Actions**
 
-1. First re-run ``idf.py bmgr -b <board>`` and confirm that ``components/gen_bmgr_codes`` has been refreshed.
-2. If the modification is to a runtime override, call :cpp:func:`esp_board_manager_deinit_device_by_name` once for the relevant device, then call :cpp:func:`esp_board_manager_init_device_by_name`.
+1. If the modified file is YAML, first re-run ``idf.py bmgr -b <board>`` and confirm that ``components/gen_bmgr_codes`` has been refreshed.
+2. If ``gen_board_device_config.c`` or ``gen_board_periph_config.c`` was modified directly, sync the change back to YAML after testing passes to avoid it being overwritten by the next ``idf.py bmgr`` run.
 
 Cannot Get Handle or Configuration at Runtime
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

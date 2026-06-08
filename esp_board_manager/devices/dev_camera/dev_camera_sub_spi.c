@@ -49,7 +49,7 @@ int dev_camera_sub_spi_init(void *cfg, int cfg_size, void **device_handle)
         return -1;
     }
 
-    ret = esp_video_init(&cam_config);
+    ret = esp_video_init_with_flags(&cam_config, ESP_VIDEO_INIT_FLAGS_SPI);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI camera: %s", esp_err_to_name(ret));
         free(handle);
@@ -76,7 +76,7 @@ int dev_camera_sub_spi_deinit(void *device_handle)
         return -1;
     }
 
-    esp_err_t ret = esp_video_deinit();
+    esp_err_t ret = esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_SPI);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "esp_video_deinit failed: %s", esp_err_to_name(ret));
     }

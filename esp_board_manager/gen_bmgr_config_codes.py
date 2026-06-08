@@ -24,7 +24,7 @@ import argparse
 import logging
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -33,7 +33,7 @@ from generators.utils.logger import setup_logger, get_logger, LoggerMixin
 from generators.utils.file_utils import (
     ensure_existing_directory,
     normalize_project_dir,
-    resolve_path_from_base,
+    resolve_customer_path_arg,
     resolve_project_root_dir,
 )
 from generators import get_config_generator, get_sdkconfig_manager, get_dependency_manager, get_source_scanner
@@ -48,16 +48,35 @@ from generators.utils.board_schema_version import (
     resolved_board_info_version_string,
 )
 from generators.utils.yaml_utils import BoardConfigYamlError
+from generators.utils.idf_version import get_idf_version
+from generators.utils.soc_capability_query import (
+    clear_soc_capabilities,
+    configure_soc_capabilities,
+    current_soc_catalog,
+    current_soc_chip,
+    current_soc_chip_name,
+)
+from generators.utils.soc_capability_validator import (
+    build_soc_validation_instance,
+    validate_soc_capabilities,
+)
 from generators.sdkconfig_manager import SDKCONFIG_DEFAULTS_BOARD_FILE
 from generators.amend import (
     AmendError,
     AmendPlan,
     MANIFEST_FILENAME as AMEND_MANIFEST_FILENAME,
     build_amend_plan,
+    merge_amend_plans,
 )
 
 
 KCONFIG_PROJBUILD_FILE = 'Kconfig.projbuild'
+
+
+def _env_flag_true(var_name: str) -> bool:
+    """Return True when an environment variable is set to a truthy string."""
+    value = os.environ.get(var_name, '')
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
 def board_directory_path(board_info) -> Optional[str]:
@@ -89,89 +108,162 @@ class BoardConfigGenerator(LoggerMixin):
         self.script_dir = script_dir
         self.project_dir = normalize_project_dir(project_dir)
         self.amend_dir_raw = amend_dir          # Original CLI string (may be relative)
-        self.amend_dir: Optional[Path] = None   # Absolute, normalized after resolve_amend_path()
+        self.amend_dir: Optional[Path] = None   # Absolute, normalized after resolve_amend_plan()
         self.amend_plan: Optional[AmendPlan] = None
+        # Customer (-c) path(s); may be a ';'-separated list. Stored so auto-amend
+        # scanning (resolve_amend_plan) can reuse the same customer roots.
+        self.board_customer_path: Optional[str] = None
 
         # Initialize all sub-components (version display, root_dir, parsers, etc.)
         self._init_components()
 
-    def resolve_amend_path(self, board_path: Optional[str] = None) -> bool:
-        """Resolve the ``-a/--amend`` directory and build the :class:`AmendPlan`.
+    def _resolve_explicit_amend_dir(self, board_path: Optional[str] = None) -> Optional[Path]:
+        """Resolve the explicit ``-a/--amend`` directory.
 
         Resolution order for relative paths:
 
-        1. As-is (``project_dir`` joined when set)
-        2. Relative to ``cwd``
-        3. ``<board_path>/<raw>`` (allows short names like ``-a my_amend``)
+        1. Relative to ``cwd``
+        2. ``<board_path>/<raw>`` (allows short names like ``-a my_amend``)
 
         The first candidate that points to a directory containing
-        ``board_amend.yaml`` wins. Any error during manifest parsing aborts the
-        generation **before** the output directory is cleared.
-
-        Returns ``True`` if there is no ``-a`` argument or the plan was built
-        successfully; ``False`` otherwise.
+        ``board_amend.yaml`` wins. Returns the resolved :class:`Path`, or
+        ``None`` if no valid candidate was found (an error is logged in that
+        case so the caller can abort).
         """
-        if not self.amend_dir_raw:
-            return True
-
         raw = self.amend_dir_raw
         raw_path = Path(raw).expanduser()
         candidates: List[Path] = []
         if raw_path.is_absolute():
             candidates.append(raw_path)
         else:
-            if self.project_dir:
-                candidates.append(Path(self.project_dir) / raw_path)
             candidates.append(Path.cwd() / raw_path)
             if board_path:
                 candidates.append(Path(board_path) / raw_path)
 
-        seen = set()
-        chosen: Optional[Path] = None
+        seen: set = set()
+        tried: List[Path] = []
         for candidate in candidates:
             resolved = candidate.resolve()
             key = str(resolved)
             if key in seen:
                 continue
             seen.add(key)
+            tried.append(candidate)
             if not resolved.exists():
                 continue
             if not resolved.is_dir():
                 self.logger.error(
                     f'❌ Amend path must be a directory, got file: {resolved}'
                 )
-                return False
+                return None
             if not (resolved / AMEND_MANIFEST_FILENAME).is_file():
                 continue
-            chosen = resolved
-            break
+            return resolved
 
-        if chosen is None:
-            tried = ', '.join(str(c) for c in candidates)
-            self.logger.error(
-                f'❌ Amend path not found or missing {AMEND_MANIFEST_FILENAME}: '
-                f'{raw} (tried: {tried})'
-            )
-            return False
-
-        try:
-            self.amend_plan = build_amend_plan(
-                chosen, project_root=Path(self.project_dir) if self.project_dir else None
-            )
-        except AmendError as exc:
-            self.logger.error(f'❌ {exc}')
-            return False
-
-        self.amend_dir = chosen
-        self.logger.info(f'ℹ️  Amend mode: {chosen}')
-        if self.amend_plan.description:
-            self.logger.debug(f'   Amend description: {self.amend_plan.description}')
-        self.logger.debug(
-            f'   Amend plan: {len(self.amend_plan.fragments)} fragment(s); '
-            f'{len(self.amend_plan.sdkconfig_sources())} sdkconfig source(s), '
-            f'{len(self.amend_plan.kconfig_sources())} Kconfig source(s)'
+        self.logger.error(
+            f'❌ Amend path not found or missing {AMEND_MANIFEST_FILENAME}: '
+            f'{raw} (tried: {", ".join(str(c) for c in tried)})'
         )
+        return None
+
+    def resolve_amend_plan(self, board_name: str, board_path: Optional[str] = None) -> bool:
+        """Resolve auto-amend + explicit ``-a`` overlays into ``self.amend_plan``.
+
+        Steps:
+
+        1. Auto-discover amend directories whose name matches ``board_name``
+           (unless ``ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND`` is truthy), build a
+           plan for each, ordered low->high overlay priority.
+        2. Resolve the explicit ``-a`` directory (if any) — highest priority.
+        3. Merge every plan in order; explicit ``-a`` last so it overrides auto.
+
+        Any manifest error aborts before the output directory is cleared.
+
+        Returns ``True`` on success (including the no-amend case, where
+        ``self.amend_plan`` stays ``None``); ``False`` on any amend error.
+        """
+        project_root = Path(self.project_dir) if self.project_dir else None
+
+        auto_plans: List[AmendPlan] = []
+        if not _env_flag_true('ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND'):
+            try:
+                auto_dirs = self.config_generator.scan_auto_amend_directories(
+                    board_name, self.board_customer_path
+                )
+            except Exception as exc:
+                self.logger.debug(f'   auto-amend scan failed: {exc}')
+                auto_dirs = []
+
+            for entry in auto_dirs:
+                try:
+                    plan = build_amend_plan(Path(entry.path), project_root=project_root)
+                except AmendError as exc:
+                    self.logger.error(f'❌ Auto-amend error in {entry.path}: {exc}')
+                    return False
+                self.logger.debug(f'   auto-amend overlay: {entry.path}')
+                auto_plans.append(plan)
+
+        explicit_plan: Optional[AmendPlan] = None
+        if self.amend_dir_raw:
+            chosen = self._resolve_explicit_amend_dir(board_path)
+            if chosen is None:
+                return False
+            try:
+                explicit_plan = build_amend_plan(chosen, project_root=project_root)
+            except AmendError as exc:
+                self.logger.error(f'❌ {exc}')
+                return False
+            self.amend_dir = chosen
+            self.logger.debug(f'   explicit amend overlay: {chosen}')
+            if explicit_plan.description:
+                self.logger.debug(f'   Amend description: {explicit_plan.description}')
+
+        # Order low->high overlay priority: auto overlays first, explicit -a last.
+        ordered_sources: List[Tuple[str, AmendPlan]] = [('auto', p) for p in auto_plans]
+        if explicit_plan is not None:
+            ordered_sources.append(('explicit', explicit_plan))
+
+        self.amend_plan = merge_amend_plans([plan for _tag, plan in ordered_sources])
+
+        # Single consolidated report of every amend source (board_amend.yaml level),
+        # in application order. Per-fragment application details are logged at debug
+        # level by the individual generation steps.
+        self._log_amend_sources(board_name, ordered_sources, has_auto=bool(auto_plans))
         return True
+
+    def _log_amend_sources(
+        self,
+        board_name: str,
+        ordered_sources: List[Tuple[str, 'AmendPlan']],
+        *,
+        has_auto: bool,
+    ) -> None:
+        """Print one consolidated summary of the amend sources for ``board_name``.
+
+        Sources are listed at the ``board_amend.yaml`` level in application order
+        (low -> high priority) and tagged ``[auto]`` or ``[explicit]``. When no
+        amend source is active nothing is printed.
+        """
+        if not ordered_sources:
+            return
+
+        self.logger.info(
+            f"ℹ️  Amend sources for board '{board_name}' (low -> high priority):"
+        )
+        total = len(ordered_sources)
+        for idx, (tag, plan) in enumerate(ordered_sources, start=1):
+            tag_label = '[auto]    ' if tag == 'auto' else '[explicit]'
+            count = len(plan.fragments)
+            frag_word = 'fragment' if count == 1 else 'fragments'
+            manifest = plan.manifest_path if plan.manifest_path else plan.amend_dir
+            highest = '  <- highest' if idx == total else ''
+            self.logger.info(
+                f'   {idx}. {tag_label} {manifest} ({count} {frag_word}){highest}'
+            )
+        if has_auto:
+            self.logger.info(
+                '   (disable auto-amend with ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND=1)'
+            )
 
     def _init_components(self):
         """Initialize all sub-components. Called from __init__ after basic setup."""
@@ -191,7 +283,6 @@ class BoardConfigGenerator(LoggerMixin):
         self.logger.info(f'ℹ️  Using script directory as root directory: {self.root_dir}')
 
         # All paths are now relative to root_dir
-        self.boards_dir = self.root_dir / 'boards'
         self.peripherals_dir = self.root_dir / 'peripherals'
         self.devices_dir = self.root_dir / 'devices'
         self.gen_codes_dir = self.root_dir / 'gen_codes'
@@ -525,7 +616,12 @@ class BoardConfigGenerator(LoggerMixin):
             kconfig_content += f'\n\n# --- {label} Kconfig.projbuild: {kconfig_path} ---\n'
             kconfig_content += extra_content
             kconfig_content += '\n'
-            self.logger.info(f'✅ Appended {label} Kconfig.projbuild from {kconfig_path}')
+            # The board's own Kconfig.projbuild stays at info; amend-supplied ones
+            # are summarized by the amend report and logged here at debug only.
+            if label == 'Board':
+                self.logger.info(f'✅ Appended {label} Kconfig.projbuild from {kconfig_path}')
+            else:
+                self.logger.debug(f'   Appended {label} Kconfig.projbuild from {kconfig_path}')
 
         # Write the file
         os.makedirs(gen_bmgr_codes_dir, exist_ok=True)
@@ -1011,6 +1107,7 @@ class BoardConfigGenerator(LoggerMixin):
 
         peripherals_dict = {p.name: p for p in flattened_peripherals}
         self.logger.debug(f'   Loaded {len(flattened_peripherals)} peripheral configurations')
+        self._validate_soc_yaml_instances('peripheral', flattened_peripherals)
 
         # Extract peripheral types for Kconfig update
         peripheral_types = set()
@@ -1142,13 +1239,23 @@ class BoardConfigGenerator(LoggerMixin):
                 pass
             raw_devices_by_name[normalized_name] = dev
 
+        device_validation_items = []
+        for d in devices:
+            raw_dev = raw_devices_by_name.get(d.name, {})
+            item = {
+                'name': d.name,
+                'type': d.type,
+                'config': d.config,
+            }
+            if 'sub_type' in raw_dev:
+                item['sub_type'] = raw_dev['sub_type']
+            elif getattr(d, 'sub_type', None):
+                item['sub_type'] = d.sub_type
+            device_validation_items.append(item)
+        self._validate_soc_yaml_instances('device', device_validation_items)
+
         self.logger.debug('   ⚙️  Generating device structures...')
         for d in devices:
-            parse_entry = device_parsers.get(d.type)
-            if not parse_entry:
-                self.logger.warning(f'⚠️  WARNING: No parser for device type {d.type}')
-                continue
-            version, parse_func, _ = parse_entry  # Unpack only what we need here
             raw_dev = raw_devices_by_name.get(d.name, {})
 
             # Create full config with peripherals
@@ -1165,8 +1272,16 @@ class BoardConfigGenerator(LoggerMixin):
                 full_config['chip'] = raw_dev['chip']
             if 'sub_type' in raw_dev:
                 full_config['sub_type'] = raw_dev['sub_type']
+            elif getattr(d, 'sub_type', None):
+                full_config['sub_type'] = d.sub_type
             if 'version' in raw_dev:
                 full_config['version'] = str(raw_dev['version']) if raw_dev['version'] is not None else None
+
+            parse_entry = device_parsers.get(d.type)
+            if not parse_entry:
+                self.logger.warning(f'⚠️  WARNING: No parser for device type {d.type}')
+                continue
+            version, parse_func, _ = parse_entry  # Unpack only what we need here
 
             peripherals = []
             raw_peripherals = raw_dev.get('peripherals', [])
@@ -1227,6 +1342,30 @@ class BoardConfigGenerator(LoggerMixin):
     def _get_gen_bmgr_codes_dir(self, project_root: str) -> str:
         """Get the gen_bmgr_codes directory path"""
         return os.path.join(project_root, 'components', 'gen_bmgr_codes')
+
+    def _validate_soc_yaml_instances(self, kind: str, items: List, labels: Optional[Dict[str, str]] = None) -> None:
+        """Validate YAML-level SoC capability rules before parser dispatch."""
+        catalog = current_soc_catalog()
+        chip_name = current_soc_chip_name()
+        if catalog is None or not chip_name:
+            return
+        instances = []
+        for item in items:
+            label = None
+            if labels:
+                name = getattr(item, 'name', None)
+                if name is None and isinstance(item, dict):
+                    name = item.get('name')
+                label = labels.get(str(name))
+            instances.append(build_soc_validation_instance(kind, item, instance_id=label))
+        issues = validate_soc_capabilities(catalog, chip=chip_name, instances=instances)
+        if not issues:
+            return
+        issue = issues[0]
+        raise ValueError(
+            'SoC capability validation failed at %s: %s'
+            % ('/'.join(str(part) for part in issue.path), issue.message)
+        )
 
     def write_board_metadata(self, board_name: str, chip_name: str, out_path: str) -> dict:
         """Write unified board metadata YAML."""
@@ -1401,6 +1540,24 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             self.logger.warning(f'⚠️  No chip field found in {board_info_path}')
             return None
 
+    def configure_soc_capability_context(self, board_path: Optional[str]) -> None:
+        """Configure parser-facing SoC capability context for the selected board."""
+        clear_soc_capabilities()
+        if not board_path:
+            return
+
+        chip_name = self.get_chip_name_from_board_path(board_path)
+        if not chip_name:
+            return
+
+        idf_version = '.'.join(str(part) for part in get_idf_version())
+        catalog_dir = self.root_dir / 'private_inc' / 'soc_capability_catalog'
+        configure_soc_capabilities(catalog_dir=catalog_dir, idf_version=idf_version, chip=chip_name)
+        self.logger.debug(
+            f'   Configured SoC capability context: chip={chip_name}, '
+            f'idf_version={idf_version}, catalog={catalog_dir}'
+        )
+
     def get_current_board_name(self, project_root: str) -> Optional[str]:
         """Get the current board name from gen_board_info.c"""
         try:
@@ -1491,6 +1648,10 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         """
         self.logger.info('=== Board Manager Configuration Generator ===')
 
+        # Remember the customer path(s) so auto-amend scanning can reuse the
+        # same customer roots that board discovery used.
+        self.board_customer_path = args.board_customer_path
+
         # Initialize device and peripheral types sets
         device_types = set()
         peripheral_types = set()
@@ -1501,8 +1662,6 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
 
         # Show scanning directories
         self.logger.debug('   Scanning directories:')
-        boards_dir = self.config_generator.boards_dir
-        self.logger.debug(f'      • Default boards: {boards_dir}')
         if args.board_customer_path and args.board_customer_path != 'NONE':
             self.logger.debug(f'      • Customer boards: {args.board_customer_path}')
         else:
@@ -1561,10 +1720,10 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             set_board_path(board_path)
             self.logger.debug(f'   Set global board path: {board_path}')
 
-        # Resolve -a amend path now that board_path is known. Failure must abort
-        # before clearing generated files so a bad manifest does not destroy the
-        # last good output.
-        if not self.resolve_amend_path(board_path):
+        # Resolve auto-amend + explicit -a overlays now that the board is known.
+        # Failure must abort before clearing generated files so a bad manifest
+        # does not destroy the last good output.
+        if not self.resolve_amend_plan(selected_board, board_path):
             return False
 
         current_board = None
@@ -1634,6 +1793,8 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         self.logger.debug(f'✅ Configuration files found:')
         self.logger.debug(f'      • Peripherals: {periph_yaml_path}')
         self.logger.debug(f'      • Devices: {dev_yaml_path}')
+
+        self.configure_soc_capability_context(board_path)
 
         # 4~5. Process peripherals and devices based on arguments
         peripherals_dict = None
@@ -1885,7 +2046,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
                     source_path=str(source_path),
                 )
                 if append_result.get('added'):
-                    self.logger.info(f'✅ Appended amend {SDKCONFIG_DEFAULTS_BOARD_FILE} from {source_path}')
+                    self.logger.debug(f'   Appended amend {SDKCONFIG_DEFAULTS_BOARD_FILE} from {source_path}')
 
         # 8. Write board information and setup components/gen_bmgr_codes
         self.logger.info('⚙️  Step 8/8: Writing board information and setting up components...')
@@ -1909,6 +2070,8 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         if not self.setup_gen_bmgr_codes_component(project_artifact_root, board_path, device_dependencies, selected_board):
             self.logger.error('❌ Error: Failed to setup components/gen_bmgr_codes!')
             return False
+
+        self.metadata_generator.report_io_conflict_warnings(self.logger)
 
         self.logger.info(f'✅ === Board configuration generation completed successfully for board: {selected_board} ===')
         return True
@@ -1991,7 +2154,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
                         continue
                     seen_src_keys.add(key)
                     amend_srcs.append(f'    # apply[{frag.item_index}]: {frag.raw_item}\n    "{rel}"')
-                    self.logger.info(f'   Added amend source: apply[{frag.item_index}] -> {rel}')
+                    self.logger.debug(f'   Added amend source: apply[{frag.item_index}] -> {rel}')
 
                 # INCLUDE_DIRS from amend plan: header parents + dir items + amend root.
                 seen_inc_keys = set()
@@ -2216,7 +2379,12 @@ Examples:
     parser.add_argument(
         '-c', '--customer-path',
         dest='board_customer_path',
-        help='Path to customer boards directory or single board directory (use "NONE" to skip)'
+        help=(
+            'Path to customer boards directory or single board directory. '
+            "Multiple paths may be given separated by ';' (later paths take "
+            'priority for duplicate board names and auto-amend overlays). '
+            'Use "NONE" to skip.'
+        )
     )
 
     parser.add_argument(
@@ -2312,7 +2480,7 @@ Examples:
     args.project_dir = project_dir
 
     if args.board_customer_path and args.board_customer_path != 'NONE':
-        args.board_customer_path = resolve_path_from_base(args.board_customer_path, project_dir)
+        args.board_customer_path = resolve_customer_path_arg(args.board_customer_path, project_dir)
 
     # Create generator and run
     script_dir = Path(__file__).parent

@@ -578,9 +578,9 @@ PDM 输入完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``：STD I2S 输出和输入配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：TDM I2S 输出和输入配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：I2S 音频外设与其他板级资源并存的配置。
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：STD I2S 输出和输入配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：TDM I2S 输出和输入配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：I2S 音频外设与其他板级资源并存的配置。
 
 注意事项
 ------------

@@ -34,16 +34,10 @@ function(get_device_sources sources includes)
         bmgr_append_component_file(srcs incs "${devices_dir}" "dev_gpio_expander" "dev_gpio_expander.c")
     endif()
 
-    if(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT AND NOT CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUB_I2C_SUPPORT)
-        bmgr_append_component_file(srcs incs "${devices_dir}" "dev_lcd_touch_i2c" "dev_lcd_touch_i2c.c")
-    endif()
-
     if(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT)
         bmgr_append_component_file(srcs incs "${devices_dir}" "dev_lcd_touch" "dev_lcd_touch.c")
         if(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUB_I2C_SUPPORT)
             bmgr_append_component_file(srcs incs "${devices_dir}" "dev_lcd_touch" "dev_lcd_touch_sub_i2c.c")
-            list(APPEND incs "${devices_dir}/dev_lcd_touch_i2c")
-            list(REMOVE_DUPLICATES incs)
         endif()
     endif()
 

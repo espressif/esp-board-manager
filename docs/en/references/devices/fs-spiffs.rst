@@ -85,7 +85,7 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_devices.yaml``
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_devices.yaml``
 
 Notes
 -----

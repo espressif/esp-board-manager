@@ -127,7 +127,7 @@ SPI Touch All Fields
 Component Dependencies
 ----------------------
 
-``lcd_touch`` introduces the common component ``espressif/esp_lcd_touch`` (version ``"*"``) via ``esp_board_manager/idf_component.yml`` when ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` or ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT`` is enabled.
+``lcd_touch`` introduces the common component ``espressif/esp_lcd_touch`` (version ``"*"``) via ``esp_board_manager/idf_component.yml`` when ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` is enabled.
 
 The specific touch chip driver must be declared in the device entry's ``dependencies``. In existing board configurations, GT911 touch uses ``espressif/esp_lcd_touch_gt911: "*"``. The ``espressif/esp_lcd_touch_generic: "*"`` in the YAML template is a placeholder for the touch chip component to be confirmed; board maintainers should replace it with the component corresponding to the actual touch chip.
 
@@ -156,10 +156,10 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: GT911 ``lcd_touch`` I2C configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: ``i2c_master`` configuration referenced by the touch device.
-- ``esp_board_manager/boards/esp_box_3/board_devices.yaml``: I2C touch configuration.
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml``: I2C touch configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: GT911 ``lcd_touch`` I2C configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``i2c_master`` configuration referenced by the touch device.
+- ``esp_boards/esp32_s3_box_3/board_devices.yaml``: I2C touch configuration.
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml``: I2C touch configuration.
 
 Notes
 -----
@@ -169,6 +169,37 @@ Notes
 - ``i2c_addr`` uses 8-bit left-shifted addresses; up to 4 candidate values. The source code probes each address in turn and records the valid address found.
 - The project must provide an ``lcd_touch_factory_entry_t`` to create an ``esp_lcd_touch_handle_t`` from the touch chip component.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
+
+Factory function and multi-address selection
+--------------------------------------------
+
+The project must provide an ``lcd_touch_factory_entry_t``, which BMGR calls back when creating the touch device to build an ``esp_lcd_touch_handle_t`` from the touch chip component. The signature is:
+
+.. code-block:: c
+
+   esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                       const esp_lcd_touch_config_t *touch_dev_config,
+                                       esp_lcd_touch_handle_t *ret_touch)
+
+If the same board may carry different touch chips (that is, ``i2c_addr`` lists several candidate addresses), the factory function can read the actually probed address with ``esp_board_device_get_i2c_effective_addr()`` and select the matching driver:
+
+.. code-block:: c
+
+   uint16_t touch_addr = 0;
+   esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
+   if (ret != ESP_OK) {
+       return ret;
+   }
+
+   if (touch_addr == 0xba) {
+       return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
+   }
+
+   if (touch_addr == 0x48) {
+       return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+   }
+
+``esp_board_device_get_i2c_effective_addr()`` returns the 8-bit left-shifted address, matching the YAML ``i2c_addr`` semantics.
 
 Debugging Tips
 --------------

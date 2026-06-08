@@ -582,10 +582,10 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_devices.yaml``：同一 ES8311 芯片拆成 ``audio_dac`` 和 ``audio_adc`` 两个逻辑设备。
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``：STD I2S 输入/输出配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``：ES8311 播放和 ES7210 录音配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：TDM I2S 输入/输出配置。
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_devices.yaml``：同一 ES8311 芯片拆成 ``audio_dac`` 和 ``audio_adc`` 两个逻辑设备。
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：STD I2S 输入/输出配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：ES8311 播放和 ES7210 录音配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：TDM I2S 输入/输出配置。
 
 注意事项
 ------------

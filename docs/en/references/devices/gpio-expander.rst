@@ -109,12 +109,12 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``: ``gpio_expander`` configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: I2C peripheral configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/setup_device.c``: IO expander factory function.
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``: ``gpio_expander`` and ``rgb_3wire_spi`` LCD on the same board.
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``: two ``gpio_expander`` device configurations.
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml``: ``gpio_expander`` configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ``gpio_expander`` configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: I2C peripheral configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/setup_device.c``: IO expander factory function.
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``: ``gpio_expander`` and ``rgb_3wire_spi`` LCD on the same board.
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``: two ``gpio_expander`` device configurations.
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml``: ``gpio_expander`` configuration.
 
 Notes
 -----

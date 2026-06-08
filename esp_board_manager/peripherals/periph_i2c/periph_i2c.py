@@ -14,6 +14,8 @@ PERIPH_I2C_IO_LIST = [
 import sys
 from typing import Union
 
+from generators.utils.soc_capability_query import current_soc
+
 I2CPortValue = Union[int, str]
 
 VALID_I2C_PORT_MACROS = {
@@ -117,6 +119,18 @@ def _validate_i2c_port_clk_source_combo(name: str, i2c_port: I2CPortValue, clk_s
             f"Clock source '{clk_source}' is incompatible with regular I2C port '{i2c_port}' in I2C peripheral '{name}'"
         )
 
+def _validate_i2c_soc_capabilities(name: str, i2c_port: I2CPortValue) -> None:
+    """Validate I2C SoC capabilities while keeping unknown catalogs fail-open."""
+    soc = current_soc()
+    if isinstance(i2c_port, str) and i2c_port.startswith('LP_I2C_NUM_'):
+        lp_supported = soc.supports('i2c.lp_supported', default=True)
+        lp_instance_count = soc.limit('i2c.lp_instance_count', default=None)
+        if not lp_supported or lp_instance_count == 0:
+            raise ValueError(
+                f"LP I2C port '{i2c_port}' in I2C peripheral '{name}' is not supported by the current SoC"
+            )
+
+
 def parse(name: str, config: dict) -> dict:
     """Parse I2C peripheral configuration.
 
@@ -158,6 +172,7 @@ def parse(name: str, config: dict) -> dict:
             intr_priority = 1  # Set default if empty or None
         clk_source = _parse_i2c_clk_source(name, config.get('clk_source'), i2c_port)
         _validate_i2c_port_clk_source_combo(name, i2c_port, clk_source)
+        _validate_i2c_soc_capabilities(name, i2c_port)
 
         struct_init = {
             'i2c_port': i2c_port,

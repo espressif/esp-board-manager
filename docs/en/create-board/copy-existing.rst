@@ -18,7 +18,9 @@ Ensure the project root contains a ``components/`` directory (standard IDF proje
 
 .. code-block:: bash
 
-   cp -r /path/to/esp_board_manager/boards/esp32_s3_korvo2_v3 components/my_board
+   cp -r managed_components/espressif__esp_boards/esp32_s3_korvo_2_3 components/my_board
+
+The example assumes that the reference board comes from the ``espressif/esp_boards`` component downloaded by the component manager. If you use a board component directory from a source checkout, replace the source path with the corresponding ``esp_boards/<board_name>``, ``esp_friends_boards/<board_name>``, or ``m5stack_boards/<board_name>`` directory.
 
 This creates a ``components/my_board/`` directory containing ``board_info.yaml`` and the other board files directly. If ``components/my_board`` already exists, ``cp -r`` will create an extra subdirectory level inside it, resulting in an incorrect structure. Verify the destination does not exist before running the command.
 

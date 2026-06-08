@@ -99,10 +99,10 @@ DSI 总线完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：定义 ``dsi_display``，并配合 ``ldo_mipi`` 和 DSI LCD 使用。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：``display_lcd`` 以 ``sub_type: dsi`` 引用 ``dsi_display``。
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``：定义 ``dsi_display`` 和 LCD 背光 LEDC 外设。
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 以 ``sub_type: dsi`` 引用 ``dsi_display``。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：定义 ``dsi_display``，并配合 ``ldo_mipi`` 和 DSI LCD 使用。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``display_lcd`` 以 ``sub_type: dsi`` 引用 ``dsi_display``。
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：定义 ``dsi_display`` 和 LCD 背光 LEDC 外设。
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 以 ``sub_type: dsi`` 引用 ``dsi_display``。
 
 注意事项
 ------------

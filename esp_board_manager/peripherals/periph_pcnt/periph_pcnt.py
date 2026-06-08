@@ -4,6 +4,8 @@
 # See LICENSE file for details.
 
 # PCNT peripheral config parser
+from generators.utils.soc_capability_query import current_soc
+
 VERSION = 'v1.0.0'
 
 # Define valid PCNT configuration values
@@ -20,7 +22,6 @@ VALID_PCNT_CHANNEL_LEVEL_ACTIONS = [
 ]
 
 # SOC constants (adjust based on actual SOC)
-SOC_PCNT_CHANNELS_PER_UNIT = 2
 SOC_PCNT_THRES_POINT_PER_UNIT = 5
 
 def validate_enum_value(value: str, enum_type: str, valid_values: list) -> bool:
@@ -178,7 +179,8 @@ def parse_pcnt_channel_list(channel_list: list) -> list:
     return parsed_channels
 
 def validate_channel_count(channel_count: int, channel_list: list) -> bool:
-    """Validate that channel count matches the number of channels in the list"""
+    """Validate that channel count matches the number of channels in the list."""
+
     if channel_count != len(channel_list):
         print(f'❌ YAML VALIDATION ERROR: Channel count mismatch!')
         print(f'   File: board_peripherals.yaml')
@@ -188,18 +190,13 @@ def validate_channel_count(channel_count: int, channel_list: list) -> bool:
         print(f'   ℹ️ channel_count must match the number of channels in channel_list')
         return False
 
-    if channel_count > SOC_PCNT_CHANNELS_PER_UNIT:
-        print(f'❌ YAML VALIDATION ERROR: Too many channels!')
-        print(f'   File: board_peripherals.yaml')
-        print(f'   📋 Peripheral: PCNT configuration')
-        print(f'   ❌ Number of channels: {channel_count}')
-        print(f'   ℹ️ Maximum channels per unit: {SOC_PCNT_CHANNELS_PER_UNIT}')
-        return False
-
     return True
 
 def validate_watch_point_count(watch_point_count: int, watch_point_list: list) -> bool:
     """Validate that watch point count matches the number of watch points in the list"""
+    soc_watch_points = current_soc().limit('pcnt.watch_points_per_unit', default=SOC_PCNT_THRES_POINT_PER_UNIT)
+    max_watch_points = None if soc_watch_points is None else soc_watch_points + 3
+
     if watch_point_count != len(watch_point_list):
         print(f'❌ YAML VALIDATION ERROR: Watch point count mismatch!')
         print(f'   File: board_peripherals.yaml')
@@ -209,12 +206,12 @@ def validate_watch_point_count(watch_point_count: int, watch_point_list: list) -
         print(f'   ℹ️ watch_point_count must match the number of watch points in watch_point_list')
         return False
 
-    if watch_point_count > (SOC_PCNT_THRES_POINT_PER_UNIT + 3):
+    if max_watch_points is not None and watch_point_count > max_watch_points:
         print(f'❌ YAML VALIDATION ERROR: Too many watch points!')
         print(f'   File: board_peripherals.yaml')
         print(f'   📋 Peripheral: PCNT configuration')
         print(f'   ❌ Number of watch points: {watch_point_count}')
-        print(f'   ℹ️ Maximum watch points per unit: {SOC_PCNT_THRES_POINT_PER_UNIT + 3}')
+        print(f'   ℹ️ Maximum watch points per unit: {max_watch_points}')
         return False
 
     return True

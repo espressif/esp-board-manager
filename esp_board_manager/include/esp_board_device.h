@@ -256,6 +256,25 @@ esp_err_t esp_board_device_deinit(const char *name);
 esp_err_t esp_board_device_show(const char *name);
 
 /**
+ * @brief  Iterate device names by type
+ *
+ *         Iterates over registered device descriptors that match @p type.
+ *         Set *cursor to NULL before the first call. On success, this
+ *         function updates *cursor to the matched descriptor and outputs
+ *         the corresponding device name in *name.
+ *
+ * @param[in]      type    Device type key (for example ESP_BOARD_DEVICE_TYPE_BUTTON)
+ * @param[in,out]  cursor  Opaque iteration cursor (set to NULL to start)
+ * @param[out]     name    Next matching device name
+ *
+ * @return
+ *       - ESP_OK                            On success
+ *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If type/cursor/name is NULL
+ *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    No more matching devices
+ */
+esp_err_t esp_board_device_iterate_name_by_type(const char *type, void **cursor, const char **name);
+
+/**
  * @brief  Initialize all devices
  *
  *         Iterates through all device descriptors and initializes each device

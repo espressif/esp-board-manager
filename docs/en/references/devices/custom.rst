@@ -313,7 +313,6 @@ Required Peripherals
 Reference Code
 --------------
 
-- ``esp_board_manager/boards/m5stack_cores3/power_manager.c``: Complete custom device implementation with init/deinit functions and ``CUSTOM_DEVICE_IMPLEMENT`` registration, demonstrating the full flow of reading I2C address and peripheral handle from the generated struct.
 - ``esp_board_manager/test_apps/main/test_dev_custom.c``
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``
 - ``esp_board_manager/devices/dev_custom/dev_custom.c``
@@ -322,7 +321,7 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``: ``axp2101_power_manager``, with full init/deinit entry registered, driving the AXP2101 PMIC via fields such as ``config->i2c_addr`` and ``config->peripheral_name``.
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``: ``axp2101_power_manager``, with full init/deinit entry registered, driving the AXP2101 PMIC via fields such as ``config->i2c_addr`` and ``config->peripheral_name``.
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``: Complete test case with nested structs, lists, and lists of dicts.
 
 Notes

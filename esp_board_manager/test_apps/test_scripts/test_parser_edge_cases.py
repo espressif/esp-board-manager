@@ -2,11 +2,48 @@
 Tests for parser edge cases and generation behavior regressions.
 """
 
+import json
 from pathlib import Path
 import re
 import sys
 
 import pytest
+
+
+def _configure_adc_soc_limits(tmp_path, bmgr_root, limits):
+    sys.path.insert(0, str(bmgr_root))
+    from generators.utils import soc_capability_query
+
+    catalog_dir = tmp_path / 'soc_capability_catalog'
+    catalog_dir.mkdir()
+    (catalog_dir / 'index.json').write_text(
+        json.dumps({
+            'schemaVersion': 1,
+            'catalogSchemaVersion': 3,
+            'profiles': [
+                {'id': '5.5', 'version': '5.5.0', 'path': 'idf_5_5.json'},
+            ],
+        }),
+        encoding='utf-8',
+    )
+    (catalog_dir / 'idf_5_5.json').write_text(
+        json.dumps({
+            'schemaVersion': 3,
+            'capabilityDefs': {},
+            'hardwareLimitDefs': {},
+            'profile': {'id': '5.5'},
+            'chips': {
+                'esp32s3': {
+                    'capabilities': {},
+                    'gpio': {'validInput': [], 'validOutput': []},
+                    'hardwareLimits': limits,
+                },
+            },
+        }),
+        encoding='utf-8',
+    )
+    soc_capability_query.configure_soc_capabilities(catalog_dir, '5.5.0', 'esp32s3')
+    return soc_capability_query
 
 def test_adc_continuous_patterns_reject_single_unit_conv_mode_for_mixed_units(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
@@ -147,6 +184,72 @@ def test_adc_continuous_accepts_numeric_bit_widths(bmgr_root):
     )
     patterns_cfg = pattern_result['struct_init']['cfg']['continuous']['cfg']['patterns']
     assert patterns_cfg[0]['bit_width'] == 17
+
+def test_adc_parser_does_not_consume_soc_limits(tmp_path, bmgr_root):
+    soc_capability_query = _configure_adc_soc_limits(
+        tmp_path,
+        bmgr_root,
+        {
+            'adc.pattern_length_max': 2,
+            'adc.unit_count': 1,
+            'adc.max_channel_count': 4,
+        },
+    )
+    from peripherals.periph_adc import periph_adc as mod
+
+    try:
+        continuous_result = mod.parse(
+            'adc_audio_in',
+            {
+                'role': 'continuous',
+                'config': {
+                    'unit_id': 'ADC_UNIT_2',
+                    'channel_list': [0, 1, 4],
+                },
+            },
+        )
+        oneshot_result = mod.parse(
+            'adc_oneshot',
+            {
+                'role': 'oneshot',
+                'config': {
+                    'unit_id': 'ADC_UNIT_2',
+                    'channel_id': 4,
+                },
+            },
+        )
+    finally:
+        soc_capability_query.clear_soc_capabilities()
+
+    single_unit = continuous_result['struct_init']['cfg']['continuous']['cfg']['single_unit']
+    assert single_unit['unit_id'] == 'ADC_UNIT_2'
+    assert single_unit['channel_id'] == [0, 1, 4]
+    oneshot_cfg = oneshot_result['struct_init']['cfg']['oneshot']
+    assert oneshot_cfg['unit_cfg']['unit_id'] == 'ADC_UNIT_2'
+    assert oneshot_cfg['channel_id'] == 4
+
+
+def test_adc_unknown_soc_catalog_does_not_block_unit_or_channel(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from generators.utils import soc_capability_query
+    from peripherals.periph_adc import periph_adc as mod
+
+    soc_capability_query.clear_soc_capabilities()
+
+    result = mod.parse(
+        'adc_oneshot',
+        {
+            'role': 'oneshot',
+            'config': {
+                'unit_id': 'ADC_UNIT_2',
+                'channel_id': 99,
+            },
+        },
+    )
+
+    oneshot_cfg = result['struct_init']['cfg']['oneshot']
+    assert oneshot_cfg['unit_cfg']['unit_id'] == 'ADC_UNIT_2'
+    assert oneshot_cfg['channel_id'] == 99
 
 
 def test_fs_fat_sdmmc_accepts_zero_slot_flags(bmgr_root):
@@ -503,12 +606,6 @@ def test_adc_schema_demotes_cross_role_fields_to_debug(bmgr_root, caplog):
     assert len(typo_issues) == 1
     assert typo_issues[0].key_path == 'channel_id_typoz'
 
-def test_adc_channel_mapper_rejects_zero_unit_string(bmgr_root):
-    sys.path.insert(0, str(bmgr_root))
-    from generators.adc_channel_mapper import _normalize_unit
-
-    with pytest.raises(ValueError, match='Unsupported ADC unit value: ADC_UNIT_0'):
-        _normalize_unit('ADC_UNIT_0')
 
 def test_i2c_rejects_lp_port_with_regular_clk_source(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
@@ -570,7 +667,80 @@ def test_i2c_basic_parse_returns_i2c_master_bus_config(bmgr_root):
     assert result['struct_init']['sda_io_num'] == 18
     assert result['struct_init']['scl_io_num'] == 23
 
-def test_spi_bus_dma_burst_size_is_idf61_only(bmgr_root, monkeypatch, capsys):
+def test_i2c_rejects_lp_port_when_soc_lacks_lp_i2c(bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2c import periph_i2c as mod
+
+    class SocWithoutLpI2c:
+        def supports(self, key, default=False):
+            return False
+
+        def limit(self, key, default=None):
+            return 0 if key == 'i2c.lp_instance_count' else default
+
+    monkeypatch.setattr(mod, 'current_soc', lambda: SocWithoutLpI2c())
+
+    with pytest.raises(ValueError, match='LP I2C.*i2c_master'):
+        mod.parse(
+            'i2c_master',
+            {
+                'config': {
+                    'port': 'LP_I2C_NUM_0',
+                    'pins': {
+                        'sda': 1,
+                        'scl': 2,
+                    },
+                },
+            },
+        )
+
+def test_i2c_rejects_lp_port_when_soc_support_flag_is_false(bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2c import periph_i2c as mod
+
+    class SocWithoutLpI2cSupportFlag:
+        def supports(self, key, default=False):
+            return False if key == 'i2c.lp_supported' else default
+
+        def limit(self, key, default=None):
+            return default
+
+    monkeypatch.setattr(mod, 'current_soc', lambda: SocWithoutLpI2cSupportFlag())
+
+    with pytest.raises(ValueError, match='LP I2C.*i2c_master'):
+        mod.parse(
+            'i2c_master',
+            {
+                'config': {
+                    'port': 'LP_I2C_NUM_0',
+                    'pins': {
+                        'sda': 1,
+                        'scl': 2,
+                    },
+                },
+            },
+        )
+
+def test_i2c_allows_lp_port_when_soc_catalog_is_unknown(bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2c import periph_i2c as mod
+
+    result = mod.parse(
+        'i2c_master',
+        {
+            'config': {
+                'port': 'LP_I2C_NUM_0',
+                'pins': {
+                    'sda': 1,
+                    'scl': 2,
+                },
+            },
+        },
+    )
+
+    assert result['struct_init']['i2c_port'] == 'LP_I2C_NUM_0'
+    assert result['struct_init']['lp_source_clk'] == 'LP_I2C_SCLK_DEFAULT'
+def test_spi_bus_dma_burst_size_is_idf6_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_spi import periph_spi as mod
 
@@ -611,14 +781,20 @@ def test_dsi_clock_lane_force_hs_is_idf6_only(bmgr_root, monkeypatch, capsys):
         },
     }
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 1))
     result = mod.parse('dsi_panel', cfg)
     assert result['struct_init']['flags']['clock_lane_force_hs'] is True
+
+    # v6.0.0 does not have the flags member yet, it was added in v6.0.1
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    result = mod.parse('dsi_panel', cfg)
+    assert 'flags' not in result['struct_init']
+    assert 'requires ESP-IDF v6.0.1' in capsys.readouterr().out
 
     monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
     result = mod.parse('dsi_panel', cfg)
     assert 'flags' not in result['struct_init']
-    assert 'requires ESP-IDF v6.0' in capsys.readouterr().out
+    assert 'requires ESP-IDF v6.0.1' in capsys.readouterr().out
 
 def test_dependency_manager_treats_null_devices_as_empty(bmgr_root, tmp_path):
     sys.path.insert(0, str(bmgr_root))
@@ -630,11 +806,11 @@ def test_dependency_manager_treats_null_devices_as_empty(bmgr_root, tmp_path):
     manager = DependencyManager(bmgr_root)
     assert manager.extract_device_dependencies(str(dev_yaml)) == {}
 
-def test_m5stack_tab5_display_dependencies_include_st7121(bmgr_root):
+def test_m5stack_tab5_display_dependencies_include_st7121(bmgr_root, resolve_board_dir):
     sys.path.insert(0, str(bmgr_root))
     from generators.dependency_manager import DependencyManager
 
-    dev_yaml = bmgr_root / 'boards' / 'm5stack_tab5' / 'board_devices.yaml'
+    dev_yaml = resolve_board_dir('m5stack_tab5') / 'board_devices.yaml'
 
     manager = DependencyManager(bmgr_root)
     dependencies = manager.extract_device_dependencies(str(dev_yaml))
@@ -908,16 +1084,23 @@ def test_display_lcd_i80_allow_pd_is_idf6_only(bmgr_root, monkeypatch, capsys):
         },
     }
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 1))
     result = mod.parse('display_lcd', cfg)
     bus_cfg = result['struct_init']['sub_cfg']['i80']['bus_config']
     assert bus_cfg['flags']['allow_pd'] is True
+
+    # v6.0.0 does not have the allow_pd flag yet, it was added in v6.0.1
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    result = mod.parse('display_lcd', cfg)
+    bus_cfg = result['struct_init']['sub_cfg']['i80']['bus_config']
+    assert 'flags' not in bus_cfg
+    assert 'requires ESP-IDF v6.0.1' in capsys.readouterr().out
 
     monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
     result = mod.parse('display_lcd', cfg)
     bus_cfg = result['struct_init']['sub_cfg']['i80']['bus_config']
     assert 'flags' not in bus_cfg
-    assert 'requires ESP-IDF v6.0' in capsys.readouterr().out
+    assert 'requires ESP-IDF v6.0.1' in capsys.readouterr().out
 
 def test_display_lcd_parlio_rejects_known_idf_before_5_5(bmgr_root, monkeypatch):
     sys.path.insert(0, str(bmgr_root))
@@ -1348,14 +1531,14 @@ def test_generate_selected_board_kconfig_projbuild_skips_empty_extra_kconfigs(bm
     assert 'Kconfig.projbuild:' not in projbuild_content
 
 
-def test_lyrat_mini_peripheral_generation_keeps_structs_aligned(bmgr_root, tmp_path):
+def test_lyrat_mini_peripheral_generation_keeps_structs_aligned(bmgr_root, tmp_path, resolve_board_dir):
     sys.path.insert(0, str(bmgr_root))
     from gen_bmgr_config_codes import BoardConfigGenerator
 
     generator = BoardConfigGenerator(bmgr_root)
     generator.project_root = str(tmp_path)
 
-    board_yaml = bmgr_root / 'boards' / 'lyrat_mini_v1_1' / 'board_peripherals.yaml'
+    board_yaml = resolve_board_dir('esp32_lyrat_mini_1_1') / 'board_peripherals.yaml'
     generator.process_peripherals(str(board_yaml))
 
     generated = tmp_path / 'components' / 'gen_bmgr_codes' / 'gen_board_periph_config.c'
@@ -1385,14 +1568,14 @@ def test_lyrat_mini_peripheral_generation_keeps_structs_aligned(bmgr_root, tmp_p
         ('adc_button', 'esp_bmgr_adc_button_cfg'),
     ]
 
-def test_esp32_lyrat_v4_3_audio_sdcard_generation_matches_schematic(bmgr_root, tmp_path):
+def test_esp32_lyrat_4_3_audio_sdcard_generation_matches_schematic(bmgr_root, tmp_path, resolve_board_dir):
     sys.path.insert(0, str(bmgr_root))
     from gen_bmgr_config_codes import BoardConfigGenerator
 
     generator = BoardConfigGenerator(bmgr_root)
     generator.project_root = str(tmp_path)
 
-    board_dir = bmgr_root / 'boards' / 'esp32_lyrat_v4_3'
+    board_dir = resolve_board_dir('esp32_lyrat_4_3')
     peripherals_dict, periph_name_map, _ = generator.process_peripherals(str(board_dir / 'board_peripherals.yaml'))
     generator.process_devices(str(board_dir / 'board_devices.yaml'), peripherals_dict, periph_name_map)
 
@@ -1459,7 +1642,7 @@ def test_device_descriptor_generation_emits_desc_level_sub_type(bmgr_root, tmp_p
     assert sdcard_desc is not None
     assert motor_desc is not None
 
-def test_process_peripherals_fails_fast_when_parser_is_missing(bmgr_root, tmp_path, monkeypatch):
+def test_process_peripherals_fails_fast_when_parser_is_missing(bmgr_root, tmp_path, monkeypatch, resolve_board_dir):
     sys.path.insert(0, str(bmgr_root))
     import gen_bmgr_config_codes as bmgr_module
 
@@ -1475,7 +1658,7 @@ def test_process_peripherals_fails_fast_when_parser_is_missing(bmgr_root, tmp_pa
 
     monkeypatch.setattr(bmgr_module, 'load_parsers', _load_parsers_without_i2c)
 
-    board_yaml = bmgr_root / 'boards' / 'lyrat_mini_v1_1' / 'board_peripherals.yaml'
+    board_yaml = resolve_board_dir('esp32_lyrat_mini_1_1') / 'board_peripherals.yaml'
     with pytest.raises(RuntimeError, match=r"i2c_master'.*type: i2c"):
         generator.process_peripherals(str(board_yaml))
 

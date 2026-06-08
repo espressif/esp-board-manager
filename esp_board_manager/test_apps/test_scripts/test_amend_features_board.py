@@ -8,7 +8,7 @@ Tests below feed bmgr's customer-board scanner (``-c``) the surrounding
 ``test_apps/components/`` directory so the fixture (and the sibling
 ``test_apps/components/test_amend_features_extra/`` used to verify ``../``
 references in the manifest) become discoverable. See
-``docs/amend_design_cn.md`` for the full design.
+``docs/zh_CN/create-board/amend.rst`` for the full design.
 """
 
 from __future__ import annotations
@@ -268,7 +268,7 @@ def test_amend_srcs_precise(bmgr_root, tmp_path):
     assert 'test_amend_features_extra"' in cmake_content
 
 
-def test_amend_sub_type_swap_no_stale_warnings(bmgr_root, tmp_path):
+def test_amend_sub_type_swap_no_stale_warnings(bmgr_root, tmp_path, resolve_board_dir):
     """Switching a device's sub_type (here display_lcd rgb_3wire_spi -> rgb)
     must not produce 'Unknown config key' WARNINGs for fields that legitimately
     belong to the previous sub_type's schema. Such fields are demoted to debug
@@ -277,7 +277,9 @@ def test_amend_sub_type_swap_no_stale_warnings(bmgr_root, tmp_path):
     writable_bmgr = _copy_bmgr_to_writable_tmp(bmgr_root, tmp_path)
     project_dir = tmp_path / 'project_sub3_no_warn'
     _prepare_project(project_dir)
-    amend_abs = str((writable_bmgr / 'boards' / 'esp32_s3_lcd_ev_board' / 'sub_board_800_480_lcd').resolve())
+    board_dir = resolve_board_dir('esp32_s3_lcd_ev_board')
+    boards_src = str(board_dir.parent)
+    amend_abs = str((board_dir / 'sub_board_800_480_lcd').resolve())
 
     env = os.environ.copy()
     env['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -285,6 +287,7 @@ def test_amend_sub_type_swap_no_stale_warnings(bmgr_root, tmp_path):
         ['python3', str(writable_bmgr / 'gen_bmgr_config_codes.py'),
          '-b', 'esp32_s3_lcd_ev_board',
          '-a', amend_abs,
+         '-c', boards_src,
          '--project-dir', str(project_dir)],
         cwd=project_dir, capture_output=True, text=True, env=env,
     )

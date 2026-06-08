@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.6.0
+
+### ⚠️ Breaking Changes
+
+- **Boards extracted to standalone components.** All built-in board definitions have been removed from `esp_board_manager/boards/` and are now distributed as independent IDF components. Add the relevant component(s) to your project's `idf_component.yml` to continue using them:
+  - `espressif/esp_boards` — official Espressif devkits, already included as a default dependency of `esp_board_manager`
+  - `espressif/esp_friends_boards` — partner/friend boards (add manually if needed)
+  - `espressif/m5stack_boards` — M5Stack boards (add manually if needed)
+
+- **Board names aligned with official Espressif devkit names.** Several boards have been renamed. Update any `-b` argument or hard-coded board name references:
+
+  | Old name | New name | Component |
+  |---|---|---|
+  | `esp_box_3` | `esp32_s3_box_3` | `esp_boards` |
+  | `esp_box_lite` | `esp32_s3_box_lite` | `esp_boards` |
+  | `esp32_p4_function_ev` | `esp32_p4_function_ev_board` | `esp_boards` |
+  | `esp32_s3_korvo2_v3` | `esp32_s3_korvo_2_3` | `esp_boards` |
+  | `esp32_s3_korvo2l` | `esp32_s3_korvo_2l` | `esp_friends_boards` |
+  | `esp32_s31_korvo1` | `esp32_s31_korvo_1` | `esp_boards` |
+  | `esp_vocat_board_v1_0` | `esp_vocat_1_0` | `esp_boards` |
+  | `esp_vocat_board_v1_2` | `esp_vocat_1_2` | `esp_boards` |
+  | `lyrat_mini_v1_1` | `esp32_lyrat_mini_1_1` | `esp_boards` |
+
+- **`dual_eyes_board_v1_0` removed.** This internal prototype board definition has been deleted and is not available in any component.
+
+- **`espressif/esp_video` minimum version bumped to `^2.1.0`** (was `^2.0.0`). Projects using the camera device must update their `esp_video` dependency accordingly.
+
+- **Legacy `dev_lcd_touch_i2c` device removed.** The deprecated `dev_lcd_touch_i2c` device (implementation, parser, `dev_lcd_touch_i2c.h` header, and the `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT` compatibility symbol) has been removed. Use `type: lcd_touch` with `sub_type: i2c`, the `dev_lcd_touch_config_t` / `dev_lcd_touch_handles_t` types, and `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT` / `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUB_I2C_SUPPORT` switches. See the [migration guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/migration/migrate-to-0.6.html).
+
+### ⚠️ Important Changes
+
+- **`SDKCONFIG_DEFAULTS` priority changed.** Board-level defaults now always take precedence over the project's `sdkconfig.defaults`; use amend for board-specific sdkconfig overrides. (This reverses the 0.5.15 behavior where project defaults could override ordinary board defaults.). `SDKCONFIG_DEFAULTS` is now ordered: project `sdkconfig.defaults` (lowest) → `board_manager.defaults` → env `SDKCONFIG_DEFAULTS` / `-D SDKCONFIG_DEFAULTS` (highest).
+- **Removed the FatalError** that rejected Board Manager managed symbols in project `sdkconfig.defaults`; it is replaced by a non-blocking warning that points to the board's precedence and recommends amend for board-level overrides.
+- Added a SoC capability catalog and validation flow. Board generation now selects the matching SoC capability profile by target chip and active ESP-IDF version, then validates device/peripheral availability and SoC-dependent hardware limits before parser dispatch.
+- Added bundled SoC capability catalog snapshots for ESP-IDF v5.4, v5.5, v6.0, v6.1, and v6.2. The catalog is generated from ESP-IDF SoC headers and maintained through `esp_board_soc_requirements.yml`.
+- Added GPIO validation before writing `gen_board_metadata.yaml`. Extracted GPIOs are checked against the selected chip catalog, invalid SoC GPIOs are rejected, and duplicate GPIO usage is reported as warnings
+
+### Features
+
+- **Camera (`dev_camera`)**: Adapted to `esp_video` per-camera-type init/deinit APIs, so CSI, DVP, and SPI cameras are initialized and deinitialized independently.
+- **Auto-amend**: a directory named after the selected board and containing `board_amend.yaml` (discovered under the same scan paths as boards, including `-c` paths, and not itself a full board directory) is applied automatically, so every board can share the same `idf.py bmgr` command. Explicit `-a/--amend` still works and takes the highest precedence. Disable auto-discovery with `ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND=1`.
+- **`-c/--customer-path` now accepts multiple semicolon-separated paths** (for example `-c "overlays_a;overlays_b"`); paths are scanned in order and later paths take precedence.
+
+### Bug Fixes
+
+- Corrected the ESP-IDF version requirements for two configuration fields from v6.0 to v6.0.1. These struct members do not exist in the v6.0.0 release and previously caused a compile error (`has no member named 'flags'`) when building against IDF v6.0.0:
+  - `periph_dsi` `flags.clock_lane_force_hs` (`esp_lcd_dsi_bus_config_t`)
+  - `display_lcd` I80 `bus_config.flags.allow_pd` (`esp_lcd_i80_bus_config_t`)
+
 ## 0.5.15
 
 ### ⚠️ Important Changes

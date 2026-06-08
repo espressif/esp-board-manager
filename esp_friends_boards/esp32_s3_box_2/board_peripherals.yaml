@@ -55,11 +55,11 @@ peripherals:
     config:
       pin: 10
       mode: GPIO_MODE_OUTPUT
-      init_level: 1
+      default_level: 1
 
   - name: gpio_lcd_bl
     type: gpio
     config:
       pin: 21
       mode: GPIO_MODE_OUTPUT
-      init_level: 1
+      default_level: 1

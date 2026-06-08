@@ -242,7 +242,7 @@ def test_callback_injects_defaults_when_sdkconfig_missing(bmgr_root, tmp_path, m
     assert 'board_manager.defaults' in sdkdefaults
 
 
-def test_callback_prepends_board_manager_defaults_when_sdkconfig_missing(
+def test_callback_orders_project_before_board_manager_defaults(
     bmgr_root, tmp_path, monkeypatch
 ):
     project_dir = _make_project(tmp_path, with_sdkconfig=False)
@@ -262,8 +262,8 @@ def test_callback_prepends_board_manager_defaults_when_sdkconfig_missing(
     )
 
     defaults = os.environ.get('SDKCONFIG_DEFAULTS', '').split(';')
-    assert defaults[0].endswith('components/gen_bmgr_codes/board_manager.defaults')
-    assert defaults[1] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[0] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[1].endswith('components/gen_bmgr_codes/board_manager.defaults')
     assert defaults[2] == str(user_defaults)
 
 
@@ -297,8 +297,8 @@ def test_callback_merges_and_rewrites_sdkconfig_defaults_from_define_cache_entry
     callback(None, global_args, [_Task('build')])
 
     defaults = os.environ.get('SDKCONFIG_DEFAULTS', '').split(';')
-    assert defaults[0].endswith('components/gen_bmgr_codes/board_manager.defaults')
-    assert defaults[1] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[0] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[1].endswith('components/gen_bmgr_codes/board_manager.defaults')
     assert defaults[2] == str(env_defaults)
     assert defaults[3] == str(cache_defaults.resolve())
     assert defaults[4] == str(nested_defaults.resolve())
@@ -327,62 +327,6 @@ def test_callback_allows_user_defaults_to_override_non_bmgr_symbols(
     assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
 
 
-@pytest.mark.parametrize(
-    'managed_symbol_line',
-    [
-        '# CONFIG_ESP_BOARD_TEST_BOARD is not set',
-        'CONFIG_ESP_BOARD_NAME="other_board"',
-        '# CONFIG_ESP_BOARD_PERIPH_I2C_SUPPORT is not set',
-        '# CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT is not set',
-        '# CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_SPI_SUPPORT is not set',
-        'CONFIG_ESP_BOARD_PERIPH_SPI_SUPPORT=y',
-        'CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT=y',
-        'CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_DSI_SUPPORT=y',
-    ],
-)
-def test_callback_rejects_user_defaults_that_set_managed_bmgr_symbols(
-    bmgr_root, tmp_path, monkeypatch, managed_symbol_line
-):
-    project_dir = _make_project(tmp_path, with_sdkconfig=False)
-    (project_dir / 'sdkconfig.defaults').write_text(
-        f'{managed_symbol_line}\n',
-        encoding='utf-8',
-    )
-    callback, idf_ext = _load_callback(bmgr_root, project_dir)
-    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
-
-    with pytest.raises(idf_ext.FatalError, match='Board Manager managed symbol'):
-        callback(
-            None,
-            {'project_dir': str(project_dir), 'define_cache_entry': []},
-            [_Task('build')],
-        )
-
-
-def test_callback_skip_switch_allows_user_defaults_with_managed_bmgr_symbols(
-    bmgr_root, tmp_path, monkeypatch, capsys
-):
-    project_dir = _make_project(tmp_path, with_sdkconfig=False)
-    (project_dir / 'sdkconfig.defaults').write_text(
-        'CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT=y\n',
-        encoding='utf-8',
-    )
-    callback, _ = _load_callback(bmgr_root, project_dir)
-    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
-    monkeypatch.setenv('ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK', '1')
-
-    callback(
-        None,
-        {'project_dir': str(project_dir), 'define_cache_entry': []},
-        [_Task('build')],
-    )
-
-    out = capsys.readouterr().out
-    assert 'ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK' in out
-    assert 'user defaults managed-symbol check skipped' in out
-    assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
-
-
 def test_callback_allows_unmanaged_esp_board_prefixed_defaults(
     bmgr_root, tmp_path, monkeypatch
 ):
@@ -403,24 +347,55 @@ def test_callback_allows_unmanaged_esp_board_prefixed_defaults(
     assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
 
 
-def test_callback_rejects_target_user_defaults_that_set_bmgr_symbols(
+def test_callback_env_and_define_cache_override_board_manager_defaults(
     bmgr_root, tmp_path, monkeypatch
 ):
     project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    env_defaults = project_dir / 'sdkconfig.env'
+    env_defaults.write_text('CONFIG_FREERTOS_HZ=1000\n', encoding='utf-8')
+    cache_defaults = project_dir / 'sdkconfig.cache'
+    cache_defaults.write_text('CONFIG_COMPILER_OPTIMIZATION_SIZE=y\n', encoding='utf-8')
+
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.setenv('SDKCONFIG_DEFAULTS', str(env_defaults))
+
+    callback(
+        None,
+        {
+            'project_dir': str(project_dir),
+            'define_cache_entry': [f'SDKCONFIG_DEFAULTS={cache_defaults}'],
+        },
+        [_Task('build')],
+    )
+
+    defaults = os.environ.get('SDKCONFIG_DEFAULTS', '').split(';')
+    board_index = next(
+        i for i, d in enumerate(defaults)
+        if d.endswith('components/gen_bmgr_codes/board_manager.defaults')
+    )
+    env_index = defaults.index(str(env_defaults.resolve()))
+    cache_index = defaults.index(str(cache_defaults.resolve()))
+    assert env_index > board_index
+    assert cache_index > board_index
+
+
+def test_callback_warns_when_project_defaults_shadow_board_symbols(
+    bmgr_root, tmp_path, monkeypatch, capsys
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
     (project_dir / 'sdkconfig.defaults').write_text(
-        'CONFIG_SPIRAM_SPEED_120M=y\n',
+        'CONFIG_ESP_BOARD_PERIPH_I2C_SUPPORT=y\n',
         encoding='utf-8',
     )
-    (project_dir / 'sdkconfig.defaults.esp32s3').write_text(
-        'CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT=y\n',
-        encoding='utf-8',
-    )
-    callback, idf_ext = _load_callback(bmgr_root, project_dir)
+    callback, _ = _load_callback(bmgr_root, project_dir)
     monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
 
-    with pytest.raises(idf_ext.FatalError, match='sdkconfig.defaults.esp32s3'):
-        callback(
-            None,
-            {'project_dir': str(project_dir), 'define_cache_entry': []},
-            [_Task('build')],
-        )
+    callback(
+        None,
+        {'project_dir': str(project_dir), 'define_cache_entry': []},
+        [_Task('build')],
+    )
+
+    out = capsys.readouterr().out
+    assert 'Warning:' in out
+    assert 'takes precedence' in out

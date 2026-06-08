@@ -87,7 +87,7 @@ def test_generated_custom_device_indentation_regression(run_bmgr_cmd, bmgr_root)
 
 def test_generated_display_lcd_indentation_regression(run_bmgr_cmd, bmgr_root):
     test_apps_dir = bmgr_root / 'test_apps'
-    result = run_bmgr_cmd(['-b', 'esp32_s3_korvo2_v3'], cwd=test_apps_dir, check=False)
+    result = run_bmgr_cmd(['-b', 'esp32_s3_korvo_2_3'], cwd=test_apps_dir, check=False)
     assert result.returncode == 0, result.stderr
 
     generated = test_apps_dir / 'components' / 'gen_bmgr_codes' / 'gen_board_device_config.c'

@@ -35,7 +35,7 @@ from generators.config_generator import format_board_groups
 from generators.utils.file_utils import (
     ensure_existing_directory,
     normalize_project_dir,
-    resolve_path_from_base,
+    resolve_customer_path_arg,
 )
 from generators.sdkconfig_manager import SDKConfigManager
 from create_new_board import BoardCreator
@@ -267,23 +267,15 @@ def _iter_sdkconfig_defaults_with_target(defaults_paths: List[str], idf_target: 
     return paths
 
 
-_BMGR_MANAGED_SUPPORT_SYMBOL_PATTERNS = (
-    re.compile(r'^CONFIG_ESP_BOARD_PERIPH_[A-Za-z0-9_]+_SUPPORT$'),
-    re.compile(r'^CONFIG_ESP_BOARD_DEV_[A-Za-z0-9_]+_SUPPORT$'),
-    re.compile(r'^CONFIG_ESP_BOARD_DEV_[A-Za-z0-9_]+_SUB_[A-Za-z0-9_]+_SUPPORT$'),
-)
-
-
-def _board_select_config_symbol(selected_board: str) -> str:
-    return f'CONFIG_ESP_BOARD_{selected_board.upper().replace("-", "_")}'
-
-
-def _is_managed_bmgr_symbol(symbol: str, selected_board: Optional[str]) -> bool:
-    if symbol == 'CONFIG_ESP_BOARD_NAME':
-        return True
-    if selected_board and symbol == _board_select_config_symbol(selected_board):
-        return True
-    return any(pattern.match(symbol) for pattern in _BMGR_MANAGED_SUPPORT_SYMBOL_PATTERNS)
+def _append_resolved_sdkconfig_defaults(
+    defaults_list: List[str],
+    entry: str,
+    project_dir: str,
+) -> None:
+    """Append a resolved defaults path once, preserving first-seen priority."""
+    resolved = _resolve_sdkconfig_defaults_entry(entry, project_dir)
+    if resolved not in defaults_list:
+        defaults_list.append(resolved)
 
 
 def _find_active_symbol_assignments(defaults_path: str) -> List[Tuple[int, str]]:
@@ -303,43 +295,36 @@ def _find_active_symbol_assignments(defaults_path: str) -> List[Tuple[int, str]]
     return assignments
 
 
-def _collect_managed_bmgr_symbols(defaults_path: str, selected_board: Optional[str]) -> Set[str]:
-    """Collect Board Manager managed symbols from the generated defaults file."""
-    return {
-        symbol
-        for _, symbol in _find_active_symbol_assignments(defaults_path)
-        if _is_managed_bmgr_symbol(symbol, selected_board)
-    }
-
-
-def _validate_user_defaults_do_not_override_bmgr_symbols(
+def _warn_user_defaults_shadowed_by_board(
     *,
     patch_file: str,
-    user_defaults: List[str],
+    project_defaults_paths: List[str],
     project_dir: str,
 ) -> None:
-    """Fail if user defaults loaded after board_manager.defaults set BMGR symbols."""
+    """Warn when project sdkconfig.defaults sets symbols also defined by the board."""
+    if not project_defaults_paths or not os.path.exists(patch_file):
+        return
+    board_symbols = {
+        symbol: line_no
+        for line_no, symbol in _find_active_symbol_assignments(patch_file)
+    }
+    if not board_symbols:
+        return
     idf_target = _parse_idf_target_from_defaults(patch_file)
-    if not idf_target:
-        raise FatalError(
-            '[Board Manager] Failed to parse CONFIG_IDF_TARGET from board_manager.defaults. '
-            'Please run: idf.py bmgr -b <board> (legacy: idf.py gen-bmgr-config -b <board>) '
-            'to refresh board metadata.'
-        )
-
-    selected_board, _, _, _ = _parse_bmgr_defaults_symbols(patch_file)
-    for defaults_path in _iter_sdkconfig_defaults_with_target(user_defaults, idf_target):
+    checked_paths = list(project_defaults_paths)
+    if idf_target:
+        checked_paths = _iter_sdkconfig_defaults_with_target(project_defaults_paths, idf_target)
+    for defaults_path in checked_paths:
         if not os.path.exists(defaults_path):
             continue
         for line_no, symbol in _find_active_symbol_assignments(defaults_path):
-            if not _is_managed_bmgr_symbol(symbol, selected_board):
+            if symbol not in board_symbols:
                 continue
             rel_path = os.path.relpath(defaults_path, project_dir)
-            raise FatalError(
-                f'[Board Manager] User sdkconfig defaults {rel_path}:{line_no} modifies '
-                f'Board Manager managed symbol {symbol}. Remove managed BMGR symbols '
-                'from user defaults and run: idf.py bmgr -b <board> '
-                '(legacy: idf.py gen-bmgr-config -b <board>).'
+            print(
+                f'[Board Manager] Warning: {rel_path}:{line_no} sets {symbol}, '
+                'but board_manager.defaults takes precedence. '
+                'Use amend (-a or auto-amend) for board-specific overrides.'
             )
 
 
@@ -449,27 +434,28 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                 print('[Board Manager] Warning: sdkconfig consistency check failed. Build continues without auto-fix in callback.')
             return
 
-        defaults_list = []
+        defaults_list: List[str] = []
+        project_defaults_paths: List[str] = []
+
+        sdkconfig_defaults = os.path.join(proj_dir, 'sdkconfig.defaults')
+        if os.path.exists(sdkconfig_defaults):
+            sdkconfig_defaults_abs = os.path.abspath(sdkconfig_defaults)
+            if sdkconfig_defaults_abs not in defaults_list:
+                defaults_list.append(sdkconfig_defaults_abs)
+            project_defaults_paths.append(sdkconfig_defaults_abs)
+
         abs_patch_file = os.path.abspath(patch_file)
         if abs_patch_file not in defaults_list:
             defaults_list.append(abs_patch_file)
 
-        user_defaults: List[str] = []
-        sdkconfig_defaults = os.path.join(proj_dir, 'sdkconfig.defaults')
-        if os.path.exists(sdkconfig_defaults):
-            sdkconfig_defaults_abs = os.path.abspath(sdkconfig_defaults)
-            defaults_list.append(sdkconfig_defaults_abs)
-            user_defaults.append(sdkconfig_defaults_abs)
         env_defaults = os.environ.get('SDKCONFIG_DEFAULTS', '')
         if env_defaults:
             for f in env_defaults.split(';'):
                 f = f.strip()
                 if not f:
                     continue
-                resolved = _resolve_sdkconfig_defaults_entry(f, proj_dir)
-                if resolved not in defaults_list:
-                    defaults_list.append(resolved)
-                    user_defaults.append(resolved)
+                _append_resolved_sdkconfig_defaults(defaults_list, f, proj_dir)
+
         define_cache_entries = global_args.get('define_cache_entry', [])
         sdkconfig_defaults_entry_index = None
         for i, entry in enumerate(define_cache_entries):
@@ -480,23 +466,14 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                     f = f.strip()
                     if not f:
                         continue
-                    resolved = _resolve_sdkconfig_defaults_entry(f, proj_dir)
-                    if resolved not in defaults_list:
-                        defaults_list.append(resolved)
-                        user_defaults.append(resolved)
+                    _append_resolved_sdkconfig_defaults(defaults_list, f, proj_dir)
                 break
 
-        if _env_flag_true('ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK'):
-            print(
-                '[Board Manager] user defaults managed-symbol check skipped by '
-                'ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK'
-            )
-        else:
-            _validate_user_defaults_do_not_override_bmgr_symbols(
-                patch_file=patch_file,
-                user_defaults=user_defaults,
-                project_dir=proj_dir,
-            )
+        _warn_user_defaults_shadowed_by_board(
+            patch_file=patch_file,
+            project_defaults_paths=project_defaults_paths,
+            project_dir=proj_dir,
+        )
 
         os.environ['SDKCONFIG_DEFAULTS'] = ';'.join(defaults_list)
 
@@ -710,7 +687,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
 
         _set_bmgr_log_level(command_args.log_level)
         project_dir = _resolve_command_project_dir(args)
-        command_args.board_customer_path = resolve_path_from_base(command_args.board_customer_path, project_dir)
+        command_args.board_customer_path = resolve_customer_path_arg(command_args.board_customer_path, project_dir)
 
         # Create generator and run
         script_dir = current_dir

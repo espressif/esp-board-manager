@@ -1,0 +1,34 @@
+version: 1.0.0
+peripherals:
+  - name: gpio_auto_tweak_led
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 11
+      mode: GPIO_MODE_OUTPUT
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 0
+
+  - name: gpio_auto_stack_led
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 0
+
+devices:
+  - name: auto_tweak_power
+    type: power_ctrl
+    sub_type: gpio
+    version: default
+    peripherals:
+      - name: gpio_auto_tweak_led
+        active_level: 1

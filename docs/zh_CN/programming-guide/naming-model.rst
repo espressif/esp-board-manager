@@ -11,7 +11,7 @@
 - ``type``：设备或外设的类别，决定匹配的解析规则和运行时实现，例如 ``audio_codec``、``button``、``i2c``。
 - ``sub_type``：部分 device 的子类型，用于区分同一类设备下的不同实现路径，例如 ``display_lcd`` 按接口分为 ``spi``、``i80``、``dsi``、``rgb``、``rgb_3wire_spi``、``parlio``。
 - ``role``：部分 peripheral 的工作模式，例如 ``adc`` 区分 ``oneshot`` 与 ``continuous`` 两种模式。
-- ``format``：部分 peripheral 的数据格式，典型场景为 ``i2s`` 的 ``std-out``、``std-in``、``tdm``、``pdm``。
+- ``format``：部分 peripheral 的数据格式，典型场景为 ``i2s`` 的 ``std-out``、``std-in``。
 - ``dependencies``：设备额外依赖的组件信息，生成时写入 ``components/gen_bmgr_codes/idf_component.yml``。
 - ``power_ctrl_device``：用于需要受控供电的设备。通过配置 ``power_ctrl_device`` 引用 ``power_ctrl`` 类型设备，可在初始化时自动上电。
 - ``depends_on``：用于声明设备间的初始化依赖。初始化时 BMGR 自动检查并先初始化所声明的依赖设备；类型不限，一个设备可声明多个依赖。

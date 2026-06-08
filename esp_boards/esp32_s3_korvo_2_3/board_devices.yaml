@@ -107,7 +107,6 @@ devices:
     chip: auto
     type: lcd_touch
     sub_type: i2c
-    depends_on: gpio_expander
     dependencies:
       espressif/esp_lcd_touch_tt21100: "*"
       espressif/esp_lcd_touch_gt911: "*"

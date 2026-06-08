@@ -104,10 +104,10 @@ Reference Code
 Board Reference
 ---------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: configures the ``lcd_brightness`` device.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: configures the ``ledc_backlight`` peripheral.
-- ``esp_board_manager/boards/esp_box_3/board_devices.yaml``: configures a ``ledc_ctrl`` backlight device.
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``: configures the ``ledc`` peripheral referenced by the backlight device.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: configures the ``lcd_brightness`` device.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: configures the ``ledc_backlight`` peripheral.
+- ``esp_boards/esp32_s3_box_3/board_devices.yaml``: configures a ``ledc_ctrl`` backlight device.
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``: configures the ``ledc`` peripheral referenced by the backlight device.
 
 Notes
 -----

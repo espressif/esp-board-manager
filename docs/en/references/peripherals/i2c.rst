@@ -148,10 +148,9 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``: I2C control bus used by the audio codec.
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: shared I2C bus for audio, touch, and IO expander.
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``: I2C bus used by audio, touch, and multiple IO expanders.
-- ``esp_board_manager/boards/esp_sensair_halo/board_peripherals.yaml``: I2C bus used for touch and camera control paths.
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: I2C control bus used by the audio codec.
+- ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: shared I2C bus for audio, touch, and IO expander.
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``: I2C bus used by audio, touch, and multiple IO expanders.
 
 Notes
 -----

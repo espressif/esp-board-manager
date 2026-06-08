@@ -11,10 +11,10 @@ build_test_apps:
   parallel:
     matrix:
       - IDF_IMAGE: *idf_image_matrix
-        BOARD: ["esp32_s3_korvo2_v3"]
+        BOARD: ["esp32_s3_korvo_2_3"]
         IDF_TARGET: ["esp32s3"]
       - IDF_IMAGE: *idf_image_matrix
-        BOARD: ["esp32_p4_function_ev"]
+        BOARD: ["esp32_p4_function_ev_board"]
         IDF_TARGET: ["esp32p4"]
   script:
     - idf.py --version

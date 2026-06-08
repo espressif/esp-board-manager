@@ -1,0 +1,3 @@
+# Auto-amend sdkconfig fragment: adds a new symbol and overrides a base-board value.
+CONFIG_BMGR_TEST_AUTO_AMEND_VALUE=7
+CONFIG_BMGR_TEST_AMEND_BASE_VALUE=55

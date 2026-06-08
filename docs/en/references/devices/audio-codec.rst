@@ -582,10 +582,10 @@ Code Reference
 Board-level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_devices.yaml``: The same ES8311 chip split into two logical devices, ``audio_dac`` and ``audio_adc``.
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``: STD I2S input/output configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``: ES8311 playback and ES7210 recording configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: TDM I2S input/output configuration.
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_devices.yaml``: The same ES8311 chip split into two logical devices, ``audio_dac`` and ``audio_adc``.
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: STD I2S input/output configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ES8311 playback and ES7210 recording configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: TDM I2S input/output configuration.
 
 Notes
 -----

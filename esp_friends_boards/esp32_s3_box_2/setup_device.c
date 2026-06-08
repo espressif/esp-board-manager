@@ -5,6 +5,8 @@
  * See LICENSE file for details.
  */
 
+#include <stdlib.h>
+#include <string.h>
 #include "esp_log.h"
 #include "esp_io_expander_tca95xx_16bit.h"
 #include "esp_lcd_panel_st7789.h"

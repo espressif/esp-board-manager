@@ -101,7 +101,7 @@ SDM 输出通道完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_c3_lyra/board_peripherals.yaml``：``sdm`` 输出通道配置。
+- ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``：``sdm`` 输出通道配置。
 
 注意事项
 ------------

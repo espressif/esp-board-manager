@@ -15,46 +15,86 @@ This example supports IDF release/v5.5 (>=5.5.2) and IDF release/v5.4 (>=5.4.3) 
 ### Hardware Required
 
 - LCD
-- Optional：LCD Touch，LEDC brightness ctrl
+- Optional: LCD Touch, LEDC brightness control
 
 ## Build and Flash
 
 ### Build Preparation
 
-Before compiling this example, ensure that the ESP-IDF environment is properly set up. If not, run the following script in the root directory of ESP-IDF to set up the build environment. For detailed steps on configuring and using ESP-IDF, please refer to the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/index.html):
+Before building this example, make sure ESP-IDF is set up. If it is already configured, you can skip this step; otherwise, run the following scripts in the ESP-IDF root directory to set up the build environment. For the complete steps of configuring and using ESP-IDF, see the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/index.html):
 
 ```shell
 ./install.sh
 . ./export.sh
 ```
 
-Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+This example uses [ESP Board Manager](https://github.com/espressif/esp-board-manager) to manage board-level resources. The [`esp-bmgr-assist`](https://pypi.org/project/esp-bmgr-assist/) helper tool is recommended as the default entry point.
 
-```shell
+Install it in the activated ESP-IDF Python environment (only needed once per environment):
+
+```bash
 pip install esp-bmgr-assist
+pip install --upgrade esp-bmgr-assist  # run this command when an update is requested
 ```
 
-- Navigate to the test project directory for driving display with LVGL:
+- Navigate to the LVGL display example project directory:
 
 ```shell
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/display_lvgl
 ```
 
-- List visible boards:
+### Build and Flash Commands
 
-```shell
+- List the currently visible boards:
+
+```bash
 idf.py bmgr -l
 ```
 
-- Select the development board to use:
+Example output:
 
-```shell
-idf.py bmgr -b esp32_s3_korvo2_v3
+```text
+ℹ️  Board Components:
+  espressif/esp_boards:
+    [1] esp32_c3_lyra
+    [2] esp32_lyrat_4_3
+    [3] esp32_lyrat_mini_1_1
+    [4] esp32_p4_eye
+    [5] esp32_p4_function_ev_board
+    [6] esp32_s31_function_coreboard_1
+    [7] esp32_s31_korvo_1
+    [8] esp32_s3_box_3
+    [9] esp32_s3_box_lite
+    [10] esp32_s3_korvo_2_3
+    [11] esp32_s3_lcd_ev_board
+    [12] esp_vocat_1_0
+    [13] esp_vocat_1_2
 ```
 
-### Build and Flash Commands
+The example output above is based on the board list and ordering from `esp_boards` 0.5.2. Different `esp_boards` versions or custom board dependencies may change the list and indexes. Use the actual output of `idf.py bmgr -l` when selecting a board.
 
-Compile the example code:
+- Select a board:
+
+```bash
+idf.py bmgr -b <board_index|board_name>
+```
+
+For example, to select `esp32_s3_korvo_2_3`:
+
+```bash
+idf.py bmgr -b 10
+# or
+idf.py bmgr -b esp32_s3_korvo_2_3
+```
+
+On first invocation of `idf.py bmgr`, the component is downloaded automatically based on the `espressif/esp_board_manager` dependency declared in `main/idf_component.yml`.
+
+> [!NOTE]
+> To switch to a different board supported by `esp_board_manager`, repeat the same steps with the new board name or index.
+> For a custom board, see [Creating a Board Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/index.html).
+> For more information about `esp_board_manager`, see the [ESP Board Manager Getting Started Guide](https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md).
+
+- Compile the example code:
 
 ```shell
 idf.py build
@@ -66,7 +106,7 @@ Flash the program and run the monitor tool to view serial output (replace PORT w
 idf.py -p PORT flash monitor
 ```
 
-To exit the debugging interface, use `Ctrl-]`.
+To exit the monitor, use `Ctrl-]`.
 
 ## How to Use the Example
 
@@ -127,7 +167,3 @@ echo $env:IDF_EXTRA_ACTIONS_PATH
 # Windows CMD:
 echo %IDF_EXTRA_ACTIONS_PATH%
 ```
-
-### Custom Board
-
-If you need to use a custom development board, refer to the instructions on **custom boards** in [README.md](../../../README.md).

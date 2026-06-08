@@ -22,6 +22,17 @@ typedef struct {
     esp_cam_sensor_xclk_handle_t  xclk_handle;
 } dev_camera_csi_priv_handle_t;
 
+static uint32_t dev_camera_csi_video_flags(void)
+{
+    uint32_t flags = ESP_VIDEO_INIT_FLAGS_MIPI_CSI;
+
+#if CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE
+    flags |= ESP_VIDEO_INIT_FLAGS_ISP;
+#endif  /* CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE */
+
+    return flags;
+}
+
 int dev_camera_sub_csi_init(void *cfg, int cfg_size, void **device_handle)
 {
     // No need to check parameters here, it will be checked in dev_camera_init
@@ -52,10 +63,9 @@ int dev_camera_sub_csi_init(void *cfg, int cfg_size, void **device_handle)
     esp_cam_sensor_xclk_handle_t xclk_handle = NULL;
     bool xclk_started = false;
     // Check if XCLK pin is configured (>= 0) and frequency is valid
-    // Note: We access esp_clock_router_cfg directly as we assume this mode
     if (config->sub_cfg.csi.xclk_config.esp_clock_router_cfg.xclk_pin != -1 &&
         config->sub_cfg.csi.xclk_config.esp_clock_router_cfg.xclk_freq_hz > 0) {
-
+#if CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER
         ESP_LOGI(TAG, "Initializing XCLK on pin %d with freq %" PRIu32 "Hz...",
                  config->sub_cfg.csi.xclk_config.esp_clock_router_cfg.xclk_pin,
                  config->sub_cfg.csi.xclk_config.esp_clock_router_cfg.xclk_freq_hz);
@@ -73,6 +83,9 @@ int dev_camera_sub_csi_init(void *cfg, int cfg_size, void **device_handle)
             goto cleanup;
         }
         xclk_started = true;
+#else
+        ESP_LOGW(TAG, "CSI XCLK is configured but CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER is disabled; XCLK will not be generated");
+#endif  /* CONFIG_CAMERA_XCLK_USE_ESP_CLOCK_ROUTER */
     }
 
     esp_video_init_csi_config_t s_csi_config = {
@@ -94,7 +107,7 @@ int dev_camera_sub_csi_init(void *cfg, int cfg_size, void **device_handle)
     }
     dev_camera_handle_t *handle = &priv_handle->base;
 
-    ret = esp_video_init(&cam_config);
+    ret = esp_video_init_with_flags(&cam_config, dev_camera_csi_video_flags());
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize CSI camera driver: %s", esp_err_to_name(ret));
         free(priv_handle);
@@ -133,9 +146,8 @@ int dev_camera_sub_csi_deinit(void *device_handle)
         esp_cam_sensor_xclk_free(priv_handle->xclk_handle);
     }
 
-    // Deinitialize CSI camera
-    // In the current version of esp_video(1.4.0), it will deinit all cameras that have been initialized
-    esp_err_t ret = esp_video_deinit();
+    // Deinitialize only the CSI camera resources and ISP video node when enabled.
+    esp_err_t ret = esp_video_deinit_with_flags(dev_camera_csi_video_flags());
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to deinitialize CSI camera: %s", esp_err_to_name(ret));
     }

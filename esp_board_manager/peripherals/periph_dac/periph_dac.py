@@ -137,8 +137,6 @@ def parse(name: str, config: dict) -> dict:
         if role == 'oneshot':
             # Parse oneshot configuration
             channel = config.get('channel', 0)
-            if channel not in [0, 1]:
-                raise ValueError(f'Invalid DAC channel: {channel}. Must be 0 or 1')
 
             channel_enum = f'DAC_CHAN_{channel}'
             return {
@@ -182,8 +180,6 @@ def parse(name: str, config: dict) -> dict:
         else:  # cosine mode
             # Parse cosine configuration
             channel = config.get('channel', 0)
-            if channel not in [0, 1]:
-                raise ValueError(f'Invalid DAC channel: {channel}. Must be 0 or 1')
 
             channel_enum = f'DAC_CHAN_{channel}'
             freq_hz = config.get('freq_hz', 1000)

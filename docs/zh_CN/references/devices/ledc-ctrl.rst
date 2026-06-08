@@ -104,10 +104,10 @@ LEDC PWM 控制完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：配置 ``lcd_brightness`` 设备。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：配置 ``ledc_backlight`` 外设。
-- ``esp_board_manager/boards/esp_box_3/board_devices.yaml``：配置 ``ledc_ctrl`` 背光设备。
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``：配置被背光设备引用的 ``ledc`` peripheral。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：配置 ``lcd_brightness`` 设备。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：配置 ``ledc_backlight`` 外设。
+- ``esp_boards/esp32_s3_box_3/board_devices.yaml``：配置 ``ledc_ctrl`` 背光设备。
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：配置被背光设备引用的 ``ledc`` peripheral。
 
 注意事项
 ------------

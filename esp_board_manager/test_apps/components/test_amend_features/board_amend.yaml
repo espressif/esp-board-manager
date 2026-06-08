@@ -1,0 +1,5 @@
+version: "1.0"
+description: "Tripwire: this manifest sits inside a FULL board directory. Because the directory is a complete board (board_info/board_devices/board_peripherals), auto-amend must treat it as a board and must NOT apply this manifest."
+
+apply:
+  - fullboard_tripwire.yaml

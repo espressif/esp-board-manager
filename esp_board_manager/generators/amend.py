@@ -20,7 +20,7 @@ Public API:
 Design rule: ``apply:`` in ``board_amend.yaml`` is the *single* source of
 truth. No file is auto-discovered, directory items are rejected, and every
 file (including ``sdkconfig.defaults.board`` / ``Kconfig.projbuild``) must
-be listed explicitly. See ``docs/amend_design_cn.md`` for the full spec.
+be listed explicitly. See ``docs/zh_CN/create-board/amend.rst`` for the full spec.
 """
 
 from __future__ import annotations
@@ -479,6 +479,56 @@ def _warn_unreferenced_special_files(plan: AmendPlan) -> None:
         )
 
 
+def merge_amend_plans(
+    plans: Iterable[Optional[AmendPlan]],
+    *,
+    amend_dir: Optional[Path] = None,
+    label: str = 'merged',
+) -> Optional[AmendPlan]:
+    """Concatenate fragments from multiple :class:`AmendPlan`\\ s in order.
+
+    ``None`` entries are filtered out. If the resulting list is empty, ``None``
+    is returned (no amend). Otherwise a single :class:`AmendPlan` is produced
+    whose ``fragments`` are every input plan's fragments concatenated in order
+    and re-indexed with a contiguous ``item_index`` (``0..N-1``). Later plans'
+    fragments come after earlier ones, so when applied, later plans override
+    earlier ones (matching the overlay priority convention).
+
+    ``amend_dir`` / ``manifest_path`` default to the first plan's values; pass
+    ``amend_dir`` to override (it is resolved so ``include_dirs()`` always has a
+    concrete directory). ``description`` records the contributing amend dirs.
+    """
+    real_plans = [p for p in plans if p is not None]
+    if not real_plans:
+        return None
+
+    first = real_plans[0]
+    base_dir = Path(amend_dir).resolve() if amend_dir else first.amend_dir
+
+    merged = AmendPlan(
+        amend_dir=base_dir,
+        manifest_path=first.manifest_path,
+        version=first.version,
+        description=f'{label}: ' + ', '.join(str(p.amend_dir) for p in real_plans),
+    )
+
+    new_index = 0
+    for plan in real_plans:
+        for frag in plan.fragments:
+            merged.fragments.append(
+                AmendFragment(
+                    kind=frag.kind,
+                    resolved_path=frag.resolved_path,
+                    raw_item=frag.raw_item,
+                    item_index=new_index,
+                    yaml_data=frag.yaml_data,
+                )
+            )
+            new_index += 1
+
+    return merged
+
+
 # ---------------------------------------------------------------------------
 # YAML merging
 # ---------------------------------------------------------------------------
@@ -570,6 +620,7 @@ __all__ = [
     'HEADER_SUFFIXES',
     'SUPPORTED_FILE_SUFFIXES',
     'build_amend_plan',
+    'merge_amend_plans',
     'load_amend_manifest',
     'apply_amend_plan_to_yaml',
 ]

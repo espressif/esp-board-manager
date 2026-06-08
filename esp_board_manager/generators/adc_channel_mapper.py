@@ -6,19 +6,13 @@
 # See LICENSE file for details.
 """
 
-"""ADC channel-to-GPIO mapping helpers."""
+"""ADC channel-to-GPIO mapping helpers backed by the bundled SoC capability catalog."""
 
-from functools import lru_cache
-from pathlib import Path
-from typing import Iterable, List, Optional
-
-import os
 import re
+from typing import Iterable, List
 
+from generators.utils.soc_capability_query import current_soc_chip
 
-ADC_CHANNEL_MACRO_RE = re.compile(
-    r'#define\s+ADC(?P<unit>\d)_CHANNEL_(?P<channel>\d+)_GPIO_NUM\s+(?P<gpio>-?\d+)'
-)
 ADC_UNIT_RE = re.compile(r'ADC_UNIT_(?P<unit>\d+)')
 
 
@@ -26,53 +20,6 @@ def _normalize_chip_name(chip_name: str) -> str:
     if not chip_name:
         raise ValueError('chip name is required for ADC metadata extraction')
     return str(chip_name).strip().lower().replace('-', '')
-
-
-def _default_idf_root() -> Path:
-    return Path(__file__).resolve().parents[4] / 'esp-idf'
-
-
-def _resolve_idf_root(idf_root: Optional[str] = None) -> Path:
-    candidates = []
-    if idf_root:
-        candidates.append(Path(idf_root))
-
-    env_idf_path = os.environ.get('IDF_PATH')
-    if env_idf_path:
-        candidates.append(Path(env_idf_path))
-
-    candidates.append(_default_idf_root())
-
-    for candidate in candidates:
-        if candidate and candidate.exists():
-            return candidate
-
-    raise FileNotFoundError('Unable to locate ESP-IDF repository for ADC metadata extraction')
-
-
-@lru_cache(maxsize=None)
-def _load_adc_channel_map(chip_name: str, idf_root: Optional[str] = None) -> dict:
-    normalized_chip = _normalize_chip_name(chip_name)
-    resolved_idf_root = _resolve_idf_root(idf_root)
-    header_path = resolved_idf_root / 'components' / 'soc' / normalized_chip / 'include' / 'soc' / 'adc_channel.h'
-    if not header_path.exists():
-        raise FileNotFoundError(f'ADC channel header not found: {header_path}')
-
-    mapping = {}
-    for line in header_path.read_text(encoding='utf-8').splitlines():
-        match = ADC_CHANNEL_MACRO_RE.search(line)
-        if not match:
-            continue
-
-        unit = int(match.group('unit'))
-        channel = int(match.group('channel'))
-        gpio = int(match.group('gpio'))
-        mapping.setdefault(unit, {})[channel] = gpio
-
-    if not mapping:
-        raise ValueError(f'No ADC channel mappings found in {header_path}')
-
-    return mapping
 
 
 def _normalize_unit(unit: object) -> int:
@@ -95,13 +42,30 @@ def _normalize_unit(unit: object) -> int:
     raise ValueError(f'Unsupported ADC unit value: {unit}')
 
 
-def adc_channel_to_gpio(chip_name: str, unit: object, channel: int, idf_root: Optional[str] = None) -> int:
-    channel_map = _load_adc_channel_map(chip_name, idf_root)
+def _load_adc_channel_map(chip_name: str) -> dict:
+    _normalize_chip_name(chip_name)
+    profile = current_soc_chip()
+    if profile is None:
+        raise FileNotFoundError(
+            'SoC capability catalog is not configured; configure_soc_capabilities() '
+            'must run before ADC channel mapping.',
+        )
+    if not profile.adc_channel_map:
+        chip = profile.chip or chip_name
+        raise FileNotFoundError(
+            f'ADC channel map is not available for chip {chip} in the selected '
+            'SoC capability catalog profile.',
+        )
+    return profile.adc_channel_map
+
+
+def adc_channel_to_gpio(chip_name: str, unit: object, channel: int) -> int:
+    channel_map = _load_adc_channel_map(chip_name)
     unit_num = _normalize_unit(unit)
     gpio = channel_map.get(unit_num, {}).get(int(channel))
     if gpio is None or gpio < 0:
         raise ValueError(
-            f'Unable to map ADC unit {unit} channel {channel} to GPIO for chip {chip_name}'
+            f'Unable to map ADC unit {unit} channel {channel} to GPIO for chip {chip_name}',
         )
     return gpio
 
@@ -117,23 +81,14 @@ def _dedupe_preserve(values: Iterable[int]) -> List[int]:
     return ordered
 
 
-def adc_channels_to_gpios(
-    chip_name: str,
-    unit: object,
-    channels: Iterable[int],
-    idf_root: Optional[str] = None,
-) -> List[int]:
+def adc_channels_to_gpios(chip_name: str, unit: object, channels: Iterable[int]) -> List[int]:
     gpios = []
     for channel in channels:
-        gpios.append(adc_channel_to_gpio(chip_name, unit, int(channel), idf_root=idf_root))
+        gpios.append(adc_channel_to_gpio(chip_name, unit, int(channel)))
     return _dedupe_preserve(gpios)
 
 
-def adc_patterns_to_gpios(
-    chip_name: str,
-    patterns: Iterable[dict],
-    idf_root: Optional[str] = None,
-) -> List[int]:
+def adc_patterns_to_gpios(chip_name: str, patterns: Iterable[dict]) -> List[int]:
     gpios = []
     for item in patterns:
         gpios.append(
@@ -141,7 +96,6 @@ def adc_patterns_to_gpios(
                 chip_name,
                 item.get('unit', 'ADC_UNIT_1'),
                 int(item.get('channel', -1)),
-                idf_root=idf_root,
-            )
+            ),
         )
     return _dedupe_preserve(gpios)

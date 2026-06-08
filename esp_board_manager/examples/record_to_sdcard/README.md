@@ -39,13 +39,13 @@ init ADC → mount SD → write WAV header → loop `esp_codec_dev_read` and `fo
 
 ## Environment Setup
 
-### Hardware Required
-
-- Board with Audio ADC (`audio_adc`) and SD card support (`fs_sdcard`).
-
 ### Default IDF Branch
 
 This example supports IDF release/v5.4 (>= v5.4.3) and release/v5.5 (>= v5.5.2).
+
+### Hardware Required
+
+- Board with Audio ADC (`audio_adc`) and SD card support (`fs_sdcard`).
 
 ### Software Requirements
 
@@ -55,48 +55,96 @@ This example supports IDF release/v5.4 (>= v5.4.3) and release/v5.5 (>= v5.5.2).
 
 ### Build Preparation
 
-```
+Before building this example, make sure ESP-IDF is set up. If it is already configured, you can skip this step; otherwise, run the following scripts in the ESP-IDF root directory to set up the build environment. For the complete steps of configuring and using ESP-IDF, see the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/index.html):
+
+```shell
 ./install.sh
 . ./export.sh
 ```
 
-Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+This example uses [ESP Board Manager](https://github.com/espressif/esp-board-manager) to manage board-level resources. The [`esp-bmgr-assist`](https://pypi.org/project/esp-bmgr-assist/) helper tool is recommended as the default entry point.
 
-```
+Install it in the activated ESP-IDF Python environment (only needed once per environment):
+
+```bash
 pip install esp-bmgr-assist
+pip install --upgrade esp-bmgr-assist  # run this command when an update is requested
 ```
 
-```
+- Navigate to this example's project directory:
+
+```shell
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/record_to_sdcard
 ```
 
-```
+### Build and Flash Commands
+
+- List the currently visible boards:
+
+```bash
 idf.py bmgr -l
 ```
 
+Example output:
+
+```text
+ℹ️  Board Components:
+  espressif/esp_boards:
+    [1] esp32_c3_lyra
+    [2] esp32_lyrat_4_3
+    [3] esp32_lyrat_mini_1_1
+    [4] esp32_p4_eye
+    [5] esp32_p4_function_ev_board
+    [6] esp32_s31_function_coreboard_1
+    [7] esp32_s31_korvo_1
+    [8] esp32_s3_box_3
+    [9] esp32_s3_box_lite
+    [10] esp32_s3_korvo_2_3
+    [11] esp32_s3_lcd_ev_board
+    [12] esp_vocat_1_0
+    [13] esp_vocat_1_2
 ```
-idf.py bmgr -b esp32_s3_korvo2_v3
+
+The example output above is based on the board list and ordering from `esp_boards` 0.5.2. Different `esp_boards` versions or custom board dependencies may change the list and indexes. Use the actual output of `idf.py bmgr -l` when selecting a board.
+
+- Select a board:
+
+```bash
+idf.py bmgr -b <board_index|board_name>
 ```
 
-Custom boards: [Custom board](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board).
+For example, to select `esp32_s3_korvo_2_3`:
 
-### Project Configuration
-
-- Board and defaults from `idf.py bmgr -b <board>`.
-- FatFs options preset for SD in `sdkconfig.defaults`.
-- Recording duration, sample rate, path, and gain: edit macros in `record_to_sdcard.c` (`DEFAULT_DURATION_SECONDS`, `DEFAULT_SAMPLE_RATE`, `DEFAULT_REC_URL`, `DEFAULT_REC_GAIN`, etc.).
-
-### Build and Flash Commands
-
+```bash
+idf.py bmgr -b 10
+# or
+idf.py bmgr -b esp32_s3_korvo_2_3
 ```
+
+On first invocation of `idf.py bmgr`, the component is downloaded automatically based on the `espressif/esp_board_manager` dependency declared in `main/idf_component.yml`.
+
+> [!NOTE]
+> To switch to a different board supported by `esp_board_manager`, repeat the same steps with the new board name or index.
+> For a custom board, see [Creating a Board Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/index.html).
+> For more information about `esp_board_manager`, see the [ESP Board Manager Getting Started Guide](https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md).
+
+- Compile the example code:
+
+```shell
 idf.py build
 ```
 
-```
+Flash the program and run the monitor tool to view serial output (replace PORT with your port name):
+
+```shell
 idf.py -p PORT flash monitor
 ```
 
-Exit monitor: `Ctrl-]`
+To exit the monitor, use `Ctrl-]`.
+
+### Project Configuration
+
+- Recording duration, sample rate, path, and gain: edit the macros in `record_to_sdcard.c` (`DEFAULT_DURATION_SECONDS`, `DEFAULT_SAMPLE_RATE`, `DEFAULT_REC_URL`, `DEFAULT_REC_GAIN`, etc.).
 
 ## How to Use the Example
 
@@ -165,9 +213,9 @@ I (11065) BOARD_MANAGER: Device fs_sdcard deinitialized
 
 - Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
 - Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
-- If using the legacy entry point, configure `IDF_EXTRA_ACTIONS_PATH` to `esp_board_manager`.
+- If using the legacy entry point, make sure `IDF_EXTRA_ACTIONS_PATH` points to `esp_board_manager`.
 
-```
+```shell
 # Linux / macOS:
 echo $IDF_EXTRA_ACTIONS_PATH
 
@@ -180,8 +228,4 @@ echo %IDF_EXTRA_ACTIONS_PATH%
 
 ### SD or recording failures
 
-Check card is FAT, mounted at `/sdcard`, and not write-protected. Verify the board supported `audio_adc` and `fs_sdcard`.
-
-### Custom board
-
-See [esp_board_manager README](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md).
+Check the card is FAT, mounted at `/sdcard`, and not write-protected. Verify the board supports `audio_adc` and `fs_sdcard`.

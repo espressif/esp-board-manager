@@ -53,7 +53,8 @@ VALID_ADC_ULP_MODES = [
     'ADC_ULP_MODE_LP_CORE'
 ]
 
-MAX_ADC_PATTERN_ENTRIES = 16
+def get_adc_unit_value(value: str, default_value: str = 'ADC_UNIT_1', field_name: str = 'unit_id') -> str:
+    return get_enum_value(value, default_value, 'ADC unit', VALID_ADC_UNITS)
 
 def validate_enum_value(value: str, enum_type: str, valid_values: list) -> bool:
     """Validate if the enum value is within the valid range.
@@ -146,7 +147,7 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
             if not isinstance(item, dict):
                 raise ValueError("Each 'patterns' item must be a mapping")
             parsed_patterns.append({
-                'unit': get_enum_value(item.get('unit'), 'ADC_UNIT_1', 'ADC unit', VALID_ADC_UNITS),
+                'unit': get_adc_unit_value(item.get('unit'), 'ADC_UNIT_1', 'patterns.unit'),
                 'channel': int(item.get('channel', -1)),
                 'atten': get_enum_value(item.get('atten'), 'ADC_ATTEN_DB_0', 'ADC attenuation', VALID_ADC_ATTEN),
                 'bit_width': get_adc_bit_width(item.get('bit_width'), 'ADC_BITWIDTH_DEFAULT'),
@@ -164,8 +165,6 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
     pattern_num = len(parsed_patterns) if has_patterns else len(channel_id_array)
     if pattern_num <= 0:
         raise ValueError('pattern_num must be greater than 0')
-    if pattern_num > MAX_ADC_PATTERN_ENTRIES:
-        raise ValueError(f'pattern_num too large ({pattern_num}), max {MAX_ADC_PATTERN_ENTRIES}')
     if 'pattern_num' in continuous_config:
         expect = int(continuous_config.get('pattern_num', pattern_num))
         if expect != pattern_num:
@@ -189,11 +188,10 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
         else:
             conv_mode = 'ADC_CONV_BOTH_UNIT'
     else:
-        unit = get_enum_value(
+        unit = get_adc_unit_value(
             continuous_config.get('unit_id'),
             'ADC_UNIT_1',
-            'ADC unit',
-            VALID_ADC_UNITS
+            'unit_id'
         )
         conv_mode = 'ADC_CONV_SINGLE_UNIT_1' if unit == 'ADC_UNIT_1' else 'ADC_CONV_SINGLE_UNIT_2'
 
@@ -208,11 +206,10 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
                 raise ValueError('conv_mode cannot be single-unit when patterns span multiple ADC units')
         else:
             if unit is None:
-                unit = get_enum_value(
+                unit = get_adc_unit_value(
                     continuous_config.get('unit_id'),
                     'ADC_UNIT_1',
-                    'ADC unit',
-                    VALID_ADC_UNITS
+                    'unit_id'
                 )
             expected_single = 'ADC_CONV_SINGLE_UNIT_1' if unit == 'ADC_UNIT_1' else 'ADC_CONV_SINGLE_UNIT_2'
             if conv_mode != expected_single:
@@ -250,11 +247,10 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
     else:
         continuous_cfg['cfg'] = {
             'single_unit': {
-                'unit_id': get_enum_value(
+                'unit_id': get_adc_unit_value(
                     continuous_config.get('unit_id'),
                     'ADC_UNIT_1',
-                    'ADC unit',
-                    VALID_ADC_UNITS
+                    'unit_id'
                 ),
                 'atten': get_enum_value(
                     continuous_config.get('atten'),
@@ -272,11 +268,10 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
 def parse_adc_oneshot_config(oneshot_config: dict) -> dict:
     """Parse ADC oneshot mode specific configuration"""
     unit_cfg = {
-        'unit_id': get_enum_value(
+        'unit_id': get_adc_unit_value(
             oneshot_config.get('unit_id'),
             'ADC_UNIT_1',
-            'ADC unit',
-            VALID_ADC_UNITS
+            'unit_id'
         ),
         'clk_src': oneshot_config.get('clk_src', 'ADC_RTC_CLK_SRC_DEFAULT'),
         'ulp_mode': get_enum_value(

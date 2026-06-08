@@ -243,8 +243,8 @@ Board Examples
 --------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``: Defines the ``rmt_tx`` test peripheral.
-- ``esp_board_manager/boards/esp32_s31_korvo1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
-- ``esp_board_manager/boards/esp32_s31_function_coreboard_1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
+- ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
 
 Notes
 -----

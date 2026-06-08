@@ -158,6 +158,68 @@ def resolve_path_from_base(path_value: Optional[str], base_dir: Optional[Union[s
     return str((Path(normalized_base) / candidate).resolve())
 
 
+def parse_customer_paths(raw: Optional[str], project_dir: Optional[Union[str, Path]]) -> List[str]:
+    """Split a ``-c`` value by ``';'``, resolve each entry, skip empty and ``'NONE'``.
+
+    Returns a list of resolved path strings (may be empty). Relative paths are
+    resolved against ``project_dir`` when given; absolute paths are kept as-is.
+    Each segment is stripped; empty segments and the literal ``'NONE'`` are
+    dropped so callers can disable customer scanning per-entry.
+
+    A single path (no ``';'``) yields a one-element list, keeping behaviour
+    identical to the previous single-path scanning.
+    """
+    if raw is None:
+        return []
+
+    base = normalize_project_dir(project_dir)
+    results: List[str] = []
+    for segment in str(raw).split(';'):
+        entry = segment.strip()
+        if not entry or entry == 'NONE':
+            continue
+        candidate = Path(entry).expanduser()
+        if candidate.is_absolute():
+            results.append(str(candidate.resolve()))
+        elif base:
+            results.append(str((Path(base) / candidate).resolve()))
+        else:
+            results.append(str(candidate.resolve()))
+    return results
+
+
+def resolve_customer_path_arg(
+    raw: Optional[str],
+    base_dir: Optional[Union[str, Path]],
+) -> Optional[str]:
+    """Resolve a possibly ``';'``-separated ``-c`` value at the CLI boundary.
+
+    When the value contains ``';'`` each segment is resolved with
+    :func:`resolve_path_from_base` and the results are re-joined with ``';'`` so
+    downstream scanning still receives a single semicolon string. When there is
+    no ``';'`` the behaviour is identical to :func:`resolve_path_from_base`
+    (single-path backward compatibility). Empty and ``'NONE'`` segments are
+    dropped.
+    """
+    if raw is None:
+        return None
+    if ';' not in raw:
+        stripped = raw.strip()
+        if not stripped or stripped == 'NONE':
+            return None
+        return resolve_path_from_base(stripped, base_dir)
+
+    resolved: List[str] = []
+    for segment in raw.split(';'):
+        entry = segment.strip()
+        if not entry or entry == 'NONE':
+            continue
+        resolved_entry = resolve_path_from_base(entry, base_dir)
+        if resolved_entry:
+            resolved.append(resolved_entry)
+    return ';'.join(resolved)
+
+
 def resolve_project_root_dir(
     explicit_project_dir: Optional[Union[str, Path]] = None,
     start_dir: Optional[Union[str, Path]] = None,

@@ -313,7 +313,6 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 参考代码
 ------------
 
-- ``esp_board_manager/boards/m5stack_cores3/power_manager.c``：完整的 custom 设备实现，含初始化/反初始化函数与 ``CUSTOM_DEVICE_IMPLEMENT`` 注册，演示从生成结构体读取 I2C 地址和外设句柄的完整流程。
 - ``esp_board_manager/test_apps/main/test_dev_custom.c``
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``
 - ``esp_board_manager/devices/dev_custom/dev_custom.c``
@@ -322,7 +321,7 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 板级参考
 ------------
 
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``：``axp2101_power_manager``，注册了完整初始化/反初始化入口，通过 ``config->i2c_addr``、``config->peripheral_name`` 等字段驱动 AXP2101 电源管理芯片。
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``：``axp2101_power_manager``，注册了完整初始化/反初始化入口，通过 ``config->i2c_addr``、``config->peripheral_name`` 等字段驱动 AXP2101 电源管理芯片。
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``：含嵌套结构体、列表、字典列表的完整测试用例。
 
 注意事项

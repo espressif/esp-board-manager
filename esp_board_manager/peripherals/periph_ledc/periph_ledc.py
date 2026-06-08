@@ -42,22 +42,16 @@ def parse(name: str, config: dict) -> dict:
         if gpio < 0:
             raise ValueError(f'Invalid GPIO pin number: {gpio}. Must be >= 0.')
 
-        # Get LEDC channel with validation
+        # Get LEDC channel. The per-chip channel count limit
+        # (SOC_LEDC_CHANNEL_NUM) is enforced by the SoC capability validator
+        # before parser dispatch, so only handle type/shape and codegen here.
         channel = cfg.get('channel', 'LEDC_CHANNEL_0')
 
-        # Handle both numeric and enum string values
         if isinstance(channel, int):
-            if 0 <= channel <= 7:
-                channel_enum = f'LEDC_CHANNEL_{channel}'
-            else:
-                raise ValueError(f'Invalid LEDC channel number: {channel}. Must be 0-7.')
+            if channel < 0:
+                raise ValueError(f'Invalid LEDC channel number: {channel}. Must be >= 0.')
+            channel_enum = f'LEDC_CHANNEL_{channel}'
         elif isinstance(channel, str):
-            valid_channels = [
-                'LEDC_CHANNEL_0', 'LEDC_CHANNEL_1', 'LEDC_CHANNEL_2', 'LEDC_CHANNEL_3',
-                'LEDC_CHANNEL_4', 'LEDC_CHANNEL_5', 'LEDC_CHANNEL_6', 'LEDC_CHANNEL_7'
-            ]
-            if channel not in valid_channels:
-                raise ValueError(f'Invalid LEDC channel: {channel}. Valid channels: {valid_channels}')
             channel_enum = channel
         else:
             raise ValueError(f'Invalid LEDC channel type: {type(channel)}. Must be int or str.')

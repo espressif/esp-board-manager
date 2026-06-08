@@ -1,5 +1,0 @@
-board: esp32_s31_function_coreboard_1
-chip: esp32s31
-version: 1.0.0
-description: "ESP32-S31-Function-CoreBoard-1 (ES8311 mono codec + NS4150B PA + WS2812 RGB LED + RJ45 Ethernet)"
-manufacturer: "ESPRESSIF"
