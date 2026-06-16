@@ -62,30 +62,26 @@ Before building, set up ESP-IDF if needed:
 . ./export.sh
 ```
 
-Short steps:
+Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+
+```
+pip install esp-bmgr-assist
+```
 
 ```
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/play_sdcard_music
 ```
 
-Register the extension (once per terminal):
+List visible boards:
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 Generate board files:
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
-idf.py gen-bmgr-config -l
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 Custom boards: [Custom board](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board).
@@ -153,9 +149,11 @@ I (5248) BOARD_MANAGER: Device fs_sdcard deinitialized
 
 ## Troubleshooting
 
-### `gen-bmgr-config` option `-b` not found
+### `idf.py bmgr` command not found
 
-Set `IDF_EXTRA_ACTIONS_PATH` to the `esp_board_manager` package directory.
+- Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
+- Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
+- If using the legacy entry point, set `IDF_EXTRA_ACTIONS_PATH` to the `esp_board_manager` package directory.
 
 ```
 # Linux / macOS:

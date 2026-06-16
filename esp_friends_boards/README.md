@@ -23,6 +23,6 @@ For more information about ESP Board Manager, see the [`esp_board_manager` compo
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip |
 |---|---|---|---|---|---|---|---|---|
 | ESP-HI | ESP32-C3 | Built-in ADC + PDM speaker | - | ILI9341 | - | - | GPIO button | - |
-| [`ESP32-C5 Spot`](https://oshwhub.com/esp-college/esp-spot) | ESP32-C5 | ES8311 dual | - | - | - | - | - | - |
-| ESP32-S3 BOX2 | ESP32-S3 | ES8389 + ES7210 | SPI | ST7789 | - | - | GPIO button | - |
-| ESP32-S3 Korvo2L | ESP32-S3 | ES8311 | SDMMC | - | - | - | - | - |
+| [`ESP32-C5-Spot`](https://oshwhub.com/esp-college/esp-spot) | ESP32-C5 | ES8311 dual | - | - | - | - | - | - |
+| ESP32-S3-BOX-2 | ESP32-S3 | ES8389 + ES7210 | SPI | ST7789 | - | - | GPIO button | - |
+| ESP32-S3-Korvo-2L | ESP32-S3 | ES8311 | SDMMC | - | - | - | - | - |

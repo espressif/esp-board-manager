@@ -23,4 +23,4 @@ dependencies:
 | 板子名称 | 芯片 | 音频 | SD卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 |
 |---|---|---|---|---|---|---|---|---|
 | [`M5STACK CORES3`](https://docs.m5stack.com/zh_CN/core/CoreS3) | ESP32-S3 | AW88298 + ES7210 | SDSPI | ILI9342C | FT5x06 | - | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/zh_CN/core/Tab5) | ESP32-P4 | ES8388 + ES7210 | SDMMC | ILI9881C | GT911 | SC202CS | - | - |
+| [`M5STACK TAB5`](https://docs.m5stack.com/zh_CN/core/Tab5) | ESP32-P4 | ES8388 + ES7210 | SDMMC | ILI9881C / ST7121 / ST7123 自动探测 | GT911 / ST712x 自动探测 | SC202CS | - | - |

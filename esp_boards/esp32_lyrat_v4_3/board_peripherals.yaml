@@ -1,0 +1,70 @@
+# Peripherals Configuration
+peripherals:
+  # I2C master for ES8388 control interface.
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 18
+        scl: 23
+
+  # Shared I2S bus for ES8388 audio output.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: "std-out"
+    config: &i2s_audio_config
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_STEREO
+      slot_mask: I2S_STD_SLOT_BOTH
+      pins:
+        mclk: 0
+        bclk: 5
+        ws: 25
+        dout: 26
+        din: 35
+
+  # Shared I2S bus for ES8388 audio input.
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: "std-in"
+    config: *i2s_audio_config
+
+  # Power amplifier enable (NS4150 CTRL pins).
+  - name: gpio_power_amp
+    type: gpio
+    config:
+      pin: 21
+      mode: "GPIO_MODE_OUTPUT"
+      default_level: 0
+
+  # SDIO 3.3 V LDO enable. The schematic labels this net as IO12_Aux_Detect.
+  - name: gpio_sd_power
+    type: gpio
+    config:
+      pin: 12
+      mode: "GPIO_MODE_OUTPUT"
+      default_level: 0
+
+  # microSD card detect.
+  - name: gpio_sd_detect
+    type: gpio
+    config:
+      pin: 34
+      mode: "GPIO_MODE_INPUT"
+      pull_up: true
+
+  # Green LED.
+  - name: gpio_green_led
+    type: gpio
+    config:
+      pin: 22
+      mode: "GPIO_MODE_OUTPUT"
+      default_level: 0

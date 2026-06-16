@@ -61,7 +61,7 @@ class PreflightAbortError(RuntimeError):
 @dataclass(frozen=True)
 class PreflightCheck:
     skip_env: str
-    message_factory: Callable[[Path], Optional[str]]
+    message_factory: Callable[[Path, str], Optional[str]]
 
 
 def _env_flag_true(var_name: str) -> bool:
@@ -115,31 +115,47 @@ def _raise_preflight_error(message: str) -> None:
     raise FatalError(message)
 
 
-def _format_missing_artifacts_warning(project_dir: Path, missing) -> str:
+def _preflight_skip_hint(command: str = 'build') -> str:
+    return (
+        '[{tag}] Hint: temporarily skip assist preflight with '
+        '`ESP_BMGR_ASSIST_PREFLIGHT=0 idf.py {command}`.'
+    ).format(tag=ASSIST_TAG, command=command)
+
+
+def _build_like_command_name(tasks: Sequence[object]) -> str:
+    for task in tasks:
+        name = getattr(task, 'name', '')
+        if name:
+            return name
+    return 'build'
+
+
+def _format_missing_artifacts_warning(project_dir: Path, missing, skip_hint: str) -> str:
     gen_dir = gen_bmgr_codes_dir(project_dir)
     bullet = '\n'.join('  - {0}'.format(name) for name in missing)
     return (
         '[{tag}] Warning: missing generated board artifacts in {gen_dir}.\n\n'
         '[{tag}] Hint: run "idf.py bmgr -b <board>" before build or flash for a correct board build '
         '(legacy: "idf.py gen-bmgr-config -b <board>").\n'
-        '[{tag}] Hint: run "idf.py bmgr -l" to list available boards.'
-    ).format(tag=ASSIST_TAG, gen_dir=gen_dir, bullet=bullet)
+        '[{tag}] Hint: run "idf.py bmgr -l" to list available boards.\n'
+        '{skip_hint}'
+    ).format(tag=ASSIST_TAG, gen_dir=gen_dir, bullet=bullet, skip_hint=skip_hint)
 
 
-def _generated_artifact_warning(project_dir: Path) -> Optional[str]:
+def _generated_artifact_warning(project_dir: Path, skip_hint: str) -> Optional[str]:
     missing = list_missing_gen_files(project_dir)
     if not missing:
         return None
-    return _format_missing_artifacts_warning(project_dir, missing)
+    return _format_missing_artifacts_warning(project_dir, missing, skip_hint)
 
 
-def _target_mismatch_warning(project_dir: Path) -> Optional[str]:
+def _target_mismatch_warning(project_dir: Path, skip_hint: str) -> Optional[str]:
     defaults_path = board_manager_defaults_path(project_dir)
     sdk_path = sdkconfig_path(project_dir)
     mismatch = find_target_mismatch(defaults_path, sdk_path)
     if not mismatch:
         return None
-    return '[{0}] Warning: {1}'.format(ASSIST_TAG, mismatch)
+    return '[{0}] Warning: {1}\n{2}'.format(ASSIST_TAG, mismatch, skip_hint)
 
 
 PREFLIGHT_CHECKS = (
@@ -153,12 +169,14 @@ def _suppress_component_duplicate_warnings() -> None:
     os.environ[SKIP_GEN_CHECK_ENV] = '1'
 
 
-def collect_preflight_warnings(project_dir: Path) -> List[str]:
+def collect_preflight_warnings(project_dir: Path, skip_hint: Optional[str] = None) -> List[str]:
+    if skip_hint is None:
+        skip_hint = _preflight_skip_hint()
     warnings = []
     for check in PREFLIGHT_CHECKS:
         if _env_flag_true(check.skip_env):
             continue
-        message = check.message_factory(project_dir)
+        message = check.message_factory(project_dir, skip_hint)
         if message:
             warnings.append(message)
     return warnings
@@ -188,7 +206,8 @@ def run_preflight(project_path: str, global_args: Any, tasks: Sequence[object]) 
         _suppress_component_duplicate_warnings()
         return
 
-    warnings = collect_preflight_warnings(project_dir)
+    skip_hint = _preflight_skip_hint(_build_like_command_name(tasks))
+    warnings = collect_preflight_warnings(project_dir, skip_hint)
     _suppress_component_duplicate_warnings()
     if not warnings:
         return

@@ -49,6 +49,8 @@ DEV_DISPLAY_LCD_IO_LIST = {
     ],
 }
 
+IDF_VERSION_WITH_SPI_PSRAM_DMA_DIRECT = (6, 1, 0)
+
 def _iter_peripheral_names(peripherals_list):
     """Yield normalized peripheral names from YAML list items."""
     if not peripherals_list:
@@ -90,6 +92,9 @@ def _find_peripheral_name_in_dict(peripherals_dict, prefix: str):
 def _warn_ignored_idf6_field(device_name: str, field_path: str) -> None:
     print(f"YAML WARNING: LCD display device {device_name} field '{field_path}' requires ESP-IDF v6.0 or later and will be ignored.")
 
+def _warn_ignored_idf61_field(device_name: str, field_path: str) -> None:
+    print(f"YAML WARNING: LCD display device {device_name} field '{field_path}' requires ESP-IDF v6.1 or later and will be ignored.")
+
 def get_includes() -> list:
     """Return list of required include headers for LCD Display device"""
     return [
@@ -130,7 +135,8 @@ def parse_dsi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     }
     use_dma2d_flag = dpi_config.get('flags', {}).get('use_dma2d', False)
 
-    idf_major = get_idf_version()[0]
+    idf_version = get_idf_version()
+    idf_major = idf_version[0]
     if idf_major < 6:
         # v5: include legacy pixel_format and use_dma2d struct fields
         dpi_config_parsed['pixel_format'] = pixel_format_val if pixel_format_val else 'LCD_COLOR_PIXEL_FORMAT_RGB565'
@@ -198,7 +204,7 @@ def parse_spi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     # Get IO SPI configuration
     io_spi_config = sub_config.get('io_spi_config', {})
     io_spi_flags = io_spi_config.get('flags', {})
-    idf_major = get_idf_version()[0]
+    idf_version = get_idf_version()
     io_spi_config_parsed = {
         'cs_gpio_num': io_spi_config.get('cs_gpio_num', -1),
         'dc_gpio_num': io_spi_config.get('dc_gpio_num', -1),
@@ -220,10 +226,10 @@ def parse_spi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
             'cs_high_active': io_spi_flags.get('cs_high_active', False)
         }
     }
-    if idf_major >= 6:
+    if idf_version >= IDF_VERSION_WITH_SPI_PSRAM_DMA_DIRECT:
         io_spi_config_parsed['flags']['psram_dma_direct'] = io_spi_flags.get('psram_dma_direct', False)
     elif io_spi_flags.get('psram_dma_direct', False):
-        _warn_ignored_idf6_field(full_config.get('name'), 'io_spi_config.flags.psram_dma_direct')
+        _warn_ignored_idf61_field(full_config.get('name'), 'io_spi_config.flags.psram_dma_direct')
 
     panel_config_parsed = _parse_lcd_panel_dev_config_dict(sub_config)
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.15
+
+### ⚠️ Important Changes
+
+- Load generated `board_manager.defaults` before project/user defaults when `sdkconfig` is absent, allowing user defaults to override ordinary board defaults while rejecting user defaults that modify Board Manager managed symbols.
+
+### Bug Fixes
+
+- Corrected the ESP-IDF version requirements for several version-specific configuration fields from v6.0 to v6.1:
+  - `display_lcd` SPI `io_spi_config.flags.psram_dma_direct`
+  - `lcd_touch` I2C `io_i2c_config.transaction_timeout_ms`
+  - `periph_spi` `spi_bus_config.dma_burst_size`
+
+### Features
+
+- Updated **M5Stack Tab5** support to handle ST7121 panel/touch variant through runtime probing and board-specific setup.
+- Added board support for **ESP32-LyraT V4.3**, including ES8388 audio codec and SD card.
+
 ## 0.5.14
 
 ### Features

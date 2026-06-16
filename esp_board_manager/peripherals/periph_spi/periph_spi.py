@@ -23,6 +23,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
 from generators.utils.idf_version import get_idf_version
 
+IDF_VERSION_WITH_SPI_DMA_BURST_SIZE = (6, 1, 0)
+
 def get_includes() -> list:
     """Return list of required include headers for SPI peripheral"""
     return [
@@ -190,12 +192,12 @@ def parse(name: str, config: dict) -> dict:
             'isr_cpu_id': isr_cpu_id,
             'intr_flags': intr_flags
         }
-        if get_idf_version()[0] >= 6:
+        if get_idf_version() >= IDF_VERSION_WITH_SPI_DMA_BURST_SIZE:
             spi_bus_config_init['dma_burst_size'] = dma_burst_size
         elif dma_burst_size != 0:
             print(
                 f"YAML WARNING: SPI peripheral '{name}' field 'spi_bus_config.dma_burst_size' "
-                'requires ESP-IDF v6.0 or later and will be ignored.'
+                'requires ESP-IDF v6.1 or later and will be ignored.'
             )
 
         result = {

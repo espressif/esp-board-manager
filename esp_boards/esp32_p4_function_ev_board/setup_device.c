@@ -7,18 +7,19 @@
 
 #include <string.h>
 #include "esp_log.h"
-#include "dev_display_lcd.h"
-
+#include "esp_board_manager_includes.h"
 #if __has_include(<esp_lcd_ek79007.h>)
+#define HAS_EK79007  1
 #include "esp_lcd_ek79007.h"
 #endif  /* __has_include(<esp_lcd_ek79007.h>) */
 #if __has_include(<esp_lcd_touch_gt911.h>)
+#define HAS_GT911  1
 #include "esp_lcd_touch_gt911.h"
 #endif  /* __has_include(<esp_lcd_touch_gt911.h>) */
 
 static const char *TAG = "P4_FUNCTION_EV_SETUP_DEVICE";
 
-#if __has_include(<esp_lcd_ek79007.h>)
+#if defined(HAS_EK79007)
 __attribute__((weak)) esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle, dev_display_lcd_config_t *lcd_cfg, dev_display_lcd_handles_t *lcd_handles)
 {
     ek79007_vendor_config_t vendor_config = {
@@ -47,9 +48,9 @@ __attribute__((weak)) esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_ha
 
     return ESP_OK;
 }
-#endif  /* __has_include(<esp_lcd_ek79007.h>) */
+#endif  /* defined(HAS_EK79007) */
 
-#if __has_include(<esp_lcd_touch_gt911.h>)
+#if defined(HAS_GT911)
 __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
 {
     esp_err_t ret = esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
@@ -60,4 +61,4 @@ __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handl
 
     return ESP_OK;
 }
-#endif  /* __has_include(<esp_lcd_touch_gt911.h>) */
+#endif  /* defined(HAS_GT911) */

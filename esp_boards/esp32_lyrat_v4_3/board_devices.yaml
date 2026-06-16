@@ -1,0 +1,73 @@
+# Devices Configuration
+devices:
+  # Power Control for SD Card 3.3 V LDO.
+  - name: sdcard_power_ctrl
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - name: gpio_sd_power
+        active_level: 1
+
+  # Audio Codec (ES8388) - DAC for audio output.
+  - name: audio_dac
+    chip: es8388
+    type: audio_codec
+    version: default
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      dac_max_channel: 2
+      dac_channel_mask: "11"
+      dac_init_gain: 0
+      mclk_enabled: true
+      aec: false
+    peripherals:
+      - name: gpio_power_amp
+        gain: 6
+        active_level: 1
+      - name: i2s_audio_out
+      - name: i2c_master
+        address: 0x20
+        frequency: 100000
+
+  # Audio Codec (ES8388) - ADC for audio input.
+  - name: audio_adc
+    chip: es8388
+    type: audio_codec
+    version: default
+    config:
+      adc_enabled: true
+      adc_max_channel: 2
+      adc_channel_mask: "11"
+      adc_channel_labels: ["FL", "FR"]
+      adc_init_gain: 0
+      mclk_enabled: true
+      aec: false
+    peripherals:
+      - name: i2s_audio_in
+      - name: i2c_master
+        address: 0x20
+        frequency: 100000
+
+  # microSD card. Keep 1-bit SDMMC mode to avoid IO13 D3 / touch-pad reuse conflicts.
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: sdmmc
+    power_ctrl_device: sdcard_power_ctrl
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        max_files: 5
+      sub_config:
+        slot: SDMMC_HOST_SLOT_1
+        frequency: SDMMC_FREQ_HIGHSPEED
+        bus_width: 1
+        pins:
+          clk: 14
+          cmd: 15
+          d0: 2
+          d1: -1
+          d2: -1
+          d3: -1
+          cd: 34

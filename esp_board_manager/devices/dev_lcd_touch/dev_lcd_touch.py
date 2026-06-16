@@ -20,6 +20,8 @@ DEV_LCD_TOUCH_IO_LIST = {
     ],
 }
 
+IDF_VERSION_WITH_I2C_TRANSACTION_TIMEOUT = (6, 1, 0)
+
 
 def get_includes() -> list:
     return [
@@ -111,12 +113,12 @@ def _parse_i2c_sub_config(name: str, full_config: dict, peripherals_dict=None) -
             'disable_control_phase': bool(flags.get('disable_control_phase', True)),
         },
     }
-    if get_idf_version()[0] >= 6:
+    if get_idf_version() >= IDF_VERSION_WITH_I2C_TRANSACTION_TIMEOUT:
         io_i2c_config_parsed['transaction_timeout_ms'] = int(io_i2c_config.get('transaction_timeout_ms', 0))
     elif int(io_i2c_config.get('transaction_timeout_ms', 0)) != 0:
         print(
             f"YAML WARNING: LCD touch device {name} field 'io_i2c_config.transaction_timeout_ms' "
-            'requires ESP-IDF v6.0 or later and will be ignored.'
+            'requires ESP-IDF v6.1 or later and will be ignored.'
         )
 
     return {

@@ -82,7 +82,7 @@ The typical application usage path is: initialize BMGR, get device or peripheral
 
 .. code-block:: c
 
-   #include "esp_board_manager.h"
+   #include "esp_board_manager_includes.h"
 
    void app_main(void)
    {
@@ -127,6 +127,44 @@ YAML Changes Not Taking Effect
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 BMGR does not automatically refresh old generated artifacts when board-level YAML is modified. After modification, run ``idf.py bmgr -b <board>`` again, then continue with the build.
+
+Examples
+--------
+
+``esp_board_manager/examples/`` provides standalone buildable examples that demonstrate the complete workflow: selecting a board, generating board-level code, initializing the board, and obtaining device handles by name. Each example directory includes a ``README.md`` with hardware requirements and build instructions.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 34 32 12
+
+   * - Example
+     - Typical Use Case
+     - Primary Devices Involved
+     - Registry
+   * - ``play_embed_music``
+     - Play a WAV prompt tone embedded in firmware
+     - ``audio_codec`` (DAC)
+     - `Link <https://components.espressif.com/components/espressif/esp_board_manager/examples/play_embed_music>`__
+   * - ``play_sdcard_music``
+     - Play a WAV file from a microSD card
+     - ``audio_codec``, ``fs_fat``
+     - `Link <https://components.espressif.com/components/espressif/esp_board_manager/examples/play_sdcard_music>`__
+   * - ``record_to_sdcard``
+     - Record microphone input and write to SD card as WAV
+     - ``audio_codec`` (ADC), ``fs_fat``
+     - `Link <https://components.espressif.com/components/espressif/esp_board_manager/examples/record_to_sdcard>`__
+   * - ``record_and_play``
+     - Capture microphone input and play it back in real time (loopback)
+     - ``audio_codec`` (ADC + DAC)
+     - `Link <https://components.espressif.com/components/espressif/esp_board_manager/examples/record_and_play>`__
+   * - ``display_lvgl``
+     - Initialize LCD and touchscreen, run the LVGL test UI
+     - ``display_lcd``, ``lcd_touch``
+     - `Link <https://components.espressif.com/components/espressif/esp_board_manager/examples/display_lvgl>`__
+
+``examples/common/`` provides shared utilities such as WAV header parsing, used by SD card-related examples.
+
+In addition to the examples above, ``esp_board_manager/test_apps/`` provides test applications for CI and local validation, covering devices and peripherals already supported by Board Manager. After completing a new board integration, use this test application to verify the configuration correctness.
 
 SDK Resources
 -------------

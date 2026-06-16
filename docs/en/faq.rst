@@ -99,7 +99,7 @@ Many BMGR issues are rooted not in the application layer, but in misaligned YAML
 1. Whether ``components/gen_bmgr_codes`` is correctly generated and all files are present (same as above).
 2. ``gen_board_metadata.yaml``: Whether the parsed devices and peripherals match expectations.
 3. ``gen_board_device_config.c`` and ``gen_board_periph_config.c``: Whether specific field values match expectations.
-4. ``board_manager.defaults``: Whether capability macros such as ``CONFIG_ESP_BOARD_DEV_*_SUPPORT`` and ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT`` are all present.
+4. ``board_manager.defaults``: Whether capability macros such as ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``, ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``, and ``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT`` are all present.
 5. ``Kconfig.projbuild``: Whether ``CONFIG_ESP_BOARD_<BOARD>`` corresponding to the currently selected board is declared.
 6. ``sdkconfig``: Whether the above capability macros are actually written into sdkconfig.
 
@@ -140,12 +140,12 @@ Abnormal Behavior or sdkconfig Inconsistency After Switching Boards
 
 - The switch was performed via ``idf.py menuconfig`` or by manually modifying ``sdkconfig``, without triggering cleanup and regeneration through ``idf.py bmgr -b <board>``.
 - Capability macros from the previous board are still in ``sdkconfig``.
-- ``CONFIG_ESP_BOARD_DEV_*_SUPPORT`` and other BMGR capability symbols were manually written into the project's ``sdkconfig.defaults``, interfering with the board-switching logic.
+- ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``, ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``, ``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT``, or other BMGR-managed symbols were manually written into the project's ``sdkconfig.defaults``, interfering with the board-switching logic.
 
 **Recommended Actions**
 
 1. Switching boards must use ``idf.py bmgr -b <other_board>`` or an equivalent script entry; ``idf.py menuconfig`` should not be used for switching. BMGR automatically backs up the old ``sdkconfig`` as ``components/gen_bmgr_codes/sdkconfig.bmgr_board.old`` and deletes the original file when switching boards, preventing residual ``CONFIG_IDF_TARGET`` and device enable configurations from the old board.
-2. Do not manually write BMGR device or peripheral capability symbols into the project ``sdkconfig.defaults``; these symbols should come only from the BMGR-generated ``board_manager.defaults``. Board-specific regular sdkconfig items (PSRAM, Flash, partition, etc.) should be placed in ``sdkconfig.defaults.board`` under the board directory.
+2. Do not manually write BMGR device, peripheral, or device sub-type capability symbols into the project ``sdkconfig.defaults``; these symbols should come only from the BMGR-generated ``board_manager.defaults``. Board-specific regular sdkconfig items (PSRAM, Flash, partition, etc.) should be placed in ``sdkconfig.defaults.board`` under the board directory.
 3. To return to the current board's default values, delete the project ``sdkconfig`` and re-run ``idf.py build`` to let ``board_manager.defaults`` take effect again.
 
 No Runtime Change After YAML Modification

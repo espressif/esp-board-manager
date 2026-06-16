@@ -99,6 +99,23 @@ def get_enum_value(value: str, default_value: str, enum_type: str, valid_values:
 
     return result
 
+def get_adc_bit_width(value, default_value):
+    """Get ADC bit width from YAML while preserving enum strings or numeric widths."""
+    result = default_value if value is None else value
+
+    if isinstance(result, str):
+        if validate_enum_value(result, 'ADC bit width', VALID_ADC_BITWIDTH):
+            return result
+    elif isinstance(result, int) and not isinstance(result, bool) and result > 0:
+        return result
+    else:
+        validate_enum_value(result, 'ADC bit width', VALID_ADC_BITWIDTH)
+
+    raise ValueError(
+        f"Invalid ADC bit width value '{value}'. "
+        'Please use one of the valid enum values or a positive integer bit width.'
+    )
+
 def get_includes() -> list:
     """Return list of required include headers for ADC"""
     return [
@@ -132,7 +149,7 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
                 'unit': get_enum_value(item.get('unit'), 'ADC_UNIT_1', 'ADC unit', VALID_ADC_UNITS),
                 'channel': int(item.get('channel', -1)),
                 'atten': get_enum_value(item.get('atten'), 'ADC_ATTEN_DB_0', 'ADC attenuation', VALID_ADC_ATTEN),
-                'bit_width': get_enum_value(item.get('bit_width'), 'ADC_BITWIDTH_DEFAULT', 'ADC bit width', VALID_ADC_BITWIDTH),
+                'bit_width': get_adc_bit_width(item.get('bit_width'), 'ADC_BITWIDTH_DEFAULT'),
             })
     else:
         if isinstance(channel_values, list) and len(channel_values) <= 0:
@@ -245,12 +262,7 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
                     'ADC attenuation',
                     VALID_ADC_ATTEN
                 ),
-                'bit_width': get_enum_value(
-                    continuous_config.get('bit_width'),
-                    'SOC_ADC_DIGI_MAX_BITWIDTH',
-                    'ADC bit width',
-                    VALID_ADC_BITWIDTH
-                ),
+                'bit_width': get_adc_bit_width(continuous_config.get('bit_width'), 'SOC_ADC_DIGI_MAX_BITWIDTH'),
                 'channel_id': channel_id_array,
             }
         }
@@ -291,12 +303,7 @@ def parse_adc_oneshot_config(oneshot_config: dict) -> dict:
             'ADC attenuation',
             VALID_ADC_ATTEN
         ),
-        'bitwidth': get_enum_value(
-            oneshot_config.get('bit_width'),
-            'SOC_ADC_DIGI_MAX_BITWIDTH',
-            'ADC bit width',
-            VALID_ADC_BITWIDTH
-        )
+        'bitwidth': get_adc_bit_width(oneshot_config.get('bit_width'), 'SOC_ADC_DIGI_MAX_BITWIDTH')
     }
 
     oneshot_cfg = {

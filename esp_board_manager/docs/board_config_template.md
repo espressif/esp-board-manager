@@ -196,7 +196,7 @@ If the board has no PA control pin, there is no need to add the `gpio_pa_control
 ### Full-Duplex (Same Codec Chip)
 
 Configure **two** `type: audio_codec` devices in `board_devices.yaml` (e.g. `audio_dac` + `audio_adc`), enabling only DAC or only ADC respectively. **I2C control** can point to the same `i2c_master` (you may use YAML `&` / `*` anchors to avoid duplicating `address` / `frequency`).
-**Board Reference**: [esp32_s3_korvo_2l/board_devices.yaml](../boards/esp32_s3_korvo2l/board_devices.yaml).
+**Board Reference**: [esp32_s3_korvo2l/board_devices.yaml](../boards/esp32_s3_korvo2l/board_devices.yaml).
 
 ### Recording and Playback without External Codec
 

@@ -97,6 +97,7 @@ I2C Touch All Fields
           lcd_cmd_bits: 8                   # [TO_BE_CONFIRMED] Bit-width of LCD command (default: 8)
           lcd_param_bits: 0                 # Bit-width of LCD parameter (default: 0)
           scl_speed_hz: 100000              # I2C SCL frequency (default: 100kHz)
+          transaction_timeout_ms: 0         # IDF v6.1+: transfer timeout in ms; 0/-1 waits forever (default: 0)
           flags:
             dc_low_on_data: false           # DC level for data transfer (default: false)
             disable_control_phase: true     # Disable control phase for touch (default: true)

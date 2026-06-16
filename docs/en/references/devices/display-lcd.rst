@@ -391,6 +391,7 @@ SPI Full Fields
             octal_mode: false               # Octal mode (8 data lines) (default: false)
             quad_mode: false                # Quad mode (4 data lines) (default: false)
             sio_mode: false                 # Single line mode (default: false)
+            psram_dma_direct: false         # IDF v6.1+: DMA directly from PSRAM color buffers (default: false)
             lsb_first: false                # false：MSB bit first；true：LSB bit first (default: false)
             cs_high_active: false           # CS line is low active (default: false)
 
@@ -446,6 +447,8 @@ I80 Full Fields
           bus_width: 8                      # Number of data lines, 8 or 16 (default: 8)
           max_transfer_bytes: 4092          # Maximum transfer size (default: 4092)
           dma_burst_size: 64                # DMA burst size in bytes (default: 64)
+          flags:
+            allow_pd: false                 # IDF v6+: allow power domain off in sleep (default: false)
 
         # esp_lcd_panel_io_i80_config_t fields for Panel IO configuration
         io_config:

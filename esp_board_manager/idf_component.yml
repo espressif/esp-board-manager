@@ -1,4 +1,4 @@
-version: 0.5.14
+version: 0.5.15
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -11,6 +11,8 @@ examples:
   - path: examples/play_sdcard_music
   - path: examples/record_to_sdcard
   - path: examples/play_embed_music
+  - path: examples/record_and_play
+  - path: examples/display_lvgl
 
 dependencies:
   espressif/esp_codec_dev:

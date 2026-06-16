@@ -252,8 +252,10 @@ Semantics:
    Configuration Priority:
 1. `sdkconfig` (user's current configuration)
 2. `sdkconfig.defaults` (project defaults)
-3. `board_manager.defaults` (board-specific configurations, higher priority than sdkconfig.defaults)
+3. `board_manager.defaults` (board-specific default fallback and Board Manager symbols; loaded before project defaults so user defaults can override ordinary board defaults)
 4. Component's own defaults
+
+   User defaults must not set selected-board, board-name, device-support, or peripheral-support symbols managed by ESP Board Manager. These symbols are checked before configuration.
 
 ### 6. **Custom Code in the `board` Directory**
 

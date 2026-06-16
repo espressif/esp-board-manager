@@ -1,0 +1,5 @@
+board: esp32_lyrat_v4_3
+chip: esp32
+version: 1.0.0
+description: "ESP32-LyraT V4.3 Development Board"
+manufacturer: "ESPRESSIF"

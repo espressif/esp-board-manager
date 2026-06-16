@@ -59,7 +59,11 @@
 . ./export.sh
 ```
 
-简略步骤：
+在已激活的 ESP-IDF Python 环境中安装 `esp-bmgr-assist`：
+
+```
+pip install esp-bmgr-assist
+```
 
 - 进入本例程目录：
 
@@ -67,36 +71,23 @@
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/play_embed_music
 ```
 
-- 配置 `esp_board_manager` 路径，激活环境（在当前终端下只需要执行一次）
+- 列出当前可见的开发板：
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 - 生成板级配置（示例：`esp32_s3_korvo2_v3`）：
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 自定义板：参考 [自定义板子](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board)。
 
-- 列出已支持开发板：
-
-```
-idf.py gen-bmgr-config -l
-```
-
 ### 项目配置
 
-- 板子与芯片默认由 `gen-bmgr-config` 及生成的 `components/gen_bmgr_codes/board_manager.defaults` 注入
+- 开发板与芯片目标由 `idf.py bmgr -b <board>` 及生成的 `components/gen_bmgr_codes/board_manager.defaults` 注入。
 
 ### 编译与烧录
 
@@ -150,9 +141,11 @@ I (5324) BOARD_MANAGER: Device audio_dac deinitialized
 
 ## 故障排除
 
-### `idf.py gen-bmgr-config` 没有 `-b` 参数
+### `idf.py bmgr` 命令未找到
 
-请确认已设置 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager`：
+- 确认已在当前 ESP-IDF Python 环境中安装 `esp-bmgr-assist`。
+- 确认工程 `main/idf_component.yml` 中已包含 `esp_board_manager` 依赖。
+- 如果使用旧入口，请确认 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager`：
 
 ```
 # Linux / macOS:

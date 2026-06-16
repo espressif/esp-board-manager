@@ -6,13 +6,20 @@
 
 本例程介绍了如何使用 `esp_board_manager` 初始化屏幕，获取设备的句柄，并结合 `esp_lvgl_adapter` 组件在开发板上运行 LVGL 测试 UI 的例子。
 
-## 示例创建
+## 环境配置
 
-### IDF 默认分支
+### 默认 IDF 分支
 
 本例程仅支持 IDF release/v5.5 (>=5.5.2) 及 IDF release/v5.4 (>=5.4.3) 分支。
 
-### 编译和下载
+### 硬件要求
+
+- LCD
+- 可选：LCD Touch，LEDC 背光控制
+
+## 编译和下载
+
+### 编译准备
 
 编译本例程前需要先确保已配置 ESP-IDF ，如果已配置可跳过，未配置需要先在 ESP-IDF 根目录运行下面脚本设置编译环境，有关配置和使用 ESP-IDF 完整步骤，请参阅 [《ESP-IDF 编程指南》](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32s3/index.html)：
 
@@ -21,7 +28,11 @@
 . ./export.sh
 ```
 
-下面是简略编译步骤：
+在已激活的 ESP-IDF Python 环境中安装 `esp-bmgr-assist`：
+
+```shell
+pip install esp-bmgr-assist
+```
 
 - 进入基于 LVGL 驱动屏幕的测试工程存放位置
 
@@ -29,44 +40,33 @@
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/display_lvgl
 ```
 
-- 配置 `esp_board_manager` 路径，激活环境（在当前终端下只需要执行一次）
+- 列出当前可见的开发板
 
 ```shell
-# Ubuntu and Mac:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows Command Prompt (CMD):
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 - 选择使用的开发板
 
 ```shell
-idf.py gen-bmgr-config -b esp32_s3_box_2
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
-- 也可以执行以下命令查看支持的开发板列表
+### 编译与烧录
 
-```shell
-idf.py gen-bmgr-config -l
-```
-
-- 编译例程代码
+编译例程代码：
 
 ```shell
 idf.py build
 ```
 
-- 烧录程序并运行 monitor 工具来查看串口输出 (替换 PORT 为端口名称)：
+烧录程序并运行 monitor 工具来查看串口输出 (替换 PORT 为端口名称)：
 
 ```shell
 idf.py -p PORT flash monitor
 ```
 
-- 退出调试界面使用 ``Ctrl-]``
+退出调试界面使用 `Ctrl-]`。
 
 ## 如何使用例程
 
@@ -109,15 +109,25 @@ I (18519) BMGR_DISPLAY_LVGL: Example Finished. Exiting app_main...
 I (18629) main_task: Returned from app_main()
 ```
 
-## 问题解答
+## 故障排除
 
-1. 如果出现以下错误信息，请执行 `echo $IDF_EXTRA_ACTIONS_PATH` 检查 `esp_board_manager` 路径配置是否正确：
+### `idf.py bmgr` 命令未找到
 
-```c
-Usage: idf.py gen-bmgr-config [OPTIONS]
-Try 'idf.py gen-bmgr-config --help' for help.
+- 确认已在当前 ESP-IDF Python 环境中安装 `esp-bmgr-assist`。
+- 确认工程 `main/idf_component.yml` 中已包含 `esp_board_manager` 依赖。
+- 如果使用旧入口，请确认 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager`。
 
-Error: No such option: -b
+```shell
+# Linux / macOS:
+echo $IDF_EXTRA_ACTIONS_PATH
+
+# Windows PowerShell:
+echo $env:IDF_EXTRA_ACTIONS_PATH
+
+# Windows CMD:
+echo %IDF_EXTRA_ACTIONS_PATH%
 ```
 
-2. 如果需要使用自定义的开发板，请参考 [README_CN.md](../../../README_CN.md) 中关于 **自定义板级** 的说明。
+### 自定义开发板
+
+如果需要使用自定义的开发板，请参考 [README_CN.md](../../../README_CN.md) 中关于 **自定义板级** 的说明。

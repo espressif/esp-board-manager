@@ -102,7 +102,26 @@ class PreflightModuleTests(unittest.TestCase):
             self.assertEqual(output.getvalue(), '')
             self.assertIn('missing generated board artifacts', text)
             self.assertIn('[ESP_BMGR_ASSIST] Error:', text)
+            self.assertIn('ESP_BMGR_ASSIST_PREFLIGHT=0 idf.py build', text)
             self.assertEqual(os.environ.get(preflight.SKIP_GEN_CHECK_ENV), '1')
+
+    def test_preflight_skip_hint_uses_current_build_like_task(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project = Path(temp_dir)
+            _create_project(project)
+            _create_manifest_dependency(project)
+            output = io.StringIO()
+            with self.assertRaises(preflight.PreflightAbortError) as ctx:
+                with redirect_stdout(output):
+                    preflight.run_preflight(
+                        str(project),
+                        {'project_dir': str(project)},
+                        [types.SimpleNamespace(name='flash', aliases=[])],
+                    )
+            text = str(ctx.exception)
+            self.assertEqual(output.getvalue(), '')
+            self.assertIn('missing generated board artifacts', text)
+            self.assertIn('ESP_BMGR_ASSIST_PREFLIGHT=0 idf.py flash', text)
 
     def test_preflight_can_be_disabled_via_env_zero(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -137,6 +156,7 @@ class PreflightModuleTests(unittest.TestCase):
             text = output.getvalue()
             self.assertIn('missing generated board artifacts', text)
             self.assertIn('[ESP_BMGR_ASSIST] Warning:', text)
+            self.assertIn('ESP_BMGR_ASSIST_PREFLIGHT=0 idf.py build', text)
             self.assertEqual(os.environ.get(preflight.SKIP_GEN_CHECK_ENV), '1')
             self.assertIsNone(os.environ.get(preflight.SKIP_SDKCONFIG_CHECK_ENV))
 
@@ -182,6 +202,7 @@ class PreflightModuleTests(unittest.TestCase):
             self.assertEqual(output.getvalue(), '')
             self.assertIn('[ESP_BMGR_ASSIST] Error:', text)
             self.assertIn('CONFIG_IDF_TARGET mismatch', text)
+            self.assertIn('ESP_BMGR_ASSIST_PREFLIGHT=0 idf.py build', text)
 
     def test_preflight_skips_non_build_commands(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,11 +1,11 @@
 # esp-bmgr-assist
 
-PyPI package: `esp-bmgr-assist`  
+PyPI package: `esp-bmgr-assist`
 Python package: `esp_bmgr_py`
 
 `esp-bmgr-assist` injects into the `idf.py` startup flow through a `.pth` hook, then discovers and loads the [ESP Board Manager](https://components.espressif.com/components/espressif/esp_board_manager) extension automatically.
 
-PyPI 包名：`esp-bmgr-assist`  
+PyPI 包名：`esp-bmgr-assist`
 Python 包目录：`esp_bmgr_py`
 
 `esp-bmgr-assist` 通过 `.pth` 注入 `idf.py` 启动流程，帮助工程自动发现并加载 [ESP Board Manager](https://components.espressif.com/components/espressif/esp_board_manager) 扩展。

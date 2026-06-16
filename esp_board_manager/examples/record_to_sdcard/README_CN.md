@@ -5,7 +5,7 @@
 
 ## 例程简介
 
-- 从麦克风（Audio ADC）采集音频，按 WAV 格式写入 `/sdcard/test.wav`，录制时长由源码中 `DEFAULT_DURATION_SECONDS` 等宏配置。
+- 从麦克风（Audio ADC）采集音频，按 WAV 格式写入 `/sdcard/test_rec.wav`，录制时长由源码中 `DEFAULT_DURATION_SECONDS` 等宏配置。
 - 技术上演示 `esp_board_manager` 初始化 Audio ADC 与 `fs_sdcard`，使用 `esp_codec_dev` 读音频数据，并借助 `common` 中 `write_wav_header` 写文件头。
 
 ### 典型场景
@@ -60,24 +60,22 @@
 . ./export.sh
 ```
 
+在已激活的 ESP-IDF Python 环境中安装 `esp-bmgr-assist`：
+
+```
+pip install esp-bmgr-assist
+```
+
 ```
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/record_to_sdcard
 ```
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
-idf.py gen-bmgr-config -l
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 自定义板：[自定义板子](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board)。
@@ -99,12 +97,12 @@ idf.py -p PORT flash monitor
 
 ### 功能和用法
 
-- 插入 SD 卡并烧录运行；上电后自动录制设定时长并生成 `/sdcard/test.wav`。
+- 插入 SD 卡并烧录运行；上电后自动录制设定时长并生成 `/sdcard/test_rec.wav`。
 
 ### 日志输出
 
 ```text
-I (732) BMGR_RECORD_TO_SDCARD: Record to /sdcard/record.wav
+I (732) BMGR_RECORD_TO_SDCARD: Record to /sdcard/test_rec.wav
 I (738) DEV_AUDIO_CODEC: ADC is ENABLED
 I (760) PERIPH_I2S: I2S[0] TDM, RX, ws: 45, bclk: 9, dout: 8, din: 10
 I (766) PERIPH_I2S: I2S[0] initialize success: 0x3c096ebc
@@ -158,9 +156,11 @@ I (11065) BOARD_MANAGER: Device fs_sdcard deinitialized
 
 ## 故障排除
 
-### `gen-bmgr-config` 无 `-b` 选项
+### `idf.py bmgr` 命令未找到
 
-检查 `IDF_EXTRA_ACTIONS_PATH` 是否指向 `esp_board_manager` 包目录。
+- 确认已在当前 ESP-IDF Python 环境中安装 `esp-bmgr-assist`。
+- 确认工程 `main/idf_component.yml` 中已包含 `esp_board_manager` 依赖。
+- 如果使用旧入口，请确认 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager` 包目录。
 
 ```
 # Linux / macOS:

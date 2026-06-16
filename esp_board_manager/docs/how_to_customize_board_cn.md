@@ -249,11 +249,13 @@ devices:
      - `CONFIG_XXX="value"` 字符串值
    - 切换板子时，`board_manager.defaults` 文件会被重新生成，包含新板子的配置
 
-   配置优先级：
+配置优先级：
 1. `sdkconfig`（用户当前配置）
 2. `sdkconfig.defaults`（项目默认值）
-3. `board_manager.defaults`（板子特定配置，优先级高于 sdkconfig.defaults）
+3. `board_manager.defaults`（板级默认兜底与 Board Manager 符号；会先于项目默认值加载，因此用户默认值可以覆盖普通板级默认值）
 4. 组件自己的默认值
+
+   用户默认值不应设置由 ESP Board Manager 管理的当前开发板选择、开发板名称、设备支持或外设支持符号。这些符号会在配置前检查。
 
 ### 6. `board` 目录中自定义代码的说明
 

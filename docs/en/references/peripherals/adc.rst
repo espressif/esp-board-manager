@@ -159,6 +159,7 @@ Continuous: ``patterns`` Configuration Full Fields
             # - ADC_BITWIDTH_13
             # - ADC_BITWIDTH_DEFAULT
             # - SOC_ADC_DIGI_MAX_BITWIDTH
+            # - positive integer supported by the target ADC driver
             bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
 
           # Example of a second pattern for another ADC unit (if supported by the target)
@@ -188,6 +189,7 @@ Continuous: Single Unit Configuration Full Fields
         unit_id: ADC_UNIT_1  # [TO_BE_CONFIRMED] ADC unit, optional values are ADC_UNIT_1 and ADC_UNIT_2
         channel_list: [4]    # [TO_BE_CONFIRMED] List of ADC channels used by this audio input path.
         atten: ADC_ATTEN_DB_0
+        # ADC raw output bit-width. Use an enum, SoC macro, or positive integer supported by the target ADC driver.
         bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
 
 oneshot Full Fields
@@ -224,6 +226,8 @@ oneshot Full Fields
         # - ADC_BITWIDTH_12
         # - ADC_BITWIDTH_13
         # - ADC_BITWIDTH_DEFAULT (Default ADC output bits, max supported width will be selected)
+        # - SOC_ADC_DIGI_MAX_BITWIDTH
+        # - positive integer supported by the target ADC driver, for example 17
 
         # ADC channel to be used.
         # Use adc_oneshot_io_to_channel() and adc_oneshot_channel_to_io() to get the corresponding relationship between ADC channels and ADC IO.

@@ -224,6 +224,125 @@ def _parse_bmgr_defaults_symbols(
     return selected_board, device_types, peripheral_types, device_subtypes
 
 
+def _parse_idf_target_from_defaults(defaults_path: str) -> Optional[str]:
+    """Parse CONFIG_IDF_TARGET from a sdkconfig defaults file."""
+    line_re_dq = re.compile(r'^CONFIG_IDF_TARGET="([^"]*)"\s*$')
+    line_re_sq = re.compile(r"^CONFIG_IDF_TARGET='([^']*)'\s*$")
+    line_re_bare = re.compile(r'^CONFIG_IDF_TARGET=([^#\s]+)\s*$')
+
+    with open(defaults_path, 'r', encoding='utf-8') as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith('#'):
+                continue
+            match = line_re_dq.match(line) or line_re_sq.match(line)
+            if match:
+                return match.group(1)
+            match = line_re_bare.match(line)
+            if match:
+                return match.group(1).strip('"').strip("'")
+    return None
+
+
+def _resolve_sdkconfig_defaults_entry(entry: str, project_dir: str) -> str:
+    """Resolve an SDKCONFIG_DEFAULTS entry the same way ESP-IDF does."""
+    path = Path(entry).expanduser()
+    if path.is_absolute():
+        return str(path.resolve())
+    return str((Path(project_dir) / path).resolve())
+
+
+def _sdkconfig_default_with_target(defaults_path: str, idf_target: str) -> Optional[str]:
+    target_path = f'{defaults_path}.{idf_target}'
+    return target_path if os.path.exists(target_path) else None
+
+
+def _iter_sdkconfig_defaults_with_target(defaults_paths: List[str], idf_target: str) -> List[str]:
+    paths: List[str] = []
+    for defaults_path in defaults_paths:
+        paths.append(defaults_path)
+        target_path = _sdkconfig_default_with_target(defaults_path, idf_target)
+        if target_path:
+            paths.append(target_path)
+    return paths
+
+
+_BMGR_MANAGED_SUPPORT_SYMBOL_PATTERNS = (
+    re.compile(r'^CONFIG_ESP_BOARD_PERIPH_[A-Za-z0-9_]+_SUPPORT$'),
+    re.compile(r'^CONFIG_ESP_BOARD_DEV_[A-Za-z0-9_]+_SUPPORT$'),
+    re.compile(r'^CONFIG_ESP_BOARD_DEV_[A-Za-z0-9_]+_SUB_[A-Za-z0-9_]+_SUPPORT$'),
+)
+
+
+def _board_select_config_symbol(selected_board: str) -> str:
+    return f'CONFIG_ESP_BOARD_{selected_board.upper().replace("-", "_")}'
+
+
+def _is_managed_bmgr_symbol(symbol: str, selected_board: Optional[str]) -> bool:
+    if symbol == 'CONFIG_ESP_BOARD_NAME':
+        return True
+    if selected_board and symbol == _board_select_config_symbol(selected_board):
+        return True
+    return any(pattern.match(symbol) for pattern in _BMGR_MANAGED_SUPPORT_SYMBOL_PATTERNS)
+
+
+def _find_active_symbol_assignments(defaults_path: str) -> List[Tuple[int, str]]:
+    """Return active CONFIG_* assignments from a defaults file."""
+    line_re_set = re.compile(r'^(CONFIG_[A-Za-z0-9_]+)\s*=')
+    line_re_unset = re.compile(r'^#\s+(CONFIG_[A-Za-z0-9_]+)\s+is\s+not\s+set\s*$')
+    assignments: List[Tuple[int, str]] = []
+
+    with open(defaults_path, 'r', encoding='utf-8') as f:
+        for line_no, raw in enumerate(f, start=1):
+            line = raw.strip()
+            if not line:
+                continue
+            match = line_re_set.match(line) or line_re_unset.match(line)
+            if match:
+                assignments.append((line_no, match.group(1)))
+    return assignments
+
+
+def _collect_managed_bmgr_symbols(defaults_path: str, selected_board: Optional[str]) -> Set[str]:
+    """Collect Board Manager managed symbols from the generated defaults file."""
+    return {
+        symbol
+        for _, symbol in _find_active_symbol_assignments(defaults_path)
+        if _is_managed_bmgr_symbol(symbol, selected_board)
+    }
+
+
+def _validate_user_defaults_do_not_override_bmgr_symbols(
+    *,
+    patch_file: str,
+    user_defaults: List[str],
+    project_dir: str,
+) -> None:
+    """Fail if user defaults loaded after board_manager.defaults set BMGR symbols."""
+    idf_target = _parse_idf_target_from_defaults(patch_file)
+    if not idf_target:
+        raise FatalError(
+            '[Board Manager] Failed to parse CONFIG_IDF_TARGET from board_manager.defaults. '
+            'Please run: idf.py bmgr -b <board> (legacy: idf.py gen-bmgr-config -b <board>) '
+            'to refresh board metadata.'
+        )
+
+    selected_board, _, _, _ = _parse_bmgr_defaults_symbols(patch_file)
+    for defaults_path in _iter_sdkconfig_defaults_with_target(user_defaults, idf_target):
+        if not os.path.exists(defaults_path):
+            continue
+        for line_no, symbol in _find_active_symbol_assignments(defaults_path):
+            if not _is_managed_bmgr_symbol(symbol, selected_board):
+                continue
+            rel_path = os.path.relpath(defaults_path, project_dir)
+            raise FatalError(
+                f'[Board Manager] User sdkconfig defaults {rel_path}:{line_no} modifies '
+                f'Board Manager managed symbol {symbol}. Remove managed BMGR symbols '
+                'from user defaults and run: idf.py bmgr -b <board> '
+                '(legacy: idf.py gen-bmgr-config -b <board>).'
+            )
+
+
 def action_extensions(base_actions: Dict, project_path: str) -> Dict:
     """
     IDF action extension entry point.
@@ -331,15 +450,26 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             return
 
         defaults_list = []
+        abs_patch_file = os.path.abspath(patch_file)
+        if abs_patch_file not in defaults_list:
+            defaults_list.append(abs_patch_file)
+
+        user_defaults: List[str] = []
         sdkconfig_defaults = os.path.join(proj_dir, 'sdkconfig.defaults')
         if os.path.exists(sdkconfig_defaults):
-            defaults_list.append(os.path.abspath(sdkconfig_defaults))
+            sdkconfig_defaults_abs = os.path.abspath(sdkconfig_defaults)
+            defaults_list.append(sdkconfig_defaults_abs)
+            user_defaults.append(sdkconfig_defaults_abs)
         env_defaults = os.environ.get('SDKCONFIG_DEFAULTS', '')
         if env_defaults:
             for f in env_defaults.split(';'):
                 f = f.strip()
-                if f and f not in defaults_list:
-                    defaults_list.append(f)
+                if not f:
+                    continue
+                resolved = _resolve_sdkconfig_defaults_entry(f, proj_dir)
+                if resolved not in defaults_list:
+                    defaults_list.append(resolved)
+                    user_defaults.append(resolved)
         define_cache_entries = global_args.get('define_cache_entry', [])
         sdkconfig_defaults_entry_index = None
         for i, entry in enumerate(define_cache_entries):
@@ -348,13 +478,25 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                 cache_defaults = entry.split('=', 1)[1]
                 for f in cache_defaults.split(';'):
                     f = f.strip()
-                    if f and f not in defaults_list:
-                        defaults_list.append(f)
+                    if not f:
+                        continue
+                    resolved = _resolve_sdkconfig_defaults_entry(f, proj_dir)
+                    if resolved not in defaults_list:
+                        defaults_list.append(resolved)
+                        user_defaults.append(resolved)
                 break
 
-        abs_patch_file = os.path.abspath(patch_file)
-        if abs_patch_file not in defaults_list:
-            defaults_list.append(abs_patch_file)
+        if _env_flag_true('ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK'):
+            print(
+                '[Board Manager] user defaults managed-symbol check skipped by '
+                'ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK'
+            )
+        else:
+            _validate_user_defaults_do_not_override_bmgr_symbols(
+                patch_file=patch_file,
+                user_defaults=user_defaults,
+                project_dir=proj_dir,
+            )
 
         os.environ['SDKCONFIG_DEFAULTS'] = ';'.join(defaults_list)
 

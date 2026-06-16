@@ -73,6 +73,9 @@ int dev_display_lcd_sub_spi_init(void *cfg, int cfg_size, void **device_handle)
     ret = lcd_panel_factory_entry_t(lcd_handles->io_handle, &lcd_cfg->sub_cfg.spi.panel_config, &lcd_handles->panel_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create LCD panel: %s", esp_err_to_name(ret));
+        if (lcd_handles->panel_handle) {
+            esp_lcd_panel_del(lcd_handles->panel_handle);
+        }
         esp_lcd_panel_io_del(lcd_handles->io_handle);
         esp_board_periph_unref_handle(lcd_cfg->sub_cfg.spi.spi_name);
         goto cleanup;

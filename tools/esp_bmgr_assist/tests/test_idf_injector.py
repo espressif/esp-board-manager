@@ -149,6 +149,11 @@ class InjectorTests(unittest.TestCase):
             names.extend(opt.get('names', []))
         self.assertIn('-l', names)
         self.assertIn('--list-boards', names)
+        self.assertIn('-a', names)
+        self.assertIn('--amend', names)
+        self.assertIn('--skip-sdkconfig-check', names)
+        self.assertNotIn('-o', names)
+        self.assertNotIn('--override', names)
 
     def test_placeholder_ext_defines_preflight_level_global_option(self) -> None:
         names = []

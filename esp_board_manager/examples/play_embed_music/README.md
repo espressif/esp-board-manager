@@ -59,7 +59,11 @@ Before building this example, ensure the ESP-IDF environment is set up. If it is
 . ./export.sh
 ```
 
-Short steps:
+Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+
+```
+pip install esp-bmgr-assist
+```
 
 - Go to this example's project directory:
 
@@ -67,36 +71,23 @@ Short steps:
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/play_embed_music
 ```
 
-- Configure the `esp_board_manager` path to activate the environment (only needs to be executed once under the current terminal):
+- List visible boards:
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 - Generate board configuration and code for your board (example: `esp32_s3_korvo2_v3`):
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 Custom boards: see [Custom board](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board).
 
-- List supported boards:
-
-```
-idf.py gen-bmgr-config -l
-```
-
 ### Project Configuration
 
-- Board selection and chip target are applied via `gen-bmgr-config` and generated `components/gen_bmgr_codes/board_manager.defaults`
+- Board selection and chip target are applied by `idf.py bmgr -b <board>` and generated `components/gen_bmgr_codes/board_manager.defaults`.
 
 ### Build and Flash Commands
 
@@ -156,9 +147,11 @@ I (5324) BOARD_MANAGER: Device audio_dac deinitialized
 
 ## Troubleshooting
 
-### `idf.py gen-bmgr-config` has no `-b` option
+### `idf.py bmgr` command not found
 
-`IDF_EXTRA_ACTIONS_PATH` must point to `esp_board_manager`. Verify:
+- Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
+- Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
+- If using the legacy entry point, `IDF_EXTRA_ACTIONS_PATH` must point to `esp_board_manager`. Verify:
 
 ```
 # Linux / macOS:
