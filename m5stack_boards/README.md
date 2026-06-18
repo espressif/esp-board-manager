@@ -23,4 +23,4 @@ For more information about ESP Board Manager, see the [`esp_board_manager` compo
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip |
 |---|---|---|---|---|---|---|---|---|
 | [`M5STACK CORES3`](https://docs.m5stack.com/en/core/CoreS3) | ESP32-S3 | AW88298 + ES7210 | SDSPI | ILI9342C | FT5x06 | - | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/en/core/Tab5) | ESP32-P4 | ES8388 + ES7210 | SDMMC | ILI9881C | GT911 | SC202CS | - | - |
+| [`M5STACK TAB5`](https://docs.m5stack.com/en/core/Tab5) | ESP32-P4 | ES8388 + ES7210 | SDMMC | ILI9881C / ST7121 / ST7123 auto detect | GT911 / ST712x auto detect | SC202CS | - | - |

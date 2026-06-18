@@ -129,6 +129,9 @@ Standard SPI Bus / Quad / Octal SPI Bus — Full Fields
           # Maximum transfer size (default: 4092)
           max_transfer_sz: 4092
 
+          # DMA burst size in bytes (IDF v6.1+; 0 uses driver default)
+          dma_burst_size: 0
+
           # Flags (default: 0)
           flags: 0
 

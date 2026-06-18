@@ -6,4 +6,4 @@ ESP Board Manager 是乐鑫推出的开发板管理组件。它使用 YAML 文�
 
 该组件已发布到 [IDF Component Registry](https://components.espressif.com/components/espressif/esp_board_manager)。
 
-最新版本的在线文档请访问 https://docs.espressif.com/projects/esp-board-manager/。文档由本仓库 `docs/` 目录构建生成。
+最新版本的在线文档请访问 https://docs.espressif.com/projects/esp-board-manager/zh_CN

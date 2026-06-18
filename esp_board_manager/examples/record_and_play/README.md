@@ -63,36 +63,29 @@ Short steps:
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/record_and_play
 ```
 
-- Configure the `esp_board_manager` path to activate the environment (only needs to be executed once under the current terminal):
+Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+pip install esp-bmgr-assist
+```
 
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
+- List visible boards:
 
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+```
+idf.py bmgr -l
 ```
 
 - Generate board configuration and code for your board (example: `esp32_s3_korvo2_v3`):
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 Custom boards: see [Custom board](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board).
 
-- List supported boards:
-
-```
-idf.py gen-bmgr-config -l
-```
-
 ### Project Configuration
 
-- Board from `gen-bmgr-config`.
+- Board from `idf.py bmgr -b <board>`.
 - Tune `DEFAULT_SAMPLE_RATE`, `DEFAULT_CHANNELS`, `DEFAULT_BITS_PER_SAMPLE`, `DEFAULT_PLAY_VOL`, `DEFAULT_REC_GAIN`, and `LOOPBACK_DURATION_SEC` in `record_and_play.c`.
 - Reduce playback volume or mic gain if you hear feedback or howling.
 - For development boards using ADC microphones, PDM speakers, or other speakers that do not rely on Codec chips, the relevant configurations need to be enabled in `menuconfig`:
@@ -134,9 +127,11 @@ I (xxx) BMGR_RECORD_AND_PLAY: Audio loopback completed. Total bytes transferred:
 
 ## Troubleshooting
 
-### `idf.py gen-bmgr-config` has no `-b` option
+### `idf.py bmgr` command not found
 
-`IDF_EXTRA_ACTIONS_PATH` must point to `esp_board_manager`. Verify:
+- Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
+- Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
+- If using the legacy entry point, `IDF_EXTRA_ACTIONS_PATH` must point to `esp_board_manager`. Verify:
 
 ```
 # Linux / macOS:

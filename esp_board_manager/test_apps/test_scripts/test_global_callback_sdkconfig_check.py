@@ -240,3 +240,187 @@ def test_callback_injects_defaults_when_sdkconfig_missing(bmgr_root, tmp_path, m
     )
     sdkdefaults = os.environ.get('SDKCONFIG_DEFAULTS', '')
     assert 'board_manager.defaults' in sdkdefaults
+
+
+def test_callback_prepends_board_manager_defaults_when_sdkconfig_missing(
+    bmgr_root, tmp_path, monkeypatch
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_SPIRAM_SPEED_120M=y\n',
+        encoding='utf-8',
+    )
+    user_defaults = project_dir / 'sdkconfig.user'
+    user_defaults.write_text('CONFIG_FREERTOS_HZ=1000\n', encoding='utf-8')
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.setenv('SDKCONFIG_DEFAULTS', str(user_defaults))
+
+    callback(
+        None,
+        {'project_dir': str(project_dir), 'define_cache_entry': []},
+        [_Task('build')],
+    )
+
+    defaults = os.environ.get('SDKCONFIG_DEFAULTS', '').split(';')
+    assert defaults[0].endswith('components/gen_bmgr_codes/board_manager.defaults')
+    assert defaults[1] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[2] == str(user_defaults)
+
+
+def test_callback_merges_and_rewrites_sdkconfig_defaults_from_define_cache_entry(
+    bmgr_root, tmp_path, monkeypatch
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_SPIRAM_SPEED_120M=y\n',
+        encoding='utf-8',
+    )
+    env_defaults = project_dir / 'sdkconfig.env'
+    env_defaults.write_text('CONFIG_FREERTOS_HZ=1000\n', encoding='utf-8')
+    cache_defaults = project_dir / 'sdkconfig.cache'
+    cache_defaults.write_text('CONFIG_COMPILER_OPTIMIZATION_SIZE=y\n', encoding='utf-8')
+    nested_defaults_dir = project_dir / 'nested'
+    nested_defaults_dir.mkdir()
+    nested_defaults = nested_defaults_dir / 'sdkconfig.extra'
+    nested_defaults.write_text('CONFIG_PARTITION_TABLE_CUSTOM=y\n', encoding='utf-8')
+
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.setenv('SDKCONFIG_DEFAULTS', str(env_defaults))
+    global_args = {
+        'project_dir': str(project_dir),
+        'define_cache_entry': [
+            'OTHER_OPTION=1',
+            'SDKCONFIG_DEFAULTS=sdkconfig.cache;nested/sdkconfig.extra',
+        ],
+    }
+
+    callback(None, global_args, [_Task('build')])
+
+    defaults = os.environ.get('SDKCONFIG_DEFAULTS', '').split(';')
+    assert defaults[0].endswith('components/gen_bmgr_codes/board_manager.defaults')
+    assert defaults[1] == str(project_dir / 'sdkconfig.defaults')
+    assert defaults[2] == str(env_defaults)
+    assert defaults[3] == str(cache_defaults.resolve())
+    assert defaults[4] == str(nested_defaults.resolve())
+
+    assert global_args['define_cache_entry'][0] == 'OTHER_OPTION=1'
+    assert global_args['define_cache_entry'][1] == f'SDKCONFIG_DEFAULTS={";".join(defaults)}'
+
+
+def test_callback_allows_user_defaults_to_override_non_bmgr_symbols(
+    bmgr_root, tmp_path, monkeypatch
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_SPIRAM_SPEED_120M=y\n',
+        encoding='utf-8',
+    )
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
+
+    callback(
+        None,
+        {'project_dir': str(project_dir), 'define_cache_entry': []},
+        [_Task('build')],
+    )
+
+    assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
+
+
+@pytest.mark.parametrize(
+    'managed_symbol_line',
+    [
+        '# CONFIG_ESP_BOARD_TEST_BOARD is not set',
+        'CONFIG_ESP_BOARD_NAME="other_board"',
+        '# CONFIG_ESP_BOARD_PERIPH_I2C_SUPPORT is not set',
+        '# CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT is not set',
+        '# CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_SPI_SUPPORT is not set',
+        'CONFIG_ESP_BOARD_PERIPH_SPI_SUPPORT=y',
+        'CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT=y',
+        'CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_DSI_SUPPORT=y',
+    ],
+)
+def test_callback_rejects_user_defaults_that_set_managed_bmgr_symbols(
+    bmgr_root, tmp_path, monkeypatch, managed_symbol_line
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        f'{managed_symbol_line}\n',
+        encoding='utf-8',
+    )
+    callback, idf_ext = _load_callback(bmgr_root, project_dir)
+    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
+
+    with pytest.raises(idf_ext.FatalError, match='Board Manager managed symbol'):
+        callback(
+            None,
+            {'project_dir': str(project_dir), 'define_cache_entry': []},
+            [_Task('build')],
+        )
+
+
+def test_callback_skip_switch_allows_user_defaults_with_managed_bmgr_symbols(
+    bmgr_root, tmp_path, monkeypatch, capsys
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT=y\n',
+        encoding='utf-8',
+    )
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
+    monkeypatch.setenv('ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK', '1')
+
+    callback(
+        None,
+        {'project_dir': str(project_dir), 'define_cache_entry': []},
+        [_Task('build')],
+    )
+
+    out = capsys.readouterr().out
+    assert 'ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK' in out
+    assert 'user defaults managed-symbol check skipped' in out
+    assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
+
+
+def test_callback_allows_unmanaged_esp_board_prefixed_defaults(
+    bmgr_root, tmp_path, monkeypatch
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_ESP_BOARD_FUTURE_OPTION=y\n',
+        encoding='utf-8',
+    )
+    callback, _ = _load_callback(bmgr_root, project_dir)
+    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
+
+    callback(
+        None,
+        {'project_dir': str(project_dir), 'define_cache_entry': []},
+        [_Task('build')],
+    )
+
+    assert 'board_manager.defaults' in os.environ.get('SDKCONFIG_DEFAULTS', '')
+
+
+def test_callback_rejects_target_user_defaults_that_set_bmgr_symbols(
+    bmgr_root, tmp_path, monkeypatch
+):
+    project_dir = _make_project(tmp_path, with_sdkconfig=False)
+    (project_dir / 'sdkconfig.defaults').write_text(
+        'CONFIG_SPIRAM_SPEED_120M=y\n',
+        encoding='utf-8',
+    )
+    (project_dir / 'sdkconfig.defaults.esp32s3').write_text(
+        'CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT=y\n',
+        encoding='utf-8',
+    )
+    callback, idf_ext = _load_callback(bmgr_root, project_dir)
+    monkeypatch.delenv('SDKCONFIG_DEFAULTS', raising=False)
+
+    with pytest.raises(idf_ext.FatalError, match='sdkconfig.defaults.esp32s3'):
+        callback(
+            None,
+            {'project_dir': str(project_dir), 'define_cache_entry': []},
+            [_Task('build')],
+        )

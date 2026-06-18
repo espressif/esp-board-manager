@@ -82,7 +82,7 @@
 
 .. code-block:: c
 
-   #include "esp_board_manager.h"
+   #include "esp_board_manager_includes.h"
 
    void app_main(void)
    {
@@ -127,6 +127,44 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 BMGR 不会因为板级 YAML 修改而自动刷新旧的生成物。修改后需要重新执行 ``idf.py bmgr -b <board>``，然后继续构建。
+
+示例
+----------------------------------
+
+``esp_board_manager/examples/`` 提供若干可独立构建的示例，演示完整的使用路径：选择开发板、生成板级代码、初始化、按设备名获取句柄。各例程目录下提供 ``README_CN.md``，其中包含硬件要求与构建步骤。
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 34 32 12
+
+   * - 例程
+     - 典型场景
+     - 主要涉及的 device
+     - Registry
+   * - ``play_embed_music``
+     - 从固件内嵌 WAV 播放提示音
+     - ``audio_codec``\ （DAC）
+     - `链接 <https://components.espressif.com/components/espressif/esp_board_manager/examples/play_embed_music>`__
+   * - ``play_sdcard_music``
+     - 从 microSD 卡播放 WAV
+     - ``audio_codec``、``fs_fat``
+     - `链接 <https://components.espressif.com/components/espressif/esp_board_manager/examples/play_sdcard_music>`__
+   * - ``record_to_sdcard``
+     - 麦克风录音并写入 SD 卡 WAV
+     - ``audio_codec``\ （ADC）、``fs_fat``
+     - `链接 <https://components.espressif.com/components/espressif/esp_board_manager/examples/record_to_sdcard>`__
+   * - ``record_and_play``
+     - 麦克风采集并实时从扬声器播放（回环）
+     - ``audio_codec``\ （ADC + DAC）
+     - `链接 <https://components.espressif.com/components/espressif/esp_board_manager/examples/record_and_play>`__
+   * - ``display_lvgl``
+     - 初始化 LCD 与触摸屏，运行 LVGL 测试 UI
+     - ``display_lcd``、``lcd_touch``
+     - `链接 <https://components.espressif.com/components/espressif/esp_board_manager/examples/display_lvgl>`__
+
+``examples/common/`` 提供 WAV 头解析等共用代码，供 SD 卡相关例程引用。
+
+除了上述示例， ``esp_board_manager/test_apps/`` 提供面向 CI 和本地验证的测试应用，覆盖 board manager 内已经支持的各个设备和外设。在完成新板卡适配后，可用该测试应用验证配置的正确性。
 
 SDK 资源
 ----------------------------------

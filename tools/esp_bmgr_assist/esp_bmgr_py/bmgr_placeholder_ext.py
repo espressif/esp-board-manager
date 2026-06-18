@@ -20,12 +20,25 @@ BMGR_PLACEHOLDER_OPTIONS: Any = [
     {'names': ['-l', '--list-boards'], 'help': 'List all available boards and exit', 'is_flag': True},
     {'names': ['-b', '--board'], 'help': 'Specify board name, index, or directory path', 'type': str},
     {'names': ['-c', '--customer-path'], 'help': 'Path to customer boards directory (use "NONE" to skip)', 'type': str},
-    {'names': ['-o', '--override'], 'help': 'Path to override YAML file or directory', 'type': str},
+    {
+        'names': ['-a', '--amend'],
+        'help': (
+            'Path to an amend directory containing a board_amend.yaml manifest. '
+            'The manifest declares an ordered list of fragments (YAML / C / directory) to '
+            'apply on top of the selected board; later entries override earlier ones.'
+        ),
+        'type': str,
+    },
     {'names': ['-x', '--clean'], 'help': 'Clean generated files', 'is_flag': True},
     {'names': ['-n', '--new-board'], 'help': 'Create a new board', 'type': str},
     {'names': ['--peripherals-only'], 'help': 'Only process peripherals', 'is_flag': True},
     {'names': ['--devices-only'], 'help': 'Only process devices', 'is_flag': True},
     {'names': ['--kconfig-only'], 'help': 'Only generate Kconfig menu', 'is_flag': True},
+    {
+        'names': ['--skip-sdkconfig-check'],
+        'help': 'Skip CONFIG_IDF_TARGET and ESP_BOARD_* sdkconfig preflight warnings in idf_ext',
+        'is_flag': True,
+    },
     {
         'names': ['--log-level'],
         'help': 'Set the log level (DEBUG, INFO, WARNING, ERROR)',

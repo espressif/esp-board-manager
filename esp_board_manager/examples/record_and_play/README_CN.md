@@ -63,36 +63,29 @@
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/record_and_play
 ```
 
-- 配置 `esp_board_manager` 路径，激活环境（在当前终端下只需要执行一次）
+在已激活的 ESP-IDF Python 环境中安装 `esp-bmgr-assist`：
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+pip install esp-bmgr-assist
+```
 
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
+- 列出当前可见的开发板：
 
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+```
+idf.py bmgr -l
 ```
 
 - 生成板级配置（示例：`esp32_s3_korvo2_v3`）：
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 自定义板：参考 [自定义板子](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board)。
 
-- 列出已支持开发板：
-
-```
-idf.py gen-bmgr-config -l
-```
-
 ### 项目配置
 
-- 板级由 `gen-bmgr-config` 管理。
+- 板级由 `idf.py bmgr -b <board>` 管理。
 - 可在 `record_and_play.c` 中调整 `DEFAULT_SAMPLE_RATE`、`DEFAULT_CHANNELS`、`DEFAULT_BITS_PER_SAMPLE`、`DEFAULT_PLAY_VOL`、`DEFAULT_REC_GAIN`、`LOOPBACK_DURATION_SEC`。
 - 出现啸叫或回声时可降低播放音量或录音增益。
 - 对于使用 ADC 麦克风、PDM 扬声器或是其他不依赖 Codec 芯片的扬声器的开发板，需要在 `menuconfig` 中打开相关的配置：
@@ -130,9 +123,11 @@ I (xxx) BMGR_RECORD_AND_PLAY: Audio loopback completed. Total bytes transferred:
 
 ## 故障排除
 
-### `idf.py gen-bmgr-config` 没有 `-b` 参数
+### `idf.py bmgr` 命令未找到
 
-请确认已设置 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager`：
+- 确认已在当前 ESP-IDF Python 环境中安装 `esp-bmgr-assist`。
+- 确认工程 `main/idf_component.yml` 中已包含 `esp_board_manager` 依赖。
+- 如果使用旧入口，请确认 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager`：
 
 ```
 # Linux / macOS:

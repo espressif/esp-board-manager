@@ -240,11 +240,11 @@ sdkconfig.defaults.board 与 Kconfig.projbuild
 运行时：BMGR 如何接入工程构建
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-构建时，ESP-IDF 读取一组 ``SDKCONFIG_DEFAULTS``\ （由 ``SDKCONFIG_DEFAULTS`` 环境变量或 CMake 变量声明的、以 ``;`` 分隔的文件列表）。BMGR 通过 ``idf.py`` 的全局回调（global callback）将生成的 ``components/gen_bmgr_codes/board_manager.defaults`` 追加到该链路末尾，将当前开发板的设备与外设能力符号、``CONFIG_IDF_TARGET`` 以及板级 sdkconfig 默认项注入构建配置，驱动后续条件编译。
+构建时，ESP-IDF 读取一组 ``SDKCONFIG_DEFAULTS``\ （由 ``SDKCONFIG_DEFAULTS`` 环境变量或 CMake 变量声明的、以 ``;`` 分隔的文件列表）。当工程 ``sdkconfig`` 不存在时，BMGR 通过 ``idf.py`` 的全局回调（global callback）将生成的 ``components/gen_bmgr_codes/board_manager.defaults`` 放在工程默认值之前，将当前开发板的设备与外设能力符号、``CONFIG_IDF_TARGET`` 以及板级 sdkconfig 默认项注入构建配置。后续加载的工程默认值仍可覆盖普通板级默认项，但用户默认值中不得写入 BMGR 管理的能力符号。
 
 .. warning::
 
-   请勿在工程的 ``sdkconfig.defaults`` 中手写 BMGR 的设备或外设能力符号（例如 ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``、``CONFIG_ESP_BOARD_<BOARD>=y`` 等）。这些符号应仅来自 BMGR 根据当前开发板 YAML 自动生成的 ``board_manager.defaults``。手工写在工程 defaults 中容易与 BMGR 生成结果不一致，进而导致依赖求解、条件编译或运行时初始化出现问题。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition、应用层开关等）请放到板目录下的 ``sdkconfig.defaults.board``，由 BMGR 统一合并。
+   请勿在工程的 ``sdkconfig.defaults`` 中手写 BMGR 的设备、外设或设备子类型能力符号（例如 ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT``、``CONFIG_ESP_BOARD_<BOARD>=y`` 等）。这些符号应仅来自 BMGR 根据当前开发板 YAML 自动生成的 ``board_manager.defaults``。BMGR 准备 ``SDKCONFIG_DEFAULTS`` 时会拒绝工程 defaults 中的这些符号。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition、应用层开关等）请放到板目录下的 ``sdkconfig.defaults.board``，由 BMGR 统一合并。
 
 切换开发板时，``idf.py bmgr -b <other_board>`` 会重新生成 ``board_manager.defaults`` 与 ``Kconfig.projbuild``，并备份与清理旧 ``sdkconfig`` 中由上一块开发板写入的能力宏。
 

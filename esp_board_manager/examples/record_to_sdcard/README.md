@@ -5,7 +5,7 @@
 
 ## Example Brief
 
-- This example captures audio from the microphone (Audio ADC), encodes it as PCM in a WAV container, and saves to `/sdcard/test.wav` for a fixed duration (see `DEFAULT_DURATION_SECONDS` in source).
+- This example captures audio from the microphone (Audio ADC), encodes it as PCM in a WAV container, and saves to `/sdcard/test_rec.wav` for a fixed duration (see `DEFAULT_DURATION_SECONDS` in source).
 - Technically it demonstrates `esp_board_manager` for Audio ADC and `fs_sdcard`, plus `esp_codec_dev` read path and `write_wav_header` from the shared `common` component.
 
 ### Typical Scenarios
@@ -60,31 +60,29 @@ This example supports IDF release/v5.4 (>= v5.4.3) and release/v5.5 (>= v5.5.2).
 . ./export.sh
 ```
 
+Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+
+```
+pip install esp-bmgr-assist
+```
+
 ```
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/record_to_sdcard
 ```
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
-idf.py gen-bmgr-config -l
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 Custom boards: [Custom board](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board).
 
 ### Project Configuration
 
-- Board and defaults from `gen-bmgr-config`.
+- Board and defaults from `idf.py bmgr -b <board>`.
 - FatFs options preset for SD in `sdkconfig.defaults`.
 - Recording duration, sample rate, path, and gain: edit macros in `record_to_sdcard.c` (`DEFAULT_DURATION_SECONDS`, `DEFAULT_SAMPLE_RATE`, `DEFAULT_REC_URL`, `DEFAULT_REC_GAIN`, etc.).
 
@@ -104,12 +102,12 @@ Exit monitor: `Ctrl-]`
 
 ### Functionality and Usage
 
-- Insert SD card, flash, and run; after boot the device records for the configured duration and writes `/sdcard/test.wav`.
+- Insert SD card, flash, and run; after boot the device records for the configured duration and writes `/sdcard/test_rec.wav`.
 
 ### Log Output
 
 ```text
-I (732) BMGR_RECORD_TO_SDCARD: Record to /sdcard/record.wav
+I (732) BMGR_RECORD_TO_SDCARD: Record to /sdcard/test_rec.wav
 I (738) DEV_AUDIO_CODEC: ADC is ENABLED
 I (760) PERIPH_I2S: I2S[0] TDM, RX, ws: 45, bclk: 9, dout: 8, din: 10
 I (766) PERIPH_I2S: I2S[0] initialize success: 0x3c096ebc
@@ -163,9 +161,11 @@ I (11065) BOARD_MANAGER: Device fs_sdcard deinitialized
 
 ## Troubleshooting
 
-### `gen-bmgr-config` has no `-b`
+### `idf.py bmgr` command not found
 
-Configure `IDF_EXTRA_ACTIONS_PATH` to `esp_board_manager`.
+- Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
+- Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
+- If using the legacy entry point, configure `IDF_EXTRA_ACTIONS_PATH` to `esp_board_manager`.
 
 ```
 # Linux / macOS:

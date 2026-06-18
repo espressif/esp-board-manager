@@ -53,6 +53,44 @@ def test_adc_oneshot_rejects_list_channel_id(bmgr_root):
             },
         )
 
+def test_adc_oneshot_accepts_numeric_bit_width(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    result = mod.parse(
+        'adc_oneshot',
+        {
+            'role': 'oneshot',
+            'config': {
+                'unit_id': 'ADC_UNIT_1',
+                'channel_id': 4,
+                'bit_width': 17,
+            },
+        },
+    )
+
+    chan_cfg = result['struct_init']['cfg']['oneshot']['chan_cfg']
+    assert chan_cfg['bitwidth'] == 17
+
+
+@pytest.mark.parametrize('bit_width', [True, -1])
+def test_adc_oneshot_rejects_invalid_numeric_bit_width(bmgr_root, bit_width):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    with pytest.raises(ValueError, match='Invalid ADC bit width value'):
+        mod.parse(
+            'adc_oneshot',
+            {
+                'role': 'oneshot',
+                'config': {
+                    'unit_id': 'ADC_UNIT_1',
+                    'channel_id': 4,
+                    'bit_width': bit_width,
+                },
+            },
+        )
+
 def test_adc_continuous_single_unit_accepts_matching_explicit_conv_mode(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_adc import periph_adc as mod
@@ -72,6 +110,43 @@ def test_adc_continuous_single_unit_accepts_matching_explicit_conv_mode(bmgr_roo
     )
 
     assert result['struct_init']['cfg']['continuous']['conv_mode'] == 'ADC_CONV_SINGLE_UNIT_1'
+
+
+def test_adc_continuous_accepts_numeric_bit_widths(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    single_unit_result = mod.parse(
+        'adc_audio_in',
+        {
+            'role': 'continuous',
+            'config': {
+                'unit_id': 'ADC_UNIT_1',
+                'channel_list': [4],
+                'bit_width': 17,
+            },
+        },
+    )
+    single_unit_cfg = single_unit_result['struct_init']['cfg']['continuous']['cfg']['single_unit']
+    assert single_unit_cfg['bit_width'] == 17
+
+    pattern_result = mod.parse(
+        'adc_audio_in',
+        {
+            'role': 'continuous',
+            'config': {
+                'patterns': [
+                    {
+                        'unit': 'ADC_UNIT_1',
+                        'channel': 4,
+                        'bit_width': 17,
+                    },
+                ],
+            },
+        },
+    )
+    patterns_cfg = pattern_result['struct_init']['cfg']['continuous']['cfg']['patterns']
+    assert patterns_cfg[0]['bit_width'] == 17
 
 
 def test_fs_fat_sdmmc_accepts_zero_slot_flags(bmgr_root):
@@ -495,7 +570,7 @@ def test_i2c_basic_parse_returns_i2c_master_bus_config(bmgr_root):
     assert result['struct_init']['sda_io_num'] == 18
     assert result['struct_init']['scl_io_num'] == 23
 
-def test_spi_bus_dma_burst_size_is_idf6_only(bmgr_root, monkeypatch, capsys):
+def test_spi_bus_dma_burst_size_is_idf61_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_spi import periph_spi as mod
 
@@ -511,14 +586,14 @@ def test_spi_bus_dma_burst_size_is_idf6_only(bmgr_root, monkeypatch, capsys):
         },
     }
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 1, 0))
     result = mod.parse('spi_master', cfg)
     assert result['struct_init']['spi_bus_config']['dma_burst_size'] == 64
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 1))
     result = mod.parse('spi_master', cfg)
     assert 'dma_burst_size' not in result['struct_init']['spi_bus_config']
-    assert 'requires ESP-IDF v6.0' in capsys.readouterr().out
+    assert 'requires ESP-IDF v6.1' in capsys.readouterr().out
 
 def test_dsi_clock_lane_force_hs_is_idf6_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
@@ -554,6 +629,17 @@ def test_dependency_manager_treats_null_devices_as_empty(bmgr_root, tmp_path):
 
     manager = DependencyManager(bmgr_root)
     assert manager.extract_device_dependencies(str(dev_yaml)) == {}
+
+def test_m5stack_tab5_display_dependencies_include_st7121(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from generators.dependency_manager import DependencyManager
+
+    dev_yaml = bmgr_root / 'boards' / 'm5stack_tab5' / 'board_devices.yaml'
+
+    manager = DependencyManager(bmgr_root)
+    dependencies = manager.extract_device_dependencies(str(dev_yaml))
+
+    assert dependencies['espressif/esp_lcd_st7121'] == '*'
 
 def test_process_peripherals_rejects_unsupported_role_from_public_enum_list(bmgr_root, tmp_path):
     sys.path.insert(0, str(bmgr_root))
@@ -774,7 +860,7 @@ def test_display_lcd_spi_fallback_uses_generic_spi_prefix(bmgr_root):
 
     assert result['struct_init']['sub_cfg']['spi']['spi_name'] == 'spi_bus_custom'
 
-def test_display_lcd_spi_psram_dma_direct_is_idf6_only(bmgr_root, monkeypatch, capsys):
+def test_display_lcd_spi_psram_dma_direct_is_idf61_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_display_lcd import dev_display_lcd as mod
 
@@ -794,16 +880,16 @@ def test_display_lcd_spi_psram_dma_direct_is_idf6_only(bmgr_root, monkeypatch, c
         ],
     }
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 1, 0))
     result = mod.parse('display_lcd', cfg, peripherals_dict={'spi_master': object()})
     flags = result['struct_init']['sub_cfg']['spi']['io_spi_config']['flags']
     assert flags['psram_dma_direct'] is True
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 1))
     result = mod.parse('display_lcd', cfg, peripherals_dict={'spi_master': object()})
     flags = result['struct_init']['sub_cfg']['spi']['io_spi_config']['flags']
     assert 'psram_dma_direct' not in flags
-    assert 'requires ESP-IDF v6.0' in capsys.readouterr().out
+    assert 'requires ESP-IDF v6.1' in capsys.readouterr().out
 
 def test_display_lcd_i80_allow_pd_is_idf6_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
@@ -1000,7 +1086,7 @@ def test_lcd_touch_i2c_uses_8bit_addrs_and_i2c_sub_config(bmgr_root):
     assert i2c_cfg['io_i2c_config']['dev_addr'] == 0
     assert i2c_cfg['io_i2c_config']['scl_speed_hz'] == 400000
 
-def test_lcd_touch_i2c_transaction_timeout_is_idf6_only(bmgr_root, monkeypatch, capsys):
+def test_lcd_touch_i2c_transaction_timeout_is_idf61_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_lcd_touch import dev_lcd_touch as mod
 
@@ -1018,16 +1104,32 @@ def test_lcd_touch_i2c_transaction_timeout_is_idf6_only(bmgr_root, monkeypatch, 
         ],
     }
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 0))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 1, 0))
     result = mod.parse('lcd_touch', cfg, peripherals_dict={'i2c_master': object()})
     io_cfg = result['struct_init']['sub_cfg']['i2c']['io_i2c_config']
     assert io_cfg['transaction_timeout_ms'] == 50
 
-    monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (6, 0, 1))
     result = mod.parse('lcd_touch', cfg, peripherals_dict={'i2c_master': object()})
     io_cfg = result['struct_init']['sub_cfg']['i2c']['io_i2c_config']
     assert 'transaction_timeout_ms' not in io_cfg
-    assert 'requires ESP-IDF v6.0' in capsys.readouterr().out
+    assert 'requires ESP-IDF v6.1' in capsys.readouterr().out
+
+def test_display_lcd_dsi_deinit_disables_dma2d_before_panel_delete(bmgr_root):
+    source = (
+        bmgr_root
+        / 'devices'
+        / 'dev_display_lcd'
+        / 'dev_display_lcd_sub_dsi.c'
+    ).read_text(encoding='utf-8')
+    deinit = source[
+        source.index('int dev_display_lcd_sub_dsi_deinit_with_config'):
+        source.index('int dev_display_lcd_sub_dsi_deinit(void *device_handle)')
+    ]
+
+    disable_pos = deinit.index('esp_lcd_dpi_panel_disable_dma2d')
+    delete_pos = deinit.index('esp_lcd_panel_del')
+    assert disable_pos < delete_pos
 
 def test_lcd_touch_i2c_rejects_7bit_addr(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
@@ -1282,6 +1384,49 @@ def test_lyrat_mini_peripheral_generation_keeps_structs_aligned(bmgr_root, tmp_p
         ('gpio_sd_detect', 'esp_bmgr_gpio_sd_detect_cfg'),
         ('adc_button', 'esp_bmgr_adc_button_cfg'),
     ]
+
+def test_esp32_lyrat_v4_3_audio_sdcard_generation_matches_schematic(bmgr_root, tmp_path):
+    sys.path.insert(0, str(bmgr_root))
+    from gen_bmgr_config_codes import BoardConfigGenerator
+
+    generator = BoardConfigGenerator(bmgr_root)
+    generator.project_root = str(tmp_path)
+
+    board_dir = bmgr_root / 'boards' / 'esp32_lyrat_v4_3'
+    peripherals_dict, periph_name_map, _ = generator.process_peripherals(str(board_dir / 'board_peripherals.yaml'))
+    generator.process_devices(str(board_dir / 'board_devices.yaml'), peripherals_dict, periph_name_map)
+
+    periph_content = (tmp_path / 'components' / 'gen_bmgr_codes' / 'gen_board_periph_config.c').read_text(
+        encoding='utf-8'
+    )
+    device_content = (tmp_path / 'components' / 'gen_bmgr_codes' / 'gen_board_device_config.c').read_text(
+        encoding='utf-8'
+    )
+
+    assert '.sda_io_num = 18' in periph_content
+    assert '.scl_io_num = 23' in periph_content
+    assert '.mclk = 0' in periph_content
+    assert '.bclk = 5' in periph_content
+    assert '.ws = 25' in periph_content
+    assert '.dout = 26' in periph_content
+    assert '.din = 35' in periph_content
+    assert '.pin_bit_mask = BIT64(21)' in periph_content
+    assert '.pin_bit_mask = BIT64(12)' in periph_content
+    assert '.pin_bit_mask = BIT64(34)' in periph_content
+
+    assert '.port = 21' in device_content
+    assert '.active_level = 1' in device_content
+    assert '.gpio_name = "gpio_sd_power"' in device_content
+    assert '.chip = "es8388"' in device_content
+    assert '.address = 32' in device_content
+    assert '.bus_width = 1' in device_content
+    assert '.clk = 14' in device_content
+    assert '.cmd = 15' in device_content
+    assert '.d0 = 2' in device_content
+    assert '.d1 = -1' in device_content
+    assert '.d2 = -1' in device_content
+    assert '.d3 = -1' in device_content
+    assert '.cd = 34' in device_content
 
 def test_device_descriptor_generation_emits_desc_level_sub_type(bmgr_root, tmp_path):
     sys.path.insert(0, str(bmgr_root))

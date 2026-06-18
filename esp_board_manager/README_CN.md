@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-在线文档：[乐鑫板卡管理值南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/index.html)
+在线文档：[乐鑫板卡管理指南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/index.html)
 
 这是由 Espressif 开发的专注于开发板设备初始化的板级管理组件。使用 YAML 文件来描述主控制器和外部功能设备的配置，能够自动生成配置代码，简化了添加新板子的过程。提供了统一的设备管理接口，不仅提高了设备初始化代码的可重用性，还简化了应用程序对各种开发板的适配。
 
@@ -319,7 +319,7 @@ void app_main(void)
 | [`ESP32-P4 Function-EV`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html) | ESP32-P4 | ✅ ES8311 | ✅ SDMMC | ✅ EK79007 | ✅ GT911 | ✅ CSI Camera | - | - |
 | [`ESP32-P4-EYE`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4-eye/user_guide.html) | ESP32-P4 | ✅ PDM 麦克风 | ✅ SDMMC | ✅ ST7789 (SPI) | - | ✅ CSI Camera | ✅ GPIO 按键 | - |
 | [`M5STACK CORES3`](https://docs.m5stack.com/zh_CN/core/CoreS3) | ESP32-S3 | ✅ AW88298 + ES7210 | ✅ SDSPI | ✅ ILI9342C | ✅ FT5x06 | ❌ | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/zh_CN/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7123 自动探测 | ✅ GT911/ST7123 自动探测 | ✅ SC202CS | - | - |
+| [`M5STACK TAB5`](https://docs.m5stack.com/zh_CN/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7121/ST7123 自动探测 | ✅ GT911/ST712x 自动探测 | ✅ SC202CS | - | - |
 | [`ESP-BOX-LITE`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ✅ ES8156 + ES7243E | - | ✅ ST7789 | - | - | - | - |
 
 注：'✅' 表示已经支持，'❌' 表示尚未支持，'-' 表示硬件不具备相应的能力
@@ -546,7 +546,7 @@ AI Skill 不是使用 Board Manager 的必需步骤，也不会替代本文档�
 
 1. 将 `sdkconfig` 备份到 `components/gen_bmgr_codes/sdkconfig.bmgr_board.old` 并删除原文件，以防止旧板子的配置残留（例如不同芯片的 CONFIG_IDF_TARGET、不同板子的设备使能配置等）影响新板子
 2. 根据 `boards/<board_name>/sdkconfig.defaults.board` 生成 `board_manager.defaults` 文件，包含板子特定配置
-3. 配置会在 build/menuconfig/reconfigure 时通过 `SDKCONFIG_DEFAULTS` 环境变量自动应用
+3. 配置会在 build/menuconfig/reconfigure 时通过 `SDKCONFIG_DEFAULTS` 环境变量自动应用。项目默认值会在 `board_manager.defaults` 之后加载，因此用户可以覆盖普通板级默认值；当前开发板选择、开发板名称、设备支持、外设支持和设备子类型支持符号仍由 ESP Board Manager 管理，不应在用户默认值中设置。
 
 切换板子时请始终使用 `idf.py bmgr -b` 或 `idf.py gen-bmgr-config -b`（或 `python gen_bmgr_config_codes.py`）。使用 `idf.py menuconfig` 可能导致依赖错误。
 

@@ -60,24 +60,22 @@
 . ./export.sh
 ```
 
+在已激活的 ESP-IDF Python 环境中安装 `esp-bmgr-assist`：
+
+```
+pip install esp-bmgr-assist
+```
+
 ```
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/play_sdcard_music
 ```
 
 ```
-# Linux / macOS:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows CMD:
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 ```
-idf.py gen-bmgr-config -b esp32_s3_korvo2_v3
-idf.py gen-bmgr-config -l
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
 自定义板：[自定义板子](https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md#custom-board)。
@@ -142,9 +140,11 @@ I (5248) BOARD_MANAGER: Device fs_sdcard deinitialized
 
 ## 故障排除
 
-### `gen-bmgr-config` 无 `-b` 选项
+### `idf.py bmgr` 命令未找到
 
-检查 `IDF_EXTRA_ACTIONS_PATH` 是否指向 `esp_board_manager` 包目录。
+- 确认已在当前 ESP-IDF Python 环境中安装 `esp-bmgr-assist`。
+- 确认工程 `main/idf_component.yml` 中已包含 `esp_board_manager` 依赖。
+- 如果使用旧入口，请确认 `IDF_EXTRA_ACTIONS_PATH` 指向 `esp_board_manager` 包目录。
 
 ```
 # Linux / macOS:

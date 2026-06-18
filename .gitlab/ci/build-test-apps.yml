@@ -22,4 +22,4 @@ build_test_apps:
     - cd esp_board_manager/test_apps
     - mkdir -p "logs/${BOARD}"
     - idf.py bmgr -b "${BOARD}" 2>&1 | tee "logs/${BOARD}/bmgr.log"
-    - SDKCONFIG_DEFAULTS="sdkconfig.defaults;components/gen_bmgr_codes/board_manager.defaults" idf-build-apps build --paths . --target "${IDF_TARGET}" --parallel-count 1 --parallel-index 1
+    - SDKCONFIG_DEFAULTS="components/gen_bmgr_codes/board_manager.defaults;sdkconfig.defaults" idf-build-apps build --paths . --target "${IDF_TARGET}" --parallel-count 1 --parallel-index 1

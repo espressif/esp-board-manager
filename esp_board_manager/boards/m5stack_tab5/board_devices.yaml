@@ -111,6 +111,7 @@ devices:
     sub_type: dsi
     dependencies:
       espressif/esp_lcd_ili9881c: "*"
+      espressif/esp_lcd_st7121: "*"
       espressif/esp_lcd_st7123: "*"
     config:
       reset_gpio_num: -1

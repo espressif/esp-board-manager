@@ -6,13 +6,20 @@
 
 This example demonstrates how to use the `esp_board_manager` with LVGL on supported development boards. It initializes the board manager, sets up the LVGL adapter, adds the LCD display and touch input (if available), and runs the LVGL test UI.
 
-## Example Set Up
+## Environment Setup
 
-### IDF Default Branch
+### Default IDF Branch
 
 This example supports IDF release/v5.5 (>=5.5.2) and IDF release/v5.4 (>=5.4.3) branches.
 
-### Build and Flash
+### Hardware Required
+
+- LCD
+- Optional：LCD Touch，LEDC brightness ctrl
+
+## Build and Flash
+
+### Build Preparation
 
 Before compiling this example, ensure that the ESP-IDF environment is properly set up. If not, run the following script in the root directory of ESP-IDF to set up the build environment. For detailed steps on configuring and using ESP-IDF, please refer to the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/index.html):
 
@@ -21,7 +28,11 @@ Before compiling this example, ensure that the ESP-IDF environment is properly s
 . ./export.sh
 ```
 
-Here are the summarized compilation steps:
+Install `esp-bmgr-assist` in the activated ESP-IDF Python environment:
+
+```shell
+pip install esp-bmgr-assist
+```
 
 - Navigate to the test project directory for driving display with LVGL:
 
@@ -29,44 +40,33 @@ Here are the summarized compilation steps:
 cd $YOUR_GMF_PATH/packages/esp_board_manager/examples/display_lvgl
 ```
 
-- Configure the `esp_board_manager` path to activate the environment (only needs to be executed once under the current terminal):
+- List visible boards:
 
 ```shell
-# Ubuntu and Mac:
-export IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
-
-# Windows PowerShell:
-$env:IDF_EXTRA_ACTIONS_PATH = "$YOUR_GMF_PATH/packages/esp_board_manager"
-
-# Windows Command Prompt (CMD):
-set IDF_EXTRA_ACTIONS_PATH=$YOUR_GMF_PATH/packages/esp_board_manager
+idf.py bmgr -l
 ```
 
 - Select the development board to use:
 
 ```shell
-idf.py gen-bmgr-config -b esp32_s3_box_2
+idf.py bmgr -b esp32_s3_korvo2_v3
 ```
 
-- You can also run the following command to see a list of supported development boards:
+### Build and Flash Commands
 
-```shell
-idf.py gen-bmgr-config -l
-```
-
-- Compile the example code:
+Compile the example code:
 
 ```shell
 idf.py build
 ```
 
-- Flash the program and run the monitor tool to view serial output (replace PORT with your port name):
+Flash the program and run the monitor tool to view serial output (replace PORT with your port name):
 
 ```shell
 idf.py -p PORT flash monitor
 ```
 
-- To exit the debugging interface, use `Ctrl-]`.
+To exit the debugging interface, use `Ctrl-]`.
 
 ## How to Use the Example
 
@@ -111,13 +111,23 @@ I (18629) main_task: Returned from app_main()
 
 ## Troubleshooting
 
-1. If you encounter the following error message, please run `echo $IDF_EXTRA_ACTIONS_PATH` to check if the `esp_board_manager` path is configured correctly:
+### `idf.py bmgr` command not found
 
-```c
-Usage: idf.py gen-bmgr-config [OPTIONS]
-Try 'idf.py gen-bmgr-config --help' for help.
+- Make sure `esp-bmgr-assist` is installed in the current ESP-IDF Python environment.
+- Make sure `main/idf_component.yml` contains the `esp_board_manager` dependency.
+- If using the legacy entry point, make sure `IDF_EXTRA_ACTIONS_PATH` points to `esp_board_manager`.
 
-Error: No such option: -b
+```shell
+# Linux / macOS:
+echo $IDF_EXTRA_ACTIONS_PATH
+
+# Windows PowerShell:
+echo $env:IDF_EXTRA_ACTIONS_PATH
+
+# Windows CMD:
+echo %IDF_EXTRA_ACTIONS_PATH%
 ```
 
-2. If you need to use a custom development board, please refer to the instructions on **custom boards** in [README.md](../../../README.md).
+### Custom Board
+
+If you need to use a custom development board, refer to the instructions on **custom boards** in [README.md](../../../README.md).

@@ -120,6 +120,14 @@ int dev_display_lcd_sub_dsi_deinit_with_config(void *device_handle, const dev_di
     }
 
     if (lcd_handles->panel_handle) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        if (cfg && cfg->sub_cfg.dsi.use_dma2d) {
+            esp_err_t ret = esp_lcd_dpi_panel_disable_dma2d(lcd_handles->panel_handle);
+            if (ret != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to disable DMA2D: %s", esp_err_to_name(ret));
+            }
+        }
+#endif  /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
         esp_lcd_panel_del(lcd_handles->panel_handle);
         lcd_handles->panel_handle = NULL;
     }

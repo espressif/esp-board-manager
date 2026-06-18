@@ -99,7 +99,7 @@ undefined reference to g_esp_board_*
 1. ``components/gen_bmgr_codes`` 是否正确生成且文件齐全（同上一条）。
 2. ``gen_board_metadata.yaml``：解析得到的 device 与 peripheral 是否符合预期。
 3. ``gen_board_device_config.c`` 与 ``gen_board_periph_config.c``：具体字段值是否符合预期。
-4. ``board_manager.defaults``：``CONFIG_ESP_BOARD_DEV_*_SUPPORT`` 与 ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT`` 等能力宏是否齐全。
+4. ``board_manager.defaults``：``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT`` 与 ``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT`` 等能力宏是否齐全。
 5. ``Kconfig.projbuild``：当前选中的开发板对应的 ``CONFIG_ESP_BOARD_<BOARD>`` 是否被声明。
 6. ``sdkconfig``：上述能力宏是否实际写入 sdkconfig。
 
@@ -140,12 +140,12 @@ undefined reference to g_esp_board_*
 
 - 通过 ``idf.py menuconfig`` 或手工修改 ``sdkconfig`` 完成切换，未经 ``idf.py bmgr -b <board>`` 触发清理与重新生成。
 - 上一块开发板的能力宏残留在 ``sdkconfig`` 中。
-- 在工程 ``sdkconfig.defaults`` 中手写了 ``CONFIG_ESP_BOARD_DEV_*_SUPPORT`` 等 BMGR 能力符号，干扰了切换开发板的逻辑。
+- 在工程 ``sdkconfig.defaults`` 中手写了 ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``、``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``、``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT`` 等 BMGR 管理的能力符号，干扰了切换开发板的逻辑。
 
 **推荐动作**
 
 1. 切换开发板必须使用 ``idf.py bmgr -b <other_board>`` 或等价的脚本入口，不应使用 ``idf.py menuconfig`` 进行切换。BMGR 在切换开发板时会自动将旧 ``sdkconfig`` 备份为 ``components/gen_bmgr_codes/sdkconfig.bmgr_board.old`` 并删除原文件，避免旧开发板的 ``CONFIG_IDF_TARGET`` 与设备使能配置残留。
-2. 不要在工程 ``sdkconfig.defaults`` 中手写 BMGR 的设备或外设能力符号；这些符号应仅来自 BMGR 生成的 ``board_manager.defaults``。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition 等）放到板目录下的 ``sdkconfig.defaults.board``。
+2. 不要在工程 ``sdkconfig.defaults`` 中手写 BMGR 的设备、外设或设备子类型能力符号；这些符号应仅来自 BMGR 生成的 ``board_manager.defaults``。板级特有的常规 sdkconfig 项（PSRAM、Flash、partition 等）放到板目录下的 ``sdkconfig.defaults.board``。
 3. 如需回到当前开发板的默认值，可删除工程 ``sdkconfig``，重新执行 ``idf.py build`` 让 ``board_manager.defaults`` 再次生效。
 
 修改 YAML 后运行结果无变化

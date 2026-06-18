@@ -12,10 +12,9 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_check.h"
-#include "esp_board_device.h"
-#include "esp_board_periph.h"
-#include "dev_gpio_expander.h"
+#include "esp_board_manager_includes.h"
 #if __has_include(<esp_lcd_ili9341.h>)
+#define HAS_ILI9341  1
 #include "esp_lcd_ili9341.h"
 #endif  /* __has_include(<esp_lcd_ili9341.h>) */
 #if __has_include(<esp_lcd_touch_gt911.h>)
@@ -27,6 +26,7 @@
 #include "esp_lcd_touch_tt21100.h"
 #endif  /* __has_include(<esp_lcd_touch_tt21100.h>) */
 #if __has_include(<esp_io_expander_tca9554.h>)
+#define HAS_TCA9554  1
 #include "esp_io_expander_tca9554.h"
 #endif  /* __has_include(<esp_io_expander_tca9554.h>) */
 
@@ -39,7 +39,7 @@ static const char *TAG = "KORVO2_V3_SETUP_DEVICE";
 #define TOUCH_ADDR_TT21100  0x48
 #define TOUCH_ADDR_GT911    0x28
 
-#if __has_include(<esp_io_expander_tca9554.h>)
+#if defined(HAS_TCA9554)
 __attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle, const uint16_t dev_addr, esp_io_expander_handle_t *handle_ret)
 {
     esp_err_t ret = esp_io_expander_new_i2c_tca9554(i2c_handle, dev_addr, handle_ret);
@@ -49,9 +49,9 @@ __attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handl
     }
     return ESP_OK;
 }
-#endif  /* __has_include(<esp_io_expander_tca9554.h>) */
+#endif  /* defined(HAS_TCA9554) */
 
-#if __has_include(<esp_lcd_ili9341.h>)
+#if defined(HAS_ILI9341)
 __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
 {
     ESP_LOGI(TAG, "Creating ili9341 panel...");
@@ -80,9 +80,9 @@ __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handl
 
     return ESP_OK;
 }
-#endif  /* __has_include (<esp_lcd_ili9341.h>) */
+#endif  /* defined(HAS_ILI9341) */
 
-#if __has_include(<esp_lcd_touch_tt21100.h>) || __has_include (<esp_lcd_touch_gt911.h>)
+#if defined(HAS_TT21100) || defined(HAS_GT911)
 __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
 {
     esp_lcd_touch_config_t touch_cfg = {0};
@@ -128,4 +128,4 @@ __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handl
     ESP_LOGE(TAG, "Unsupported LCD touch I2C address: 0x%02x", touch_addr);
     return ESP_ERR_NOT_SUPPORTED;
 }
-#endif  /* __has_include(<esp_lcd_touch_tt21100.h>) || __has_include (<esp_lcd_touch_gt911.h>) */
+#endif  /* defined(HAS_TT21100) || defined(HAS_GT911) */

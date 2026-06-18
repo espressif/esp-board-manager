@@ -319,7 +319,7 @@ void app_main(void)
 | [`ESP32-P4 Function-EV`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html) | ESP32-P4 | ✅ ES8311 | ✅ SDMMC | ✅ EK79007 | ✅ GT911 | ✅ CSI Camera | - | - |
 | [`ESP32-P4-EYE`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-eye/user_guide.html) | ESP32-P4 | ✅ PDM microphone | ✅ SDMMC | ✅ ST7789 (SPI) | - | ✅ CSI Camera | ✅ GPIO button | - |
 | [`M5STACK CORES3`](https://docs.m5stack.com/en/core/CoreS3) | ESP32-S3 | ✅ AW88298 + ES7210 | ✅ SDSPI | ✅ ILI9342C | ✅ FT5x06 | ❌ | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/en/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7123 auto-detect | ✅ GT911/ST7123 auto-detect | ✅ SC202CS | - | - |
+| [`M5STACK TAB5`](https://docs.m5stack.com/en/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7121/ST7123 auto-detect | ✅ GT911/ST712x auto-detect | ✅ SC202CS | - | - |
 | [`ESP-BOX-LITE`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ✅ ES8156 + ES7243E | - | ✅ ST7789 | - | - | - | - |
 
 Note: '✅' indicates supported, '❌' indicates not yet supported, '-' indicates the hardware does not have the corresponding capability.
@@ -542,7 +542,7 @@ If the build fails because generated files under `components/gen_bmgr_codes` are
 
 1. Backs up `sdkconfig` to `components/gen_bmgr_codes/sdkconfig.bmgr_board.old` and removes the original to prevent residual configurations from the old board (e.g., different chip's CONFIG_IDF_TARGET, different board's device settings) from affecting the new board
 2. Generates `board_manager.defaults` file with board-specific configurations from `boards/<board_name>/sdkconfig.defaults.board`
-3. The configurations will be automatically applied via `SDKCONFIG_DEFAULTS` environment variable during build/menuconfig/reconfigure
+3. The configurations will be automatically applied via `SDKCONFIG_DEFAULTS` environment variable during build/menuconfig/reconfigure. Project defaults are loaded after `board_manager.defaults`, so users can override ordinary board defaults; selected-board, board-name, device-support, peripheral-support, and device sub-type support symbols remain managed by ESP Board Manager and must not be set in user defaults.
 
 Always use `idf.py bmgr -b` or `idf.py gen-bmgr-config -b` (or `python gen_bmgr_config_codes.py`) for board switching. Using `idf.py menuconfig` may cause dependency errors.
 

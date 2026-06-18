@@ -1,5 +1,6 @@
 include LICENSE
 include README.md
+include CHANGELOG.md
 include esp_bmgr_py.pth
 recursive-include esp_bmgr_py *.py
 recursive-include ext *.py
