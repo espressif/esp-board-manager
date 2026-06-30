@@ -18,7 +18,9 @@
 
 .. code-block:: bash
 
-   cp -r /path/to/esp_board_manager/boards/esp32_s3_korvo2_v3 components/my_board
+   cp -r managed_components/espressif__esp_boards/esp32_s3_korvo_2_3 components/my_board
+
+上例假设参考开发板来自组件管理器下载的 ``espressif/esp_boards``。如果使用源码仓库中的板级组件目录，请将源路径替换为对应的 ``esp_boards/<board_name>``、``esp_friends_boards/<board_name>`` 或 ``m5stack_boards/<board_name>`` 目录。
 
 执行后会生成 ``components/my_board/`` 目录，其中直接包含 ``board_info.yaml`` 等文件。若 ``components/my_board`` 已存在，``cp -r`` 会在其内部再创建一层子目录，导致结构错误；请确认目标路径尚不存在再执行。
 

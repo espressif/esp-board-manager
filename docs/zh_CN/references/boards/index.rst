@@ -3,13 +3,7 @@
 
 :link_to_translation:`en:[English]`
 
-开发板参考收纳每块开发板的板级信息：开发板简介、对应芯片、已支持的 device 与 peripheral、是否需要 ``setup_device.c``，以及板级特殊注意事项。
-
-每块开发板的详细页将随开发板组件分批整理。
-
-**当前版本（0.5.x）**：官方开发板随 BMGR 组件一同发布（``esp_board_manager/boards/``），引入 BMGR 即可直接使用，无需额外声明依赖。
-
-**自 BMGR 0.6 起**：开发板从 BMGR 组件内移除，按系列拆分为多个独立板级组件分发：
+**自 BMGR 0.6 起**：开发板从 BMGR 组件内移除，拆分为多个独立板卡组件，具体如下：
 
 .. list-table::
    :header-rows: 1

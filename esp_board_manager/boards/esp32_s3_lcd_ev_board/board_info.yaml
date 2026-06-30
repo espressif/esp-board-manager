@@ -1,5 +1,0 @@
-board: esp32_s3_lcd_ev_board
-chip: esp32s3
-version: 1.0.0
-description: "ESP32-S3-LCD-EV-Board with sub-board 2 GC9503 RGB LCD and FT5x06 touch"
-manufacturer: "ESPRESSIF"

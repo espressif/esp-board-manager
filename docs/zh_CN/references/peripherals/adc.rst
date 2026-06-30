@@ -272,10 +272,10 @@ oneshot 完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_c3_lyra/board_peripherals.yaml``：内部 ADC 音频输入使用 continuous 外设。
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
+- ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``：内部 ADC 音频输入使用 continuous 外设。
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
+- ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
 
 注意事项
 ------------

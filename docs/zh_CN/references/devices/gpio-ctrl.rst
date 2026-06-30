@@ -104,8 +104,8 @@ GPIO 输出控制完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_c5_spot/board_devices.yaml``：配置 ``gpio_ctrl`` 设备。
-- ``esp_board_manager/boards/esp32_c5_spot/board_peripherals.yaml``：配置被 ``gpio_ctrl`` 引用的 ``gpio`` peripheral。
+- ``esp_friends_boards/esp32_c5_spot/board_devices.yaml``：配置 ``gpio_ctrl`` 设备。
+- ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``：配置被 ``gpio_ctrl`` 引用的 ``gpio`` peripheral。
 - ``esp_board_manager/test_apps/test_single_board/board_devices.yaml``：测试板中的 ``gpio_ctrl`` 配置。
 - ``esp_board_manager/test_apps/test_single_board/board_peripherals.yaml``：测试板中的 ``gpio`` peripheral 配置。
 

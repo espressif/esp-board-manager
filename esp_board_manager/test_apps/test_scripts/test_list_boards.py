@@ -78,10 +78,15 @@ class TestBoardCategories:
         assert 'Board Components:' in result.stdout
 
     def test_board_component_source_names_exist(self, run_bmgr_cmd):
-        """Test that board list output includes component source names."""
+        """Test that board list output includes component source names.
+
+        Boards ship as external board components, discovered through the test
+        project's ``idf_component.yml`` overrides, so the source name is the
+        board component (e.g. ``espressif/esp_boards``).
+        """
         result = run_bmgr_cmd(['-l'])
         assert result.returncode == 0
-        assert 'esp_board_manager:' in result.stdout
+        assert 'espressif/esp_boards:' in result.stdout
 
     def test_at_least_one_board_listed(self, run_bmgr_cmd, board_count):
         """Test that at least one board is listed"""

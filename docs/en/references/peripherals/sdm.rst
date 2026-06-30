@@ -101,7 +101,7 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_c3_lyra/board_peripherals.yaml``: ``sdm`` output channel configuration.
+- ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``: ``sdm`` output channel configuration.
 
 Notes
 -----

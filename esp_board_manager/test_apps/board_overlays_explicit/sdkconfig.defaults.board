@@ -1,0 +1,2 @@
+# Explicit -a sdkconfig fragment: highest priority, must override any auto-amend value.
+CONFIG_BMGR_TEST_AUTO_AMEND_VALUE=21

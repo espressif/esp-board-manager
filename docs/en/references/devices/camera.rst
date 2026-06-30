@@ -281,12 +281,11 @@ Code Reference
 Board-level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp_sparkbot/board_devices.yaml``: ``dvp`` camera configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``: ``dvp`` camera configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: ``csi`` camera configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: ``i2c`` and ``ldo`` peripherals used by the ``csi`` camera.
-- ``esp_board_manager/boards/esp_sensair_halo/board_devices.yaml``: ``spi`` camera configuration.
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``: Camera configuration.
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: ``dvp`` camera configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ``dvp`` camera configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: ``csi`` camera configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``i2c`` and ``ldo`` peripherals used by the ``csi`` camera.
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``: Camera configuration.
 
 Notes
 -----

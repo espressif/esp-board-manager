@@ -15,9 +15,16 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 
 from .utils.logger import LoggerMixin
-from .utils.file_utils import normalize_project_dir, resolve_project_root_dir, safe_write_file
+from .utils.file_utils import (
+    normalize_project_dir,
+    parse_customer_paths,
+    resolve_project_root_dir,
+    safe_write_file,
+    should_skip_directory,
+)
 from .utils.main_idf_override import collect_main_override_board_paths
 from .utils.yaml_utils import load_yaml_safe
+from .amend import MANIFEST_FILENAME as AMEND_MANIFEST_FILENAME
 from .settings import BoardManagerConfig
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -35,6 +42,19 @@ class BoardDirectory:
     path: str
     source: str
     source_type: str
+
+
+@dataclass(frozen=True)
+class AutoAmendDirectory:
+    """An auto-discovered amend directory for the selected board.
+
+    ``path`` is the absolute directory containing ``board_amend.yaml`` and whose
+    basename matches the selected board name. ``source`` is a short label used
+    for logging / diagnostics (e.g. ``'component'`` or ``'customer'``).
+    """
+
+    path: str
+    source: str
 
 
 def format_board_groups(board_infos: Dict[str, BoardDirectory]) -> List[str]:
@@ -95,8 +115,6 @@ class ConfigGenerator(LoggerMixin):
     def __init__(self, root_dir: Path, project_dir: Optional[str] = None):
         super().__init__()
         self.root_dir = root_dir
-        # Use validated root_dir passed from main script
-        self.boards_dir = self.root_dir / 'boards'
         # Cache project root to avoid repeated lookups
         self._project_root: Optional[str] = normalize_project_dir(project_dir)
 
@@ -226,9 +244,6 @@ class ConfigGenerator(LoggerMixin):
     def _source_for_board_path(self, board_path: str, customer_path: Optional[str] = None) -> Tuple[str, str]:
         """Infer board source type and display name from a discovered board path."""
         path = Path(board_path).resolve()
-        if path.parent == self.boards_dir.resolve():
-            return 'component', self.root_dir.name
-
         resolved_customer = Path(customer_path).resolve() if customer_path else None
         if resolved_customer:
             try:
@@ -280,54 +295,10 @@ class ConfigGenerator(LoggerMixin):
         """
         all_boards: Dict[str, BoardDirectory] = {}
 
-        # 1. Scan boards directory that belongs to this component.
-        if self.boards_dir.exists():
-            self.logger.info(f'   Scanning component boards: {self.boards_dir}')
-            for d in os.listdir(self.boards_dir):
-                board_path = self.boards_dir / d
-
-                if not board_path.is_dir():
-                    continue
-
-                if self._is_board_directory(str(board_path)):
-                    if self.is_valid_board_name(d):
-                        self._record_board_directory(
-                            all_boards, d, str(board_path), 'component', self.root_dir.name
-                        )
-                        self.logger.debug(f'Found valid board in component directory: {d}')
-                    else:
-                        self.logger.warning(
-                            f'⚠️  Skipping board with invalid name "{d}". Board names must contain only letters, numbers, and underscores.'
-                        )
-                else:
-                    yaml_files = ['board_info.yaml', 'board_peripherals.yaml', 'board_devices.yaml']
-                    found_files = [f for f in yaml_files if (board_path / f).exists()]
-
-                    if found_files:
-                        missing_files = [f for f in yaml_files if f not in found_files]
-                        self.logger.warning(
-                            f'⚠️  Skipping invalid board "{d}" in component directory - missing required files: {", ".join(missing_files)}'
-                        )
-
-        # 2. Scan project component board directories.
+        # 1. Scan board components downloaded by the component manager.
         project_root = self.get_project_root()
 
         if project_root:
-            default_boards_path = str(self.boards_dir.resolve()) if hasattr(self.boards_dir, 'resolve') else str(self.boards_dir)
-            components_dir = os.path.join(project_root, 'components')
-
-            if os.path.exists(components_dir):
-                self.logger.info(f'   Scanning component boards (recursive): {components_dir}')
-                component_boards = self._scan_all_directories_for_board_infos(
-                    components_dir,
-                    'component',
-                    exclude_path=default_boards_path,
-                    max_depth=3,
-                )
-                for info in component_boards.values():
-                    self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
-
-            # 2.1 Scan managed_components board directories.
             managed_components_dir = os.path.join(project_root, 'managed_components')
             if os.path.exists(managed_components_dir):
                 self.logger.info(f'   Scanning managed components boards: {managed_components_dir}')
@@ -353,7 +324,6 @@ class ConfigGenerator(LoggerMixin):
                                 managed_boards = self._scan_all_directories_for_board_infos(
                                     subdir_path,
                                     f'component (managed: {d})',
-                                    exclude_path=default_boards_path,
                                     max_depth=3,
                                     source='component',
                                     source_name=source,
@@ -364,6 +334,21 @@ class ConfigGenerator(LoggerMixin):
                                     )
                 except Exception as e:
                     self.logger.debug(f'Error scanning managed_components: {e}')
+
+            # 2.1 Scan project component board directories. These are scanned
+            # after managed_components so local project boards override managed
+            # board components when names collide.
+            components_dir = os.path.join(project_root, 'components')
+
+            if os.path.exists(components_dir):
+                self.logger.info(f'   Scanning component boards (recursive): {components_dir}')
+                component_boards = self._scan_all_directories_for_board_infos(
+                    components_dir,
+                    'component',
+                    max_depth=3,
+                )
+                for info in component_boards.values():
+                    self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
 
             # 2.2 main/idf_component.yml local overrides for board-named dependencies.
             try:
@@ -406,7 +391,6 @@ class ConfigGenerator(LoggerMixin):
                     main_override_boards = self._scan_all_directories_for_board_infos(
                         abs_path,
                         f'main override ({dep_name})',
-                        exclude_path=default_boards_path,
                         max_depth=3,
                         source='component',
                         source_name=dep_name,
@@ -414,32 +398,35 @@ class ConfigGenerator(LoggerMixin):
                     for info in main_override_boards.values():
                         self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
 
-        # 3. Scan customer boards directory if provided.
-        if board_customer_path and board_customer_path != 'NONE':
-            self.logger.info(f'Scanning customer boards: {board_customer_path}')
-            if os.path.exists(board_customer_path):
-                if self._is_board_directory(board_customer_path):
-                    board_name = os.path.basename(board_customer_path)
-                    if self.is_valid_board_name(board_name):
-                        self._record_board_directory(all_boards, board_name, board_customer_path, 'customer', 'customer')
-                        self.logger.debug(f'Found single board: {board_name}')
+        # 3. Scan customer boards directories if provided. ``board_customer_path``
+        #    may be a single path or a ';'-separated list; each entry is scanned
+        #    in order (later entries override earlier ones for duplicate names).
+        customer_paths = parse_customer_paths(board_customer_path, self.get_project_root())
+        if customer_paths:
+            for customer_path in customer_paths:
+                self.logger.info(f'Scanning customer boards: {customer_path}')
+                if os.path.exists(customer_path):
+                    if self._is_board_directory(customer_path):
+                        board_name = os.path.basename(customer_path)
+                        if self.is_valid_board_name(board_name):
+                            self._record_board_directory(all_boards, board_name, customer_path, 'customer', 'customer')
+                            self.logger.debug(f'Found single board: {board_name}')
+                        else:
+                            self.logger.warning(
+                                f'⚠️  Skipping board with invalid name "{board_name}". Board names must contain only letters, numbers, and underscores.'
+                            )
                     else:
-                        self.logger.warning(
-                            f'⚠️  Skipping board with invalid name "{board_name}". Board names must contain only letters, numbers, and underscores.'
+                        customer_boards = self._scan_all_directories_for_board_infos(
+                            customer_path,
+                            'customer',
+                            max_depth=3,
+                            source='customer',
+                            source_name='customer',
                         )
+                        for info in customer_boards.values():
+                            self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
                 else:
-                    customer_boards = self._scan_all_directories_for_board_infos(
-                        board_customer_path,
-                        'customer',
-                        exclude_path=None,
-                        max_depth=3,
-                        source='customer',
-                        source_name='customer',
-                    )
-                    for info in customer_boards.values():
-                        self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
-            else:
-                self.logger.warning(f'⚠️  Warning: Customer boards path does not exist: {board_customer_path}')
+                    self.logger.warning(f'⚠️  Warning: Customer boards path does not exist: {customer_path}')
         else:
             self.logger.debug(f'   No customer boards path specified')
 
@@ -461,11 +448,116 @@ class ConfigGenerator(LoggerMixin):
         """Return board names in list-view order."""
         return [info.name for info in self.sorted_board_infos(self.scan_board_directories(board_customer_path))]
 
+    def scan_auto_amend_directories(
+        self,
+        board_name: str,
+        board_customer_path: Optional[str] = None,
+    ) -> List[AutoAmendDirectory]:
+        """Return auto-amend directories for ``board_name``, ordered low->high priority.
+
+        A directory qualifies as an auto-amend directory when:
+
+        - its basename equals ``board_name``;
+        - it contains a ``board_amend.yaml`` manifest;
+        - it is **not** a complete board directory (a full board with the same
+          name and a manifest is treated as a board, not an auto-amend).
+
+        The same root set used for board discovery is scanned (``{PROJECT}/components``,
+        ``managed_components`` board components, ``main/idf_component.yml``
+        board-style overrides), and finally every ``-c`` customer path in the
+        order given. The returned list is ordered so that later entries have
+        higher overlay priority (component sources first, customer last).
+        """
+        results: List[AutoAmendDirectory] = []
+        seen: set = set()
+
+        project_root = self.get_project_root()
+        if project_root:
+            components_dir = os.path.join(project_root, 'components')
+            if os.path.exists(components_dir):
+                self._scan_auto_amend_root(components_dir, board_name, 'component', results, seen)
+
+            managed_components_dir = os.path.join(project_root, 'managed_components')
+            if os.path.exists(managed_components_dir):
+                try:
+                    for d in os.listdir(managed_components_dir):
+                        subdir_path = os.path.join(managed_components_dir, d)
+                        if os.path.isdir(subdir_path) and 'boards' in d:
+                            self._scan_auto_amend_root(
+                                subdir_path, board_name, f'component (managed: {d})', results, seen
+                            )
+                except Exception as e:
+                    self.logger.debug(f'Error scanning managed_components for auto-amend: {e}')
+
+            # main/idf_component.yml board-style overrides.
+            try:
+                override_entries, _override_missing = collect_main_override_board_paths(Path(project_root))
+            except Exception as e:
+                self.logger.debug(f'Error collecting main override paths for auto-amend: {e}')
+                override_entries = []
+            for dep_name, abs_p in override_entries:
+                self._scan_auto_amend_root(
+                    str(abs_p), board_name, f'main override ({dep_name})', results, seen
+                )
+
+        # Customer (-c) paths, in given order (later entries higher priority).
+        customer_paths = parse_customer_paths(board_customer_path, project_root)
+        for customer_path in customer_paths:
+            self._scan_auto_amend_root(customer_path, board_name, 'customer', results, seen)
+
+        return results
+
+    def _scan_auto_amend_root(
+        self,
+        root_dir: str,
+        board_name: str,
+        source_label: str,
+        results: List[AutoAmendDirectory],
+        seen: set,
+        depth: int = 0,
+        max_depth: int = 3,
+    ) -> None:
+        """Recursively look for auto-amend directories named ``board_name`` under ``root_dir``."""
+        if not root_dir or not os.path.isdir(root_dir):
+            return
+        if depth >= max_depth:
+            return
+
+        try:
+            entries = sorted(os.listdir(root_dir))
+        except (PermissionError, OSError) as e:
+            self.logger.debug(f'Error listing {root_dir} for auto-amend: {e}')
+            return
+
+        for d in entries:
+            sub_path = os.path.join(root_dir, d)
+            if not os.path.isdir(sub_path):
+                continue
+            if should_skip_directory(d):
+                continue
+
+            if d == board_name and os.path.isfile(os.path.join(sub_path, AMEND_MANIFEST_FILENAME)):
+                if self._is_board_directory(sub_path):
+                    self.logger.debug(
+                        f'   {sub_path} is a full board with {AMEND_MANIFEST_FILENAME}; '
+                        f'treated as board, not auto-amend'
+                    )
+                else:
+                    key = str(Path(sub_path).resolve())
+                    if key not in seen:
+                        seen.add(key)
+                        results.append(AutoAmendDirectory(path=key, source=source_label))
+                    # Matched directory: do not recurse into it.
+                    continue
+
+            self._scan_auto_amend_root(
+                sub_path, board_name, source_label, results, seen, depth + 1, max_depth
+            )
+
     def _scan_all_directories_for_board_infos(
         self,
         root_dir: str,
         dir_name: str,
-        exclude_path: Optional[str] = None,
         depth: int = 0,
         max_depth: int = 3,
         source: Optional[str] = None,
@@ -492,15 +584,6 @@ class ConfigGenerator(LoggerMixin):
                     continue
 
                 if self._is_board_directory(board_path):
-                    if exclude_path:
-                        board_abs_path = os.path.abspath(board_path)
-                        parent_abs_path = os.path.abspath(os.path.dirname(board_path))
-                        exclude_abs_path = os.path.abspath(exclude_path)
-
-                        if parent_abs_path == exclude_abs_path:
-                            self.logger.debug(f'Skipping excluded board: {d}')
-                            continue
-
                     if self.is_valid_board_name(d):
                         source_type, inferred_source = self._source_for_board_path(board_path)
                         info = BoardDirectory(
@@ -528,7 +611,6 @@ class ConfigGenerator(LoggerMixin):
                         sub_boards = self._scan_all_directories_for_board_infos(
                             board_path,
                             f'{dir_name}/{d}',
-                            exclude_path=exclude_path,
                             depth=depth + 1,
                             max_depth=max_depth,
                             source=source,
@@ -550,7 +632,6 @@ class ConfigGenerator(LoggerMixin):
         self,
         root_dir: str,
         dir_name: str,
-        exclude_path: Optional[str] = None,
         depth: int = 0,
         max_depth: int = 3
     ) -> Dict[str, str]:
@@ -565,7 +646,6 @@ class ConfigGenerator(LoggerMixin):
         Args:
             root_dir: Root directory to scan
             dir_name: Name for logging purposes
-            exclude_path: Optional path to exclude (e.g., Default boards directory)
             depth: Current recursion depth
             max_depth: Maximum recursion depth (call sites use 3; entries with depth >= max_depth are not listed)
 
@@ -575,7 +655,6 @@ class ConfigGenerator(LoggerMixin):
         infos = self._scan_all_directories_for_board_infos(
             root_dir,
             dir_name,
-            exclude_path=exclude_path,
             depth=depth,
             max_depth=max_depth,
         )

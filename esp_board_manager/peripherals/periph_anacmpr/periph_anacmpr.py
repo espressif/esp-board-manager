@@ -108,8 +108,6 @@ def parse(name: str, config: dict) -> dict:
 
         # Parse analog comparator configuration
         unit = config.get('unit', 0)
-        if unit not in [0]:
-            raise ValueError(f'Invalid Analog Comparator unit: {unit}. Currently only unit 0 is supported')
 
         ref_src = get_enum_value(config.get('ref_src'), 'ANA_CMPR_REF_SRC_INTERNAL', 'ana_cmpr_ref_src')
         cross_type = get_enum_value(config.get('cross_type'), 'ANA_CMPR_CROSS_ANY', 'ana_cmpr_cross_type')

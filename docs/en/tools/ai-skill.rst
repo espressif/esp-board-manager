@@ -21,7 +21,7 @@ Available Skills
      - Migrate the legacy ``dev_lcd_touch_i2c`` and ``type: lcd_touch_i2c`` to the generic ``dev_lcd_touch`` with ``type: lcd_touch`` and ``sub_type: i2c``, covering YAML field mapping, updates to the touch factory function in ``setup_device.c``, and compatibility checks.
      - ``tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md``
 
-Migration guide document: ``esp_board_manager/docs/lcd_touch_i2c_migration_cn.md``.
+Migration guide document: :doc:`/migration/migrate-to-0.6`.
 
 How to Use
 ----------

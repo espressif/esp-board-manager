@@ -105,10 +105,10 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: ``ldo_mipi`` configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: ``display_lcd`` and ``camera`` reference ``ldo_mipi``.
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``: ``ldo_mipi`` configuration.
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``: ``display_lcd`` and ``camera`` reference ``ldo_mipi``.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``ldo_mipi`` configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: ``display_lcd`` and ``camera`` reference ``ldo_mipi``.
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``: ``ldo_mipi`` configuration.
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``: ``display_lcd`` and ``camera`` reference ``ldo_mipi``.
 
 Notes
 -----

@@ -48,6 +48,11 @@ from typing import Dict, List, Set, Optional, Tuple, Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 from generators.utils.logger import setup_logger, get_logger, LoggerMixin
+from generators.utils.soc_capabilities import (
+    SocCapsParser,
+    SocRequirementRule,
+    load_soc_requirement_rules,
+)
 
 
 # Device types listed here collapse multiple example entries into one generic option when
@@ -919,44 +924,35 @@ class BoardCreator(LoggerMixin):
             return
 
         try:
-            with open(soc_requirements_path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
-                if not data:
-                    self.soc_requirements_mapping = {'devices': {}, 'peripherals': {}}
-                    return
-
-                # Initialize mapping dictionaries
-                self.soc_requirements_mapping = {
-                    'devices': {},
-                    'peripherals': {}
-                }
-
-                # Parse devices section
-                if 'devices' in data and isinstance(data['devices'], list):
-                    for item in data['devices']:
-                        if isinstance(item, dict):
-                            for device_name, macro_str in item.items():
-                                # Split comma-separated macros and strip whitespace
-                                macros = [m.strip() for m in macro_str.split(',')]
-                                self.soc_requirements_mapping['devices'][device_name] = macros
-                                self.logger.debug(f'Device {device_name} requires macros: {macros}')
-
-                # Parse peripherals section
-                if 'peripherals' in data and isinstance(data['peripherals'], list):
-                    for item in data['peripherals']:
-                        if isinstance(item, dict):
-                            for periph_name, macro_str in item.items():
-                                # Split comma-separated macros and strip whitespace
-                                macros = [m.strip() for m in macro_str.split(',')]
-                                self.soc_requirements_mapping['peripherals'][periph_name] = macros
-                                self.logger.debug(f'Peripheral {periph_name} requires macros: {macros}')
-
-                self.logger.info(f'Loaded soc_requirements mapping: {len(self.soc_requirements_mapping["devices"])} devices, '
-                               f'{len(self.soc_requirements_mapping["peripherals"])} peripherals')
+            self.soc_requirements_mapping = load_soc_requirement_rules(soc_requirements_path)
+            for device_name, rule in self.soc_requirements_mapping['devices'].items():
+                self.logger.debug(f'Device {device_name} requires rule: {rule.to_dict()}')
+            for periph_name, rule in self.soc_requirements_mapping['peripherals'].items():
+                self.logger.debug(f'Peripheral {periph_name} requires rule: {rule.to_dict()}')
+            self.logger.info(f'Loaded soc_requirements mapping: {len(self.soc_requirements_mapping["devices"])} devices, '
+                           f'{len(self.soc_requirements_mapping["peripherals"])} peripherals')
 
         except Exception as e:
             self.logger.error(f'Error loading esp_board_soc_requirements.yml: {e}')
             self.soc_requirements_mapping = {'devices': {}, 'peripherals': {}}
+
+    def _get_soc_boolean_caps(self, chip: str) -> Dict[str, bool]:
+        """Get SOC boolean capability macros for a specific chip."""
+        idf_path = os.environ.get('IDF_PATH')
+        if not idf_path:
+            self.logger.warning('IDF_PATH environment variable not set, cannot check SOC capabilities')
+            return {}
+
+        try:
+            profile = SocCapsParser(Path(idf_path)).parse_chip(chip)
+            self.logger.info(f'Loaded {len(profile.booleans)} SOC capability macros for chip {chip}')
+            return profile.booleans
+        except FileNotFoundError as e:
+            self.logger.warning(f'soc_caps.h not found for chip {chip}: {e}')
+            return {}
+        except Exception as e:
+            self.logger.error(f'Error reading soc_caps.h for chip {chip}: {e}')
+            return {}
 
     def _get_soc_caps(self, chip: str) -> Set[str]:
         """Get all SOC capability macros for a specific chip
@@ -967,77 +963,21 @@ class BoardCreator(LoggerMixin):
         Returns:
             Set of all defined SOC capability macros
         """
-        # Get IDF_PATH environment variable
-        idf_path = os.environ.get('IDF_PATH')
-        if not idf_path:
-            self.logger.warning('IDF_PATH environment variable not set, cannot check SOC capabilities')
-            return set()
+        return {macro for macro, enabled in self._get_soc_boolean_caps(chip).items() if enabled}
 
-        # Build path to soc_caps.h file
-        soc_caps_path = Path(idf_path) / 'components' / 'soc' / chip / 'include' / 'soc' / 'soc_caps.h'
+    def _soc_rule_supported(self, rule: Any, booleans: Dict[str, bool]) -> Tuple[bool, List[str], List[str]]:
+        """Evaluate a requirement rule and return missing macro details for logs."""
+        if isinstance(rule, SocRequirementRule):
+            supported = rule.evaluate(booleans)
+            missing_all_of = [macro for macro in rule.all_of if not booleans.get(macro, False)]
+            missing_any_of = []
+            if rule.any_of and not any(booleans.get(macro, False) for macro in rule.any_of):
+                missing_any_of = list(rule.any_of)
+            return supported, missing_all_of, missing_any_of
 
-        if not soc_caps_path.exists():
-            # Try alternative path pattern (some chips might have different structure)
-            alt_path = Path(idf_path) / 'components' / 'soc' / chip / 'include' / 'soc_caps.h'
-            if alt_path.exists():
-                soc_caps_path = alt_path
-            else:
-                self.logger.warning(f'soc_caps.h not found for chip {chip} at {soc_caps_path}')
-                return set()
-
-        macros = set()
-        try:
-            with open(soc_caps_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-
-                # Parse C preprocessor macros using regex
-                # Look for patterns like #define MACRO_NAME 1 or #define MACRO_NAME value
-                # Also handle multi-line definitions and comments
-                lines = content.split('\n')
-                in_multiline_comment = False
-
-                for line in lines:
-                    # Handle multi-line comments
-                    stripped_line = line.strip()
-
-                    # Skip empty lines
-                    if not stripped_line:
-                        continue
-
-                    # Handle C comments
-                    if '/*' in stripped_line and '*/' in stripped_line:
-                        # Single line comment, remove it
-                        stripped_line = stripped_line.split('/*')[0].strip()
-                    elif '/*' in stripped_line:
-                        in_multiline_comment = True
-                        stripped_line = stripped_line.split('/*')[0].strip()
-                    elif '*/' in stripped_line:
-                        in_multiline_comment = False
-                        stripped_line = stripped_line.split('*/')[1].strip()
-                    elif in_multiline_comment:
-                        continue
-
-                    # Remove inline comments
-                    if '//' in stripped_line:
-                        stripped_line = stripped_line.split('//')[0].strip()
-
-                    # Check for #define statements
-                    if stripped_line.startswith('#define '):
-                        # Extract macro name (skip #define and get first token)
-                        parts = stripped_line.split()
-                        if len(parts) >= 2:
-                            macro_name = parts[1]
-                            # Skip function-like macros (those with parentheses)
-                            if '(' not in macro_name:
-                                macros.add(macro_name)
-                                self.logger.debug(f'Found SOC macro: {macro_name}')
-
-            self.logger.info(f'Loaded {len(macros)} SOC capability macros for chip {chip}')
-            return macros
-
-        except Exception as e:
-            self.logger.error(f'Error reading soc_caps.h for chip {chip}: {e}')
-            return set()
+        required_macros = list(rule or [])
+        missing = [macro for macro in required_macros if not booleans.get(macro, False)]
+        return not missing, missing, []
 
     def filter_by_chip_capability(self, chip: str, items: List[str], item_type: str = 'devices') -> List[str]:
         """Filter devices or peripherals based on chip capability
@@ -1058,8 +998,8 @@ class BoardCreator(LoggerMixin):
             self._load_soc_requirements_mapping()
 
         # Get SOC capability macros for the chip
-        soc_macros = self._get_soc_caps(chip)
-        if not soc_macros:
+        soc_booleans = self._get_soc_boolean_caps(chip)
+        if not soc_booleans:
             self.logger.warning(f'No SOC macros found for chip {chip}, returning all items')
             return items.copy()
 
@@ -1078,17 +1018,15 @@ class BoardCreator(LoggerMixin):
 
             # Check if item has macro requirements in esp_board_soc_requirements.yml
             if lookup_item in mapping:
-                required_macros = mapping[lookup_item]
-                # Check if all required macros are defined in soc_caps.h
-                supported = all(macro in soc_macros for macro in required_macros)
+                rule = mapping[lookup_item]
+                supported, missing_all_of, missing_any_of = self._soc_rule_supported(rule, soc_booleans)
                 if supported:
                     filtered_items.append(item)
                     self.logger.debug(f'Item {item} (capability key: {lookup_item}) is supported by chip {chip}')
                 else:
-                    missing_macros = [macro for macro in required_macros if macro not in soc_macros]
                     self.logger.debug(
                         f'Item {item} (capability key: {lookup_item}) is NOT supported by chip {chip}. '
-                        f'Missing macros: {missing_macros}'
+                        f'Missing allOf macros: {missing_all_of}, missing anyOf choices: {missing_any_of}'
                     )
             else:
                 # If item is not in esp_board_soc_requirements.yml, assume it's supported by all chips

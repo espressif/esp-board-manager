@@ -1,3 +1,5 @@
 dependencies:
   espressif/esp_board_manager:
-    override_path: ../../../
+    override_path: ../../../../esp_board_manager
+  espressif/esp_boards:
+    override_path: ../../../../esp_boards

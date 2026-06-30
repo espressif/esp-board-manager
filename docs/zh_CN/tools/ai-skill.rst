@@ -21,7 +21,7 @@ Skill 不是使用 Board Manager 的必需步骤，也不替代仓库内的命�
      - 将旧的 ``dev_lcd_touch_i2c`` 与 ``type: lcd_touch_i2c`` 迁移到通用 ``dev_lcd_touch``、``type: lcd_touch`` 加 ``sub_type: i2c``，涵盖 YAML 字段映射、``setup_device.c`` 中触摸工厂函数的更新以及兼容性检查。
      - ``tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md``
 
-迁移说明文档：``esp_board_manager/docs/lcd_touch_i2c_migration_cn.md``。
+迁移说明文档：:doc:`/migration/migrate-to-0.6`。
 
 使用方式
 --------------

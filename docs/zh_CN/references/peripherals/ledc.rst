@@ -120,11 +120,11 @@ PWM 输出完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``：``ledc_ctrl`` 设备引用 ``ledc_backlight``。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
-- ``esp_board_manager/boards/esp_vocat_board_v1_0/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``：``ledc_ctrl`` 设备引用 ``ledc_backlight``。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
+- ``esp_boards/esp_vocat_1_0/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
 
 注意事项
 ------------

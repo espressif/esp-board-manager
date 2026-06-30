@@ -41,6 +41,26 @@ def test_scan_board_directories_later_sources_override_same_named_boards(tmp_pat
     assert boards[board_name].source_type == 'customer'
 
 
+def test_project_components_override_managed_components_for_same_named_boards(tmp_path, bmgr_root):
+    import sys
+    sys.path.insert(0, str(bmgr_root))
+    from generators.config_generator import ConfigGenerator
+
+    project_dir = tmp_path / 'project'
+    board_name = 'same_board'
+    managed_board = project_dir / 'managed_components' / 'espressif__esp_boards' / board_name
+    component_board = project_dir / 'components' / 'local_boards' / board_name
+
+    _write_minimal_board(managed_board, 'managed')
+    _write_minimal_board(component_board, 'component')
+
+    generator = ConfigGenerator(tmp_path / 'bmgr', project_dir=str(project_dir))
+    boards = generator.scan_board_directories()
+
+    assert boards[board_name].path == str(component_board.resolve())
+    assert boards[board_name].source == 'local_boards'
+
+
 def test_cli_same_named_board_priority_matches_real_scan_order(tmp_path, script_path):
     project_dir = tmp_path / 'project'
     customer_root = tmp_path / 'customer_boards'

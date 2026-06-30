@@ -170,11 +170,10 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``: SPI LCD bus configuration.
-- ``esp_board_manager/boards/esp_vocat_board_v1_2/board_peripherals.yaml``: SPI LCD bus configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: SPI LCD bus configuration.
-- ``esp_board_manager/boards/m5stack_cores3/board_peripherals.yaml``: SPI master bus configuration.
-- ``esp_board_manager/boards/dual_eyes_board_v1_0/board_peripherals.yaml``: two LCD devices sharing the same SPI bus.
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``: SPI LCD bus configuration.
+- ``esp_boards/esp_vocat_1_2/board_peripherals.yaml``: SPI LCD bus configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: SPI LCD bus configuration.
+- ``m5stack_boards/m5stack_cores3/board_peripherals.yaml``: SPI master bus configuration.
 
 Notes
 -----

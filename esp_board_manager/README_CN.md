@@ -78,7 +78,7 @@ pip install esp-bmgr-assist -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 > **注意:** `esp-bmgr-assist` 仅用于免去手动配置 `IDF_EXTRA_ACTIONS_PATH`。您仍需要继续阅读本文档，按下面的步骤给工程添加 `esp_board_manager` 依赖，了解 Board Manager 的基本命令用法。
 
-### 1. 添加依赖和激活组件
+### 1. 添加依赖
 
 #### 1.1 从组件仓库自动下载 ESP Board Manager 组件
 
@@ -94,8 +94,6 @@ espressif/esp_board_manager:
 
 运行 `idf.py set-target` 或 `idf.py menuconfig` 来自动将 **esp_board_manager** 组件下载到 `YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager`。
 
-如果已经安装 `esp-bmgr-assist`，下载完成后即可直接使用 Board Manager，不需要手动设置 `IDF_EXTRA_ACTIONS_PATH`，或者直接使用 Board Manager 命令也可以自动触发组件下载。
-
 #### 1.2 使用本地的 ESP Board Manager 组件
 
 将以下内容添加到你的 idf_component.yml 文件:
@@ -107,51 +105,7 @@ espressif/esp_board_manager:
   require: public
 ```
 
-如果已经安装 `esp-bmgr-assist`，它会自动发现该本地组件路径并加载 `bmgr` 命令。
-
-#### 激活组件
-
-正常情况下，安装 `esp-bmgr-assist` 后不需要执行本小节。如果无法识别 Board Manager命令，或需要判断问题是否来自自动发现流程，可以参考本节手动设置 `IDF_EXTRA_ACTIONS_PATH` 验证 Board Manager 是否可用。
-
-从组件仓库下载时，将路径指向工程内的托管组件目录：
-
-**Ubuntu and Mac:**
-
-```bash
-export IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
-```
-
-**Windows PowerShell:**
-
-```powershell
-$env:IDF_EXTRA_ACTIONS_PATH = "YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager"
-```
-
-**Windows 命令提示符 (CMD):**
-
-```cmd
-set IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
-```
-
-使用本地组件时，将路径指向本地 `esp_board_manager` 目录：
-
-**Ubuntu and Mac:**
-
-```bash
-export IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
-```
-
-**Windows PowerShell:**
-
-```powershell
-$env:IDF_EXTRA_ACTIONS_PATH = "/PATH/TO/YOUR_PATH/esp_board_manager"
-```
-
-**Windows 命令提示符 (CMD):**
-
-```cmd
-set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
-```
+> **注意:** 如果已经安装 `esp-bmgr-assist`，下载完成后即可直接使用 Board Manager，不需要手动设置 `IDF_EXTRA_ACTIONS_PATH`，也不用运行 `idf.py set-target` 或 `idf.py menuconfig` 来下载组件，直接使用 Board Manager 命令也可以自动触发组件下载。
 
 ### 2. 扫描并选择板子
 
@@ -164,6 +118,13 @@ ESP Board Manager 支持 IDF action 扩展，提供与 ESP-IDF 构建系统的�
 idf.py bmgr -l
 ```
 
+默认会从以下路径自动扫描开发板：
+
+- `managed_components` 目录中的板子组件
+- 工程 `components/` 目录；同名时优先于 `managed_components`
+- `main/idf_component.yml` 文件中指定的板子组件，包括通过 `override_path/path` 指定的本地板子组件
+- `-c` 指定的目录
+
 然后通过名称或索引选择您的目标板子：
 
 ```bash
@@ -173,8 +134,8 @@ idf.py bmgr -b YOUR_TARGET_BOARD
 例如：
 
 ```bash
-idf.py bmgr -b esp_vocat_board_v1_2  # 板子名称
-idf.py bmgr -b 3                     # 板子索引
+idf.py bmgr -b esp_vocat_1_2  # 板子名称
+idf.py bmgr -b 3              # 板子索引
 ```
 
 如果需要切换其他的板子，可以执行以下命令，
@@ -214,7 +175,7 @@ idf.py bmgr -b OTHER_BOARD
 
 ```yaml
 version: 1
-board: esp32_s3_korvo2_v3
+board: esp32_s3_korvo_2_3
 chip: esp32s3
 
 devices:
@@ -302,27 +263,24 @@ void app_main(void)
 
 ### 支持的板级
 
-| 板子名称 | 芯片 | 音频 | SD卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 |
-|---|---|---|---|---|---|---|---|---|
-| [`ESP VoCat Board V1.0`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32s3/esp-vocat/user_guide_v1.0.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ CTS816S | - | - | - |
-| [`ESP VoCat Board V1.2`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32s3/esp-vocat/user_guide_v1.2.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ CTS816S | - | - | - |
-| Dual Eyes Board V1.0 | ESP32-S3 | ✅ ES8311 | ❌ | ✅ GC9A01 (双) | - | - | - | - |
-| [`ESP-BOX-3`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_3/hardware_overview_for_box_3_cn.md) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ GT911/TT21100 自动探测 | - | - | - |
-| ESP32-S3 BOX2 | ESP32-S3 | ✅ ES8389 | ✅ SPI | ✅ ST7789 (I80) | - | - | ✅ 自定义按键 | - |
-| ESP-HI | ESP32-C3 | ✅ 内置 ADC + PDM 扬声器 | - | ✅ ILI9341 | - | - | ✅ GPIO 按键 | - |
-| ESP32-C3 Lyra | ESP32-C3 | ✅ 内置 ADC + PDM 扬声器 | - | - | - | - | - | - |
-| [`ESP32-S3 Korvo2 V3`](https://docs.espressif.com/projects/esp-adf/zh_CN/latest/design-guide/dev-boards/user-guide-esp32-s3-korvo-2.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ILI9341 | ✅ TT21100/GT911 自动探测 | ✅ DVP Camera | ✅ ADC button | - |
-| ESP32-S3 Korvo2L | ESP32-S3 | ✅ ES8311 | ✅ SDMMC | ❌ | ❌ | ❌ | ❌ | - |
-| ESP32-S31 Korvo1 | ESP32-S31 | ✅ ES8389 | - | ✅ RGB LCD | ✅ GT1151 | - | - | ✅ WS2812 |
-| [`Lyrat Mini V1.1`](https://docs.espressif.com/projects/esp-adf/zh_CN/latest/design-guide/dev-boards/get-started-esp32-lyrat-mini.html) | ESP32 | ✅ ES8388 | ✅ SDMMC | - | - | - | ✅ ADC button | - |
-| [`ESP32-C5 Spot`](https://oshwhub.com/esp-college/esp-spot) | ESP32-C5 | ✅ ES8311 (双) | - | - | - | - | - | - |
-| [`ESP32-P4 Function-EV`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html) | ESP32-P4 | ✅ ES8311 | ✅ SDMMC | ✅ EK79007 | ✅ GT911 | ✅ CSI Camera | - | - |
-| [`ESP32-P4-EYE`](https://docs.espressif.com/projects/esp-dev-kits/zh_CN/latest/esp32p4/esp32-p4-eye/user_guide.html) | ESP32-P4 | ✅ PDM 麦克风 | ✅ SDMMC | ✅ ST7789 (SPI) | - | ✅ CSI Camera | ✅ GPIO 按键 | - |
-| [`M5STACK CORES3`](https://docs.m5stack.com/zh_CN/core/CoreS3) | ESP32-S3 | ✅ AW88298 + ES7210 | ✅ SDSPI | ✅ ILI9342C | ✅ FT5x06 | ❌ | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/zh_CN/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7121/ST7123 自动探测 | ✅ GT911/ST712x 自动探测 | ✅ SC202CS | - | - |
-| [`ESP-BOX-LITE`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ✅ ES8156 + ES7243E | - | ✅ ST7789 | - | - | - | - |
+自 `0.5.12` 版本开始，ESP Board Manager 将板级配置从组件中拆出，改为作为独立的板级组件使用。
 
-注：'✅' 表示已经支持，'❌' 表示尚未支持，'-' 表示硬件不具备相应的能力
+对于乐鑫官方正式售卖的开发板，板级配置已迁移到 `espressif/esp_boards` 组件。`esp_board_manager` 默认依赖该组件，因此用户正常添加并使用 ESP Board Manager 时，仍然可以直接通过 `idf.py bmgr -l` 查看和选择这些官方开发板。
+
+链接如下：
+
+- GitHub 链接：[espressif/esp-board-manager/tree/main/esp_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_boards)
+- ESP Component Registry 链接：[espressif/esp_boards](https://components.espressif.com/components/espressif/esp_boards)
+
+对于非官方正式售卖的板子，也提供了独立的板级组件。用户可以根据实际需求，将以下组件添加到工程依赖中：
+
+- `espressif/esp_friends_boards`
+  - GitHub 链接：[espressif/esp-board-manager/tree/main/esp_friends_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_friends_boards)
+  - ESP Component Registry 链接：[espressif/esp_friends_boards](https://components.espressif.com/components/espressif/esp_friends_boards)
+
+- `espressif/m5stack_boards`
+  - GitHub 链接：[espressif/esp-board-manager/tree/main/m5stack_boards](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards)
+  - ESP Component Registry 链接：[espressif/m5stack_boards](https://components.espressif.com/components/espressif/m5stack_boards)
 
 ### 支持的设备类型
 
@@ -409,14 +367,14 @@ void app_main(void)
 idf.py bmgr -l
 
 # 指定板子（名称或索引）
-idf.py bmgr -b esp_vocat_board_v1_0
+idf.py bmgr -b esp_vocat_1_0
 idf.py bmgr -b 1
 
 # 使用自定义板子
 idf.py bmgr -b my_board -c /path/to/custom/boards
 
 # 基于已有板子做局部覆盖或扩展（amend 目录里必须有 board_amend.yaml）
-idf.py bmgr -b esp32_s3_korvo2_v3 -a path/to/my_amend
+idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
 
 # 在默认 components 目录创建新板子
 idf.py bmgr -n my_new_board
@@ -425,10 +383,10 @@ idf.py bmgr -n my_new_board
 idf.py bmgr -n path/to/boards/my_new_board
 
 # 仅生成 Kconfig 文件
-idf.py bmgr -b esp_vocat_board_v1_0 --kconfig-only
+idf.py bmgr -b esp_vocat_1_0 --kconfig-only
 
 # 复用当前 sdkconfig 时跳过一致性检查
-idf.py bmgr -b esp_vocat_board_v1_0 --skip-sdkconfig-check
+idf.py bmgr -b esp_vocat_1_0 --skip-sdkconfig-check
 
 # 清理生成的文件
 idf.py bmgr -x
@@ -443,7 +401,7 @@ idf.py bmgr -x
 python gen_bmgr_config_codes.py -l
 
 # 使用 -b 选项指定板子（名称或索引）
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0
+python gen_bmgr_config_codes.py -b esp_vocat_1_0
 python gen_bmgr_config_codes.py -b 1
 
 # 使用自定义板子
@@ -451,13 +409,13 @@ python gen_bmgr_config_codes.py 1 -c /custom/boards
 python gen_bmgr_config_codes.py -b my_board -c /path/to/custom/boards
 
 # 仅生成外设
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --peripherals-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --peripherals-only
 
 # 仅生成设备
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --devices-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --devices-only
 
 # 仅生成 Kconfig 文件
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --kconfig-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --kconfig-only
 
 # 清理生成的文件
 python gen_bmgr_config_codes.py --clean
@@ -471,7 +429,7 @@ python gen_bmgr_config_codes.py
 
 # 将板子作为直接参数指定（名称或索引）
 # 直接使用板子命名或索引参数仅在直接调用脚本时有效
-python gen_bmgr_config_codes.py esp32_s3_korvo2_v3
+python gen_bmgr_config_codes.py esp32_s3_korvo_2_3
 python gen_bmgr_config_codes.py 1
 ```
 
@@ -492,7 +450,9 @@ ESP Board Manager 使用 `gen_bmgr_config_codes.py` 进行代码生成，它在�
 
 ## 自定义板子
 
-`esp_board_manager` 支持模块化定制自己的开发板，具体的使用方法请参考：[如何创建自定义板子](docs/how_to_customize_board_cn.md)
+`esp_board_manager` 支持模块化定制自己的开发板，具体的使用方法请参考：[创建开发板指南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/create-board/index.html)
+
+`esp_board_manager` 提供了在线配置工具 [乐鑫板卡管理器](https://board-manager.espressif.com/)，可以在浏览器中创建开发板配置、导出板卡配置文件，具体用法请参考：[使用网页创建开发板](https://preview-docs.espressif.com/projects/esp-board-manager/zh_CN/feat-bmgr_0_6_0/create-board/web-create.html)
 
 ## 路线图
 
@@ -514,7 +474,7 @@ AI Skill 不是使用 Board Manager 的必需步骤，也不会替代本文档�
 
 当前提供的 Skill：
 
-- [`lcd-touch-i2c-migration`](tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md)：辅助将旧的 `dev_lcd_touch_i2c` / `type: lcd_touch_i2c` 迁移到通用 `dev_lcd_touch` / `type: lcd_touch` + `sub_type: i2c`。迁移说明请参考 [`dev_lcd_touch_i2c` 迁移到 `dev_lcd_touch`](docs/lcd_touch_i2c_migration_cn.md)。
+- [`lcd-touch-i2c-migration`](tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md)：辅助将旧的 `dev_lcd_touch_i2c` / `type: lcd_touch_i2c` 迁移到通用 `dev_lcd_touch` / `type: lcd_touch` + `sub_type: i2c`。迁移说明请参考 [`dev_lcd_touch_i2c` 迁移到 `dev_lcd_touch`](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/migration/migrate-to-0.6.html)。
 
 ## 故障排除
 
@@ -531,6 +491,50 @@ AI Skill 不是使用 Board Manager 的必需步骤，也不会替代本文档�
 2. 重新启动您的终端会话
 3. 在 ESP-IDF v6.0+ 上请确认工程能发现 `esp_board_manager` 组件中的 `idf_ext.py`
 
+### 手动设置 `IDF_EXTRA_ACTIONS_PATH`
+
+如果 `esp-bmgr-assist` 未安装，或者您需要绕过自动发现流程进行排障，可以手动设置 `IDF_EXTRA_ACTIONS_PATH`：
+
+**从组件仓库下载时：**
+
+**Ubuntu 和 Mac：**
+
+```bash
+export IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
+```
+
+**Windows PowerShell：**
+
+```powershell
+$env:IDF_EXTRA_ACTIONS_PATH = "YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager"
+```
+
+**Windows 命令提示符 (CMD)：**
+
+```cmd
+set IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
+```
+
+**使用本地组件时：**
+
+**Ubuntu 和 Mac：**
+
+```bash
+export IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
+```
+
+**Windows PowerShell：**
+
+```powershell
+$env:IDF_EXTRA_ACTIONS_PATH = "/PATH/TO/YOUR_PATH/esp_board_manager"
+```
+
+**Windows 命令提示符 (CMD)：**
+
+```cmd
+set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
+```
+
 ### CMake 或编译失败（缺少 `gen_bmgr_codes`）
 
 若因 `components/gen_bmgr_codes` 缺失或过期导致构建失败，请执行 `idf.py bmgr -b YOUR_BOARD`（或 `idf.py gen-bmgr-config -b YOUR_BOARD`）。IDF 扩展不会在 CMake 前单独就缺文件打印一条专用警告。
@@ -546,7 +550,7 @@ AI Skill 不是使用 Board Manager 的必需步骤，也不会替代本文档�
 
 1. 将 `sdkconfig` 备份到 `components/gen_bmgr_codes/sdkconfig.bmgr_board.old` 并删除原文件，以防止旧板子的配置残留（例如不同芯片的 CONFIG_IDF_TARGET、不同板子的设备使能配置等）影响新板子
 2. 根据 `boards/<board_name>/sdkconfig.defaults.board` 生成 `board_manager.defaults` 文件，包含板子特定配置
-3. 配置会在 build/menuconfig/reconfigure 时通过 `SDKCONFIG_DEFAULTS` 环境变量自动应用。项目默认值会在 `board_manager.defaults` 之后加载，因此用户可以覆盖普通板级默认值；当前开发板选择、开发板名称、设备支持、外设支持和设备子类型支持符号仍由 ESP Board Manager 管理，不应在用户默认值中设置。
+3. 配置会在 build/menuconfig/reconfigure 时（仅当项目尚无 `sdkconfig` 时）通过 `SDKCONFIG_DEFAULTS` 自动应用。默认值按如下顺序组装，靠后者优先级更高：项目 `sdkconfig.defaults`（最低）→ `board_manager.defaults`（板级，含 amend）→ 环境变量 `SDKCONFIG_DEFAULTS` → `-D SDKCONFIG_DEFAULTS`（最高）。也就是说板级默认值始终高于项目 `sdkconfig.defaults`；如需做板级差异化的 sdkconfig 覆盖，请使用 amend（auto-amend 或 `-a/--amend`），不要指望项目默认值压过板子。当项目 `sdkconfig.defaults` 设置了与板子同名的符号时，板子优先生效，并打印一条非阻断 warning。CI 或临时覆盖请用环境变量或 `-D SDKCONFIG_DEFAULTS=`。
 
 切换板子时请始终使用 `idf.py bmgr -b` 或 `idf.py gen-bmgr-config -b`（或 `python gen_bmgr_config_codes.py`）。使用 `idf.py menuconfig` 可能导致依赖错误。
 

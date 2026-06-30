@@ -1,0 +1,16 @@
+version: 1.0.0
+# If auto-amend ever (incorrectly) applied the full board's own board_amend.yaml,
+# this peripheral (pin 63) would leak into the generated output. Tests assert it
+# is absent.
+peripherals:
+  - name: gpio_fullboard_tripwire
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 63
+      mode: GPIO_MODE_OUTPUT
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 0

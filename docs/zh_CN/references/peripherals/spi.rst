@@ -170,11 +170,10 @@ SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 t
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``：SPI LCD bus 配置。
-- ``esp_board_manager/boards/esp_vocat_board_v1_2/board_peripherals.yaml``：SPI LCD bus 配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：SPI LCD bus 配置。
-- ``esp_board_manager/boards/m5stack_cores3/board_peripherals.yaml``：SPI master bus 配置。
-- ``esp_board_manager/boards/dual_eyes_board_v1_0/board_peripherals.yaml``：两个 LCD 设备共享同一 SPI bus。
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：SPI LCD bus 配置。
+- ``esp_boards/esp_vocat_1_2/board_peripherals.yaml``：SPI LCD bus 配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：SPI LCD bus 配置。
+- ``m5stack_boards/m5stack_cores3/board_peripherals.yaml``：SPI master bus 配置。
 
 注意事项
 ------------

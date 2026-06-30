@@ -78,7 +78,7 @@ Tool link: [`esp-bmgr-assist`](https://pypi.org/project/esp-bmgr-assist/)
 
 > **Note:** `esp-bmgr-assist` is only used to avoid manual `IDF_EXTRA_ACTIONS_PATH` configuration. Continue reading this document to add the `esp_board_manager` dependency to your project and learn the basic Board Manager commands.
 
-### 1. Add Dependency and Activate Component
+### 1. Add Dependency
 
 #### 1.1 Automatically Download ESP Board Manager Component from Component Registry
 
@@ -109,50 +109,6 @@ espressif/esp_board_manager:
 
 If `esp-bmgr-assist` is installed, it will automatically discover this local component path and load the `bmgr` command.
 
-#### Activate the Component
-
-Normally, you do not need this subsection after installing `esp-bmgr-assist`. If Board Manager commands are not recognized, or if you want to check whether the issue comes from automatic discovery, manually set `IDF_EXTRA_ACTIONS_PATH` in this section to verify that Board Manager itself works.
-
-For a component downloaded from the registry, point the path to the managed component directory in your project:
-
-**Ubuntu and Mac:**
-
-```bash
-export IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
-```
-
-**Windows PowerShell:**
-
-```powershell
-$env:IDF_EXTRA_ACTIONS_PATH = "YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager"
-```
-
-**Windows Command Prompt (CMD):**
-
-```cmd
-set IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
-```
-
-For a local component, point the path to your local `esp_board_manager` directory:
-
-**Ubuntu and Mac:**
-
-```bash
-export IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
-```
-
-**Windows PowerShell:**
-
-```powershell
-$env:IDF_EXTRA_ACTIONS_PATH = "/PATH/TO/YOUR_PATH/esp_board_manager"
-```
-
-**Windows Command Prompt (CMD):**
-
-```cmd
-set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
-```
-
 ### 2. Scan Boards and Select Board
 
 ESP Board Manager supports IDF action extension, providing seamless integration with the ESP-IDF build system. Use **`idf.py bmgr`** with the same options as before; **`idf.py gen-bmgr-config`** remains available as a legacy alias. Do not combine `bmgr` and `gen-bmgr-config` in one `idf.py` line, and always pass the board with **`-b`** (board names are not accepted as a bare extra argument after the action).
@@ -164,6 +120,13 @@ You can use the `-l` option to verify that the component path configuration is c
 idf.py bmgr -l
 ```
 
+By default, ESP Board Manager scans boards from:
+
+- Components downloaded to `managed_components`
+- The project `components/` directory, which takes priority over `managed_components` when the same board name exists in both places
+- Board components specified in `main/idf_component.yml`, including local board components specified through `override_path/path`
+- The directory specified by `-c`
+
 Then select your target board by name or index:
 
 ```bash
@@ -173,8 +136,8 @@ idf.py bmgr -b YOUR_TARGET_BOARD
 For example:
 
 ```bash
-idf.py bmgr -b esp_vocat_board_v1_2  # Board name
-idf.py bmgr -b 3                     # Board index
+idf.py bmgr -b esp_vocat_1_2  # Board name
+idf.py bmgr -b 3              # Board index
 ```
 
 If you need to switch to another board, you can execute the following commands:
@@ -214,7 +177,7 @@ Typical structure:
 
 ```yaml
 version: 1
-board: esp32_s3_korvo2_v3
+board: esp32_s3_korvo_2_3
 chip: esp32s3
 
 devices:
@@ -302,27 +265,24 @@ void app_main(void)
 
 ### Supported Boards
 
-| Board Name | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip |
-|---|---|---|---|---|---|---|---|---|
-| [`ESP VoCat Board V1.0`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp-vocat/user_guide_v1.0.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ CTS816S | - | - | - |
-| [`ESP VoCat Board V1.2`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp-vocat/user_guide_v1.2.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ CTS816S | - | - | - |
-| Dual Eyes Board V1.0 | ESP32-S3 | ✅ ES8311 | ❌ | ✅ GC9A01 (dual) | - | - | - | - |
-| [`ESP-BOX-3`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_3/hardware_overview_for_box_3.md) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ST77916 | ✅ GT911/TT21100 auto-detect | - | - | - |
-| ESP32-S3 BOX2 | ESP32-S3 | ✅ ES8389 | ✅ SPI | ✅ ST7789 (I80) | - | - | ✅ Custom button | - |
-| ESP-HI | ESP32-C3 | ✅ Internal ADC + PDM speaker | - | ✅ ILI9341 | - | - | ✅ GPIO button | - |
-| ESP32-C3 Lyra | ESP32-C3 | ✅ Internal ADC + PDM speaker | - | - | - | - | - | - |
-| [`ESP32-S3 Korvo2 V3`](https://docs.espressif.com/projects/esp-adf/en/latest/design-guide/dev-boards/user-guide-esp32-s3-korvo-2.html) | ESP32-S3 | ✅ ES8311 + ES7210 | ✅ SDMMC | ✅ ILI9341 | ✅ TT21100/GT911 auto-detect | ✅ DVP Camera | ✅ ADC button | - |
-| ESP32-S3 Korvo2L | ESP32-S3 | ✅ ES8311 | ✅ SDMMC | ❌ | ❌ | ❌ | ❌ | - |
-| ESP32-S31 Korvo1 | ESP32-S31 | ✅ ES8389 | - | ✅ RGB LCD | ✅ GT1151 | - | - | ✅ WS2812 |
-| [`Lyrat Mini V1.1`](https://docs.espressif.com/projects/esp-adf/en/latest/design-guide/dev-boards/get-started-esp32-lyrat-mini.html) | ESP32 | ✅ ES8388 | ✅ SDMMC | - | - | - | ✅ ADC button | - |
-| [`ESP32-C5 Spot`](https://oshwhub.com/esp-college/esp-spot) | ESP32-C5 | ✅ ES8311 (dual) | - | - | - | - | - | - |
-| [`ESP32-P4 Function-EV`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html) | ESP32-P4 | ✅ ES8311 | ✅ SDMMC | ✅ EK79007 | ✅ GT911 | ✅ CSI Camera | - | - |
-| [`ESP32-P4-EYE`](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-eye/user_guide.html) | ESP32-P4 | ✅ PDM microphone | ✅ SDMMC | ✅ ST7789 (SPI) | - | ✅ CSI Camera | ✅ GPIO button | - |
-| [`M5STACK CORES3`](https://docs.m5stack.com/en/core/CoreS3) | ESP32-S3 | ✅ AW88298 + ES7210 | ✅ SDSPI | ✅ ILI9342C | ✅ FT5x06 | ❌ | - | - |
-| [`M5STACK TAB5`](https://docs.m5stack.com/en/core/Tab5) | ESP32-P4 | ✅ ES8388 + ES7210 | ✅ SDMMC | ✅ ILI9881C/ST7121/ST7123 auto-detect | ✅ GT911/ST712x auto-detect | ✅ SC202CS | - | - |
-| [`ESP-BOX-LITE`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ✅ ES8156 + ES7243E | - | ✅ ST7789 | - | - | - | - |
+Starting from version `0.5.12`, ESP Board Manager moves board definitions out of the `esp_board_manager` component and provides them through standalone board-pack components.
 
-Note: '✅' indicates supported, '❌' indicates not yet supported, '-' indicates the hardware does not have the corresponding capability.
+For officially sold Espressif development boards, board definitions have been migrated to the `espressif/esp_boards` component. The `esp_board_manager` component depends on it by default, so users can still list and select these official boards directly with `idf.py bmgr -l`.
+
+Links:
+
+- GitHub: [espressif/esp-board-manager/tree/main/esp_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_boards)
+- ESP Component Registry: [espressif/esp_boards](https://components.espressif.com/components/espressif/esp_boards)
+
+For boards that are not officially sold by Espressif, standalone board-pack components are also available. Add the following components to your project dependencies when needed:
+
+- `espressif/esp_friends_boards`
+  - GitHub: [espressif/esp-board-manager/tree/main/esp_friends_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_friends_boards)
+  - ESP Component Registry: [espressif/esp_friends_boards](https://components.espressif.com/components/espressif/esp_friends_boards)
+
+- `espressif/m5stack_boards`
+  - GitHub: [espressif/esp-board-manager/tree/main/m5stack_boards](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards)
+  - ESP Component Registry: [espressif/m5stack_boards](https://components.espressif.com/components/espressif/m5stack_boards)
 
 ### Supported Device Types
 
@@ -405,14 +365,14 @@ Use **`idf.py bmgr`** (preferred) or **`idf.py gen-bmgr-config`** (legacy) with 
 idf.py bmgr -l
 
 # Specify board (name or index)
-idf.py bmgr -b esp_vocat_board_v1_0
+idf.py bmgr -b esp_vocat_1_0
 idf.py bmgr -b 1
 
 # Use custom board
 idf.py bmgr -b my_board -c /path/to/custom/boards
 
 # Apply an amend on top of an existing board (the directory must contain board_amend.yaml)
-idf.py bmgr -b esp32_s3_korvo2_v3 -a path/to/my_amend
+idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
 
 # Create a new board in the default components directory
 idf.py bmgr -n my_new_board
@@ -421,10 +381,10 @@ idf.py bmgr -n my_new_board
 idf.py bmgr -n path/to/boards/my_new_board
 
 # Generate Kconfig files only
-idf.py bmgr -b esp_vocat_board_v1_0 --kconfig-only
+idf.py bmgr -b esp_vocat_1_0 --kconfig-only
 
 # Skip sdkconfig consistency check when reusing current sdkconfig
-idf.py bmgr -b esp_vocat_board_v1_0 --skip-sdkconfig-check
+idf.py bmgr -b esp_vocat_1_0 --skip-sdkconfig-check
 
 # Clean generated files
 idf.py bmgr -x
@@ -439,7 +399,7 @@ You can also use the standalone script directly in the esp_board_manager directo
 python gen_bmgr_config_codes.py -l
 
 # Specify board with -b option (name or index)
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0
+python gen_bmgr_config_codes.py -b esp_vocat_1_0
 python gen_bmgr_config_codes.py -b 1
 
 # Use custom board
@@ -447,13 +407,13 @@ python gen_bmgr_config_codes.py 1 -c /custom/boards
 python gen_bmgr_config_codes.py -b my_board -c /path/to/custom/boards
 
 # Generate peripherals only
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --peripherals-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --peripherals-only
 
 # Generate devices only
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --devices-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --devices-only
 
 # Generate Kconfig files only
-python gen_bmgr_config_codes.py -b esp_vocat_board_v1_0 --kconfig-only
+python gen_bmgr_config_codes.py -b esp_vocat_1_0 --kconfig-only
 
 # Clean generated files
 python gen_bmgr_config_codes.py --clean
@@ -467,7 +427,7 @@ python gen_bmgr_config_codes.py
 
 # Specify board as direct parameter (name or index)
 # Using board naming or indexing parameters directly only works when the script is called directly
-python gen_bmgr_config_codes.py esp32_s3_korvo2_v3
+python gen_bmgr_config_codes.py esp32_s3_korvo_2_3
 python gen_bmgr_config_codes.py 1
 ```
 
@@ -488,7 +448,9 @@ ESP Board Manager uses `gen_bmgr_config_codes.py` for code generation, which han
 
 ## Custom Board
 
-`esp_board_manager` supports modular customization of your own development board. For specific usage methods, please refer to: [How to Create a Custom Board](docs/how_to_customize_board.md)
+`esp_board_manager` supports modular customization of your own development board. For specific usage methods, please refer to: [Creating a Board Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/index.html)
+
+`esp_board_manager` provides the online configuration tool [ESP Board Manager](https://board-manager.espressif.com/), which allows you to create board configurations and export board configuration files directly in your browser. For details, see [Create a Board Using the Web Tool](https://preview-docs.espressif.com/projects/esp-board-manager/en/feat-bmgr_0_6_0/create-board/web-create.html).
 
 ## Roadmap
 
@@ -510,7 +472,7 @@ AI Skills are not required to use Board Manager, and they do not replace the com
 
 Available Skills:
 
-- [`lcd-touch-i2c-migration`](tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md): Helps migrate legacy `dev_lcd_touch_i2c` / `type: lcd_touch_i2c` configurations to generic `dev_lcd_touch` / `type: lcd_touch` + `sub_type: i2c`. See [Migrating `dev_lcd_touch_i2c` to `dev_lcd_touch`](docs/lcd_touch_i2c_migration.md) for the migration guide.
+- [`lcd-touch-i2c-migration`](tools/AI_SKILLS/lcd_touch_i2c_migration/SKILL.md): Helps migrate legacy `dev_lcd_touch_i2c` / `type: lcd_touch_i2c` configurations to generic `dev_lcd_touch` / `type: lcd_touch` + `sub_type: i2c`. See [Migrating `dev_lcd_touch_i2c` to `dev_lcd_touch`](https://docs.espressif.com/projects/esp-board-manager/en/latest/migration/migrate-to-0.6.html) for the migration guide.
 
 ## Troubleshooting
 
@@ -527,6 +489,50 @@ If neither action is recognized:
 2. Restart your terminal session
 3. On ESP-IDF v6.0+, ensure `esp_board_manager` is visible to the project so `idf_ext.py` is discovered
 
+### Manually Set `IDF_EXTRA_ACTIONS_PATH`
+
+If `esp-bmgr-assist` is not installed, or you want to bypass automatic discovery for troubleshooting, you can set `IDF_EXTRA_ACTIONS_PATH` manually:
+
+**For a component downloaded from the registry:**
+
+**Ubuntu and Mac:**
+
+```bash
+export IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
+```
+
+**Windows PowerShell:**
+
+```powershell
+$env:IDF_EXTRA_ACTIONS_PATH = "YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager"
+```
+
+**Windows Command Prompt (CMD):**
+
+```cmd
+set IDF_EXTRA_ACTIONS_PATH=YOUR_PROJECT_ROOT_PATH/managed_components/espressif__esp_board_manager
+```
+
+**For a local component:**
+
+**Ubuntu and Mac:**
+
+```bash
+export IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
+```
+
+**Windows PowerShell:**
+
+```powershell
+$env:IDF_EXTRA_ACTIONS_PATH = "/PATH/TO/YOUR_PATH/esp_board_manager"
+```
+
+**Windows Command Prompt (CMD):**
+
+```cmd
+set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
+```
+
 ### CMake or compile errors (missing `gen_bmgr_codes`)
 
 If the build fails because generated files under `components/gen_bmgr_codes` are missing or stale, run `idf.py bmgr -b YOUR_BOARD` (or `idf.py gen-bmgr-config -b YOUR_BOARD`). The IDF extension does not print a dedicated warning before CMake for missing files.
@@ -542,7 +548,7 @@ If the build fails because generated files under `components/gen_bmgr_codes` are
 
 1. Backs up `sdkconfig` to `components/gen_bmgr_codes/sdkconfig.bmgr_board.old` and removes the original to prevent residual configurations from the old board (e.g., different chip's CONFIG_IDF_TARGET, different board's device settings) from affecting the new board
 2. Generates `board_manager.defaults` file with board-specific configurations from `boards/<board_name>/sdkconfig.defaults.board`
-3. The configurations will be automatically applied via `SDKCONFIG_DEFAULTS` environment variable during build/menuconfig/reconfigure. Project defaults are loaded after `board_manager.defaults`, so users can override ordinary board defaults; selected-board, board-name, device-support, peripheral-support, and device sub-type support symbols remain managed by ESP Board Manager and must not be set in user defaults.
+3. The configurations are automatically applied via `SDKCONFIG_DEFAULTS` during build/menuconfig/reconfigure (only when the project has no `sdkconfig` yet). The defaults are assembled in this order, where later entries win: project `sdkconfig.defaults` (lowest) → `board_manager.defaults` (board-level, including amend) → env `SDKCONFIG_DEFAULTS` → `-D SDKCONFIG_DEFAULTS` (highest). This means board-level defaults always take precedence over the project's `sdkconfig.defaults`; for board-specific sdkconfig overrides use amend (auto-amend or `-a/--amend`) rather than the project defaults. If the project `sdkconfig.defaults` sets a symbol also managed by the board, the board value wins and a non-blocking warning is printed. Use env or `-D SDKCONFIG_DEFAULTS=` for CI or temporary overrides.
 
 Always use `idf.py bmgr -b` or `idf.py gen-bmgr-config -b` (or `python gen_bmgr_config_codes.py`) for board switching. Using `idf.py menuconfig` may cause dependency errors.
 

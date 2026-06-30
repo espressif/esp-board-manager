@@ -3,10 +3,9 @@ devices:
   - name: sdcard_power_ctrl
     type: power_ctrl
     sub_type: gpio
-    config:
-      peripherals:
-        - name: gpio_sd_power
-          active_level: 0
+    peripherals:
+      - name: gpio_sd_power
+        active_level: 0
 
   # On-board WS2812 status LED. Schematic net: GPIO37.
   - name: led_strip
@@ -26,33 +25,33 @@ devices:
         mem_block_symbols: 0
         with_dma: false
 
-  # # Four ADC buttons on GPIO42. Voltage centers follow the S31 Korvo BSP:
-  # # VOLUP=380mV, VOLDOWN=820mV, MODE=1340mV, SET=1870mV.
-  # - name: adc_button_group
-  #   type: button
-  #   sub_type: adc_multi
-  #   version: default
-  #   config:
-  #     long_press_time: 2000
-  #     short_press_time: 100
-  #     events_cfg:
-  #       press_down: true
-  #       press_up: true
-  #       single_click: true
-  #       double_click: true
-  #       multi_click: false
-  #       long_press_start: true
-  #       long_press_up: true
-  #       long_press_hold: false
-  #       press_repeat: false
-  #       press_repeat_done: false
-  #       press_end: false
-  #     button_num: 4
-  #     max_voltage: 2000
-  #     voltage_range: [380, 820, 1340, 1870]
-  #     button_labels: ["VOLUME_UP", "VOLUME_DOWN", "MODE", "SET"]
-  #   peripherals:
-  #     - name: adc_oneshot
+  # Four ADC buttons on GPIO42.
+  # VOLUP=380mV, VOLDOWN=820mV, MODE=1340mV, SET=1870mV.
+  - name: adc_button_group
+    type: button
+    sub_type: adc_multi
+    version: default
+    config:
+      long_press_time: 2000
+      short_press_time: 100
+      events_cfg:
+        press_down: true
+        press_up: true
+        single_click: true
+        double_click: true
+        multi_click: false
+        long_press_start: true
+        long_press_up: true
+        long_press_hold: false
+        press_repeat: false
+        press_repeat_done: false
+        press_end: false
+      button_num: 4
+      max_voltage: 2000
+      voltage_range: [380, 820, 1340, 1870]
+      button_labels: ["VOLUME_UP", "VOLUME_DOWN", "MODE", "SET"]
+    peripherals:
+      - name: adc_oneshot
 
   # ES8389 DAC drives ES_LOUTP/N and ES_ROUTP/N into two NS4150 power amplifiers.
   - name: audio_dac
@@ -93,32 +92,32 @@ devices:
         address: 0x20
         frequency: 400000
 
-  # # microSD card on SDMMC 4-bit bus. Shares GPIO20~25 stuffing option with SPI NAND.
-  # - name: fs_sdcard
-  #   type: fs_fat
-  #   sub_type: sdmmc
-  #   power_ctrl_device: sdcard_power_ctrl
-  #   version: default
-  #   config:
-  #     mount_point: "/sdcard"
-  #     vfs_config:
-  #       format_if_mount_failed: false
-  #       max_files: 5
-  #       allocation_unit_size: 16384
-  #     sub_config:
-  #       slot: SDMMC_HOST_SLOT_0
-  #       frequency: SDMMC_FREQ_HIGHSPEED
-  #       bus_width: 4
-  #       slot_flags: SDMMC_SLOT_FLAG_INTERNAL_PULLUP
-  #       pins:
-  #         clk: 24
-  #         cmd: 25
-  #         d0: 20
-  #         d1: 21
-  #         d2: 22
-  #         d3: 23
-  #         cd: -1
-  #         wp: -1
+  # microSD card on SDMMC 4-bit bus. Shares GPIO20~25 stuffing option with SPI NAND.
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: sdmmc
+    power_ctrl_device: sdcard_power_ctrl
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        slot: SDMMC_HOST_SLOT_0
+        frequency: SDMMC_FREQ_HIGHSPEED
+        bus_width: 4
+        slot_flags: SDMMC_SLOT_FLAG_INTERNAL_PULLUP
+        pins:
+          clk: 24
+          cmd: 25
+          d0: 20
+          d1: 21
+          d2: 22
+          d3: 23
+          cd: -1
+          wp: -1
 
   # 800x480 RGB LCD panel. Schematic nets: RGB565 data GPIO8-19/33-36,
   # PCLK=GPIO40, DE=GPIO43, HSYNC=GPIO44, VSYNC=GPIO45.

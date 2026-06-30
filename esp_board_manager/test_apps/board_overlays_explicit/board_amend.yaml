@@ -1,0 +1,6 @@
+version: "1.0"
+description: "Explicit -a amend; must override the auto-amend value for gpio_auto_tweak_led"
+
+apply:
+  - explicit_override.yaml
+  - sdkconfig.defaults.board

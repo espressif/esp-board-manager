@@ -357,10 +357,10 @@ ADC 多按键完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``
+- ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``
 
 注意事项
@@ -388,5 +388,30 @@ API 参考
    } dev_button_handles_t;
 
 ``num_buttons`` 为实际初始化的按键数量；``button_handles`` 可传入 ``espressif/button`` 组件的回调注册接口。
+
+使用 :cpp:func:`esp_board_device_callback_register` 可以按 device 名称注册按键回调。该 API 会使用已初始化的 ``button`` 设备句柄，并按照 ``events_cfg`` 中启用的事件，将同一个 ``button_cb_t`` 注册到该设备下的所有按键句柄。调用该 API 前，目标 device 必须已经初始化。
+
+.. code-block:: c
+
+   #include "dev_button.h"
+   #include "esp_board_device.h"
+
+   static void button_event_handler(void *button_handle, void *user_data)
+   {
+       button_handle_t btn = (button_handle_t)button_handle;
+       button_event_t event = iot_button_get_event(btn);
+
+       ESP_LOGI(TAG, "button event: %s, user_data: %s",
+                iot_button_get_event_str(event),
+                (const char *)user_data);
+   }
+
+   void app_register_button_callback(void)
+   {
+       ESP_ERROR_CHECK(esp_board_device_callback_register(
+           "gpio_button_0", button_event_handler, NULL));
+   }
+
+``user_data`` 可以用于传入应用自定义上下文，传入 ``NULL`` 时，BMGR 会使用默认值：单按键设备使用设备 ``name``，``adc_multi`` 设备使用 ``button_labels`` 中与按键索引对应的字符串。
 
 相关声明位于 ``esp_board_manager/devices/dev_button/dev_button.h``。

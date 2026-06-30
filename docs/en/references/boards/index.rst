@@ -3,13 +3,7 @@ Board Reference
 
 :link_to_translation:`zh_CN:[中文]`
 
-The board reference contains per-board information: board overview, corresponding chip, supported devices and peripherals, whether ``setup_device.c`` is required, and any board-specific notes.
-
-Detailed pages for each board will be organized in batches along with the board components.
-
-**Current version (0.5.x)**: Official boards are shipped as part of the BMGR component (``esp_board_manager/boards/``). Introducing BMGR is sufficient to use them directly — no additional dependency declarations are required.
-
-**Starting from BMGR 0.6**: Boards are removed from the BMGR component and split into multiple independent board components distributed by series:
+**Starting from BMGR 0.6**: Boards are removed from the BMGR component and split into multiple independent board components:
 
 .. list-table::
    :header-rows: 1

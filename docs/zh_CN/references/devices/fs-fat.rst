@@ -204,12 +204,12 @@ SPI 完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_devices.yaml``
-- ``esp_board_manager/boards/esp_vocat_board_v1_2/board_devices.yaml``
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_devices.yaml``
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_devices.yaml``
+- ``esp_boards/esp_vocat_1_2/board_devices.yaml``
+- ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``
 
 注意事项
 ------------

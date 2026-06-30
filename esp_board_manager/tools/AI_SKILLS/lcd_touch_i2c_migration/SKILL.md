@@ -7,6 +7,8 @@ description: Use when migrating ESP Board Manager board definitions or applicati
 
 Use this skill to migrate ESP Board Manager configurations from legacy `lcd_touch_i2c` to generic `lcd_touch` with `sub_type: i2c`.
 
+> As of ESP Board Manager 0.6.0 the legacy `dev_lcd_touch_i2c` device is **removed**: its implementation, parser, `dev_lcd_touch_i2c.h` header, the `dev_lcd_touch_i2c_*` types, and the `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT` compatibility symbol no longer exist. Migration is mandatory — there is no in-tree legacy type or fallback macro to keep.
+
 ## Migration Goals
 
 - Board YAML uses `type: lcd_touch` and `sub_type: i2c`.
@@ -102,7 +104,7 @@ if (touch_addr == 0xba) {
 
 ## Application Compatibility Checks
 
-Legacy code may use this old feature switch:
+Legacy code may still reference this old feature switch (removed in 0.6.0, so it now always evaluates to false / undefined):
 
 ```c
 #if CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT
@@ -139,9 +141,9 @@ Migration patterns:
   - `cfg->i2c_addr` -> `cfg->sub_cfg.i2c.i2c_addr`
   - address count -> `cfg->sub_cfg.i2c.i2c_addr_count`
 - Do not use `cfg->io_i2c_config.dev_addr` to identify the active chip; call `esp_board_device_get_i2c_effective_addr("<touch_device_name>", &addr)` and compare 8-bit addresses.
-- If code must temporarily support both old and new boards, branch on `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT` first and keep any `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT` fallback isolated for legacy boards only.
+- Do not add a `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT` fallback branch: the symbol is removed in 0.6.0 and would never be defined. Guard touch code with `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT` (plus `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUB_I2C_SUPPORT` for the I2C sub-type) only.
 
-Only keep legacy types for boards that intentionally still use `type: lcd_touch_i2c`.
+Migrate every board and application off `type: lcd_touch_i2c`: the legacy type is removed in 0.6.0 and can no longer be kept.
 
 ## Validation
 
@@ -150,13 +152,13 @@ After migration:
 1. Run Board Manager generation for the board:
    - `idf.py bmgr -b <board>`
    - or `python3 gen_bmgr_config_codes.py -b <board>` from the test app context.
-2. Confirm generation has no `lcd_touch_i2c` deprecated parser warning.
+2. Confirm no board YAML still uses `type: lcd_touch_i2c`. The legacy type is removed in 0.6.0, so any remaining legacy YAML makes generation fail with an unknown/unsupported device type error (no deprecation warning).
 3. Confirm `components/gen_bmgr_codes/board_manager.defaults` has:
    - `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT=y`
    - `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUB_I2C_SUPPORT=y`
 4. Confirm migrated application code does not use `CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT` or legacy `dev_lcd_touch_i2c_*` types.
 5. Build if an ESP-IDF environment is available.
-6. Confirm there is no compile warning from legacy `dev_lcd_touch_i2c.h` for migrated boards.
+6. Confirm no code references the removed `dev_lcd_touch_i2c.h` header or `dev_lcd_touch_i2c_*` types; such references now fail to compile rather than emitting a deprecation warning.
 
 ## Reporting
 

@@ -7,7 +7,8 @@
 # Supports different I2S hardware versions (must match ESP-IDF i2s_std.h):
 # - SOC_I2S_HW_VERSION_1: legacy IP (msb_right in std slot cfg; no ext_clk_freq_hz in std clk cfg)
 # - SOC_I2S_HW_VERSION_2: newer IP (left_align, big_endian, bit_order_lsb; ext_clk_freq_hz in std clk)
-# When IDF_PATH is set, layout is taken from soc_caps.h; otherwise esp32/esp32s2 -> v1, else v2.
+# Layout is taken from the SoC capability catalog; parser-only fallback keeps
+# esp32/esp32s2 on v1 and other chips on v2 when no catalog context is configured.
 VERSION = 'v1.0.0'
 
 PERIPH_I2S_IO_LIST = {
@@ -38,6 +39,7 @@ import sys
 
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.soc_capability_query import current_soc
 
 def get_includes() -> list:
     """Return list of required include headers for I2S peripheral"""
@@ -245,13 +247,11 @@ def parse_i2s_format(format_str: str) -> dict:
     return result
 
 def get_effective_chip_name():
-    """Resolve target chip for I2S struct layout (board YAML first, then build env).
+    """Resolve target chip for I2S parser compatibility fallback.
 
-    Code generation must match ``i2s_pdm.h`` / ``i2s_std.h`` layout for the *actual*
-    ``CONFIG_IDF_TARGET``. If board metadata is missing (e.g. kconfig-only runs),
-    fall back to ``IDF_TARGET`` from the environment so ESP32 (HW v1) does not get
-    v2-only PDM slot fields, and so GPIO config does not include ``dout2`` when
-    ``SOC_I2S_PDM_MAX_TX_LINES <= 1``.
+    Normal generation configures ``current_soc()`` from board metadata before
+    parser dispatch. This fallback is only for direct parser tests or legacy
+    calls that have not configured the catalog context.
     """
     from generators.utils.board_utils import get_chip_name
     chip_name = get_chip_name()
@@ -266,47 +266,29 @@ def get_effective_chip_name():
 
 def chip_supports_pdm_tx_second_dout_pin(chip_name) -> bool:
     """Whether ``i2s_pdm_tx_gpio_config_t`` includes ``dout2`` (``SOC_I2S_PDM_MAX_TX_LINES > 1``)."""
-    if not chip_name:
-        # Prefer omitting dout2 when unknown; boards that need two lines should set board path / chip.
-        return False
-    c = chip_name.strip().lower().replace('-', '')
-    # Matches ESP-IDF soc_caps: ESP32 defines SOC_I2S_PDM_MAX_TX_LINES (1) — no dout2 field.
-    if c == 'esp32':
-        return False
-    return True
+    max_lines = current_soc().limit('i2s.pdm_max_tx_lines', default=1)
+    return _int_or_default(max_lines, 1) > 1
 
 
 def chip_supports_pdm_rx_hp_filter(chip_name) -> bool:
     """Whether ``i2s_pdm_rx_slot_config_t`` exposes HP filter fields."""
-    from generators.utils.idf_soc_i2s import soc_i2s_cap_from_idf
-
-    cap = soc_i2s_cap_from_idf(chip_name, 'SOC_I2S_SUPPORTS_PDM_RX_HP_FILTER')
-    if cap is not None:
-        return cap
-
-    if not chip_name:
-        return False
-    c = chip_name.strip().lower().replace('-', '')
-    # IDF v5.4/v5.5 expose the cap on P4; IDF v6 adds S31. Prefer a compact
-    # fallback for runs without IDF_PATH, while the active IDF remains authoritative.
-    return c in ('esp32p4', 'esp32s31')
+    return current_soc().supports('i2s.supports_pdm_rx_hp_filter', default=False)
 
 
 def get_i2s_hw_version() -> int:
     """Determine I2S hardware version for generated struct layout.
 
-    Prefer ``$IDF_PATH/components/soc/<chip>/.../soc_caps.h`` so output matches the
-    IDF version used to build (avoids v1/v2 mismatches on newer or transitional chips).
+    The shared SoC catalog is authoritative. When no catalog context is
+    configured, keep a small parser-only fallback for direct parser tests.
 
     Returns:
         1 for SOC_I2S_HW_VERSION_1 layout, 2 for SOC_I2S_HW_VERSION_2 layout.
     """
-    chip_name = get_effective_chip_name()
-    from generators.utils.idf_soc_i2s import soc_i2s_hw_layout_version_from_idf
+    soc_hw_version = current_soc().limit('i2s.hw_version', default=None)
+    if soc_hw_version in (1, 2):
+        return int(soc_hw_version)
 
-    from_idf = soc_i2s_hw_layout_version_from_idf(chip_name)
-    if from_idf is not None:
-        return from_idf
+    chip_name = get_effective_chip_name()
     if not chip_name:
         return 2
     if chip_name in ('esp32', 'esp32s2'):
@@ -342,6 +324,142 @@ def default_tdm_slot_mask(slot_mode) -> str:
     if slot_mode == 'I2S_SLOT_MODE_MONO':
         return 'I2S_TDM_SLOT0'
     return 'I2S_TDM_SLOT0 | I2S_TDM_SLOT1'
+
+
+def _int_or_default(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def _clock_gpio_direction(role: str) -> str:
+    if role == 'I2S_ROLE_MASTER':
+        return 'output'
+    if role == 'I2S_ROLE_SLAVE':
+        return 'input'
+    return 'any'
+
+
+def _gpio_value(pins: dict, field: str) -> int:
+    return int(pins.get(field, -1))
+
+
+def _validate_i2s_gpio_pin(name: str, field: str, pin: int, direction: str) -> None:
+    if not current_soc().valid_gpio(pin, direction=direction, allow_nc=True, default=True):
+        raise ValueError(
+            f"Invalid I2S GPIO configuration for peripheral '{name}': "
+            f"pin '{field}' ({pin}) is not a valid {direction} GPIO for the current SoC"
+        )
+
+
+def _validate_i2s_gpio_pins(name: str, config_type: str, direction: str, role: str, pins: dict) -> None:
+    """Validate configured I2S GPIOs against the current SoC catalog.
+
+    Unknown catalogs fail open through ``current_soc().valid_gpio(..., default=True)``.
+    """
+    clock_dir = _clock_gpio_direction(role)
+    if config_type in ('std', 'tdm'):
+        for field in ('mclk', 'bclk', 'ws'):
+            _validate_i2s_gpio_pin(name, field, _gpio_value(pins, field), clock_dir)
+        _validate_i2s_gpio_pin(name, 'dout', _gpio_value(pins, 'dout'), 'output')
+        _validate_i2s_gpio_pin(name, 'din', _gpio_value(pins, 'din'), 'input')
+        return
+
+    if config_type == 'pdm':
+        _validate_i2s_gpio_pin(name, 'clk', _gpio_value(pins, 'clk'), clock_dir)
+        if direction == 'I2S_DIR_TX':
+            _validate_i2s_gpio_pin(name, 'dout', _gpio_value(pins, 'dout'), 'output')
+            if 'dout2' in pins:
+                _validate_i2s_gpio_pin(name, 'dout2', _gpio_value(pins, 'dout2'), 'output')
+        else:
+            if any(f'din{i}' in pins for i in range(4)):
+                for i in range(_pdm_rx_max_lines(pins)):
+                    _validate_i2s_gpio_pin(name, f'din{i}', _gpio_value(pins, f'din{i}'), 'input')
+            else:
+                _validate_i2s_gpio_pin(name, 'din', _gpio_value(pins, 'din'), 'input')
+
+
+def _pdm_rx_max_lines(pins: dict) -> int:
+    max_lines = current_soc().limit('i2s.pdm_max_rx_lines', default=1)
+    max_lines = _int_or_default(max_lines, 1)
+    return max(1, min(4, max_lines))
+
+
+def _validate_pdm_rx_line_limit(name: str, pins: dict, max_lines: int) -> None:
+    for i in range(max_lines, 4):
+        if f'din{i}' in pins:
+            raise ValueError(
+                f"Invalid I2S GPIO configuration for peripheral '{name}': "
+                f"pin 'din{i}' is not supported because the current SoC supports "
+                f'{max_lines} PDM RX data line(s)'
+            )
+
+
+def is_duplicate_io_conflict(duplicate_group: list) -> bool:
+    """Return whether a pairwise I2S duplicate should warn as an IO conflict."""
+    if len(duplicate_group) != 2:
+        return True
+
+    def normalize_port(port):
+        if isinstance(port, str) and port.startswith('I2S_NUM_'):
+            try:
+                return int(port.removeprefix('I2S_NUM_'))
+            except ValueError:
+                return port
+        return port
+
+    shared_clock_fields = {'mclk', 'bclk', 'ws'}
+    shared_data_fields = {'dout', 'din', 'dout2', 'dins'}
+    shared_fields_by_config = {
+        'std': shared_clock_fields | shared_data_fields,
+        'tdm': shared_clock_fields | shared_data_fields,
+        'pdm': {'clk'},
+    }
+
+    first_field = str(duplicate_group[0].get('io_field', '')).strip().lower()
+    second_field = str(duplicate_group[1].get('io_field', '')).strip().lower()
+    if first_field != second_field:
+        return True
+
+    ports = set()
+    directions = set()
+    config_types = set()
+
+    for record in duplicate_group:
+        artifact = record.get('artifact', {}) if isinstance(record, dict) else {}
+        raw = artifact.get('raw', {}) if isinstance(artifact, dict) else {}
+        raw_config = raw.get('config', {}) if isinstance(raw, dict) else {}
+        result = artifact.get('result', {}) if isinstance(artifact, dict) else {}
+        struct_init = result.get('struct_init', {}) if isinstance(result, dict) else {}
+
+        port = raw_config.get('port')
+        if port is None:
+            port = normalize_port(struct_init.get('port'))
+        format_name = artifact.get('format')
+        if port is None or not format_name:
+            return True
+
+        parsed_format = parse_i2s_format(format_name)
+        config_type = parsed_format.get('config_type')
+        if config_type not in shared_fields_by_config:
+            return True
+
+        ports.add(normalize_port(port))
+        directions.add(struct_init.get('direction') or parsed_format.get('direction'))
+        config_types.add(config_type)
+
+    if len(ports) != 1 or len(config_types) != 1:
+        return True
+
+    if directions != {'I2S_DIR_TX', 'I2S_DIR_RX'}:
+        return True
+
+    config_type = next(iter(config_types))
+    if first_field not in shared_fields_by_config[config_type]:
+        return True
+
+    return False
 
 
 def validate_pdm_data_fmt_compat(cfg: dict) -> None:
@@ -519,6 +637,7 @@ def parse(name: str, config: dict) -> dict:
         # Get pins and invert_flags configurations
         pins = cfg.get('pins', {})
         invert_flags = cfg.get('invert_flags', {})
+        _validate_i2s_gpio_pins(name, format_config['config_type'], direction, role, pins)
 
         # Determine I2S hardware version
         eff_chip = get_effective_chip_name()
@@ -637,7 +756,7 @@ def parse(name: str, config: dict) -> dict:
                     }
                 }
                 # dout2 exists only when SOC_I2S_PDM_MAX_TX_LINES > 1 (e.g. not on ESP32)
-                if chip_supports_pdm_tx_second_dout_pin(get_effective_chip_name()):
+                if chip_supports_pdm_tx_second_dout_pin(eff_chip):
                     pdm_gpio_cfg['dout2'] = int(pins.get('dout2', -1)) if 'dout2' in pins else -1
 
                 config_dict['struct_init']['i2s_cfg'] = {
@@ -663,13 +782,12 @@ def parse(name: str, config: dict) -> dict:
                         'clk_inv': bool(invert_flags.get('clk_inv', False))
                     },
                 }
-                # SOC_I2S_PDM_MAX_RX_LINES is hardcoded to 4 in esp32p4 and esp32s3, other chips only support 1.
+                max_rx_lines = _pdm_rx_max_lines(pins)
                 if any(f'din{i}' in pins for i in range(4)):
+                    _validate_pdm_rx_line_limit(name, pins, max_rx_lines)
                     pdm_rx_gpio_cfg['dins'] = [
-                        int(pins.get('din0', -1)),
-                        int(pins.get('din1', -1)),
-                        int(pins.get('din2', -1)),
-                        int(pins.get('din3', -1)),
+                        int(pins.get(f'din{i}', -1))
+                        for i in range(max_rx_lines)
                     ]
                 else:
                     pdm_rx_gpio_cfg['din'] = int(pins.get('din', -1)) if 'din' in pins else -1

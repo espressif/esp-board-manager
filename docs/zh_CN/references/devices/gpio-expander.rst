@@ -109,12 +109,12 @@ I2C IO 扩展完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``：``gpio_expander`` 配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``：I2C 外设配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/setup_device.c``：IO 扩展工厂函数。
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_devices.yaml``：``gpio_expander`` 与 ``rgb_3wire_spi`` LCD 同板配置。
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``：两个 ``gpio_expander`` 设备配置。
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml``：``gpio_expander`` 配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：``gpio_expander`` 配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：I2C 外设配置。
+- ``esp_boards/esp32_s3_korvo_2_3/setup_device.c``：IO 扩展工厂函数。
+- ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``：``gpio_expander`` 与 ``rgb_3wire_spi`` LCD 同板配置。
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``：两个 ``gpio_expander`` 设备配置。
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml``：``gpio_expander`` 配置。
 
 注意事项
 ------------

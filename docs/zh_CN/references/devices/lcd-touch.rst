@@ -127,7 +127,7 @@ SPI 触摸完整字段
 组件依赖
 ------------
 
-``lcd_touch`` 通过 ``esp_board_manager/idf_component.yml`` 在启用 ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` 或 ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT`` 时引入公共组件 ``espressif/esp_lcd_touch``，版本为 ``"*"``。
+``lcd_touch`` 通过 ``esp_board_manager/idf_component.yml`` 在启用 ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` 时引入公共组件 ``espressif/esp_lcd_touch``，版本为 ``"*"``。
 
 具体触摸芯片驱动需在设备条目的 ``dependencies`` 中声明。已有板级配置中，GT911 触摸使用 ``espressif/esp_lcd_touch_gt911: "*"``。YAML 模板中的 ``espressif/esp_lcd_touch_generic: "*"`` 是待确认的芯片组件占位，板级维护者需替换为实际触摸芯片对应的组件。
 
@@ -156,10 +156,10 @@ SPI 触摸完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：GT911 ``lcd_touch`` I2C 配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：触摸设备引用的 ``i2c_master`` 配置。
-- ``esp_board_manager/boards/esp_box_3/board_devices.yaml``：I2C 触摸配置。
-- ``esp_board_manager/boards/m5stack_cores3/board_devices.yaml``：I2C 触摸配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：GT911 ``lcd_touch`` I2C 配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：触摸设备引用的 ``i2c_master`` 配置。
+- ``esp_boards/esp32_s3_box_3/board_devices.yaml``：I2C 触摸配置。
+- ``m5stack_boards/m5stack_cores3/board_devices.yaml``：I2C 触摸配置。
 
 注意事项
 ------------
@@ -169,6 +169,37 @@ SPI 触摸完整字段
 - ``i2c_addr`` 使用 8-bit 左移地址，最多 4 个候选值。源码会逐个探测并记录探测成功的有效地址。
 - 工程中需提供 ``lcd_touch_factory_entry_t``，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。
 - 修改 YAML 后需重新执行 ``idf.py bmgr -b <board>``。
+
+工厂函数与多地址选择
+--------------------
+
+工程需要提供 ``lcd_touch_factory_entry_t``，由 BMGR 在创建触摸设备时回调，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。函数签名为：
+
+.. code-block:: c
+
+   esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                       const esp_lcd_touch_config_t *touch_dev_config,
+                                       esp_lcd_touch_handle_t *ret_touch)
+
+如果同一块开发板可能搭载不同触摸芯片（即 ``i2c_addr`` 写了多个候选地址），可以在工厂函数中通过 ``esp_board_device_get_i2c_effective_addr()`` 获取实际探测命中的地址，再选择对应驱动：
+
+.. code-block:: c
+
+   uint16_t touch_addr = 0;
+   esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
+   if (ret != ESP_OK) {
+       return ret;
+   }
+
+   if (touch_addr == 0xba) {
+       return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
+   }
+
+   if (touch_addr == 0x48) {
+       return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+   }
+
+``esp_board_device_get_i2c_effective_addr()`` 返回的是 8-bit 左移地址，与 YAML 中的 ``i2c_addr`` 语义一致。
 
 调试技巧
 ------------

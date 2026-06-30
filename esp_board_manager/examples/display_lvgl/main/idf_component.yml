@@ -1,5 +1,7 @@
 dependencies:
-  esp_board_manager:
-    path: ../../../
+  espressif/esp_board_manager:
+    override_path: ../../../../esp_board_manager
+  espressif/esp_boards:
+    override_path: ../../../../esp_boards
   espressif/esp_lvgl_adapter: '*'
   espressif/esp_lcd_touch: ^1.1.2

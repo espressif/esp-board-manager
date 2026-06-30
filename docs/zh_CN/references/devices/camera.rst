@@ -281,12 +281,11 @@ SPI 相机完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp_sparkbot/board_devices.yaml``：``dvp`` 摄像头配置。
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_devices.yaml``：``dvp`` 摄像头配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``：``csi`` 摄像头配置。
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``：``csi`` 摄像头使用的 ``i2c`` 和 ``ldo`` 外设。
-- ``esp_board_manager/boards/esp_sensair_halo/board_devices.yaml``：``spi`` 摄像头配置。
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``：摄像头配置。
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：``dvp`` 摄像头配置。
+- ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：``dvp`` 摄像头配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``csi`` 摄像头配置。
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：``csi`` 摄像头使用的 ``i2c`` 和 ``ldo`` 外设。
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``：摄像头配置。
 
 注意事项
 ------------

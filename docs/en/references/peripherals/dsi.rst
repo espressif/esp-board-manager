@@ -99,10 +99,10 @@ Reference Code
 Board-Level Reference
 ---------------------
 
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: defines ``dsi_display``, used together with ``ldo_mipi`` and a DSI LCD.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_devices.yaml``: ``display_lcd`` references ``dsi_display`` with ``sub_type: dsi``.
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``: defines ``dsi_display`` and LCD backlight LEDC peripheral.
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``: ``display_lcd`` references ``dsi_display`` with ``sub_type: dsi``.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: defines ``dsi_display``, used together with ``ldo_mipi`` and a DSI LCD.
+- ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: ``display_lcd`` references ``dsi_display`` with ``sub_type: dsi``.
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``: defines ``dsi_display`` and LCD backlight LEDC peripheral.
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``: ``display_lcd`` references ``dsi_display`` with ``sub_type: dsi``.
 
 Notes
 -----

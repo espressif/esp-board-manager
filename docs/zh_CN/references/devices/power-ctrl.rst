@@ -121,17 +121,17 @@ GPIO 电源控制完整字段
 
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl.c``
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl_sub_gpio.c``
-- ``esp_board_manager/docs/how_to_customize_board_cn.md``
+- 板级自定义流程：:doc:`/create-board/index`
 
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp_vocat_board_v1_2/board_devices.yaml``
-- ``esp_board_manager/boards/esp_vocat_board_v1_0/board_devices.yaml``
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_devices.yaml``
-- ``esp_board_manager/boards/esp_box_3/board_devices.yaml``
-- ``esp_board_manager/boards/m5stack_tab5/board_devices.yaml``
-- ``esp_board_manager/boards/esp32_c5_spot/board_devices.yaml``
+- ``esp_boards/esp_vocat_1_2/board_devices.yaml``
+- ``esp_boards/esp_vocat_1_0/board_devices.yaml``
+- ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
+- ``esp_boards/esp32_s3_box_3/board_devices.yaml``
+- ``m5stack_boards/m5stack_tab5/board_devices.yaml``
+- ``esp_friends_boards/esp32_c5_spot/board_devices.yaml``
 
 注意事项
 ------------

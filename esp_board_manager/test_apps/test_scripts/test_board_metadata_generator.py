@@ -91,15 +91,15 @@ devices:
     assert '\n\n  uart_debug:\n' in output_text
 
 
-def test_adc_metadata_skips_io_when_channel_header_is_missing(bmgr_root, monkeypatch):
+def test_adc_metadata_skips_io_when_adc_channel_map_is_missing(bmgr_root, monkeypatch):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_adc import periph_adc as mod
     from generators.board_metadata_generator import BoardMetadataGenerator
 
-    def _raise_missing_header(*args, **kwargs):
-        raise FileNotFoundError('adc_channel.h not found')
+    def _raise_missing_map(*args, **kwargs):
+        raise FileNotFoundError('ADC channel map is not available')
 
-    monkeypatch.setattr(mod, 'adc_channels_to_gpios', _raise_missing_header)
+    monkeypatch.setattr(mod, 'adc_channels_to_gpios', _raise_missing_map)
 
     result = mod.parse(
         'adc_audio_in',
@@ -224,15 +224,15 @@ def test_lcd_touch_metadata_extracts_touch_gpio_fields(bmgr_root):
         'int_gpio_num': 5,
     }
 
-def test_audio_codec_adc_metadata_skips_io_when_channel_header_is_missing(bmgr_root, monkeypatch):
+def test_audio_codec_adc_metadata_skips_io_when_adc_channel_map_is_missing(bmgr_root, monkeypatch):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_audio_codec import dev_audio_codec as mod
     from generators.board_metadata_generator import BoardMetadataGenerator
 
-    def _raise_missing_header(*args, **kwargs):
-        raise FileNotFoundError('adc_channel.h not found')
+    def _raise_missing_map(*args, **kwargs):
+        raise FileNotFoundError('ADC channel map is not available')
 
-    monkeypatch.setattr(mod, 'adc_channels_to_gpios', _raise_missing_header)
+    monkeypatch.setattr(mod, 'adc_channels_to_gpios', _raise_missing_map)
 
     result = mod.parse(
         'audio_adc',

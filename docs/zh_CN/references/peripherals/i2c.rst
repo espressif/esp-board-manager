@@ -148,10 +148,9 @@ HP I2C master 完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``：音频 codec 使用的 I2C 控制总线。
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：音频、触摸和 IO expander 共用 I2C 总线。
-- ``esp_board_manager/boards/m5stack_tab5/board_peripherals.yaml``：音频、触摸和多个 IO expander 使用 I2C 总线。
-- ``esp_board_manager/boards/esp_sensair_halo/board_peripherals.yaml``：触摸和摄像头控制路径使用 I2C 总线。
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：音频 codec 使用的 I2C 控制总线。
+- ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：音频、触摸和 IO expander 共用 I2C 总线。
+- ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：音频、触摸和多个 IO expander 使用 I2C 总线。
 
 注意事项
 ------------

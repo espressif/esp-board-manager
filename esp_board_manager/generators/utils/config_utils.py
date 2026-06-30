@@ -177,7 +177,7 @@ def load_yaml_with_includes(
 
     The amend plan's YAML fragments are merged into the loaded data in manifest
     order: items with the same ``name`` are merged field-by-field, new names are
-    appended. See ``docs/amend_design_cn.md`` for full semantics.
+    appended. See ``docs/zh_CN/create-board/amend.rst`` for full semantics.
 
     Args:
         yaml_path:  path to ``board_devices.yaml`` / ``board_peripherals.yaml``.

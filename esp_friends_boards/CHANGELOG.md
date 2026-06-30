@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2
+
+### Bug Fixes
+
+- Renamed the `init_level` field to `default_level` for the **ESP32-S3-BOX-2** LCD read-strobe and backlight GPIO peripherals to match the current peripheral schema.
+- Added the missing `<stdlib.h>` and `<string.h>` includes to the **ESP32-S3-BOX-2** setup source so it compiles cleanly.
+
 ## 0.5.1
 
 ### Modifications

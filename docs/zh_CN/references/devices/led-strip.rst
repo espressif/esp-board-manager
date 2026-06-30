@@ -175,8 +175,8 @@ SPI 灯带完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp32_s31_korvo1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
-- ``esp_board_manager/boards/esp32_s31_function_coreboard_1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
+- ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``：SPI 模式 ``led_strip`` 测试配置。
 
 注意事项

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.2
+
+### Bug Fixes
+
+- Re-enabled the `adc_oneshot` peripheral on **ESP32-S31-Korvo-1** that was mistakenly commented out, restoring ADC button support, and adjusted its attenuation and bit width to the SoC defaults.
+- Fixed the **ESP32-S31-Korvo-1** SD-card `power_ctrl` device to declare `peripherals` at the device top level instead of nesting it under `config`, matching the current device schema.
+- Guarded the GT1151 touch factory entry on the **ESP32-S3-LCD-EV-Board** 800x480 sub-board behind an internal macro so the setup source compiles whether or not the touch driver header is present.
+
+### Modifications
+
+- Corrected IO expander initialization ordering: added `depends_on: gpio_expander` to the **ESP32-S3-LCD-EV-Board** display panel and removed the redundant dependency from the **ESP32-S3-Korvo-2 V3.1** LCD touch device.
+- Removed the redundant `CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE` and `CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE_RISCV` defaults from **ESP32-S31-Korvo-1**.
+
 ## 0.5.1
 
 ### Features

@@ -11,4 +11,5 @@ This chapter explains how to migrate existing projects to BMGR, and how to contr
    :maxdepth: 1
 
    from-manual-board-init
+   migrate-to-0.6
    version-migration

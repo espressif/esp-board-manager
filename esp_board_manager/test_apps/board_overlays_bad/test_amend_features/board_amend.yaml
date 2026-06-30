@@ -1,0 +1,5 @@
+version: "1.0"
+description: "Auto-amend overlay with a broken manifest (references a missing file). Used to verify auto-amend fails fast without destroying previously generated artifacts."
+
+apply:
+  - does_not_exist.yaml

@@ -578,9 +578,9 @@ Reference Code
 Board Examples
 --------------
 
-- ``esp_board_manager/boards/esp32_s3_korvo2l/board_peripherals.yaml``: STD I2S output and input configuration.
-- ``esp_board_manager/boards/esp32_s3_korvo2_v3/board_peripherals.yaml``: TDM I2S output and input configuration.
-- ``esp_board_manager/boards/esp32_p4_function_ev/board_peripherals.yaml``: Configuration with I2S audio peripheral alongside other board resources.
+- ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: STD I2S output and input configuration.
+- ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: TDM I2S output and input configuration.
+- ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: Configuration with I2S audio peripheral alongside other board resources.
 
 Notes
 -----

@@ -11,6 +11,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
 from generators.utils.idf_version import get_idf_version
 
+# esp_lcd_dsi_bus_config_t.flags (clock_lane_force_hs) was added in ESP-IDF v6.0.1,
+# it is not present in the v6.0.0 release.
+IDF_VERSION_WITH_DSI_CLOCK_LANE_FLAG = (6, 0, 1)
+
 def get_includes() -> list:
     """Return list of required include headers for MIPI_DSI peripheral"""
     return [
@@ -68,14 +72,14 @@ def parse(name: str, config: dict) -> dict:
             'phy_clk_src': phy_clk_src,
             'lane_bit_rate_mbps': lane_bit_rate_mbps
         }
-        if get_idf_version()[0] >= 6:
+        if get_idf_version() >= IDF_VERSION_WITH_DSI_CLOCK_LANE_FLAG:
             struct_init['flags'] = {
                 'clock_lane_force_hs': clock_lane_force_hs,
             }
         elif clock_lane_force_hs:
             print(
                 f"YAML WARNING: DSI peripheral '{name}' field 'flags.clock_lane_force_hs' "
-                'requires ESP-IDF v6.0 or later and will be ignored.'
+                'requires ESP-IDF v6.0.1 or later and will be ignored.'
             )
 
         result = {

@@ -1,0 +1,6 @@
+version: "1.0"
+description: "Second auto-amend overlay; overrides gpio_auto_stack_led to a different pin"
+
+apply:
+  - stack_override.yaml
+  - sdkconfig.defaults.board

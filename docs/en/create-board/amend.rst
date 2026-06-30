@@ -8,15 +8,19 @@ When making minor differences on an existing board (such as modifying a pin or r
 .. code-block:: bash
 
    # The amend directory is an absolute or relative path and must contain board_amend.yaml
-   idf.py bmgr -b esp32_s3_korvo2_v3 -a path/to/my_amend
+   idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
 
    # When the amend directory is placed under the selected board directory, pass the subdirectory name directly
-   # For example: boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd
+   # For example: esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd
    idf.py bmgr -b esp32_s3_lcd_ev_board -a sub_board_800_480_lcd
 
-``-a`` accepts absolute or relative paths; in a standard IDF project, relative paths are resolved from the project root. **If the amend directory is placed under the selected board directory, only the subdirectory name needs to be passed, and BMGR will look for the corresponding subdirectory inside that board directory.**
+``-a`` accepts absolute or relative paths; relative paths are resolved from the current working directory (``cwd``). **If the amend directory is placed under the selected board directory, only the subdirectory name needs to be passed, and BMGR will look for the corresponding subdirectory inside that board directory.**
 
-Different sub-boards, screen modules, or minor hardware variants of the same main board are recommended to be placed uniformly under that board's subdirectory (for example, ``boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``); only the subdirectory name needs to be passed when using it, and it is not affected by the project path.
+Different sub-boards, screen modules, or minor hardware variants of the same main board are recommended to be placed uniformly under that board's subdirectory (for example, ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``); only the subdirectory name needs to be passed when using it, and it is not affected by the project path.
+
+.. note::
+
+   Besides the explicit ``-a`` above, BMGR can also **auto-discover and apply an amend by board name** (auto-amend), which is especially handy for keeping a single command across many boards in a multi-board example project. See :ref:`auto-amend` below.
 
 Basic structure of the amend directory:
 
@@ -121,3 +125,65 @@ Another board that needs the same sensor directly reuses the same files without 
      - extra_periph.yaml   # Board-specific additional tweaks
 
 As feature modules accumulate in the shared directory, adapting new boards can rely increasingly on existing modules—combining the required fragments in ``apply:`` rather than writing repetitive YAML content from scratch.
+
+.. _auto-amend:
+
+Auto-amend
+----------
+
+Besides the explicit ``-a``, BMGR can **auto-discover and apply an amend by board name**. Under the scan paths (including directories given via ``-c/--customer-path``), if there is a directory **whose name matches the selected board, contains** ``board_amend.yaml`` **, and is not itself a complete board directory**, BMGR applies it as that board's amend automatically, without ``-a``.
+
+The expected layout is ``<scan_root>/<board_name>/board_amend.yaml``:
+
+.. code-block:: text
+
+   board_overlays/                       # point -c here
+     esp32_s3_box_3/
+       board_amend.yaml
+       box_tweak.yaml
+     esp32_p4_function_ev_board/
+       board_amend.yaml
+       p4_tweak.yaml
+
+The ``board_amend.yaml`` inside an auto-amend directory uses the same syntax, fragment merge rules, source override, and cross-board reuse as the explicit ``-a`` (``apply:`` is still the single source of truth).
+
+Key points:
+
+- ``-c/--customer-path`` accepts multiple semicolon-separated paths, for example ``-c "overlays_a;overlays_b"``; they are scanned in order and later paths take precedence.
+- Explicit ``-a`` and auto-amend can be combined; explicit ``-a`` has the highest priority (applied last, overriding auto-amend).
+- A complete board directory is treated as a board even if it contains ``board_amend.yaml``; it is never auto-applied to itself.
+- Auto-discovery recurses up to 3 levels below each scan root.
+- Set the environment variable ``ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND=1`` to disable auto-discovery and keep only the explicit ``-a``.
+
+Two ways to use amend in a demo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When writing an example project that supports multiple boards, the biggest value of auto-amend is **keeping a single command across all boards**.
+
+**Option 1: All boards share the same amend**
+
+When every target board needs the same patch set (for example, enabling a debug option or adding the same external module), point the explicit ``-a`` at the same amend directory; the amend part of each command stays identical:
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3             -a path/to/common_amend
+   idf.py bmgr -b esp32_p4_function_ev_board -a path/to/common_amend
+
+**Option 2: Different boards need different amends, with consistent commands**
+
+When each board needs its own patch, the old approach required a different ``-a`` path per board, so commands varied and were easy to confuse. With auto-amend, simply collect every board's overlay under one root, with a subdirectory per board name:
+
+.. code-block:: text
+
+   board_overlays/
+     esp32_s3_box_3/board_amend.yaml                # box-specific patch
+     esp32_p4_function_ev_board/board_amend.yaml    # p4-specific patch
+
+Then all boards use the **exact same** command, changing only the ``-b`` board name while ``-c`` always points to the same overlay root; BMGR matches and applies the right amend by board name:
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3             -c board_overlays
+   idf.py bmgr -b esp32_p4_function_ev_board -c board_overlays
+
+When no overlay exists for a board, the command generates the base board normally without error. In CI or multi-board demo scripts, you can loop the same command over a list of board names without maintaining per-board amend arguments.

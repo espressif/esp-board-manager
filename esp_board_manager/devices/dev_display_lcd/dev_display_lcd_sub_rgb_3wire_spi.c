@@ -29,6 +29,7 @@ static bool dev_display_lcd_rgb_3wire_spi_has_user_fbs_func(const dev_display_lc
     return lcd_cfg->sub_cfg.rgb_3wire_spi.user_fbs_func && strlen(lcd_cfg->sub_cfg.rgb_3wire_spi.user_fbs_func) > 0;
 }
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
 static int dev_display_lcd_rgb_3wire_spi_call_user_fbs_func(const dev_display_lcd_config_t *lcd_cfg,
                                                             dev_display_lcd_rgb_user_fbs_action_t action,
                                                             void *user_fbs[ESP_RGB_LCD_PANEL_MAX_FB_NUM])
@@ -37,7 +38,6 @@ static int dev_display_lcd_rgb_3wire_spi_call_user_fbs_func(const dev_display_lc
         return 0;
     }
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
     void *extra_func = NULL;
     if (esp_board_extra_func_get(lcd_cfg->sub_cfg.rgb_3wire_spi.user_fbs_func, &extra_func) != 0) {
         ESP_LOGE(TAG, "RGB user frame buffer function '%s' not found", lcd_cfg->sub_cfg.rgb_3wire_spi.user_fbs_func);
@@ -46,11 +46,8 @@ static int dev_display_lcd_rgb_3wire_spi_call_user_fbs_func(const dev_display_lc
 
     dev_display_lcd_rgb_user_fbs_func_t user_fbs_func = (dev_display_lcd_rgb_user_fbs_func_t)extra_func;
     return user_fbs_func(lcd_cfg, action, user_fbs);
-#else
-    ESP_LOGE(TAG, "RGB user frame buffers require ESP-IDF v6.0 or later");
-    return -1;
-#endif  /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
 }
+#endif  /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */
 
 int dev_display_lcd_sub_rgb_3wire_spi_init(void *cfg, int cfg_size, void **device_handle)
 {
@@ -108,7 +105,7 @@ int dev_display_lcd_sub_rgb_3wire_spi_init(void *cfg, int cfg_size, void **devic
     }
 #else
     if (dev_display_lcd_rgb_3wire_spi_has_user_fbs_func(lcd_cfg)) {
-        dev_display_lcd_rgb_3wire_spi_call_user_fbs_func(lcd_cfg, DEV_DISPLAY_LCD_RGB_USER_FBS_GET, NULL);
+        ESP_LOGE(TAG, "RGB user frame buffers require ESP-IDF v6.0 or later");
         goto cleanup_io_expander;
     }
 #endif  /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0) */

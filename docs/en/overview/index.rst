@@ -14,7 +14,8 @@ It is recommended to use ``esp-bmgr-assist`` as the default entry point. This to
 
 .. note::
 
-   ``esp-bmgr-assist`` is only used to avoid manually configuring ``IDF_EXTRA_ACTIONS_PATH`` and does not replace the ``esp_board_manager`` component itself. You still need to add the ``esp_board_manager`` dependency to your project as described below. See :doc:`/tools/esp-bmgr-assist` for details.
+   - Usually you only need to install it once; run ``pip install --upgrade esp-bmgr-assist`` only when an update is requested.
+   - ``esp-bmgr-assist`` is only used to avoid manually configuring ``IDF_EXTRA_ACTIONS_PATH`` and does not replace the ``esp_board_manager`` component itself. You still need to add the ``esp_board_manager`` dependency to your project as described below. See :doc:`/tools/esp-bmgr-assist` for details.
 
 Add BMGR Dependency
 -------------------
@@ -60,6 +61,9 @@ For getting started, only two commands are needed:
 Recommended workflow:
 
 1. Run ``idf.py bmgr -l`` first to confirm that the BMGR path is configured correctly and that the target board can be scanned.
+
+   The board list and indexes printed by ``idf.py bmgr -l`` may change with board dependency versions and custom paths. Use the output from the current project when selecting a board.
+
 2. Then run ``idf.py bmgr -b <board>`` to generate the ``components/gen_bmgr_codes`` board-level code. During generation, the log outputs the following key information to confirm that the selected board matches expectations:
 
    - ``Resolved board: <board>``: The actual board name matched.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+### Modifications
+
+- Added explicit `depends_on` ordering on **M5STACK CORES3** so the AXP2101 power manager (and the IO expander it relies on) initializes before the audio codecs, display panel, and touch controller.
+
 ## 0.5.1
 
 ### Bug Fixes

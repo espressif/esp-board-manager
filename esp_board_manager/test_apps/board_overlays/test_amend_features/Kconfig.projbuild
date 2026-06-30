@@ -1,0 +1,7 @@
+menu "test_amend_features auto-amend configuration"
+
+config BMGR_TEST_AUTO_AMEND_KCONFIG
+    bool "Auto-amend feature toggle"
+    default y
+
+endmenu

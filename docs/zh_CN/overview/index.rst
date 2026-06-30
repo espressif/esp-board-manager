@@ -14,7 +14,8 @@
 
 .. note::
 
-   ``esp-bmgr-assist`` 仅用于免去手动配置 ``IDF_EXTRA_ACTIONS_PATH``，并不替代 ``esp_board_manager`` 组件本身。仍需要按下面的步骤为工程添加 ``esp_board_manager`` 依赖。详见 :doc:`/tools/esp-bmgr-assist`。
+   - 通常只需安装一次；当提示需要更新时，再执行 ``pip install --upgrade esp-bmgr-assist``。
+   - ``esp-bmgr-assist`` 仅用于免去手动配置 ``IDF_EXTRA_ACTIONS_PATH``，并不替代 ``esp_board_manager`` 组件本身。仍需要按下面的步骤为工程添加 ``esp_board_manager`` 依赖。详见 :doc:`/tools/esp-bmgr-assist`。
 
 添加 BMGR 依赖
 ----------------------------------
@@ -60,6 +61,9 @@
 推荐执行顺序：
 
 1. 先执行 ``idf.py bmgr -l``，确认 BMGR 路径配置正确，且目标开发板能被扫描到。
+
+   ``idf.py bmgr -l`` 输出的列表和序号会随开发板依赖版本和自定义路径变化，选择开发板时以当前工程输出为准。
+
 2. 再执行 ``idf.py bmgr -b <board>``，生成 ``components/gen_bmgr_codes`` 板级代码。生成过程中，日志会输出以下关键信息，可据此确认选中的开发板是否符合预期：
 
    - ``Resolved board: <board>``：实际命中的开发板名称。

@@ -23,6 +23,7 @@ devices:
   - name: axp2101_power_manager
     chip: axp2101
     type: custom
+    depends_on: gpio_expander
     version: default
     config:
       frequency: 400000
@@ -33,6 +34,7 @@ devices:
   - name: audio_dac
     chip: aw88298
     type: audio_codec
+    depends_on: axp2101_power_manager
     version: default
     config:
       adc_enabled: false
@@ -53,6 +55,7 @@ devices:
   - name: audio_adc
     chip: es7210
     type: audio_codec
+    depends_on: axp2101_power_manager
     version: default
     config:
       adc_enabled: true
@@ -83,6 +86,7 @@ devices:
     chip: ili9341
     type: display_lcd
     sub_type: spi
+    depends_on: axp2101_power_manager
     version: default
     dependencies:
       espressif/esp_lcd_ili9341: "*"
@@ -116,6 +120,7 @@ devices:
     chip: ft5x06
     type: lcd_touch
     sub_type: i2c
+    depends_on: axp2101_power_manager
     version: default
     dependencies:
       espressif/esp_lcd_touch_ft5x06: "^1.0.0"

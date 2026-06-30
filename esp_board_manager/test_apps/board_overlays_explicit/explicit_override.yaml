@@ -1,0 +1,5 @@
+version: 1.0.0
+peripherals:
+  - name: gpio_auto_tweak_led
+    config:
+      pin: 21

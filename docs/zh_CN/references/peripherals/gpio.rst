@@ -161,10 +161,10 @@ GPIO 输入 / 输出 / 输入输出完整字段
 板级参考
 ------------
 
-- ``esp_board_manager/boards/esp_box_3/board_peripherals.yaml``：功放、背光、SD 卡电源和静音 GPIO。
-- ``esp_board_manager/boards/lyrat_mini_v1_1/board_peripherals.yaml``：SD 卡电源、耳机检测、功放、LED 和 SD 卡检测 GPIO。
-- ``esp_board_manager/boards/esp32_c5_spot/board_peripherals.yaml``：功放、电源控制、codec 电源和 IMU interrupt GPIO。
-- ``esp_board_manager/boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：boot button GPIO。
+- ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：功放、背光、SD 卡电源和静音 GPIO。
+- ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``：SD 卡电源、耳机检测、功放、LED 和 SD 卡检测 GPIO。
+- ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``：功放、电源控制、codec 电源和 IMU interrupt GPIO。
+- ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：boot button GPIO。
 
 注意事项
 ------------

@@ -3,7 +3,7 @@ Create Board Guide
 
 :link_to_translation:`zh_CN:[中文]`
 
-This chapter introduces four ways to create a new development board. Choose a starting point based on your situation:
+This chapter introduces several ways to create a new development board. Choose a starting point based on your situation:
 
 .. list-table::
    :header-rows: 1
@@ -13,6 +13,8 @@ This chapter introduces four ways to create a new development board. Choose a st
      - Use Case
    * - :doc:`Copy an Existing Board <copy-existing>`
      - The new board is very similar in hardware to an existing board; use it as a base and modify
+   * - :doc:`Create Using the Web Configurator <web-create>`
+     - Select devices and peripherals through a graphical interface in the browser and export board-level YAML
    * - :doc:`Use idf.py bmgr -n <generate-skeleton>`
      - Start from scratch; create an annotated board template based on your choices
    * - :doc:`Create Manually <manual-create>`
@@ -31,6 +33,7 @@ This chapter introduces four ways to create a new development board. Choose a st
    :hidden:
 
    copy-existing
+   web-create
    generate-skeleton
    manual-create
    amend

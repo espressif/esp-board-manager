@@ -222,31 +222,16 @@ Each board can optionally include the following two files in its directory to ex
    CONFIG_SPIRAM_MODE_OCT=y
    CONFIG_SPIRAM_SPEED_80M=y
 
-Generation Phase: Board and Amend Append and Override
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For how these two files are merged during generation, their override precedence, and their relationship with amend, see :doc:`/programming-guide/generation-flow`.
 
-When running ``idf.py bmgr -b <board> [-a <amend>]``, BMGR assembles the final ``board_manager.defaults`` and ``Kconfig.projbuild`` in the following order, with **later entries overriding earlier ones**:
+``board_amend.yaml``
+--------------------
 
-1. BMGR auto-generated section: ``CONFIG_IDF_TARGET``, ``CONFIG_ESP_BOARD_<BOARD>=y``, ``CONFIG_ESP_BOARD_NAME``, and the capability symbols derived from YAML parsing: ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``, ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``, and ``CONFIG_ESP_BOARD_DEV_<DEV>_SUB_<SUB>_SUPPORT``.
-2. The ``sdkconfig.defaults.board`` and ``Kconfig.projbuild`` in the board directory (if present).
-3. The ``sdkconfig.defaults.board`` and ``Kconfig.projbuild`` fragments listed under ``apply:`` in the ``board_amend.yaml`` manifest, appended **strictly in the order they appear in** ``apply:``. To have one fragment override another amend fragment, place it later in the ``apply:`` list.
+``board_amend.yaml`` is the manifest file of an amend (overlay) directory. It is not part of the board directory itself; it lives in a separate overlay directory and is used to append to or override a target board's configuration without modifying the original board.
 
-When duplicate ``CONFIG_*`` entries appear in ``board_manager.defaults``, BMGR keeps the last occurrence and rewrites earlier duplicate lines as comments in the form ``# BMGR_CONFIG_OVERRIDE by <section>: <original line>``, making override relationships easy to trace. ``Kconfig.projbuild`` is assembled by plain-text concatenation; a ``# --- <label>: <path> ---`` marker is inserted before each segment to indicate its source.
+The manifest explicitly lists the fragments to overlay under ``apply:``, which may include ``board_devices.yaml`` / ``board_peripherals.yaml`` fragments, ``sdkconfig.defaults.board``, ``Kconfig.projbuild``, and ``.c`` source files; only files listed under ``apply:`` participate in the merge.
 
-.. note::
-
-   The ``sdkconfig.defaults.board`` and ``Kconfig.projbuild`` files listed in the ``board_amend.yaml`` manifest must be explicitly listed under ``apply:`` to be included in the merge. Files placed in the amend directory but not listed are ignored and an INFO log is emitted. See :doc:`/create-board/amend` for details.
-
-Runtime: Integrating BMGR into the Project Build
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-During the build, ESP-IDF reads a set of ``SDKCONFIG_DEFAULTS`` (a semicolon-separated list of files declared by the ``SDKCONFIG_DEFAULTS`` environment variable or CMake variable). When the project ``sdkconfig`` does not exist, BMGR uses an ``idf.py`` global callback to place the generated ``components/gen_bmgr_codes/board_manager.defaults`` before project defaults, injecting the current board's device and peripheral capability symbols, ``CONFIG_IDF_TARGET``, and board-level sdkconfig defaults into the build configuration. Project defaults loaded later may still override ordinary board-level defaults, but BMGR-managed capability symbols are rejected from user defaults.
-
-.. warning::
-
-   Do not manually write BMGR device, peripheral, or device sub-type capability symbols (such as ``CONFIG_ESP_BOARD_DEV_*_SUPPORT``, ``CONFIG_ESP_BOARD_PERIPH_*_SUPPORT``, ``CONFIG_ESP_BOARD_DEV_*_SUB_*_SUPPORT``, or ``CONFIG_ESP_BOARD_<BOARD>=y``) in the project's ``sdkconfig.defaults``. These symbols should come exclusively from the ``board_manager.defaults`` that BMGR automatically generates based on the current board's YAML. Writing them manually in the project defaults is rejected when BMGR prepares ``SDKCONFIG_DEFAULTS``. Board-specific sdkconfig entries (PSRAM, Flash, partition tables, application-level switches, etc.) should be placed in ``sdkconfig.defaults.board`` under the board directory; BMGR will merge them uniformly.
-
-When switching boards, ``idf.py bmgr -b <other_board>`` regenerates ``board_manager.defaults`` and ``Kconfig.projbuild``, and backs up and cleans up the capability macros written by the previous board from the old ``sdkconfig``.
+The overlay directory is selected explicitly with ``-a/--amend`` or discovered automatically by name via auto-amend. For the amend directory structure, ``apply:`` semantics, override rules, and usage examples, see :doc:`/create-board/amend`.
 
 ``setup_device.c`` and ``custom`` Devices
 ------------------------------------------

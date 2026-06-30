@@ -9,4 +9,5 @@ This section introduces the auxiliary tools surrounding BMGR: when to use the co
    :maxdepth: 1
 
    esp-bmgr-assist
+   Web Configurator <web-config>
    ai-skill

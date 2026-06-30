@@ -3,7 +3,7 @@
 
 :link_to_translation:`en:[English]`
 
-本章介绍新建一块开发板的四种方式。根据实际情况选择起点：
+本章介绍新建一块开发板的几种方式。根据实际情况选择起点：
 
 .. list-table::
    :header-rows: 1
@@ -13,6 +13,8 @@
      - 适用场景
    * - :doc:`复制现有开发板 <copy-existing>`
      - 新开发板与已有开发板硬件高度相似，以其为基础修改
+   * - :doc:`使用网页创建 <web-create>`
+     - 在浏览器中用图形界面选择设备和外设，导出板级 YAML
    * - :doc:`使用 idf.py bmgr -n <generate-skeleton>`
      - 从零开始，根据您的选择创建带注释的开发板模板
    * - :doc:`手动创建 <manual-create>`
@@ -31,6 +33,7 @@
    :hidden:
 
    copy-existing
+   web-create
    generate-skeleton
    manual-create
    amend

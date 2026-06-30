@@ -11,7 +11,7 @@ When working with BMGR, the most common source of confusion is not the API itsel
 - ``type``: The category of a device or peripheral, which determines the matching parsing rules and runtime implementation—for example, ``audio_codec``, ``button``, or ``i2c``.
 - ``sub_type``: The sub-type of certain devices, used to distinguish different implementation paths within the same type—for example, ``display_lcd`` is divided into ``spi``, ``i80``, ``dsi``, ``rgb``, ``rgb_3wire_spi``, and ``parlio`` based on interface.
 - ``role``: The operating mode of certain peripherals—for example, ``adc`` distinguishes between ``oneshot`` and ``continuous`` modes.
-- ``format``: The data format of certain peripherals; typical cases include ``i2s`` formats such as ``std-out``, ``std-in``, ``tdm``, and ``pdm``.
+- ``format``: The data format of certain peripherals; typical cases include ``i2s`` formats such as ``std-out``, ``std-in``.
 - ``dependencies``: Additional component dependency information required by a device; written into ``components/gen_bmgr_codes/idf_component.yml`` during generation.
 - ``power_ctrl_device``: Used for devices that require controlled power supply. Referencing a ``power_ctrl``-type device via ``power_ctrl_device`` enables automatic power-on during initialization.
 - ``depends_on``: Declares initialization dependencies between devices. During initialization, BMGR automatically checks and initializes the declared dependencies first; the type is not restricted, and a device may declare multiple dependencies.

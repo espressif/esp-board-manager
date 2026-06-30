@@ -9,4 +9,5 @@
    :maxdepth: 1
 
    esp-bmgr-assist
+   网页配置工具 <web-config>
    ai-skill

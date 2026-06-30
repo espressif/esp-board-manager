@@ -433,6 +433,25 @@ esp_err_t esp_board_device_show(const char *name)
     return ESP_OK;
 }
 
+esp_err_t esp_board_device_iterate_name_by_type(const char *type, void **cursor, const char **name)
+{
+    ESP_BOARD_RETURN_ON_FALSE(type && cursor && name, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid args");
+
+    const esp_board_device_desc_t *desc = (*cursor == NULL) ? g_esp_board_devices : ((const esp_board_device_desc_t *)(*cursor))->next;
+    while (desc && desc->name) {
+        if (desc->type && strcmp(desc->type, type) == 0) {
+            *cursor = (void *)desc;
+            *name = desc->name;
+            return ESP_OK;
+        }
+        desc = desc->next;
+    }
+
+    *cursor = NULL;
+    *name = NULL;
+    return ESP_BOARD_ERR_DEVICE_NOT_FOUND;
+}
+
 esp_err_t esp_board_device_init_all(void)
 {
     const esp_board_device_desc_t *desc = g_esp_board_devices;

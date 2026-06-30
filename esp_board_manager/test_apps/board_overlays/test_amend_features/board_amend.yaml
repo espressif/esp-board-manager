@@ -1,0 +1,8 @@
+version: "1.0"
+description: "Auto-amend overlay for test_amend_features (discovered via -c, no explicit -a)"
+
+apply:
+  - auto_tweak.yaml
+  - auto_setup.c
+  - sdkconfig.defaults.board
+  - Kconfig.projbuild
