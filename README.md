@@ -1,4 +1,6 @@
-# esp-board-manager
+![ESP Board Manager](docs/_static/bmgr_banner.svg)
+
+# ESP Board Manager
 
 [中文版](README_CN.md)
 
@@ -6,4 +8,6 @@ ESP Board Manager is Espressif's board management component. It uses YAML files 
 
 The component is available on [IDF Component Registry](https://components.espressif.com/components/espressif/esp_board_manager).
 
-Documentation for the latest version is available at https://docs.espressif.com/projects/esp-board-manager
+Board Manager Web Tool: [https://board-manager.espressif.com](https://board-manager.espressif.com)
+
+Documentation for the latest version: [https://docs.espressif.com/projects/esp-board-manager](https://docs.espressif.com/projects/esp-board-manager)

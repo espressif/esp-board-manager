@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3
+
+### Bug Fixes
+
+- Corrected the **ESP32-LyraT-Mini** flash size default to match the board hardware.
+
 ## 0.5.2
 
 ### Bug Fixes

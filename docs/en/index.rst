@@ -3,6 +3,11 @@ ESP Board Manager Guide
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. image:: ../_static/bmgr_banner.svg
+   :alt: ESP Board Manager
+   :align: center
+   :width: 100%
+
 What Is Board Manager
 ---------------------
 
