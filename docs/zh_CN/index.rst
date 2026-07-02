@@ -3,6 +3,11 @@
 
 :link_to_translation:`en:[English]`
 
+.. image:: ../_static/bmgr_banner.svg
+   :alt: ESP Board Manager
+   :align: center
+   :width: 100%
+
 什么是 Board Manager
 ----------------------------------
 
