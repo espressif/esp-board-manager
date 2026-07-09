@@ -1,4 +1,4 @@
-version: 0.6.0
+version: 0.6.0~1
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -6,6 +6,11 @@ issues: https://github.com/espressif/esp-board-manager/issues
 
 tags:
 - board_manager
+- esp_board_manager
+- board
+- boards
+- adf
+- gmf
 
 examples:
   - path: examples/play_sdcard_music

@@ -112,6 +112,7 @@ class BmgrCommandArgs:
     devices_only: bool
     kconfig_only: bool
     skip_sdkconfig_check: bool
+    skip_soc_capability_check: bool
     log_level: str
     clean: bool
     new_board: Optional[str]
@@ -491,6 +492,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             devices_only=kwargs.get('devices_only', False),
             kconfig_only=kwargs.get('kconfig_only', False),
             skip_sdkconfig_check=kwargs.get('skip_sdkconfig_check', False),
+            skip_soc_capability_check=kwargs.get('skip_soc_capability_check', False),
             log_level=kwargs.get('log_level', 'INFO'),
             clean=kwargs.get('clean', False),
             new_board=kwargs.get('new_board'),
@@ -793,6 +795,11 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                 'Skip CONFIG_IDF_TARGET and ESP_BOARD_* sdkconfig preflight warnings in idf_ext '
                 '(generator step may still enforce its own rules)'
             ),
+            'is_flag': True,
+        },
+        {
+            'names': ['--skip-soc-capability-check'],
+            'help': 'Skip parser-stage SoC capability validation for device/peripheral YAML.',
             'is_flag': True,
         },
         {

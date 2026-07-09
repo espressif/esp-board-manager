@@ -667,6 +667,41 @@ def test_i2c_basic_parse_returns_i2c_master_bus_config(bmgr_root):
     assert result['struct_init']['sda_io_num'] == 18
     assert result['struct_init']['scl_io_num'] == 23
 
+def test_i2c_numeric_port_maps_to_lp_enum_when_number_is_in_lp_range(bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2c import periph_i2c as mod
+
+    class SocWithTwoHpAndOneLpI2c:
+        def supports(self, key, default=False):
+            return True if key == 'i2c.lp_supported' else default
+
+        def limit(self, key, default=None):
+            limits = {
+                'i2c.instance_count': 3,
+                'i2c.hp_instance_count': 2,
+                'i2c.lp_instance_count': 1,
+            }
+            return limits.get(key, default)
+
+    monkeypatch.setattr(mod, 'current_soc', lambda: SocWithTwoHpAndOneLpI2c())
+
+    result = mod.parse(
+        'i2c_lp',
+        {
+            'config': {
+                'port': 2,
+                'pins': {
+                    'sda': 1,
+                    'scl': 2,
+                },
+            },
+        },
+    )
+
+    assert result['struct_init']['i2c_port'] == 'LP_I2C_NUM_0'
+    assert result['struct_init']['lp_source_clk'] == 'LP_I2C_SCLK_DEFAULT'
+    assert 'clk_source' not in result['struct_init']
+
 def test_i2c_rejects_lp_port_when_soc_lacks_lp_i2c(bmgr_root, monkeypatch):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_i2c import periph_i2c as mod

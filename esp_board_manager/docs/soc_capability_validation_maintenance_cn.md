@@ -86,6 +86,15 @@ python3 esp_board_manager/export_soc_capability_catalog.py \
 - 数值上限：根据 `hardwareLimitDefs.*.appliesTo` 校验字段值、数组长度或实例数量。
 - 带 `[IO]` 标签的字段：校验普通 SoC GPIO 是否在目标芯片输入或输出集合内。实际主路径仍是 metadata 级 IO 校验。
 
+如果板级配置有意使用暂未建模的硬件能力，或者确认错误为误报，可临时跳过 parser 前置的 YAML 级 SoC 能力校验：
+
+```bash
+idf.py bmgr -b <board> --skip-soc-capability-check
+export ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1
+```
+
+该跳过选项只影响 `process_peripherals()` 和 `process_devices()` 调用 parser 前的统一 validator，不会跳过 metadata 级 IO 校验、parser 内语义校验或 sdkconfig 一致性检查。发布前仍应修正 board YAML、`esp_board_soc_requirements.yml` 或 catalog。
+
 `hardware_limits` 中的每个 key 可以包含 `sources` 和 `applies_to`。`sources` 负责从 ESP-IDF 中提取归一化后的数值；`applies_to` 负责说明这个数值如何用于 board YAML 自动校验。
 
 ```yaml
@@ -117,7 +126,9 @@ lcd.rgb_data_width:
 
 - `value`：`path` 指向一个或多个数值。校验器接受整数、十进制字符串，以及最后一段为 `_<数字>` 的枚举字符串。
 - `arrayLength`：`path` 指向数组本身，校验数组长度。
-- `instanceCount`：统计匹配 `kind`、`type` 和选择条件的 YAML 条目数量。该模式不需要 `path`。
+- `instanceCount`：统计匹配 `kind`、`type` 和选择条件的 YAML 条目数量。该模式不需要 `path`，也不支持按字段去重。
+
+I2C 和 I2S 的实例数量不使用通用 `instanceCount` 语义。I2S 按 `config.port` 去重，缺省 `port` 按 `0` 处理；I2C 需要根据 `i2c.instance_count`、`i2c.hp_instance_count` 和 `i2c.lp_instance_count` 解析 HP/LP 端口并分别计数。这类外设应在 `generators/utils/soc_capability_validator.py` 的特殊校验逻辑中处理，不应通过 `applies_to` 增加通用计数规则。
 
 `compare` 支持以下取值：
 

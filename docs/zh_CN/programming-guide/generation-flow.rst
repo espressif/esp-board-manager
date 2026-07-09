@@ -11,9 +11,10 @@ BMGR 在编译前先将开发板的 YAML 描述解析为一组明确的配置源
 2. 根据命令行参数（名称或索引）确定当前选中的开发板。
 3. 定位该开发板对应的 ``board_peripherals.yaml``、``board_devices.yaml``、``board_info.yaml``、``sdkconfig.defaults.board``、``Kconfig.projbuild``。
 4. 解析外设和设备，生成对应的配置结构、句柄表和板级元数据。
-5. 生成当前开发板相关的 ``Kconfig.projbuild``，追加板级目录下的 ``Kconfig.projbuild``。
-6. 生成 ``board_manager.defaults``，将板级默认配置和当前开发板的能力符号接入构建。
-7. 在 ``components/gen_bmgr_codes`` 下输出参与编译的源码、构建文件和工具摘要文件。
+5. 校验已选开发板配置，包括 SoC 能力、硬件限制、IO 合法性和 IO 冲突。
+6. 生成当前开发板相关的 ``Kconfig.projbuild``，追加板级目录下的 ``Kconfig.projbuild``。
+7. 生成 ``board_manager.defaults``，将板级默认配置和当前开发板的能力符号接入构建。
+8. 在 ``components/gen_bmgr_codes`` 下输出参与编译的源码、构建文件和工具摘要文件。
 
 在 BMGR 的模型中，开发板的配置代码来自 YAML 文件描述以及脚本的解析与生成流程，而非通过 ``menuconfig`` 手动勾选设备或外设。``components/gen_bmgr_codes`` 不是缓存，也不是仅供查看的中间产物，而是会参与 ESP-IDF 构建的实际组件。
 

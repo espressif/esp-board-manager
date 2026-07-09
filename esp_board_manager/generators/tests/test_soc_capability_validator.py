@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from generators.utils.soc_capabilities import SocCapabilityCatalog
 from generators.utils import soc_capability_validator
+from gen_bmgr_config_codes import BoardConfigGenerator
 from generators.utils.soc_capability_validator import SocValidationField, SocValidationInstance, validate_soc_capabilities
 
 
@@ -25,6 +26,15 @@ def _catalog(display_lcd_i80_supported=True, i2s_std_supported=True, i2s_pdm_sup
         'hardwareLimitDefs': {
             'i2c.instance_count': {
                 'appliesTo': [{'kind': 'peripheral', 'type': 'i2c', 'check': 'instanceCount'}],
+            },
+            'i2c.hp_instance_count': {
+                'appliesTo': [],
+            },
+            'i2c.lp_instance_count': {
+                'appliesTo': [],
+            },
+            'i2s.instance_count': {
+                'appliesTo': [],
             },
             'lcd.i80_bus_width': {
                 'appliesTo': [
@@ -157,6 +167,9 @@ def _catalog(display_lcd_i80_supported=True, i2s_std_supported=True, i2s_pdm_sup
                 'gpio': {'validInput': [0, 1, 2], 'validOutput': [0, 1]},
                 'hardwareLimits': {
                     'i2c.instance_count': 1,
+                    'i2c.hp_instance_count': 1,
+                    'i2c.lp_instance_count': 0,
+                    'i2s.instance_count': 1,
                     'lcd.i80_bus_width': 8,
                     'adc.pattern_length_max': 2,
                     'adc.unit_max': 1,
@@ -246,6 +259,237 @@ def test_instance_count_counts_unnamed_instances_independently() -> None:
 
     assert [i.limit_key for i in issues] == ['i2c.instance_count']
     assert issues[0].actual == 2
+
+
+def test_i2s_instance_count_deduplicates_entries_on_same_port() -> None:
+    issues = validate_soc_capabilities(
+        catalog=_catalog(),
+        chip='esp32s3',
+        instances=[
+            inst('i2s_audio_out', 'peripheral', 'i2s', {'format': 'tdm-out'}, [field(['port'], 0)]),
+            inst('i2s_audio_in', 'peripheral', 'i2s', {'format': 'tdm-in'}, [field(['port'], 0)]),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == []
+
+
+def test_i2s_instance_count_counts_distinct_ports() -> None:
+    issues = validate_soc_capabilities(
+        catalog=_catalog(),
+        chip='esp32s3',
+        instances=[
+            inst('i2s_audio_out', 'peripheral', 'i2s', {'format': 'tdm-out'}, [field(['port'], 0)]),
+            inst('i2s_audio_in', 'peripheral', 'i2s', {'format': 'tdm-in'}, [field(['port'], 1)]),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == ['i2s.instance_count']
+    assert issues[0].actual == 2
+
+
+def test_i2s_instance_count_deduplicates_entries_with_missing_port_default() -> None:
+    issues = validate_soc_capabilities(
+        catalog=_catalog(),
+        chip='esp32s3',
+        instances=[
+            inst('i2s_audio_out', 'peripheral', 'i2s', {'format': 'tdm-out'}),
+            inst('i2s_audio_in', 'peripheral', 'i2s', {'format': 'tdm-in'}),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == []
+
+
+def test_esp32c5_catalog_allows_i2s_in_out_on_same_port() -> None:
+    catalog_path = Path(__file__).parent.parent.parent / 'private_inc' / 'soc_capability_catalog' / 'idf_5_5.json'
+    catalog = SocCapabilityCatalog.load(catalog_path)
+    board_peripherals = [
+        {
+            'name': 'i2s_audio_out',
+            'type': 'i2s',
+            'role': 'master',
+            'format': 'tdm-out',
+            'config': {
+                'port': 0,
+                'sample_rate_hz': 48000,
+                'mclk_multiple': 256,
+                'data_bit_width': 16,
+                'slot_bit_width': 'I2S_SLOT_BIT_WIDTH_AUTO',
+                'slot_mode': 'I2S_SLOT_MODE_MONO',
+                'slot_mask': 'I2S_TDM_SLOT0',
+                'ws_width': 16,
+                'total_slot': 2,
+                'pins': {
+                    'mclk': 16,
+                    'bclk': 9,
+                    'ws': 45,
+                    'dout': 8,
+                    'din': 10,
+                },
+            },
+        },
+        {
+            'name': 'i2s_audio_in',
+            'type': 'i2s',
+            'role': 'master',
+            'format': 'tdm-in',
+            'config': {
+                'port': 0,
+                'sample_rate_hz': 48000,
+                'mclk_multiple': 384,
+                'data_bit_width': 16,
+                'slot_bit_width': 'I2S_SLOT_BIT_WIDTH_AUTO',
+                'slot_mode': 'I2S_SLOT_MODE_STEREO',
+                'slot_mask': 'I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2',
+                'ws_width': 16,
+                'total_slot': 2,
+                'pins': {
+                    'mclk': 16,
+                    'bclk': 9,
+                    'ws': 45,
+                    'dout': 8,
+                    'din': 10,
+                },
+            },
+        },
+    ]
+    instances = [
+        soc_capability_validator.build_soc_validation_instance('peripheral', item)
+        for item in board_peripherals
+    ]
+
+    issues = validate_soc_capabilities(catalog, chip='esp32c5', instances=instances)
+
+    assert catalog.chip('esp32c5').hardware_limit('i2s.instance_count') == 1
+    assert [i.limit_key for i in issues] == []
+
+
+def test_i2c_total_and_lp_instance_counts_follow_idf_enum_numbering() -> None:
+    catalog = SocCapabilityCatalog.from_dict({
+        'schemaVersion': 3,
+        'profile': {'id': 'test'},
+        'capabilityDefs': {},
+        'hardwareLimitDefs': {},
+        'chips': {
+            'esp32p4': {
+                'capabilities': {},
+                'gpio': {'validInput': [], 'validOutput': []},
+                'hardwareLimits': {
+                    'i2c.instance_count': 3,
+                    'i2c.hp_instance_count': 2,
+                    'i2c.lp_instance_count': 1,
+                },
+            },
+        },
+    })
+
+    issues = validate_soc_capabilities(
+        catalog=catalog,
+        chip='esp32p4',
+        instances=[
+            inst('i2c0', 'peripheral', 'i2c', fields=[field(['port'], 0)]),
+            inst('i2c1', 'peripheral', 'i2c', fields=[field(['port'], 1)]),
+            inst('lp_i2c0', 'peripheral', 'i2c', fields=[field(['port'], 2)]),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == []
+
+
+def test_i2c_lp_instance_count_rejects_duplicate_lp_numeric_and_macro_ports() -> None:
+    catalog = SocCapabilityCatalog.from_dict({
+        'schemaVersion': 3,
+        'profile': {'id': 'test'},
+        'capabilityDefs': {},
+        'hardwareLimitDefs': {},
+        'chips': {
+            'esp32p4': {
+                'capabilities': {},
+                'gpio': {'validInput': [], 'validOutput': []},
+                'hardwareLimits': {
+                    'i2c.instance_count': 3,
+                    'i2c.hp_instance_count': 2,
+                    'i2c.lp_instance_count': 1,
+                },
+            },
+        },
+    })
+
+    issues = validate_soc_capabilities(
+        catalog=catalog,
+        chip='esp32p4',
+        instances=[
+            inst('lp_i2c_number', 'peripheral', 'i2c', fields=[field(['port'], 2)]),
+            inst('lp_i2c_macro', 'peripheral', 'i2c', fields=[field(['port'], 'LP_I2C_NUM_0')]),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == ['i2c.lp_instance_count']
+    assert issues[0].actual == 2
+
+
+def test_i2c_hp_instance_count_rejects_regular_ports_separately_from_lp_ports() -> None:
+    catalog = SocCapabilityCatalog.from_dict({
+        'schemaVersion': 3,
+        'profile': {'id': 'test'},
+        'capabilityDefs': {},
+        'hardwareLimitDefs': {},
+        'chips': {
+            'esp32p4': {
+                'capabilities': {},
+                'gpio': {'validInput': [], 'validOutput': []},
+                'hardwareLimits': {
+                    'i2c.instance_count': 3,
+                    'i2c.hp_instance_count': 2,
+                    'i2c.lp_instance_count': 1,
+                },
+            },
+        },
+    })
+
+    issues = validate_soc_capabilities(
+        catalog=catalog,
+        chip='esp32p4',
+        instances=[
+            inst('i2c0', 'peripheral', 'i2c', fields=[field(['port'], 0)]),
+            inst('i2c1', 'peripheral', 'i2c', fields=[field(['port'], 1)]),
+            inst('i2c_auto', 'peripheral', 'i2c'),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == ['i2c.hp_instance_count']
+    assert issues[0].actual == 3
+
+
+def test_i2c_invalid_numeric_port_uses_hp_limit_when_total_limit_is_unknown() -> None:
+    catalog = SocCapabilityCatalog.from_dict({
+        'schemaVersion': 3,
+        'profile': {'id': 'test'},
+        'capabilityDefs': {},
+        'hardwareLimitDefs': {},
+        'chips': {
+            'chipx': {
+                'capabilities': {},
+                'gpio': {'validInput': [], 'validOutput': []},
+                'hardwareLimits': {
+                    'i2c.hp_instance_count': 2,
+                },
+            },
+        },
+    })
+
+    issues = validate_soc_capabilities(
+        catalog=catalog,
+        chip='chipx',
+        instances=[
+            inst('i2c_bad', 'peripheral', 'i2c', fields=[field(['port'], 3)]),
+        ],
+    )
+
+    assert [i.limit_key for i in issues] == ['i2c.hp_instance_count']
+    assert issues[0].limit == 2
+    assert issues[0].actual == 3
 
 
 def test_rejects_raw_python_list_array_length() -> None:
@@ -506,4 +750,50 @@ def test_builds_instance_from_object_like_yaml_item_with_explicit_id() -> None:
         'display_lcd',
         {'sub_type': 'i80'},
         [field(['bus_width'], '16')],
+    )
+
+
+def test_generator_skip_soc_capability_check_flag_bypasses_yaml_validation(monkeypatch) -> None:
+    catalog = _catalog()
+    generator = BoardConfigGenerator(Path(__file__).parent.parent.parent)
+    generator.skip_soc_capability_check = True
+
+    monkeypatch.setattr(
+        'gen_bmgr_config_codes.current_soc_catalog',
+        lambda: catalog,
+    )
+    monkeypatch.setattr(
+        'gen_bmgr_config_codes.current_soc_chip_name',
+        lambda: 'esp32s3',
+    )
+
+    generator._validate_soc_yaml_instances(
+        'peripheral',
+        [
+            {'name': 'i2c0', 'type': 'i2c', 'config': {}},
+            {'name': 'i2c1', 'type': 'i2c', 'config': {}},
+        ],
+    )
+
+
+def test_generator_skip_soc_capability_check_env_bypasses_yaml_validation(monkeypatch) -> None:
+    catalog = _catalog()
+    generator = BoardConfigGenerator(Path(__file__).parent.parent.parent)
+
+    monkeypatch.setenv('ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK', '1')
+    monkeypatch.setattr(
+        'gen_bmgr_config_codes.current_soc_catalog',
+        lambda: catalog,
+    )
+    monkeypatch.setattr(
+        'gen_bmgr_config_codes.current_soc_chip_name',
+        lambda: 'esp32s3',
+    )
+
+    generator._validate_soc_yaml_instances(
+        'peripheral',
+        [
+            {'name': 'i2c0', 'type': 'i2c', 'config': {}},
+            {'name': 'i2c1', 'type': 'i2c', 'config': {}},
+        ],
     )

@@ -69,6 +69,7 @@ def validate_soc_capabilities(
 
     issues: List[SocValidationIssue] = []
     issues.extend(_check_capabilities(catalog, chip_caps, chip_name, instances))
+    issues.extend(_check_special_hardware_limits(chip_caps, chip_name, instances))
     issues.extend(_check_hardware_limits(catalog, chip_caps, chip_name, instances))
     return issues
 
@@ -135,6 +136,8 @@ def _check_hardware_limits(
 ) -> List[SocValidationIssue]:
     issues: List[SocValidationIssue] = []
     for key, spec in catalog._hardware_limit_defs().items():
+        if key in _SPECIAL_HARDWARE_LIMIT_KEYS:
+            continue
         limit = chip_caps.hardware_limit(key)
         if limit is None:
             continue
@@ -189,6 +192,229 @@ def _check_hardware_limits(
                 ),
             )
     return issues
+
+
+_SPECIAL_HARDWARE_LIMIT_KEYS = {
+    'i2c.instance_count',
+    'i2c.hp_instance_count',
+    'i2c.lp_instance_count',
+    'i2s.instance_count',
+}
+
+
+@dataclass(frozen=True)
+class I2CPortResolution:
+    family: str
+    index: Optional[int]
+    path: List[Any]
+    value: Any
+
+
+def _check_special_hardware_limits(
+    chip_caps: SocChipProfile,
+    chip: str,
+    instances: Sequence[SocValidationInstance],
+) -> List[SocValidationIssue]:
+    issues: List[SocValidationIssue] = []
+    issues.extend(_check_i2s_instance_count(chip_caps, chip, instances))
+    issues.extend(_check_i2c_instance_counts(chip_caps, chip, instances))
+    return issues
+
+
+def _check_i2s_instance_count(
+    chip_caps: SocChipProfile,
+    chip: str,
+    instances: Sequence[SocValidationInstance],
+) -> List[SocValidationIssue]:
+    limit = chip_caps.hardware_limit('i2s.instance_count')
+    if limit is None:
+        return []
+
+    ports = {
+        _i2s_port_key(instance)
+        for instance in instances
+        if instance.kind == 'peripheral' and instance.type == 'i2s'
+    }
+    actual = len(ports)
+    if actual <= limit:
+        return []
+    return [
+        SocValidationIssue(
+            code='SOC_NUMBER_LIMIT_EXCEEDED',
+            path=['peripherals', 'i2s'],
+            message=f'i2s.instance_count instance count is {actual}, exceeding {limit} on {chip}.',
+            chip=chip,
+            limit_key='i2s.instance_count',
+            limit=limit,
+            actual=actual,
+        )
+    ]
+
+
+def _i2s_port_key(instance: SocValidationInstance) -> str:
+    resolved_values = _resolve_field_values(instance, ['port'])
+    value = resolved_values[0].value if len(resolved_values) == 1 else 0
+    index = _value_index(value)
+    if index is not None:
+        return str(index)
+    return str(value).strip()
+
+
+def _check_i2c_instance_counts(
+    chip_caps: SocChipProfile,
+    chip: str,
+    instances: Sequence[SocValidationInstance],
+) -> List[SocValidationIssue]:
+    i2c_instances = [
+        instance for instance in instances if instance.kind == 'peripheral' and instance.type == 'i2c'
+    ]
+    if not i2c_instances:
+        return []
+
+    total_limit = chip_caps.hardware_limit('i2c.instance_count')
+    lp_limit = chip_caps.hardware_limit('i2c.lp_instance_count')
+    hp_limit = _i2c_hp_limit(chip_caps, total_limit, lp_limit)
+    issues: List[SocValidationIssue] = []
+
+    total_exceeded = total_limit is not None and len(i2c_instances) > total_limit
+    if total_exceeded:
+        issues.append(
+            SocValidationIssue(
+                code='SOC_NUMBER_LIMIT_EXCEEDED',
+                path=['peripherals', 'i2c'],
+                message=f'i2c.instance_count instance count is {len(i2c_instances)}, exceeding {total_limit} on {chip}.',
+                chip=chip,
+                limit_key='i2c.instance_count',
+                limit=total_limit,
+                actual=len(i2c_instances),
+            )
+        )
+
+    hp_actual = 0
+    lp_actual = 0
+    for instance in i2c_instances:
+        resolved = _resolve_i2c_port(instance, total_limit, hp_limit, lp_limit)
+        if resolved.family == 'lp':
+            lp_actual += 1
+            continue
+        if resolved.family == 'hp':
+            hp_actual += 1
+            continue
+        if resolved.family != 'invalid':
+            continue
+        limit_key = _i2c_invalid_port_limit_key(resolved.value, hp_limit)
+        limit = chip_caps.hardware_limit(limit_key)
+        if limit is None and limit_key == 'i2c.hp_instance_count':
+            limit = hp_limit
+        if limit is None and limit_key == 'i2c.instance_count' and total_limit is None and hp_limit is not None:
+            limit_key = 'i2c.hp_instance_count'
+            limit = hp_limit
+        if limit is None:
+            limit_key = 'i2c.instance_count'
+            limit = total_limit
+        issues.append(
+            SocValidationIssue(
+                code='SOC_NUMBER_LIMIT_EXCEEDED',
+                path=[*_locator(instance), *resolved.path],
+                message=f'{limit_key} port value {resolved.value} exceeds {limit} on {chip}.',
+                chip=chip,
+                limit_key=limit_key,
+                limit=limit,
+                actual=resolved.index,
+            )
+        )
+
+    if not total_exceeded and hp_limit is not None and hp_actual > hp_limit:
+        issues.append(
+            SocValidationIssue(
+                code='SOC_NUMBER_LIMIT_EXCEEDED',
+                path=['peripherals', 'i2c'],
+                message=f'i2c.hp_instance_count instance count is {hp_actual}, exceeding {hp_limit} on {chip}.',
+                chip=chip,
+                limit_key='i2c.hp_instance_count',
+                limit=hp_limit,
+                actual=hp_actual,
+            )
+        )
+
+    if not total_exceeded and lp_limit is not None and lp_actual > lp_limit:
+        issues.append(
+            SocValidationIssue(
+                code='SOC_NUMBER_LIMIT_EXCEEDED',
+                path=['peripherals', 'i2c'],
+                message=f'i2c.lp_instance_count instance count is {lp_actual}, exceeding {lp_limit} on {chip}.',
+                chip=chip,
+                limit_key='i2c.lp_instance_count',
+                limit=lp_limit,
+                actual=lp_actual,
+            )
+        )
+    return issues
+
+
+def _i2c_hp_limit(
+    chip_caps: SocChipProfile,
+    total_limit: Optional[int],
+    lp_limit: Optional[int],
+) -> Optional[int]:
+    hp_limit = chip_caps.hardware_limit('i2c.hp_instance_count')
+    if hp_limit is not None:
+        return hp_limit
+    if total_limit is not None and lp_limit is not None:
+        return max(total_limit - lp_limit, 0)
+    return None
+
+
+def _resolve_i2c_port(
+    instance: SocValidationInstance,
+    total_limit: Optional[int],
+    hp_limit: Optional[int],
+    lp_limit: Optional[int],
+) -> I2CPortResolution:
+    resolved_values = _resolve_field_values(instance, ['port'])
+    if len(resolved_values) != 1:
+        return I2CPortResolution('hp', None, ['port'], -1)
+
+    resolved = resolved_values[0]
+    value = resolved.value
+    text = str(value).strip()
+    if text in {'', '-1'}:
+        return I2CPortResolution('hp', -1, resolved.path, value)
+
+    lp_match = re.fullmatch(r'LP_I2C_NUM_(\d+)', text)
+    if lp_match:
+        index = int(lp_match.group(1))
+        if lp_limit is not None and index >= lp_limit:
+            return I2CPortResolution('invalid', index, resolved.path, value)
+        return I2CPortResolution('lp', index, resolved.path, value)
+
+    hp_match = re.fullmatch(r'I2C_NUM_(\d+)', text)
+    if hp_match:
+        index = int(hp_match.group(1))
+        if hp_limit is not None and index >= hp_limit:
+            return I2CPortResolution('invalid', index, resolved.path, value)
+        return I2CPortResolution('hp', index, resolved.path, value)
+
+    index = _value_index(value)
+    if index is None:
+        return I2CPortResolution('hp', None, resolved.path, value)
+    if index < 0:
+        return I2CPortResolution('hp', index, resolved.path, value)
+    if hp_limit is not None and index < hp_limit:
+        return I2CPortResolution('hp', index, resolved.path, value)
+    if total_limit is not None and index < total_limit:
+        return I2CPortResolution('lp', index - (hp_limit or 0), resolved.path, value)
+    if hp_limit is None:
+        return I2CPortResolution('hp', index, resolved.path, value)
+    return I2CPortResolution('invalid', index, resolved.path, value)
+
+
+def _i2c_invalid_port_limit_key(value: Any, hp_limit: Optional[int]) -> str:
+    if hp_limit is not None and re.fullmatch(r'I2C_NUM_\d+', str(value).strip()):
+        return 'i2c.hp_instance_count'
+    if re.fullmatch(r'LP_I2C_NUM_\d+', str(value).strip()):
+        return 'i2c.lp_instance_count'
+    return 'i2c.instance_count'
 
 
 def _field_actual_value(value: Any, check: str) -> Optional[int]:

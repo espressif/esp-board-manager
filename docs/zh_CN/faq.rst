@@ -83,6 +83,29 @@ idf.py bmgr 或 idf.py gen-bmgr-config 命令未找到
 2. 检查 amend 的 ``apply:`` 列表是否包含改动的文件。未列出的文件 BMGR 仅输出 INFO 日志，不会参与合并。
 3. 通过 ``idf.py bmgr -b <board>`` 确认当前选中的开发板实际目录，可以查看日志中的 `Board path: <path>` 信息。
 
+SoC 能力校验失败
+~~~~~~~~~~~~~~~~~~~
+
+**可能原因**
+
+- 已选开发板配置与 ``board_info.yaml`` 中的芯片不匹配。
+- YAML 使用了目标芯片不支持的设备或外设。
+- 配置超过 SoC 硬件限制，例如 I2C 或 I2S instance 数量。
+- GPIO 超出有效范围，或与其他已配置功能冲突。
+
+**推荐动作**
+
+1. 检查已选开发板 YAML，确认 ``board_info.yaml`` 使用的是预期芯片。
+2. 对照 ``private_inc/soc_capability_catalog/`` 下的目标芯片能力 catalog，或核对对应 ESP-IDF ``soc_caps.h`` 中的宏定义。
+3. 若板级配置有意使用暂未建模的硬件能力，或者确认错误为误报，可临时跳过该校验：
+
+   .. code-block:: bash
+
+      idf.py bmgr -b <board> --skip-soc-capability-check
+      export ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1
+
+   该跳过选项适合临时验证。发布前仍应修正开发板 YAML 或能力 catalog。
+
 编译阶段
 -----------
 

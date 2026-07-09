@@ -66,6 +66,11 @@ def test_idf_extension_registers_bmgr_action(bmgr_root):
     )
     assert '--customer-path' in custom_option['names']
     assert '--custom' not in custom_option['names']
+    skip_soc_option = next(
+        option for option in actions['actions']['bmgr']['options']
+        if '--skip-soc-capability-check' in option['names']
+    )
+    assert skip_soc_option['is_flag'] is True
 
 
 def test_idf_extension_rejects_mixed_legacy_and_new_bmgr_styles(bmgr_root):

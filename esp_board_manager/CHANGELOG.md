@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0~1
+
+### Bug Fixes
+
+- Fixed SoC capability validation for I2S instance limits so input/output entries sharing the same `config.port` are counted as one hardware I2S instance.
+- Added `--skip-soc-capability-check` and `ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1` to bypass parser-stage SoC capability validation when needed.
+
 ## 0.6.0
 
 ### ⚠️ Breaking Changes

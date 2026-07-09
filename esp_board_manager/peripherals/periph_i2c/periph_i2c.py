@@ -12,7 +12,8 @@ PERIPH_I2C_IO_LIST = [
 ]
 
 import sys
-from typing import Union
+import re
+from typing import Optional, Tuple, Union
 
 from generators.utils.soc_capability_query import current_soc
 
@@ -57,6 +58,52 @@ def _validate_macro_value(name: str, field: str, value: str, valid_values: set) 
         )
     return value
 
+
+def _soc_i2c_port_limits() -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    """Return total, HP, and LP I2C port counts from the active SoC catalog."""
+    soc = current_soc()
+    total = soc.limit('i2c.instance_count', default=None)
+    hp = soc.limit('i2c.hp_instance_count', default=None)
+    lp = soc.limit('i2c.lp_instance_count', default=None)
+    if total is not None and hp is None:
+        hp = total - (lp or 0)
+    if total is None and hp is not None and lp is not None:
+        total = hp + lp
+    return total, hp, lp
+
+
+def _validate_i2c_port_macro(name: str, value: str) -> str:
+    total, hp, lp = _soc_i2c_port_limits()
+    hp_match = re.fullmatch(r'I2C_NUM_(\d+)', value)
+    if hp_match:
+        index = int(hp_match.group(1))
+        if hp is not None:
+            if index < hp:
+                return value
+            raise ValueError(
+                f"Invalid port value '{value}' in I2C peripheral '{name}'. "
+                f'Valid regular I2C ports are I2C_NUM_0 ~ I2C_NUM_{max(hp - 1, 0)}.'
+            )
+        return _validate_macro_value(name, 'port', value, VALID_I2C_PORT_MACROS)
+
+    lp_match = re.fullmatch(r'LP_I2C_NUM_(\d+)', value)
+    if lp_match:
+        index = int(lp_match.group(1))
+        if lp is not None:
+            if index < lp:
+                return value
+            raise ValueError(
+                f"LP I2C port '{value}' in I2C peripheral '{name}' is not supported by the current SoC. "
+                f'Current SoC supports {lp} LP I2C port(s).'
+            )
+        return _validate_macro_value(name, 'port', value, VALID_I2C_PORT_MACROS)
+
+    raise ValueError(
+        f"Invalid port value '{value}' in I2C peripheral '{name}'. "
+        'Use -1, a numeric IDF i2c_port_t value, I2C_NUM_N, or LP_I2C_NUM_N.'
+    )
+
+
 def _parse_i2c_port(name: str, port_cfg) -> I2CPortValue:
     """Parse and validate I2C port value.
 
@@ -75,7 +122,7 @@ def _parse_i2c_port(name: str, port_cfg) -> I2CPortValue:
         if port_cfg.lstrip('-').isdigit():
             port_cfg = int(port_cfg)
         else:
-            return _validate_macro_value(name, 'port', port_cfg, VALID_I2C_PORT_MACROS)
+            return _validate_i2c_port_macro(name, port_cfg)
 
     if isinstance(port_cfg, bool) or not isinstance(port_cfg, int):
         raise ValueError(f"Invalid port type '{type(port_cfg).__name__}' in I2C peripheral '{name}'")
@@ -86,7 +133,20 @@ def _parse_i2c_port(name: str, port_cfg) -> I2CPortValue:
     if port_cfg < -1:
         raise ValueError(f"Invalid port value '{port_cfg}' in I2C peripheral '{name}'. Use -1, 0, 1, or valid macro.")
 
-    return _validate_macro_value(name, 'port', f'I2C_NUM_{port_cfg}', VALID_I2C_PORT_MACROS)
+    total, hp, _lp = _soc_i2c_port_limits()
+    if hp is not None:
+        if port_cfg < hp:
+            return f'I2C_NUM_{port_cfg}'
+        if total is not None and port_cfg < total:
+            return f'LP_I2C_NUM_{port_cfg - hp}'
+        if total is not None:
+            raise ValueError(
+                f"Invalid port value '{port_cfg}' in I2C peripheral '{name}'. "
+                f'Current SoC supports i2c_port_t values 0 ~ {max(total - 1, 0)}.'
+            )
+
+    return _validate_i2c_port_macro(name, f'I2C_NUM_{port_cfg}')
+
 
 def _parse_i2c_clk_source(name: str, clk_cfg, i2c_port: I2CPortValue) -> str:
     """Parse and validate I2C clock source macro."""
