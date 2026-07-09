@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3~1
+
+### Bug Fixes
+
+- Corrected the **ESP32-S31-Korvo-1** button labels.
+
 ## 0.5.3
 
 ### Bug Fixes

@@ -831,8 +831,13 @@ def test_repo_soc_requirements_include_first_phase_capability_scope() -> None:
     assert spec.hardware_limits['i2s.hw_version'].sources[0].symbol == 'SOC_I2S_HW_VERSION_2'
     assert spec.hardware_limits['i2s.hw_version'].sources[0].value == 2
     assert not hasattr(spec, 'supported_since_overrides')
+    assert spec.hardware_limits['i2c.hp_instance_count'].sources[0].symbol == 'SOC_HP_I2C_NUM'
+    assert not spec.hardware_limits['i2c.hp_instance_count'].applies_to
+    assert spec.hardware_limits['i2c.lp_instance_count'].sources[0].symbol == 'SOC_LP_I2C_NUM'
+    assert not spec.hardware_limits['i2c.lp_instance_count'].applies_to
     assert spec.hardware_limits['i2s.instance_count'].sources[0].kind == 'soc_caps_macro'
     assert spec.hardware_limits['i2s.instance_count'].sources[0].symbol == 'SOC_I2S_NUM'
+    assert not spec.hardware_limits['i2s.instance_count'].applies_to
     assert spec.hardware_limits['i2s.pdm_max_tx_lines'].sources[0].symbol == 'SOC_I2S_PDM_MAX_TX_LINES'
     assert spec.hardware_limits['i2s.pdm_max_rx_lines'].sources[0].symbol == 'SOC_I2S_PDM_MAX_RX_LINES'
     assert spec.hardware_limits['adc.unit_count'].sources[0].symbol == 'SOC_ADC_PERIPH_NUM'

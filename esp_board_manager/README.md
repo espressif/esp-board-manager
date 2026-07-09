@@ -4,6 +4,8 @@
 
 Online documentation: [Espressif Board Manager Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/index.html)
 
+Board Manager web configurator：[https://board-manager.espressif.com](https://board-manager.espressif.com)
+
 This is a board management component developed by Espressif that focuses on the initialization of development board devices. It uses YAML files to describe the configuration of the main controller and external functional devices, automatically generates configuration code, and simplifies the process of adding new boards. It provides a unified device management interface, which not only improves the reusability of device initialization code but also simplifies the adaptation of applications to various development boards.
 
 > **Version Requirements:** Compatible with ESP-IDF release/v5.4(>= v5.4.3) and release/v5.5(>= v5.5.2) branches.
@@ -348,6 +350,7 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 **SDKconfig Behavior:**
 ```bash
 --skip-sdkconfig-check           # Skip sdkconfig consistency check
+--skip-soc-capability-check      # Skip parser-stage SoC capability validation
 -x, --clean                      # Delete generated .c/.h files, reset generated CMakeLists.txt/idf_component.yml, and remove board_manager.defaults
 ```
 
@@ -385,6 +388,9 @@ idf.py bmgr -b esp_vocat_1_0 --kconfig-only
 
 # Skip sdkconfig consistency check when reusing current sdkconfig
 idf.py bmgr -b esp_vocat_1_0 --skip-sdkconfig-check
+
+# Skip SoC capability validation for a board configuration
+idf.py bmgr -b esp_vocat_1_0 --skip-soc-capability-check
 
 # Clean generated files
 idf.py bmgr -x
@@ -433,16 +439,17 @@ python gen_bmgr_config_codes.py 1
 
 ## Script Execution Flow
 
-ESP Board Manager uses `gen_bmgr_config_codes.py` for code generation, which handles both Kconfig generation and board configuration generation in a unified workflow. The execution follows an 8-step process that transforms YAML configurations into source files and build metadata:
+ESP Board Manager uses `gen_bmgr_config_codes.py` for code generation, which handles both Kconfig generation and board configuration generation in a unified workflow. The execution follows below process that transforms YAML configurations into source files and build metadata:
 
 1. **Board Directory Scanning**: Discover boards in default, customer, and component directories
 2. **Board Selection**: Read board selection from sdkconfig or command‑line arguments
 3. **Configuration File Discovery**: Locate `board_peripherals.yaml` and `board_devices.yaml` for the selected board
 4. **Peripheral Processing**: Parse peripheral configurations and generate peripheral C structures/handles
 5. **Device Processing**: Parse device configurations, resolve dependencies, and generate device C structures/handles
-6. **Kconfig Generation**: Generate static capability symbols in `gen_codes/Kconfig.in` and current-board symbols in `components/gen_bmgr_codes/Kconfig.projbuild`
-7. **Board SDKconfig Handling**: When needed, validate preserved sdkconfig consistency and generate `components/gen_bmgr_codes/board_manager.defaults`
-8. **Generated Component Setup**: Write board information, unified board metadata, and generated component files under `components/gen_bmgr_codes/`
+6. **Configuration Validation**: Validate SoC capabilities, hardware limits, IO validity, and IO conflicts for the selected board configuration
+7. **Kconfig Generation**: Generate static capability symbols in `gen_codes/Kconfig.in` and current-board symbols in `components/gen_bmgr_codes/Kconfig.projbuild`
+8. **Board SDKconfig Handling**: When needed, validate preserved sdkconfig consistency and generate `components/gen_bmgr_codes/board_manager.defaults`
+9. **Generated Component Setup**: Write board information, unified board metadata, and generated component files under `components/gen_bmgr_codes/`
 
 **⚠️ Important**: When switching boards, the script automatically backs up and deletes the existing `sdkconfig` file during environment cleanup. This prevents residual configurations from the old board (for example, a different chip's `CONFIG_IDF_TARGET` or stale board symbols) from affecting the new board. The backup file is `components/gen_bmgr_codes/sdkconfig.bmgr_board.old`.
 
@@ -536,6 +543,22 @@ set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
 ### CMake or compile errors (missing `gen_bmgr_codes`)
 
 If the build fails because generated files under `components/gen_bmgr_codes` are missing or stale, run `idf.py bmgr -b YOUR_BOARD` (or `idf.py gen-bmgr-config -b YOUR_BOARD`). The IDF extension does not print a dedicated warning before CMake for missing files.
+
+### SoC Capability Validation Failed
+
+If `idf.py bmgr -b YOUR_BOARD` reports `SoC capability validation failed`, check whether the selected board configuration matches the chip in `board_info.yaml`. Typical causes include using a device or peripheral unsupported by the chip, exceeding an SoC hardware limit such as I2C/I2S instance count, or assigning a GPIO outside the valid range.
+
+To investigate, compare the board YAML with the selected chip capability catalog under `private_inc/soc_capability_catalog/`, or verify the corresponding ESP-IDF `soc_caps.h` macros. If the board configuration intentionally uses hardware capability that is not modeled yet, or the error has been confirmed as a false positive, temporarily skip this validation with:
+
+```bash
+idf.py bmgr -b YOUR_BOARD --skip-soc-capability-check
+```
+
+Or set the environment variable:
+
+```bash
+export ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1
+```
 
 ### `undefined reference to 'g_esp_board_*'` (e.g. `g_esp_board_devices`, `g_esp_board_device_handles`, `g_esp_board_peripherals`)
 

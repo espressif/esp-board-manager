@@ -385,6 +385,7 @@
         "adc.pattern_length_max": 16,
         "adc.unit_count": 2,
         "dac.channel_count": 2,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 1,
         "i2s.instance_count": 2,
@@ -508,6 +509,7 @@
         "adc.max_channel_count": 5,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 1,
         "i2c.instance_count": 1,
         "ledc.channel_count": 6,
         "spi.instance_count": 2,
@@ -627,6 +629,7 @@
         "adc.max_channel_count": 5,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 2,
+        "i2c.hp_instance_count": 1,
         "i2c.instance_count": 1,
         "i2s.hw_version": 2,
         "i2s.instance_count": 1,
@@ -762,6 +765,7 @@
         "adc.max_channel_count": 6,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 1,
         "i2c.instance_count": 2,
         "i2c.lp_instance_count": 1,
         "i2s.hw_version": 2,
@@ -908,6 +912,7 @@
         "adc.max_channel_count": 7,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 1,
         "i2c.instance_count": 2,
         "i2c.lp_instance_count": 1,
         "i2s.hw_version": 2,
@@ -1049,6 +1054,7 @@
         "adc.max_channel_count": 4,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 1,
         "i2c.instance_count": 1,
         "i2s.hw_version": 2,
         "i2s.instance_count": 1,
@@ -1181,6 +1187,7 @@
         "adc.max_channel_count": 5,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 2,
         "i2s.instance_count": 1,
@@ -1305,6 +1312,7 @@
         "adc.max_channel_count": 5,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 2,
         "i2s.instance_count": 1,
@@ -1465,6 +1473,7 @@
         "adc.max_channel_count": 5,
         "adc.pattern_length_max": 8,
         "adc.unit_count": 1,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 2,
         "i2s.instance_count": 1,
@@ -1667,6 +1676,7 @@
         "adc.max_channel_count": 8,
         "adc.pattern_length_max": 16,
         "adc.unit_count": 2,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 3,
         "i2c.lp_instance_count": 1,
         "i2s.hw_version": 2,
@@ -1855,6 +1865,7 @@
         "adc.pattern_length_max": 32,
         "adc.unit_count": 2,
         "dac.channel_count": 2,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 1,
         "i2s.instance_count": 1,
@@ -2038,6 +2049,7 @@
         "adc.max_channel_count": 10,
         "adc.pattern_length_max": 24,
         "adc.unit_count": 2,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 2,
         "i2s.hw_version": 2,
         "i2s.instance_count": 2,
@@ -2254,6 +2266,7 @@
         "adc.max_channel_count": 8,
         "adc.pattern_length_max": 16,
         "adc.unit_count": 2,
+        "i2c.hp_instance_count": 2,
         "i2c.instance_count": 3,
         "i2c.lp_instance_count": 1,
         "i2s.hw_version": 2,
@@ -2416,24 +2429,9 @@
         }
       ]
     },
-    "i2c.instance_count": {
-      "appliesTo": [
-        {
-          "check": "instanceCount",
-          "kind": "peripheral",
-          "type": "i2c"
-        }
-      ]
-    },
-    "i2s.instance_count": {
-      "appliesTo": [
-        {
-          "check": "instanceCount",
-          "kind": "peripheral",
-          "type": "i2s"
-        }
-      ]
-    },
+    "i2c.hp_instance_count": {},
+    "i2c.instance_count": {},
+    "i2s.instance_count": {},
     "lcd.i80_bus_width": {
       "appliesTo": [
         {

@@ -113,6 +113,7 @@ class BoardConfigGenerator(LoggerMixin):
         # Customer (-c) path(s); may be a ';'-separated list. Stored so auto-amend
         # scanning (resolve_amend_plan) can reuse the same customer roots.
         self.board_customer_path: Optional[str] = None
+        self.skip_soc_capability_check = False
 
         # Initialize all sub-components (version display, root_dir, parsers, etc.)
         self._init_components()
@@ -1345,6 +1346,9 @@ class BoardConfigGenerator(LoggerMixin):
 
     def _validate_soc_yaml_instances(self, kind: str, items: List, labels: Optional[Dict[str, str]] = None) -> None:
         """Validate YAML-level SoC capability rules before parser dispatch."""
+        if self._should_skip_soc_capability_check():
+            self.logger.info('   ⏭️  SoC capability validation skipped')
+            return
         catalog = current_soc_catalog()
         chip_name = current_soc_chip_name()
         if catalog is None or not chip_name:
@@ -1366,6 +1370,12 @@ class BoardConfigGenerator(LoggerMixin):
             'SoC capability validation failed at %s: %s'
             % ('/'.join(str(part) for part in issue.path), issue.message)
         )
+
+    def _should_skip_soc_capability_check(self) -> bool:
+        if self.skip_soc_capability_check:
+            return True
+        value = os.environ.get('ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK', '')
+        return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
     def write_board_metadata(self, board_name: str, chip_name: str, out_path: str) -> dict:
         """Write unified board metadata YAML."""
@@ -1651,6 +1661,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         # Remember the customer path(s) so auto-amend scanning can reuse the
         # same customer roots that board discovery used.
         self.board_customer_path = args.board_customer_path
+        self.skip_soc_capability_check = bool(getattr(args, 'skip_soc_capability_check', False))
 
         # Initialize device and peripheral types sets
         device_types = set()
@@ -2416,6 +2427,13 @@ Examples:
         dest='skip_sdkconfig_check',
         action='store_true',
         help='Skip CONFIG_IDF_TARGET check and board-manager ESP_BOARD_* sdkconfig consistency when sdkconfig is preserved',
+    )
+
+    parser.add_argument(
+        '--skip-soc-capability-check',
+        dest='skip_soc_capability_check',
+        action='store_true',
+        help='Skip parser-stage SoC capability validation for device/peripheral YAML',
     )
 
     parser.add_argument(

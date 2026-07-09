@@ -83,6 +83,29 @@ Generated Result Unchanged After YAML Modification
 2. Check whether the amend ``apply:`` list includes the modified file. Files not listed will only produce an INFO log and will not participate in the merge.
 3. Confirm the actual directory of the currently selected board via ``idf.py bmgr -b <board>``; see the ``Board path: <path>`` information in the log.
 
+SoC Capability Validation Failed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Possible Causes**
+
+- The selected board configuration does not match the chip in ``board_info.yaml``.
+- The YAML uses a device or peripheral that is not supported by the target chip.
+- The configuration exceeds a SoC hardware limit, such as the I2C or I2S instance count.
+- A GPIO is outside the valid range or conflicts with another configured function.
+
+**Recommended Actions**
+
+1. Check the selected board YAML and confirm that ``board_info.yaml`` uses the intended chip.
+2. Compare the board configuration with the selected chip capability catalog under ``private_inc/soc_capability_catalog/``, or check the corresponding ESP-IDF ``soc_caps.h`` macros.
+3. If the board configuration intentionally uses hardware capability that is not modeled yet, or the error has been confirmed as a false positive, temporarily skip the validation:
+
+   .. code-block:: bash
+
+      idf.py bmgr -b <board> --skip-soc-capability-check
+      export ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1
+
+   This skip option is intended for temporary verification. The board YAML or capability catalog should still be corrected before release.
+
 Compilation Phase
 -----------------
 

@@ -4,6 +4,8 @@
 
 在线文档：[乐鑫板卡管理指南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/index.html)
 
+Board Manager 网页工具：[https://board-manager.espressif.com](https://board-manager.espressif.com)
+
 这是由 Espressif 开发的专注于开发板设备初始化的板级管理组件。使用 YAML 文件来描述主控制器和外部功能设备的配置，能够自动生成配置代码，简化了添加新板子的过程。提供了统一的设备管理接口，不仅提高了设备初始化代码的可重用性，还简化了应用程序对各种开发板的适配。
 
 > **版本要求:** 兼容 ESP-IDF release/v5.4(>= v5.4.3) 和 release/v5.5(>= v5.5.2) 分支。
@@ -349,6 +351,7 @@ void app_main(void)
 
 ```bash
 --skip-sdkconfig-check           # 跳过 sdkconfig 符号一致性检查
+--skip-soc-capability-check      # 跳过 parser 阶段的 SoC 能力校验
 -x, --clean                      # 删除生成的 .c/.h 文件，重置生成的 CMakeLists.txt / idf_component.yml，并移除 board_manager.defaults
 ```
 
@@ -387,6 +390,9 @@ idf.py bmgr -b esp_vocat_1_0 --kconfig-only
 
 # 复用当前 sdkconfig 时跳过一致性检查
 idf.py bmgr -b esp_vocat_1_0 --skip-sdkconfig-check
+
+# 跳过板级配置的 SoC 能力校验
+idf.py bmgr -b esp_vocat_1_0 --skip-soc-capability-check
 
 # 清理生成的文件
 idf.py bmgr -x
@@ -435,16 +441,17 @@ python gen_bmgr_config_codes.py 1
 
 ## 脚本执行流程
 
-ESP Board Manager 使用 `gen_bmgr_config_codes.py` 进行代码生成，它在统一的工作流程中处理 Kconfig 生成和板子配置生成。当前执行流程为 8 个步骤，将 YAML 配置转换为源码和构建元数据：
+ESP Board Manager 使用 `gen_bmgr_config_codes.py` 进行代码生成，它在统一的工作流程中处理 Kconfig 生成和板子配置生成。当前执行流程为以下步骤，将 YAML 配置转换为源码和构建元数据：
 
 1. **板子目录扫描**: 在默认、客户和组件目录中发现板子
 2. **板子选择**: 从 sdkconfig 或命令行参数读取板子选择
 3. **配置文件发现**: 定位所选板子的 `board_peripherals.yaml` 和 `board_devices.yaml`
 4. **外设处理**: 解析外设配置并生成外设 C 结构/句柄
 5. **设备处理**: 解析设备配置、处理依赖并生成设备 C 结构/句柄
-6. **Kconfig 生成**: 在 `gen_codes/Kconfig.in` 中生成静态能力符号，并在 `components/gen_bmgr_codes/Kconfig.projbuild` 中生成当前板子的符号
-7. **板子 sdkconfig 配置**: 在需要时检查保留的 sdkconfig 一致性，生成 `components/gen_bmgr_codes/board_manager.defaults`
-8. **生成组件**: 写入板子信息、统一板级 metadata 和 `components/gen_bmgr_codes/` 下的生成组件文件
+6. **配置校验**: 校验已选板级配置的 SoC 能力、硬件限制、IO 合法性和 IO 冲突
+7. **Kconfig 生成**: 在 `gen_codes/Kconfig.in` 中生成静态能力符号，并在 `components/gen_bmgr_codes/Kconfig.projbuild` 中生成当前板子的符号
+8. **板子 sdkconfig 配置**: 在需要时检查保留的 sdkconfig 一致性，生成 `components/gen_bmgr_codes/board_manager.defaults`
+9. **生成组件**: 写入板子信息、统一板级 metadata 和 `components/gen_bmgr_codes/` 下的生成组件文件
 
 **⚠️ 重要提示：** 切换板子时，脚本会在环境清理阶段自动备份并删除现有的 `sdkconfig` 文件。这是为了防止旧板子的配置残留影响新板子的配置（例如不同芯片的 `CONFIG_IDF_TARGET`、残留的板级符号等）。备份文件为 `components/gen_bmgr_codes/sdkconfig.bmgr_board.old`。
 
@@ -538,6 +545,22 @@ set IDF_EXTRA_ACTIONS_PATH=/PATH/TO/YOUR_PATH/esp_board_manager
 ### CMake 或编译失败（缺少 `gen_bmgr_codes`）
 
 若因 `components/gen_bmgr_codes` 缺失或过期导致构建失败，请执行 `idf.py bmgr -b YOUR_BOARD`（或 `idf.py gen-bmgr-config -b YOUR_BOARD`）。IDF 扩展不会在 CMake 前单独就缺文件打印一条专用警告。
+
+### SoC 能力校验失败
+
+如果 `idf.py bmgr -b YOUR_BOARD` 报错 `SoC capability validation failed`，请先检查已选板级配置是否与 `board_info.yaml` 中的芯片匹配。常见原因包括：使用了目标芯片不支持的设备或外设、超过 I2C/I2S instance 数量等 SoC 硬件限制，或配置了不在有效范围内的 GPIO。
+
+排查时，可以对照板级 YAML 与 `private_inc/soc_capability_catalog/` 下的目标芯片能力 catalog，也可以核对对应 ESP-IDF `soc_caps.h` 中的宏定义。若板级配置有意使用暂未建模的硬件能力，或者确认错误为误报，可临时跳过该校验：
+
+```bash
+idf.py bmgr -b YOUR_BOARD --skip-soc-capability-check
+```
+
+也可以设置环境变量：
+
+```bash
+export ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK=1
+```
 
 ### `undefined reference to 'g_esp_board_*'`（如 `g_esp_board_devices`、`g_esp_board_device_handles`、`g_esp_board_peripherals`）
 

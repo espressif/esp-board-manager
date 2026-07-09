@@ -1,4 +1,4 @@
-version: 0.5.3
+version: 0.5.3~1
 description: Official Espressif board definitions for ESP Board Manager
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_boards/README.md

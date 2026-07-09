@@ -26,7 +26,7 @@ devices:
         with_dma: false
 
   # Four ADC buttons on GPIO42.
-  # VOLUP=380mV, VOLDOWN=820mV, MODE=1340mV, SET=1870mV.
+  # SET=380mV, MODE=820mV, VOLUME_DOWN=1340mV, VOLUME_UP=1870mV.
   - name: adc_button_group
     type: button
     sub_type: adc_multi
@@ -49,7 +49,7 @@ devices:
       button_num: 4
       max_voltage: 2000
       voltage_range: [380, 820, 1340, 1870]
-      button_labels: ["VOLUME_UP", "VOLUME_DOWN", "MODE", "SET"]
+      button_labels: ["SET", "MODE", "VOLUME_DOWN", "VOLUME_UP"]
     peripherals:
       - name: adc_oneshot
 

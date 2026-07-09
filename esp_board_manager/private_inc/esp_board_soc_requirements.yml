@@ -12,7 +12,8 @@
 #   check: arrayLength   path points to an array as a whole; compare the array length.
 #                        Example: adc.pattern_length_max -> patterns length
 #   check: instanceCount count configured instances matching (kind, type) without a path.
-#                        Example: i2c / i2s / spi / uart instance_count
+#                        Example: spi / uart instance_count. I2C and I2S use dedicated
+#                        validators because their port semantics are peripheral-specific.
 #   compare              optional relation between actual and limit: le (default), lt, ge, gt,
 #                        eq, or ne. Unknown values are treated as le by the validator.
 devices:
@@ -167,8 +168,10 @@ hardware_limits:
     sources:
       - kind: soc_caps_macro
         symbol: SOC_I2C_NUM
-    applies_to:
-      - { kind: peripheral, type: i2c, check: instanceCount }
+  i2c.hp_instance_count:
+    sources:
+      - kind: soc_caps_macro
+        symbol: SOC_HP_I2C_NUM
   i2c.lp_instance_count:
     sources:
       - kind: soc_caps_macro
@@ -180,8 +183,6 @@ hardware_limits:
       - kind: header_define
         path: components/esp_hal_i2s/{chip}/include/hal/i2s_ll.h
         symbol: I2S_LL_INST_NUM
-    applies_to:
-      - { kind: peripheral, type: i2s, check: instanceCount }
   i2s.pdm_max_tx_lines:
     sources:
       - kind: soc_caps_macro

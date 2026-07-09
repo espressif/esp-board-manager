@@ -11,9 +11,10 @@ When running ``idf.py bmgr -b <board>``, BMGR performs the following steps in or
 2. Determines the currently selected board based on the command-line arguments (name or index).
 3. Locates the board's ``board_peripherals.yaml``, ``board_devices.yaml``, ``board_info.yaml``, ``sdkconfig.defaults.board``, and ``Kconfig.projbuild``.
 4. Parses peripherals and devices, generating corresponding configuration structures, handle tables, and board-level metadata.
-5. Generates the ``Kconfig.projbuild`` for the current board and appends the board directory's ``Kconfig.projbuild``.
-6. Generates ``board_manager.defaults``, connecting the board's default configuration and capability symbols to the build.
-7. Outputs the source files, build files, and tooling summary files under ``components/gen_bmgr_codes`` for compilation.
+5. Validates the selected board configuration, including SoC capabilities, hardware limits, I/O validity, and I/O conflicts.
+6. Generates the ``Kconfig.projbuild`` for the current board and appends the board directory's ``Kconfig.projbuild``.
+7. Generates ``board_manager.defaults``, connecting the board's default configuration and capability symbols to the build.
+8. Outputs the source files, build files, and tooling summary files under ``components/gen_bmgr_codes`` for compilation.
 
 In BMGR's model, board configuration code comes from the YAML file description and the script's parsing and generation process, not from manually selecting devices or peripherals in ``menuconfig``. ``components/gen_bmgr_codes`` is not a cache or a view-only intermediate artifact; it is an actual component that participates in the ESP-IDF build.
 
