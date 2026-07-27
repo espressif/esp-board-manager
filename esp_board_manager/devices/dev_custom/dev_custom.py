@@ -10,6 +10,8 @@ import sys
 import re
 from typing import Dict, Any, List, Tuple
 
+DEV_CUSTOM_MAX_PERIPHERALS = 4
+
 def get_includes():
     """Get required header includes for custom device"""
     return ['dev_custom.h']
@@ -214,7 +216,7 @@ def _generate_peripheral_fields(peripherals_list: List[Any]) -> Tuple[List[str],
         init_values.append(f'        .peripheral_name = "{periph_name}",')
     else:
         # Multiple peripherals - use array
-        field_definitions.append('    const char *peripheral_names[MAX_PERIPHERALS];')
+        field_definitions.append(f'    const char *peripheral_names[{DEV_CUSTOM_MAX_PERIPHERALS}];')
         for i, periph in enumerate(peripherals_list):
             if isinstance(periph, dict) and 'name' in periph:
                 periph_name = periph['name']
@@ -239,6 +241,11 @@ def parse(name, config, peripherals_dict=None):
     # Extract configuration parameters
     device_config = config.get('config', {})
     peripherals_list = config.get('peripherals', [])
+
+    if len(peripherals_list) > DEV_CUSTOM_MAX_PERIPHERALS:
+        raise ValueError(
+            f'Custom device {name} supports at most {DEV_CUSTOM_MAX_PERIPHERALS} peripherals'
+        )
 
     # Validate peripherals if peripherals_dict is provided
     if peripherals_dict is not None:

@@ -173,13 +173,15 @@ Notes
 Factory function and multi-address selection
 --------------------------------------------
 
-The project must provide an ``lcd_touch_factory_entry_t``, which BMGR calls back when creating the touch device to build an ``esp_lcd_touch_handle_t`` from the touch chip component. The signature is:
+The project must provide ``lcd_touch_factory_entry_t`` in a board source file. BMGR calls it when creating the touch device to build an ``esp_lcd_touch_handle_t`` from the touch chip component. The signature is:
 
 .. code-block:: c
 
    esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
                                        const esp_lcd_touch_config_t *touch_dev_config,
                                        esp_lcd_touch_handle_t *ret_touch)
+
+See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
 
 If the same board may carry different touch chips (that is, ``i2c_addr`` lists several candidate addresses), the factory function can read the actually probed address with ``esp_board_device_get_i2c_effective_addr()`` and select the matching driver:
 

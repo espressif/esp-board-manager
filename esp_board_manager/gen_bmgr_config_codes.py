@@ -58,6 +58,7 @@ from generators.utils.soc_capability_query import (
 )
 from generators.utils.soc_capability_validator import (
     build_soc_validation_instance,
+    validate_i2s_port_direction_duplicates,
     validate_soc_capabilities,
 )
 from generators.sdkconfig_manager import SDKCONFIG_DEFAULTS_BOARD_FILE
@@ -773,8 +774,7 @@ class BoardConfigGenerator(LoggerMixin):
             f.write(self.get_license_header('Auto-generated custom device structure definitions'))
             f.write('#pragma once\n\n')
             f.write('#include <stdint.h>\n')
-            f.write('#include <stdbool.h>\n')
-            f.write('#include "dev_custom.h"\n\n')
+            f.write('#include <stdbool.h>\n\n')
 
             f.write('// Custom device structure definitions\n')
             f.write('// These structures are dynamically generated based on YAML configuration\n\n')
@@ -1346,13 +1346,6 @@ class BoardConfigGenerator(LoggerMixin):
 
     def _validate_soc_yaml_instances(self, kind: str, items: List, labels: Optional[Dict[str, str]] = None) -> None:
         """Validate YAML-level SoC capability rules before parser dispatch."""
-        if self._should_skip_soc_capability_check():
-            self.logger.info('   ⏭️  SoC capability validation skipped')
-            return
-        catalog = current_soc_catalog()
-        chip_name = current_soc_chip_name()
-        if catalog is None or not chip_name:
-            return
         instances = []
         for item in items:
             label = None
@@ -1362,6 +1355,25 @@ class BoardConfigGenerator(LoggerMixin):
                     name = item.get('name')
                 label = labels.get(str(name))
             instances.append(build_soc_validation_instance(kind, item, instance_id=label))
+
+        if kind == 'peripheral':
+            duplicate_issues = validate_i2s_port_direction_duplicates(
+                current_soc_chip_name() or 'unknown', instances,
+            )
+            if duplicate_issues:
+                issue = duplicate_issues[0]
+                raise ValueError(
+                    'I2S configuration validation failed at %s: %s'
+                    % ('/'.join(str(part) for part in issue.path), issue.message)
+                )
+
+        if self._should_skip_soc_capability_check():
+            self.logger.info('   ⏭️  SoC capability validation skipped')
+            return
+        catalog = current_soc_catalog()
+        chip_name = current_soc_chip_name()
+        if catalog is None or not chip_name:
+            return
         issues = validate_soc_capabilities(catalog, chip=chip_name, instances=instances)
         if not issues:
             return

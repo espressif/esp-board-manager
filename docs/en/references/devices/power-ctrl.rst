@@ -8,7 +8,7 @@ Overview
 
 The ``power_ctrl`` device wraps a board-level power enable signal as a reusable device. Other devices can reference it via the ``power_ctrl_device`` field to trigger power-on or power-off control during device initialization and shutdown.
 
-The current template and implementation support ``sub_type: gpio``. In this mode, a single ``gpio`` peripheral sets the power control pin level; ``active_level`` represents the active-high or active-low sense for power-on.
+``sub_type: gpio`` uses a single ``gpio`` peripheral to set the power control pin level; ``active_level`` represents the active-high or active-low sense for power-on. ``sub_type: custom`` registers board-specific lifecycle operations, which supports PMICs, IO expanders, multi-rail sequencing, and any other board-owned power implementation.
 
 Supported Usage Modes
 ---------------------
@@ -16,6 +16,7 @@ Supported Usage Modes
 ``power_ctrl`` distinguishes usage modes with ``sub_type``:
 
 - `GPIO Power Control`_
+- `Custom Power Control`_
 
 Minimal Configuration
 ---------------------
@@ -62,6 +63,60 @@ GPIO Power Control
 
 In ``gpio`` mode, initialization references the ``gpio`` peripheral from the configuration and saves the peripheral handle. When a power-on request is received, the GPIO is set to ``active_level``; when a power-off request is received, it is set to the opposite level. The ``power_ctrl`` device itself only defines the power control resource; devices that need to be controlled reference this device name via the ``power_ctrl_device`` field, for example in board configurations for ``audio_codec``, ``fs_fat``, or ``display_lcd``.
 
+Custom Power Control
+^^^^^^^^^^^^^^^^^^^^
+
+Use ``custom`` when a board needs a PMIC, IO expander, several rails, or an ordered power sequence. Register operations under the same name as the ``power_ctrl`` device. See :doc:`/programming-guide/board-directory` for board source placement and build rules. ``init`` and ``deinit`` are optional; ``set_power`` is required. The framework retains configured ``peripherals`` before ``init`` and releases them after ``deinit``. Use ``depends_on`` for other device dependencies, such as a separately modelled PMIC device.
+
+``board_devices.yaml``:
+
+.. code-block:: yaml
+
+    devices:
+      - name: board_power_ctrl
+        type: power_ctrl
+        sub_type: custom
+        depends_on: pmic_device
+        config:
+          startup_delay_ms: 10
+
+      - name: display_lcd
+        type: display_lcd
+        power_ctrl_device: board_power_ctrl
+
+``board_power.c``:
+
+.. code-block:: c
+
+    #include "dev_power_ctrl.h"
+    #include "gen_board_device_custom.h"
+    #include "esp_board_extra_func_entry.h"
+
+    static int board_power_init(const dev_power_ctrl_config_t *config, void **context)
+    {
+        const dev_custom_board_power_ctrl_custom_config_t *user_cfg =
+            config->sub_cfg.custom.user_cfg;
+        (void)user_cfg;
+        *context = NULL;
+        return 0;
+    }
+
+    static int board_power_set_power(void *context, const char *consumer, bool power_on)
+    {
+        (void)context;
+        (void)consumer;
+        (void)power_on;
+        return 0;
+    }
+
+    static const dev_power_ctrl_custom_ops_t s_board_power_ctrl_ops = {
+        .init = board_power_init,
+        .deinit = NULL,
+        .set_power = board_power_set_power,
+    };
+
+    DEVICE_EXTRA_FUNC_REGISTER(board_power_ctrl, &s_board_power_ctrl_ops);
+
 All Fields
 ----------
 
@@ -77,6 +132,20 @@ GPIO Power Control All Fields
       peripherals:
         - name: gpio                  # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
           active_level: 1             # [TO_BE_CONFIRMED] Active level (0-low, 1-high) when power is on
+
+Custom Power Control All Fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: yaml
+
+    - name: board_power_ctrl
+      type: power_ctrl
+      sub_type: custom
+      depends_on: pmic_device          # Optional device dependencies
+      peripherals:                     # Optional framework-managed peripheral references
+        - name: i2c_pmic
+      config:                          # Optional type-safe board configuration
+        startup_delay_ms: 10
 
     # Example usage in devices, add the power_ctrl_device attribute to the device configuration
     # - name: audio_dac
@@ -99,7 +168,7 @@ GPIO Power Control All Fields
 Component Dependencies
 ----------------------
 
-The ``gpio`` mode of ``power_ctrl`` uses the ESP-IDF GPIO driver and the BMGR ``gpio`` peripheral. The current device template does not require additional ``dependencies`` declarations in ``board_devices.yaml``.
+The ``gpio`` mode uses the ESP-IDF GPIO driver and the BMGR ``gpio`` peripheral. A ``custom`` controller has no component dependency imposed by BMGR; declare board-specific component dependencies on the devices that use them.
 
 Required Peripherals
 --------------------
@@ -115,12 +184,17 @@ Required Peripherals
      - ``io``
      - Required for ``sub_type: gpio``
      - Provides the power enable GPIO
+   * - Any supported peripheral
+     - Depends on peripheral type
+     - Optional for ``sub_type: custom``
+     - Referenced by the framework for the custom controller lifecycle
 
 Reference Code
 --------------
 
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl.c``
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl_sub_gpio.c``
+- ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl_sub_custom.c``
 - Board customization workflow: :doc:`/create-board/index`
 
 Board Reference
@@ -140,6 +214,8 @@ Notes
 - The ``power_ctrl_device`` field of the controlled device must reference a defined ``power_ctrl`` device name.
 - ``active_level`` must match the board power switch circuit; the driver outputs the opposite level when powering off.
 - The GPIO peripheral referenced by ``power_ctrl`` should be configured as output mode.
+- A ``custom`` controller's registered name must equal its ``power_ctrl`` device name, and it must provide ``set_power``.
+- Custom lifecycle code owns only its ``context``. The framework owns the references declared by ``peripherals``.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
 Debugging Tips
@@ -153,9 +229,11 @@ Use :cpp:func:`esp_board_manager_get_device_handle` to obtain the device handle.
 .. code-block:: c
 
    typedef struct {
-       void *periph_handle;  /*!< Peripheral handle */
+       void *periph_handle;
+       const dev_power_ctrl_custom_ops_t *custom_ops;
+       void *custom_context;
    } dev_power_ctrl_handle_t;
 
-``periph_handle`` points to the underlying peripheral driver handle (for the GPIO sub-type, this is the corresponding GPIO peripheral handle). It is generally invoked indirectly by ``esp_board_device_power_ctrl()`` through the ``power_ctrl_device`` reference and does not need to be operated directly.
+``periph_handle`` points to the GPIO peripheral handle for the GPIO sub-type. ``custom_context`` is board-owned lifecycle state for the custom sub-type. A power controller is generally invoked indirectly by ``esp_board_device_power_ctrl()`` through the ``power_ctrl_device`` reference and does not need to be operated directly.
 
 The related declarations are located in ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl.h``.

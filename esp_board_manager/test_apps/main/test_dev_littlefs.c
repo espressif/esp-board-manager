@@ -5,17 +5,18 @@
  * See LICENSE file for details.
  */
 
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
-#include <errno.h>
 #include "esp_log.h"
-#include "sdmmc_cmd.h"
+#include "dev_littlefs.h"
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
-#include "dev_littlefs.h"
+#include "sdmmc_cmd.h"
+#include "bmgr_test_names.h"
 
 static const char *TAG = "TEST_LITTLEFS";
 
@@ -50,18 +51,18 @@ void test_littlefs(void)
     const char *expected_test_content = "This is esp board manager\n";
 
     dev_littlefs_config_t *cfg = NULL;
-    if (esp_board_manager_get_device_config(ESP_BOARD_DEVICE_NAME_LITTLEFS, (void **)&cfg) != ESP_OK) {
+    if (esp_board_manager_get_device_config(BMGR_TEST_NAME_LITTLEFS, (void **)&cfg) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get LittleFS configuration");
         return;
     }
 
     dev_littlefs_handle_t *handle = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_LITTLEFS, (void **)&handle);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_LITTLEFS, (void **)&handle);
     if (ret == ESP_OK && handle && handle->card) {
         sdmmc_card_print_info(stdout, handle->card);
     }
 
-    esp_board_device_show(ESP_BOARD_DEVICE_NAME_LITTLEFS);
+    esp_board_device_show(BMGR_TEST_NAME_LITTLEFS);
 
     ESP_LOGI(TAG, "LittleFS Configuration:");
     ESP_LOGI(TAG, "  Name: %s", cfg->name);

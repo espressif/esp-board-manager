@@ -233,10 +233,50 @@ board_amend.yaml
 
 该 overlay 目录通过 ``-a/--amend`` 显式指定，或由 auto-amend 按板名自动发现。amend 的目录结构、``apply:`` 语义、覆盖规则与用法示例见 :doc:`/create-board/amend`。
 
-setup_device.c 与 custom 自定义设备
-----------------------------------------------
+板级 C 扩展函数与 custom 自定义设备
+--------------------------------------------------
 
-``setup_device.c`` 适用于纯 YAML 无法完整表达的板级初始化逻辑，例如 LCD 屏幕的特定复位时序、触摸芯片的工厂函数注册。该文件放在开发板目录下，BMGR 生成时会将其编译进 ``gen_bmgr_codes`` 组件。
+YAML 描述总线、引脚、时序参数和组件依赖，但不会替代芯片驱动的构造函数。需要调用芯片专用构造函数、实现自定义驱动或管理板级资源时，开发板必须提供相应的 C 函数。
+
+下表列出当前需要或允许由开发板实现的入口。各设备页给出具体配置和示例。
+
+.. list-table::
+   :header-rows: 1
+
+   * - 设备或子类型
+     - 板级实现要求
+     - 入口
+   * - ``display_lcd/dsi``
+     - 必须
+     - ``lcd_dsi_panel_factory_entry_t``
+   * - ``display_lcd/spi``、``display_lcd/i80``、``display_lcd/parlio``、``display_lcd/rgb_3wire_spi``
+     - 必须
+     - ``lcd_panel_factory_entry_t``
+   * - ``display_lcd/rgb``
+     - 不需要 panel 工厂函数；设置 ``user_fbs_func`` 时才需要回调
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``lcd_touch/i2c``
+     - 必须
+     - ``lcd_touch_factory_entry_t``
+   * - ``gpio_expander``
+     - 必须
+     - ``io_expander_factory_entry_t``
+   * - ``button/custom``
+     - 必须
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``power_ctrl/custom``
+     - 必须
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``custom``
+     - 仅当需要 BMGR 自动执行初始化和反初始化时实现
+     - ``CUSTOM_DEVICE_IMPLEMENT``
+
+以固定函数签名为入口的工厂函数必须具有外部链接，不能声明为 ``static``。
+
+``dependencies`` 只负责将芯片驱动组件加入构建，不能生成上述函数。工厂函数应调用与 YAML 中 ``chip`` 和 ``dependencies`` 对应的芯片驱动 API。
+
+``setup_device.c`` 是板级扩展函数的推荐文件名。BMGR 会递归扫描开发板目录中的 C、C++ 和汇编源文件，并将其加入生成组件；因此扩展函数也可以放在其他参与扫描的板级源文件中。
+
 
 为便于下游工程通过 ``-a/--amend`` 替换开发板的默认行为，建议遵循以下两条写法：
 

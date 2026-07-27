@@ -107,7 +107,7 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
                 'name': periph_name,
                 'port': peripheral_config.get('port', 0),
                 'address': periph.get('address', 0x30),
-                'frequency': int(periph.get('frequency', 400000)),
+                'frequency': int(periph.get('frequency', 100000)),
             }
             continue
 

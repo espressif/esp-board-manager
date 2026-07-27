@@ -5,20 +5,24 @@
  * See LICENSE file for details.
  */
 
-#include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <linux/videodev2.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <linux/videodev2.h>
+#include <unistd.h>
+#include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "dev_camera.h"
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
-#include "dev_camera.h"
-#include "test_dev_camera.h"
 #include "esp_jpeg_enc.h"
+#include "bmgr_test_names.h"
+#include "test_dev_camera.h"
+#include "test_dev_camera_convert.h"
 
 #define BUFFER_COUNT     2
 #define CAPTURE_SECONDS  3
@@ -128,6 +132,9 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
     jpeg_enc_cfg.width = format.fmt.pix.width;
     jpeg_enc_cfg.height = format.fmt.pix.height;
     int input_src_size = 0;
+    uint8_t *jpeg_input_buf = buffer[buf.index];
+    uint8_t *converted_buf = NULL;
+    size_t converted_len = 0;
     switch (format.fmt.pix.pixelformat) {
         case V4L2_PIX_FMT_SBGGR8:
         case V4L2_PIX_FMT_GREY:
@@ -145,15 +152,37 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
             jpeg_enc_cfg.subsampling = JPEG_SUBSAMPLE_420;
             input_src_size = format.fmt.pix.width * format.fmt.pix.height * 2;
             break;
-        default:
-            ESP_LOGE(TAG, "Unsupported format");
-            return ESP_ERR_NOT_SUPPORTED;
+        default: {
+            /* esp_jpeg_enc has no native src_type for this camera format (e.g. packed
+             * YUYV/UYVY); convert it to RGB565 via ESP-IMGFX first instead of failing
+             * outright, the same conversion the camera.lcd preview case uses. */
+            esp_err_t conv_ret = camera_convert_to_rgb565(format.fmt.pix.pixelformat,
+                                                          format.fmt.pix.width, format.fmt.pix.height,
+                                                          format.fmt.pix.bytesperline,
+                                                          buffer[buf.index], buf.bytesused,
+                                                          &converted_buf, &converted_len);
+            if (conv_ret != ESP_OK) {
+                char fourcc[5];
+                ESP_LOGE(TAG, "Unsupported format: %s (%s)",
+                         camera_convert_fourcc_to_str(format.fmt.pix.pixelformat, fourcc),
+                         esp_err_to_name(conv_ret));
+                return ESP_ERR_NOT_SUPPORTED;
+            }
+            jpeg_enc_cfg.src_type = JPEG_PIXEL_FORMAT_RGB565_LE;
+            jpeg_enc_cfg.subsampling = JPEG_SUBSAMPLE_420;
+            input_src_size = (int)converted_len;
+            jpeg_input_buf = converted_buf;
+            break;
+        }
     }
 
     jpeg_enc_handle_t jpeg_enc = NULL;
 
     if (jpeg_enc_open(&jpeg_enc_cfg, &jpeg_enc) != JPEG_ERR_OK) {
         ESP_LOGE(TAG, "Jpeg encoder open failed");
+        if (converted_buf != NULL) {
+            heap_caps_free(converted_buf);
+        }
         return ESP_FAIL;
     }
 
@@ -167,7 +196,7 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
         goto jpeg_enc_exit;
     }
 
-    if (jpeg_enc_process(jpeg_enc, buffer[buf.index], input_src_size, outbuf, outbuf_size, &out_len) != JPEG_ERR_OK) {
+    if (jpeg_enc_process(jpeg_enc, jpeg_input_buf, input_src_size, outbuf, outbuf_size, &out_len) != JPEG_ERR_OK) {
         ESP_LOGE(TAG, "Jpeg encoder process failed");
         goto jpeg_enc_exit;
     }
@@ -186,6 +215,9 @@ jpeg_enc_exit:
     jpeg_enc_close(jpeg_enc);
     if (outbuf != NULL) {
         free(outbuf);
+    }
+    if (converted_buf != NULL) {
+        heap_caps_free(converted_buf);
     }
 #endif  // CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT
 
@@ -305,7 +337,7 @@ exit_0:
 esp_err_t test_dev_camera()
 {
     dev_camera_handle_t *camera_handle = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_CAMERA, (void **)&camera_handle);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CAMERA, (void **)&camera_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get camera device");
         return ret;

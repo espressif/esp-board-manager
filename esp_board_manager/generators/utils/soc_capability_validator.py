@@ -216,8 +216,41 @@ def _check_special_hardware_limits(
     instances: Sequence[SocValidationInstance],
 ) -> List[SocValidationIssue]:
     issues: List[SocValidationIssue] = []
+    issues.extend(validate_i2s_port_direction_duplicates(chip, instances))
     issues.extend(_check_i2s_instance_count(chip_caps, chip, instances))
     issues.extend(_check_i2c_instance_counts(chip_caps, chip, instances))
+    return issues
+
+
+def validate_i2s_port_direction_duplicates(
+    chip: str,
+    instances: Sequence[SocValidationInstance],
+) -> List[SocValidationIssue]:
+    seen: Dict[tuple, SocValidationInstance] = {}
+    issues: List[SocValidationIssue] = []
+
+    for instance in instances:
+        if instance.kind != 'peripheral' or instance.type != 'i2s':
+            continue
+        direction = _i2s_direction_key(instance)
+        if direction is None:
+            continue
+        key = (_i2s_port_key(instance), direction)
+        previous = seen.get(key)
+        if previous is None:
+            seen[key] = instance
+            continue
+        issues.append(
+            SocValidationIssue(
+                code='SOC_DUPLICATE_INSTANCE',
+                path=_locator(instance),
+                message=(
+                    f'I2S port {key[0]} and direction {direction} are already used by '
+                    f"peripheral '{previous.instance_id}'."
+                ),
+                chip=chip,
+            ),
+        )
     return issues
 
 
@@ -258,6 +291,28 @@ def _i2s_port_key(instance: SocValidationInstance) -> str:
     if index is not None:
         return str(index)
     return str(value).strip()
+
+
+def _i2s_direction_key(instance: SocValidationInstance) -> Optional[str]:
+    values = _resolve_field_values(instance, ['direction'])
+    if len(values) == 1:
+        value = str(values[0].value).strip().upper()
+        if value == 'I2S_DIR_TX':
+            return 'tx'
+        if value == 'I2S_DIR_RX':
+            return 'rx'
+
+    formats = instance.selectors.get('format')
+    if isinstance(formats, list):
+        if len(formats) != 1:
+            return None
+        formats = formats[0]
+    format_text = str(formats or '').strip().lower()
+    if format_text.endswith('-out'):
+        return 'tx'
+    if format_text.endswith('-in'):
+        return 'rx'
+    return None
 
 
 def _check_i2c_instance_counts(

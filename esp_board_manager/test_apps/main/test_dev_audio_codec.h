@@ -1,6 +1,11 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "esp_err.h"
 #include "dev_audio_codec.h"
+#include "periph_i2s.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,13 +33,18 @@ esp_err_t initialize_devices(const device_config_t *dev_config);
 
 esp_err_t configure_codec(const char *codec_name, const audio_config_t *config, bool is_dac, dev_audio_codec_handles_t **codec_handles);
 
+esp_err_t audio_config_from_i2s(const periph_i2s_config_t *i2s_cfg, audio_config_t *config);
+
 esp_err_t close_codec(dev_audio_codec_handles_t *codec_handles);
 
 esp_err_t cleanup_devices(const device_config_t *dev_config);
 
 esp_err_t read_wav_header(FILE *fp, uint32_t *sample_rate, uint16_t *channels, uint16_t *bits_per_sample);
 
-esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels, uint16_t bits_per_sample, uint32_t duration_seconds);
+esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels, uint16_t bits_per_sample, uint32_t data_size);
+
+esp_err_t test_board_mgr_audio_embed_playback(void);
+esp_err_t test_board_mgr_audio_partition_record_playback(void);
 
 #ifdef __cplusplus
 }

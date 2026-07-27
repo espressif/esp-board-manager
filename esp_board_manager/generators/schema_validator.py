@@ -223,7 +223,7 @@ class DeviceSchemaValidator(LoggerMixin):
         """
         issues = []
 
-        if device_type == 'custom':
+        if device_type == 'custom' or (device_type == 'power_ctrl' and sub_type == 'custom'):
             return issues
 
         type_wide = self.load_type_wide_schema(device_type)

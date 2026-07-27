@@ -8,7 +8,7 @@ Overview
 
 The ``display_lcd`` device describes an LCD display and creates an ``esp_lcd_panel_handle_t`` along with an optional panel IO handle during initialization. Applications obtain a ``dev_display_lcd_handles_t`` via :cpp:func:`esp_board_manager_get_device_handle`, then access the screen using ESP-IDF ``esp_lcd_panel_ops`` or a higher-level graphics library.
 
-This type selects the display interface via ``sub_type``. The current device template covers ``dsi``, ``spi``, ``i80``, ``rgb``, ``rgb_3wire_spi``, and ``parlio``. When chip-specific LCD initialization commands are needed, the board registers the corresponding LCD factory function in ``setup_device.c``.
+This type selects the display interface via ``sub_type``. The current device template covers ``dsi``, ``spi``, ``i80``, ``rgb``, ``rgb_3wire_spi``, and ``parlio``. Except for plain ``rgb``, every sub-type requires the board to provide an LCD panel factory function; declaring only the chip-driver component is insufficient to create the panel.
 
 Supported Usage Modes
 ---------------------
@@ -22,6 +22,45 @@ Supported Usage Modes
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
+Board-Level Panel Factory Functions
+-----------------------------------
+
+BMGR creates the display bus and panel IO. The board calls the actual LCD controller constructor and returns the ``esp_lcd_panel_handle_t``.
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``sub_type``
+     - Board-level function required
+     - Required symbol
+   * - ``dsi``
+     - Yes
+     - ``lcd_dsi_panel_factory_entry_t``
+   * - ``spi``, ``i80``, ``parlio``, ``rgb_3wire_spi``
+     - Yes
+     - ``lcd_panel_factory_entry_t``
+   * - ``rgb``
+     - No
+     - BMGR calls ``esp_lcd_new_rgb_panel`` directly
+
+A DSI factory function must use the following signature. It creates the controller-specific panel from ``lcd_cfg`` and writes it to ``lcd_handles->panel_handle``:
+
+.. code-block:: c
+
+    esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
+                                            dev_display_lcd_config_t *lcd_cfg,
+                                            dev_display_lcd_handles_t *lcd_handles);
+
+SPI, I80, PARLIO, and RGB + 3-wire SPI share the following signature. The function must call the ``esp_lcd_new_panel_*`` API that matches the LCD controller:
+
+.. code-block:: c
+
+    esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                         const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                         esp_lcd_panel_handle_t *ret_panel);
+
+For a base board, declare the implementation ``__attribute__((weak))`` so an amend can replace the default panel initialization with a strong symbol of the same name. The chip-driver headers and APIs used by the factory function must match the device's ``chip`` and ``dependencies``. See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
+
 Minimal Configuration
 ---------------------
 
@@ -30,7 +69,7 @@ Minimal Configuration
 DSI (``sub_type: dsi``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``dsi`` mode is for MIPI DSI displays. The device depends on the ``dsi`` peripheral and optionally references the ``ldo`` peripheral for MIPI power management.
+The ``dsi`` mode is for MIPI DSI displays. The device must reference both the ``dsi`` and ``ldo`` peripherals; at runtime it obtains the LDO handle before creating the DSI panel IO. This mode must implement ``lcd_dsi_panel_factory_entry_t``.
 
 ``board_peripherals.yaml``:
 
@@ -90,7 +129,7 @@ The ``dsi`` mode is for MIPI DSI displays. The device depends on the ``dsi`` per
 SPI (``sub_type: spi``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``spi`` mode is for displays that send commands and pixel data via SPI panel IO. The device depends on the ``spi`` peripheral.
+The ``spi`` mode is for displays that send commands and pixel data via SPI panel IO. The device depends on the ``spi`` peripheral. This mode must implement ``lcd_panel_factory_entry_t``.
 
 ``board_peripherals.yaml``:
 
@@ -138,7 +177,7 @@ The ``spi`` mode is for displays that send commands and pixel data via SPI panel
 I80 (``sub_type: i80``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``i80`` mode uses ``esp_lcd_new_i80_bus`` and ``esp_lcd_new_panel_io_i80`` to create the panel IO, and does not depend on the ``spi`` peripheral. The I80 bus is created internally by the device based on ``bus_config``; no new ``board_peripherals.yaml`` entry is required.
+The ``i80`` mode uses ``esp_lcd_new_i80_bus`` and ``esp_lcd_new_panel_io_i80`` to create the panel IO, and does not depend on the ``spi`` peripheral. The I80 bus is created internally by the device based on ``bus_config``; no new ``board_peripherals.yaml`` entry is required. This mode must implement ``lcd_panel_factory_entry_t``.
 
 ``board_devices.yaml``:
 
@@ -202,7 +241,7 @@ The ``rgb`` mode uses the RGB LCD peripheral to output pixel data directly witho
 RGB + 3-wire SPI (``sub_type: rgb_3wire_spi``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB pixel bus, and does not require the ``spi`` peripheral. The 3-wire SPI initialization lines can use SoC GPIOs directly, or be provided by a ``gpio_expander`` device.
+The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB pixel bus, and does not require the ``spi`` peripheral. The 3-wire SPI initialization lines can use SoC GPIOs directly, or be provided by a ``gpio_expander`` device. This mode must implement ``lcd_panel_factory_entry_t`` to perform controller command initialization.
 
 ``board_devices.yaml``:
 
@@ -293,7 +332,7 @@ When this field is used, the number, size, alignment, and memory capabilities of
 PARLIO (``sub_type: parlio``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``parlio`` mode uses ``esp_lcd_new_panel_io_parl`` to create the panel IO, and does not require the ``spi`` peripheral. PARLIO data, clock, and control lines are all configured in the device's ``io_parl_config``; no new ``board_peripherals.yaml`` entry is required.
+The ``parlio`` mode uses ``esp_lcd_new_panel_io_parl`` to create the panel IO, and does not require the ``spi`` peripheral. PARLIO data, clock, and control lines are all configured in the device's ``io_parl_config``; no new ``board_peripherals.yaml`` entry is required. This mode must implement ``lcd_panel_factory_entry_t``.
 
 ``board_devices.yaml``:
 
@@ -779,7 +818,7 @@ Required Peripherals
      - MIPI DSI data interface
    * - ``ldo``
      - N/A
-     - Optional for ``dsi`` mode depending on board power design
+     - Required for ``dsi`` mode
      - MIPI power management
    * - ``spi``
      - N/A

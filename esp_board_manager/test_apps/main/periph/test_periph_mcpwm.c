@@ -20,6 +20,7 @@
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
 #include "periph_mcpwm.h"
+#include "bmgr_test_names.h"
 
 #define EXAMPLE_MCPWM_DELAY_MS  1000
 
@@ -112,14 +113,14 @@ void test_periph_mcpwm(void)
     ESP_LOGI(TAG, "=== Starting MCPWM Peripheral Test ===");
     periph_mcpwm_handle_t *mcpwm_handle = NULL;
     periph_mcpwm_config_t *mcpwm_cfg = NULL;
-    esp_err_t ret = esp_board_manager_get_periph_config(ESP_BOARD_PERIPH_NAME_MCPWM, (void **)&mcpwm_cfg);
+    esp_err_t ret = esp_board_manager_get_periph_config(BMGR_TEST_NAME_MCPWM, (void **)&mcpwm_cfg);
     if (ret != ESP_OK || !mcpwm_cfg) {
         ESP_LOGE(TAG, "Failed to get MCPWM peripheral configuration");
         return;
     }
 
     // Get MCPWM handle
-    ret = esp_board_manager_get_periph_handle(ESP_BOARD_PERIPH_NAME_MCPWM, (void **)&mcpwm_handle);
+    ret = esp_board_manager_get_periph_handle(BMGR_TEST_NAME_MCPWM, (void **)&mcpwm_handle);
     if (ret != ESP_OK || !mcpwm_handle) {
         ESP_LOGE(TAG, "Failed to get MCPWM peripheral handle");
         return;

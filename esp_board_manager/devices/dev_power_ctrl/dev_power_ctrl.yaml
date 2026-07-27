@@ -10,6 +10,22 @@
     - name: gpio                  # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
       active_level: 1             # [TO_BE_CONFIRMED] Active level (0-low, 1-high) when power is on
 
+# Example Power Control device with custom sub type configuration
+# Register the lifecycle operations in board code with:
+#   static const dev_power_ctrl_custom_ops_t s_board_power_ctrl_ops = {
+#       .init = board_power_ctrl_init, .deinit = board_power_ctrl_deinit, .set_power = board_power_ctrl_set_power,
+#   };
+#   DEVICE_EXTRA_FUNC_REGISTER(board_power_ctrl, &s_board_power_ctrl_ops);
+- name: board_power_ctrl          # The name of the device, must be unique
+  type: power_ctrl                # The type of the device, must be unique
+  sub_type: custom                # The sub type of the device, must be 'custom'
+  depends_on: pmic_device         # Optional device dependencies, initialized before the custom init function
+  peripherals:                    # Optional peripherals that the framework references before custom init
+    - name: i2c_pmic              # Fetch the dependent handle with esp_board_periph_get_handle()
+    - name: gpio_lcd_power        # Fetch the dependent handle with esp_board_periph_get_handle()
+  config:                         # Optional board-specific configuration, passed through sub_cfg.custom.user_cfg
+    startup_delay_ms: 10
+
 # Example usage in devices, add the power_ctrl_device attribute to the device configuration
 # - name: audio_dac
 #   chip: es8311

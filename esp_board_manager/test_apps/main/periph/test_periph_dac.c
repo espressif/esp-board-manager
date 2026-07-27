@@ -16,15 +16,16 @@
  *
  */
 
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_board_periph.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
+#include "esp_board_periph.h"
 #include "periph_dac.h"
+#include "bmgr_test_names.h"
 
 #define EXAMPLE_ARRAY_LEN      400
 #define EXAMPLE_DAC_AMPLITUDE  255
@@ -116,7 +117,7 @@ void test_periph_dac(void)
     periph_dac_handle_t *dac_handle = NULL;
 
     // Get DAC handles
-    esp_err_t err = esp_board_manager_get_periph_handle(ESP_BOARD_PERIPH_NAME_DAC, (void **)&dac_handle);
+    esp_err_t err = esp_board_manager_get_periph_handle(BMGR_TEST_NAME_DAC, (void **)&dac_handle);
     if (err != ESP_OK || !dac_handle) {
         ESP_LOGE(TAG, "Failed to get DAC peripheral handle");
         return;

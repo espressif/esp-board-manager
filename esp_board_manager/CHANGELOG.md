@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.1
+
+### Features
+
+- Added a `custom` sub-type for the `power_ctrl` device, for boards that need a PMIC, IO expander, multiple power rails, or a specific power-up sequence. Board code registers `dev_power_ctrl_custom_ops_t` (`init`/`deinit`/`set_power`) under the `power_ctrl` device's own name via `DEVICE_EXTRA_FUNC_REGISTER`; the framework references/unreferences any peripherals declared under `peripherals:` around the controller's lifecycle, and forwards an optional strongly-typed `config:` block as `sub_cfg.custom.user_cfg`. New Kconfig option: `ESP_BOARD_DEV_POWER_CTRL_SUB_CUSTOM_SUPPORT`.
+
+### Bug Fixes
+
+- Fixed `dev_audio_codec` never applying the configured I2C `frequency` to the codec control interface (`i2c_cfg.clock_speed_hz` was parsed from YAML but never assigned). As part of this fix, the default `frequency` for the codec's I2C peripheral entry was lowered from `400000` to `100000` Hz.
+- Fixed `periph_i2s` shared full-duplex channel bookkeeping: TX and RX ownership are now tracked independently, so a TX channel kept enabled purely as an RX clock helper (STD/TDM full-duplex) is only torn down once no consumer still owns either direction. `periph_i2s_deinit()` no longer force-deletes a peer channel that another consumer still owns, and now returns an error if the handle it was given is not a currently-owned channel.
+- Fixed a resource leak in `esp_board_device_power_ctrl()`: when it auto-initializes a `power_ctrl` device that was not yet initialized, a later failure (sub_type lookup, dispatch function lookup, or the `set_power` call itself) now deinitializes the auto-initialized power control device instead of leaving it and its referenced peripherals dangling.
+
+### Modifications
+
+- `power_ctrl` `custom` sub-type devices now reject a device name that collides with the framework's internal `<sub_type>_power_ctrl` dispatch key (validated at parse time in `dev_power_ctrl.py`).
+- The auto-generated custom-device struct header (`gen_board_device_custom.h`) no longer unconditionally includes `dev_custom.h`.
+- Bumped the `espressif/esp_codec_dev` dependency to `~1.6`.
+- Rewrote the `esp_board_manager` test app (`test_apps/main`) as an interactive console (`bmgr`/`case` commands) backed by a reusable test-case registry, replacing the previous fixed `app_main` test sequence; CI drives it via `bmgr init` followed by `case run-all`.
+
 ## 0.6.0~1
 
 ### Bug Fixes

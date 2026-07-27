@@ -406,7 +406,7 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
         # I2C interface configuration
         - name: i2c_master                   # [TO_BE_CONFIRMED] I2C peripheral for codec control
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
-          frequency: 400000                  # I2C clock frequency in Hz (default: 400000)
+          frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
 使用芯片内部 ADC 读取数据：复用 ADC 外设
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

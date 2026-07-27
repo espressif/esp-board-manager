@@ -8,7 +8,7 @@ peripherals:
       # spi_bus_config_t fields
       spi_bus_config:
         spi_port: SPI2_HOST
-        mosi_io_num: 37
-        miso_io_num: 35
-        sclk_io_num: 36
+        mosi_io_num: 19
+        miso_io_num: 20
+        sclk_io_num: 21
         max_transfer_sz: 3600

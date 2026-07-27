@@ -48,6 +48,35 @@ I2C IO Expansion
 
 During initialization, ``gpio_expander`` references the ``i2c`` peripheral handle and probes the addresses in the ``i2c_addr`` list for a responding device. After the driver is created successfully, the device sets the output pins, input pins, default output levels, optional output modes, and optional pull configurations according to the config. After initialization, BMGR records the detected valid I2C address for use by other logic on the same I2C bus.
 
+Board-Level IO Expander Factory Function
+----------------------------------------
+
+``gpio_expander`` has no built-in chip constructor. Every board that uses this device type must provide ``io_expander_factory_entry_t`` in a board source file. BMGR calls it with the detected I2C address to create the ``esp_io_expander_handle_t``.
+
+The function signature is:
+
+.. code-block:: c
+
+    esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_bus,
+                                          const uint16_t dev_addr,
+                                          esp_io_expander_handle_t *handle_ret);
+
+For example, TCA9554 uses the constructor provided by its component:
+
+.. code-block:: c
+
+    #include "esp_io_expander_tca9554.h"
+
+    __attribute__((weak)) esp_err_t io_expander_factory_entry_t(
+            i2c_master_bus_handle_t i2c_bus,
+            const uint16_t dev_addr,
+            esp_io_expander_handle_t *handle_ret)
+    {
+        return esp_io_expander_new_i2c_tca9554(i2c_bus, dev_addr, handle_ret);
+    }
+
+The component in ``dependencies`` must provide the constructor called by the factory function and match the YAML ``chip`` field. If a board configures multiple ``gpio_expander`` devices with different chips, the factory function must select the appropriate chip constructor by ``dev_addr``. See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
+
 All Fields
 ----------
 
@@ -122,6 +151,7 @@ Notes
 - The template uses an address list for ``i2c_addr``; initialization probes each address in the list and selects the responding one.
 - ``output_io_mask``, ``output_io_level_mask``, ``output_io_mode_mask``, ``io_pullup_list``, and ``io_pulldown_list`` must match the specific chip's capabilities; unsupported capabilities must not be written into the board configuration.
 - Expanded IOs referenced by other devices must be available before those devices are initialized.
+- Without ``io_expander_factory_entry_t``, ``gpio_expander`` cannot complete initialization; adding only the chip component dependency does not replace this function.
 - After modifying the IO expander device or I2C peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
 Debugging Tips

@@ -233,10 +233,49 @@ The manifest explicitly lists the fragments to overlay under ``apply:``, which m
 
 The overlay directory is selected explicitly with ``-a/--amend`` or discovered automatically by name via auto-amend. For the amend directory structure, ``apply:`` semantics, override rules, and usage examples, see :doc:`/create-board/amend`.
 
-``setup_device.c`` and ``custom`` Devices
-------------------------------------------
+Board-Level C Extension Functions and ``custom`` Devices
+--------------------------------------------------------
 
-``setup_device.c`` is for board-level initialization logic that cannot be fully expressed in YAML, such as specific LCD reset sequences or touch chip factory function registration. Place this file in the board directory; BMGR includes it in the ``gen_bmgr_codes`` component during generation.
+YAML describes buses, pins, timing parameters, and component dependencies, but it does not replace chip-driver constructor functions. A board must provide the applicable C functions when it needs to call a chip-specific constructor, implement a custom driver, or manage board-level resources.
+
+The following table lists the current entry points that a board must or may implement. The individual device reference pages provide their configuration and examples.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Device or sub-type
+     - Board-level implementation
+     - Entry point
+   * - ``display_lcd/dsi``
+     - Required
+     - ``lcd_dsi_panel_factory_entry_t``
+   * - ``display_lcd/spi``, ``display_lcd/i80``, ``display_lcd/parlio``, ``display_lcd/rgb_3wire_spi``
+     - Required
+     - ``lcd_panel_factory_entry_t``
+   * - ``display_lcd/rgb``
+     - No panel factory function; a callback is needed only when ``user_fbs_func`` is set
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``lcd_touch/i2c``
+     - Required
+     - ``lcd_touch_factory_entry_t``
+   * - ``gpio_expander``
+     - Required
+     - ``io_expander_factory_entry_t``
+   * - ``button/custom``
+     - Required
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``power_ctrl/custom``
+     - Required
+     - ``DEVICE_EXTRA_FUNC_REGISTER``
+   * - ``custom``
+     - Only when BMGR must automatically initialize and deinitialize the device
+     - ``CUSTOM_DEVICE_IMPLEMENT``
+
+Factory functions entered through a fixed function signature must have external linkage and cannot be declared ``static``.
+
+``dependencies`` only adds the chip-driver component to the build; it does not generate these functions. A factory function must call the chip-driver API corresponding to the YAML ``chip`` and ``dependencies``.
+
+``setup_device.c`` is the recommended filename for board-level extension functions. BMGR recursively scans C, C++, and assembly source files in the board directory and adds them to the generated component, so an extension function can also reside in another scanned board source file.
 
 To allow downstream projects to override the board's default behavior via ``-a/--amend``, the following two conventions are recommended:
 

@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include "esp_log.h"
-#include "esp_io_expander_aw9523b.h"
+#include "esp_io_expander_aw9523.h"
 #if __has_include(<esp_lcd_ili9341.h>)
 #define HAS_ILI9341  1
 #include "esp_lcd_ili9341.h"
@@ -20,17 +20,7 @@ static const char *TAG = "M5STACK_CORES3_SETUP_DEVICE";
 
 esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle, const uint16_t dev_addr, esp_io_expander_handle_t *handle_ret)
 {
-    esp_err_t ret = esp_io_expander_new_aw9523b(i2c_handle, dev_addr, handle_ret);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create IO expander handle\n");
-        return ret;
-    }
-    uint8_t data = 0x10;
-    ret = esp_io_expander_aw9523b_write_reg(*handle_ret, AW9523B_REG_GCR, &data, 1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set AW9523 P0 to push-pull mode\n");
-    }
-    return ret;
+    return esp_io_expander_new_i2c_aw9523(i2c_handle, dev_addr, handle_ret);
 }
 
 #if defined(HAS_ILI9341)

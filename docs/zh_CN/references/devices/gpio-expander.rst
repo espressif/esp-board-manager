@@ -48,6 +48,35 @@ I2C IO 扩展
 
 ``gpio_expander`` 初始化时引用 ``i2c`` 外设句柄，并按 ``i2c_addr`` 列表探测可响应的地址。驱动创建成功后，设备会按配置设置输出、输入、默认输出电平、可选输出模式以及可选上下拉。初始化完成后，BMGR 会记录探测到的有效 I2C 地址，供同一 I2C 总线上的其他逻辑使用。
 
+板级 IO 扩展器工厂函数
+--------------------------
+
+``gpio_expander`` 没有内置的芯片构造函数。每个使用该设备类型的开发板都必须在板级源文件中提供 ``io_expander_factory_entry_t``；BMGR 探测到有效 I2C 地址后调用它创建 ``esp_io_expander_handle_t``。
+
+函数签名如下：
+
+.. code-block:: c
+
+    esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_bus,
+                                          const uint16_t dev_addr,
+                                          esp_io_expander_handle_t *handle_ret);
+
+例如，TCA9554 使用对应组件提供的构造函数：
+
+.. code-block:: c
+
+    #include "esp_io_expander_tca9554.h"
+
+    __attribute__((weak)) esp_err_t io_expander_factory_entry_t(
+            i2c_master_bus_handle_t i2c_bus,
+            const uint16_t dev_addr,
+            esp_io_expander_handle_t *handle_ret)
+    {
+        return esp_io_expander_new_i2c_tca9554(i2c_bus, dev_addr, handle_ret);
+    }
+
+``dependencies`` 中的组件必须提供工厂函数所调用的构造函数，并与 YAML 的 ``chip`` 字段指向同一颗 IO 扩展芯片。一个开发板配置多个 ``gpio_expander`` 设备且芯片不同时，工厂函数需要依据 ``dev_addr`` 选择对应的芯片构造函数。源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
+
 完整字段
 ------------
 
@@ -83,7 +112,7 @@ I2C IO 扩展完整字段
 组件依赖
 ------------
 
-``gpio_expander`` 需要在 ``dependencies`` 中声明对应 IO 扩展芯片驱动组件。模板使用 ``espressif/esp_io_expander_generic`` 作为占位，板级配置应替换为与 ``chip`` 和 ``io_expander_factory_entry_t`` 匹配的组件。
+``gpio_expander`` 需要在 ``dependencies`` 中声明对应 IO 扩展芯片驱动组件。模板使用 ``espressif/esp_io_expander_generic`` 作为占位，板级配置应替换为与 ``chip`` 及板级 ``io_expander_factory_entry_t`` 匹配的组件。
 
 依赖外设
 ------------
@@ -122,6 +151,7 @@ I2C IO 扩展完整字段
 - 模板中的 ``i2c_addr`` 使用地址列表，初始化会按列表探测并选择可响应的地址。
 - ``output_io_mask``、``output_io_level_mask``、``output_io_mode_mask``、``io_pullup_list`` 和 ``io_pulldown_list`` 需要符合具体芯片能力；不支持的能力不应写入板级配置。
 - 被其他设备引用的扩展 IO 需要在使用方初始化前可用。
+- 缺少 ``io_expander_factory_entry_t`` 会导致 ``gpio_expander`` 无法完成初始化；仅添加芯片组件依赖不能替代该函数。
 - 修改 IO 扩展设备或 I2C 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
 调试技巧

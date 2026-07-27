@@ -3,6 +3,28 @@ idf_component_register(
         # Main application
         "main.c"
 
+        # Interactive test harness (console, registry, context, commands, resource
+        # helpers, and per-group test-case tables)
+        "framework/bmgr_test_console.c"
+        "framework/bmgr_test_context.c"
+        "framework/bmgr_test_registry.c"
+        "commands/cmd_bmgr.c"
+        "commands/cmd_case.c"
+        "support/bmgr_test_json.c"
+        "support/bmgr_test_options.c"
+        "cases/bmgr_case_audio.c"
+        "cases/bmgr_case_button.c"
+        "cases/bmgr_case_camera.c"
+        "cases/bmgr_case_custom.c"
+        "cases/bmgr_case_fs.c"
+        "cases/bmgr_case_gpio_expander.c"
+        "cases/bmgr_case_lcd.c"
+        "cases/bmgr_case_led.c"
+        "cases/bmgr_case_periph.c"
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>:automation/test_dev_lcd_auto.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>:automation/test_dev_audio_auto.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:automation/test_dev_camera_auto.c>
+
         # Peripheral tests
         "periph/test_periph_i2c.c"
         "periph/test_periph_gpio.c"
@@ -28,17 +50,19 @@ idf_component_register(
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CUSTOM_SUPPORT}>:test_dev_custom.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT}>:test_dev_gpio_expander.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:test_dev_camera.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:test_dev_camera_convert.c>
+        $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>,$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>>:test_dev_camera_lcd.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT}>:test_dev_button.c>
 
         # Audio board manager test (conditionally included based on SD card support)
         $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>,$<BOOL:${CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT}>>:test_board_mgr_audio_sdcard.c>
-        $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>,$<NOT:$<BOOL:${CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT}>>>:test_board_mgr_audio_embed.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>:test_board_mgr_audio_embed.c>
 
         # Utility files (conditionally included)
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>:wav_header.c>
-    INCLUDE_DIRS "." "./periph"
-    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs
-    EMBED_TXTFILES audio_files/test.wav
+    INCLUDE_DIRS "." "./periph" "./framework" "./commands" "./cases" "./support" "./automation"
+    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs console
+    EMBED_TXTFILES audio_files/test.wav audio_files/16k_16bit_1ch.wav
 )
 
 # Dynamically link LVGL components when LCD SPI support is enabled

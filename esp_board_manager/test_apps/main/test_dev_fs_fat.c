@@ -6,13 +6,15 @@
  */
 
 #include <dirent.h>
-#include <sys/stat.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "esp_log.h"
+#include "dev_fs_fat.h"
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
-#include "dev_fs_fat.h"
+#include "bmgr_test_names.h"
+
 #ifdef CONFIG_ESP_BOARD_DEV_FS_FAT_SUB_SDMMC_SUPPORT
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
@@ -25,22 +27,15 @@ void test_fs_fat_device(void)
     const char *test_str = "Hello FS_FAT!\n";
     char read_buf[64] = {0};
     const char *test_filename = "/sdcard/test_fs_fat.txt";
-    char *device_name = NULL;
+    const char *device_name = BMGR_TEST_NAME_FS_FAT;
     ESP_LOGI(TAG, "=== Starting FS_FAT Device Tests ===");
     ESP_LOGI(TAG, "=== Testing FS_FAT Device ===");
 
     /* Initialize FS_FAT device */
-    esp_err_t ret = esp_board_device_init(ESP_BOARD_DEVICE_NAME_FS_FAT);
+    esp_err_t ret = esp_board_device_init(BMGR_TEST_NAME_FS_FAT);
     if (ret != ESP_OK) {
-        ret = esp_board_device_init(ESP_BOARD_DEVICE_NAME_FS_SDCARD);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize FS_FAT device");
-            return;
-        } else {
-            device_name = ESP_BOARD_DEVICE_NAME_FS_SDCARD;  // Use the main device name
-        }
-    } else {
-        device_name = ESP_BOARD_DEVICE_NAME_FS_FAT;  // Use the main device name
+        ESP_LOGE(TAG, "Failed to initialize FS_FAT device");
+        return;
     }
 
     /* Test FS_FAT functionality */

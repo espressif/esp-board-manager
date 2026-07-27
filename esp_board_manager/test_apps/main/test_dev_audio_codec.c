@@ -5,20 +5,65 @@
  * See LICENSE file for details.
  */
 
-#include <stdio.h>
 #include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
 #include "esp_board_device.h"
-#include "esp_board_periph.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
+#include "esp_board_periph.h"
+#include "periph_i2s.h"
 #include "test_dev_audio_codec.h"
 
 static const char *TAG = "TEST_CODEC_CFG";
+
+esp_err_t audio_config_from_i2s(const periph_i2s_config_t *i2s_cfg, audio_config_t *config)
+{
+    if (i2s_cfg == NULL || config == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (i2s_cfg->mode) {
+        case I2S_COMM_MODE_STD:
+            config->sample_rate = i2s_cfg->i2s_cfg.std.clk_cfg.sample_rate_hz;
+            config->channels = i2s_cfg->i2s_cfg.std.slot_cfg.slot_mode == I2S_SLOT_MODE_STEREO ? 2 : 1;
+            config->bits_per_sample = i2s_cfg->i2s_cfg.std.slot_cfg.data_bit_width;
+            return ESP_OK;
+#if CONFIG_SOC_I2S_SUPPORTS_TDM
+        case I2S_COMM_MODE_TDM: {
+            uint32_t slot_mask = i2s_cfg->i2s_cfg.tdm.slot_cfg.slot_mask;
+            uint32_t total_slots = i2s_cfg->i2s_cfg.tdm.slot_cfg.total_slot;
+            uint32_t mask_slots = 0;
+
+            if (slot_mask == 0) {
+                return ESP_ERR_INVALID_ARG;
+            }
+            mask_slots = 32 - __builtin_clz(slot_mask);
+            if (total_slots < mask_slots) {
+                total_slots = mask_slots;
+            }
+            if (total_slots < 2 && i2s_cfg->i2s_cfg.tdm.slot_cfg.ws_width != 1) {
+                total_slots = 2;
+            }
+            if (total_slots > UINT16_MAX) {
+                return ESP_ERR_INVALID_SIZE;
+            }
+
+            config->sample_rate = i2s_cfg->i2s_cfg.tdm.clk_cfg.sample_rate_hz;
+            config->channels = (uint16_t)total_slots;
+            config->bits_per_sample = i2s_cfg->i2s_cfg.tdm.slot_cfg.data_bit_width;
+            return ESP_OK;
+        }
+#endif  /* CONFIG_SOC_I2S_SUPPORTS_TDM */
+        default:
+            return ESP_ERR_NOT_SUPPORTED;
+    }
+}
 
 esp_err_t initialize_devices(const device_config_t *dev_config)
 {

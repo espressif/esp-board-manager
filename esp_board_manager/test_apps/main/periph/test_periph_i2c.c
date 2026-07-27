@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_board_periph.h"
+#include "driver/i2c_master.h"
+#include "driver/sdmmc_host.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
-#include "driver/i2c_master.h"
+#include "esp_board_periph.h"
 #include "sdmmc_cmd.h"
-#include "driver/sdmmc_host.h"
+#include "bmgr_test_names.h"
 
 void test_periph_i2c(void)
 {
     /* Initialize I2C peripheral */
-    esp_err_t ret = esp_board_periph_init(ESP_BOARD_PERIPH_NAME_I2C_MASTER);
+    esp_err_t ret = esp_board_periph_init(BMGR_TEST_NAME_I2C_MASTER);
     if (ret != ESP_OK) {
         printf("Failed to initialize I2C master peripheral\n");
         return;
@@ -19,7 +20,7 @@ void test_periph_i2c(void)
 
     /* Get I2C handle */
     void *i2c_handle = NULL;
-    ret = esp_board_manager_get_periph_handle(ESP_BOARD_PERIPH_NAME_I2C_MASTER, &i2c_handle);
+    ret = esp_board_manager_get_periph_handle(BMGR_TEST_NAME_I2C_MASTER, &i2c_handle);
     if (ret != ESP_OK || !i2c_handle) {
         printf("Failed to get I2C master handle\n");
         goto cleanup;
@@ -52,10 +53,10 @@ void test_periph_i2c(void)
     i2c_master_bus_rm_device(dev_handle);
 
     /* Show peripheral information */
-    esp_board_periph_show(ESP_BOARD_PERIPH_NAME_I2C_MASTER);
+    esp_board_periph_show(BMGR_TEST_NAME_I2C_MASTER);
 
 cleanup:
     /* Cleanup */
-    esp_board_periph_deinit(ESP_BOARD_PERIPH_NAME_I2C_MASTER);
+    esp_board_periph_deinit(BMGR_TEST_NAME_I2C_MASTER);
     printf("I2C master peripheral deinitialized\n");
 }

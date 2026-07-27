@@ -406,7 +406,7 @@ External Codec Chip
         # I2C interface configuration
         - name: i2c_master                   # [TO_BE_CONFIRMED] I2C peripheral for codec control
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
-          frequency: 400000                  # I2C clock frequency in Hz (default: 400000)
+          frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
 Internal ADC Data Path: Reusing ADC Peripheral
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

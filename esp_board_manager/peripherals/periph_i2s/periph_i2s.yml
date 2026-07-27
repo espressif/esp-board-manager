@@ -1,6 +1,7 @@
 # I2S Peripheral Default Configuration
 # This file shows the default values used by the I2S peripheral parser
 # Based on periph_i2s.py parsing script
+# Only one I2S peripheral is allowed for each (config.port, direction) pair.
 
 # =============================================================================
 # STANDARD I2S MODE CONFIGURATION (std-out, std-in)

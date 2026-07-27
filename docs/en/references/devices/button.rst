@@ -147,7 +147,7 @@ Application code (for example ``setup_device.c`` or another source file particip
     }
     DEVICE_EXTRA_FUNC_REGISTER(custom_button_0, custom_button_0);
 
-The registered function name must exactly match the ``name`` in ``board_devices.yaml``. During BMGR initialization, the function is looked up by device name, and the returned ``button_driver_t`` is passed to ``iot_button_create()``. The ``peripherals`` list for ``custom`` mode must be empty; ``events_cfg`` and timing fields are configured in the same way as other sub-types.
+The registered function name must exactly match the ``name`` in ``board_devices.yaml``. During BMGR initialization, the function is looked up by device name, and the returned ``button_driver_t`` is passed to ``iot_button_create()``. The ``peripherals`` list for ``custom`` mode must be empty; ``events_cfg`` and timing fields are configured in the same way as other sub-types. See :doc:`/programming-guide/board-directory` for board source placement and build rules.
 
 Full Field Reference
 --------------------

@@ -360,6 +360,13 @@ config ESP_BOARD_DEV_POWER_CTRL_SUPPORT
         This option enables the power_ctrl device driver.
         The driver is located at: devices/dev_power_ctrl
 
+config ESP_BOARD_DEV_POWER_CTRL_SUB_CUSTOM_SUPPORT
+    bool "Device 'power_ctrl' custom sub-type support"
+    depends on ESP_BOARD_DEV_POWER_CTRL_SUPPORT
+    help
+        Enable power_ctrl custom sub-type support.
+        This option enables the power_ctrl custom sub-type driver.
+
 config ESP_BOARD_DEV_POWER_CTRL_SUB_GPIO_SUPPORT
     bool "Device 'power_ctrl' gpio sub-type support"
     depends on ESP_BOARD_DEV_POWER_CTRL_SUPPORT

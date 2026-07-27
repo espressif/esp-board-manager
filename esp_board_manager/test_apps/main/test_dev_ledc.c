@@ -7,6 +7,7 @@
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
+#include "bmgr_test_names.h"
 
 static const char *TAG = "TEST_LEDC";
 
@@ -16,7 +17,7 @@ void test_dev_ledc_ctrl(void)
 
     /* Get the LCD brightness device */
     periph_ledc_handle_t *ledc_handle = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get LCD brightness device");
         return;
@@ -26,7 +27,7 @@ void test_dev_ledc_ctrl(void)
     const int brightness_levels[] = {0, 25, 50, 75, 100};
     const int num_levels = sizeof(brightness_levels) / sizeof(brightness_levels[0]);
     dev_ledc_ctrl_config_t *dev_ledc_cfg = {0};
-    esp_err_t config_ret = esp_board_manager_get_device_config(ESP_BOARD_DEVICE_NAME_LCD_BRIGHTNESS, (void *)&dev_ledc_cfg);
+    esp_err_t config_ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void *)&dev_ledc_cfg);
     if (config_ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get LEDC peripheral config '%s': %s", "lcd_brightness", esp_err_to_name(config_ret));
         return;

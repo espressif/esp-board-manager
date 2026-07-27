@@ -605,6 +605,7 @@ int dev_audio_codec_init(void *cfg, int cfg_size, void **device_handle)
             }
             i2c_periph_refd = true;
             i2c_cfg.addr = codec_cfg->i2c_cfg.address;
+            i2c_cfg.clock_speed_hz = codec_cfg->i2c_cfg.frequency;
             codec_handles->ctrl_if = (audio_codec_ctrl_if_t *)audio_codec_new_i2c_ctrl(&i2c_cfg);
             if (codec_handles->ctrl_if == NULL) {
                 ESP_LOGE(TAG, "Failed to create i2c ctrl interface");
