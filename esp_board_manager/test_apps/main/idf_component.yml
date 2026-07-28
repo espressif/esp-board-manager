@@ -11,6 +11,10 @@ dependencies:
   espressif/esp_lcd_touch: ^1.1.2
   espressif/esp_lvgl_port: '*'
   espressif/esp_new_jpeg: "*"
+  espressif/esp_image_effects:
+    version: "*"
+    rules:
+      - if: "$CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True"
   espressif/esp_video:
     version: "^2.1.0"
     rules:

@@ -145,6 +145,10 @@ class ConfigGenerator(LoggerMixin):
             return False
         if value.isupper() and '_' in value:
             return True
+        if value.startswith('sizeof(') and value.endswith(')'):
+            return True
+        if value.startswith('&esp_bmgr_'):
+            return True
         return any(value.startswith(prefix) for prefix in BoardManagerConfig.get_c_constant_prefixes())
 
     def _format_value_to_c(self, v: Any) -> str:

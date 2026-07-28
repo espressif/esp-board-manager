@@ -578,22 +578,34 @@ esp_err_t esp_board_device_power_ctrl(const char *name, bool power_on)
     /* Find the power control device handle by name, init if not already done */
     esp_board_device_handle_t *handle = esp_board_find_device_handle(desc->power_ctrl_device);
     ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(handle, desc->power_ctrl_device, TAG, "Power control device %s not found", desc->power_ctrl_device);
+    bool power_ctrl_auto_inited = false;
     if (handle->ref_count < 1) {
         ESP_LOGI(TAG, "Power control device %s is not initialized, try to init it first", desc->power_ctrl_device);
-        esp_board_device_init(desc->power_ctrl_device);
+        esp_err_t ret = esp_board_device_init(desc->power_ctrl_device);
+        if (ret != ESP_OK || handle->device_handle == NULL) {
+            ESP_LOGE(TAG, "Failed to initialize power control device %s: %d", desc->power_ctrl_device, ret);
+            return ret != ESP_OK ? ret : ESP_BOARD_ERR_DEVICE_NO_HANDLE;
+        }
+        power_ctrl_auto_inited = true;
     }
     const esp_board_device_desc_t *power_ctrl_desc = esp_board_find_device_desc(desc->power_ctrl_device);
-    ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(power_ctrl_desc, desc->power_ctrl_device, TAG, "Device %s not found", name);
-    const char *sub_type = power_ctrl_desc->sub_type;
-    ESP_BOARD_RETURN_ON_FALSE(sub_type, ESP_BOARD_ERR_MANAGER_INVALID_ARG, TAG,
-                              "Power control device %s has no sub_type", desc->power_ctrl_device);
+    if (power_ctrl_desc == NULL || power_ctrl_desc->sub_type == NULL) {
+        ESP_LOGE(TAG, "Power control device %s has no sub_type", desc->power_ctrl_device);
+        if (power_ctrl_auto_inited) {
+            esp_board_device_deinit_internal(desc->power_ctrl_device, true);
+        }
+        return power_ctrl_desc == NULL ? ESP_BOARD_ERR_DEVICE_NOT_FOUND : ESP_BOARD_ERR_MANAGER_INVALID_ARG;
+    }
 
     /* Get the power control function by name */
     char power_ctrl_func_name[40];
-    snprintf(power_ctrl_func_name, sizeof(power_ctrl_func_name), "%s_power_ctrl", sub_type);
+    snprintf(power_ctrl_func_name, sizeof(power_ctrl_func_name), "%s_power_ctrl", power_ctrl_desc->sub_type);
     void *extra_func = NULL;
     if (esp_board_extra_func_get(power_ctrl_func_name, &extra_func) != 0) {
         ESP_LOGE(TAG, "Power control function %s not found for device %s", power_ctrl_func_name, desc->power_ctrl_device);
+        if (power_ctrl_auto_inited) {
+            esp_board_device_deinit_internal(desc->power_ctrl_device, true);
+        }
         return ESP_BOARD_ERR_MANAGER_INVALID_ARG;
     }
     esp_board_device_power_ctrl_func power_ctrl_func = (esp_board_device_power_ctrl_func)extra_func;
@@ -601,6 +613,9 @@ esp_err_t esp_board_device_power_ctrl(const char *name, bool power_on)
     /* Call the power control function */
     if (power_ctrl_func(handle->device_handle, name, power_on) != 0) {
         ESP_LOGE(TAG, "Failed to control power for device %s", name);
+        if (power_ctrl_auto_inited) {
+            esp_board_device_deinit_internal(desc->power_ctrl_device, true);
+        }
         return ESP_BOARD_ERR_MANAGER_INVALID_ARG;
     }
 

@@ -8,7 +8,7 @@
 
 ``display_lcd`` 设备用于描述 LCD 显示屏，并在初始化阶段创建 ``esp_lcd_panel_handle_t`` 与可选的 panel IO 句柄。应用通过 :cpp:func:`esp_board_manager_get_device_handle` 获取 ``dev_display_lcd_handles_t``，再使用 ESP-IDF ``esp_lcd_panel_ops`` 或上层图形库访问屏幕。
 
-该类型按 ``sub_type`` 选择显示接口。当前设备模板覆盖 ``dsi``、``spi``、``i80``、``rgb``、``rgb_3wire_spi`` 与 ``parlio``。需要屏幕芯片专用初始化命令时，由板级在 ``setup_device.c`` 中注册对应的 LCD 工厂函数。
+该类型按 ``sub_type`` 选择显示接口。当前设备模板覆盖 ``dsi``、``spi``、``i80``、``rgb``、``rgb_3wire_spi`` 与 ``parlio``。除纯 ``rgb`` 外，各子类型都必须由开发板提供 LCD panel 工厂函数；仅声明芯片驱动组件不足以创建 panel。
 
 支持的使用模式
 ---------------------
@@ -22,6 +22,45 @@
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
+板级 panel 工厂函数
+--------------------------
+
+BMGR 负责创建显示总线和 panel IO，开发板负责调用实际 LCD 控制器的构造函数并返回 ``esp_lcd_panel_handle_t``。
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``sub_type``
+     - 是否需要板级函数
+     - 必需符号
+   * - ``dsi``
+     - 是
+     - ``lcd_dsi_panel_factory_entry_t``
+   * - ``spi``、``i80``、``parlio``、``rgb_3wire_spi``
+     - 是
+     - ``lcd_panel_factory_entry_t``
+   * - ``rgb``
+     - 否
+     - BMGR 直接调用 ``esp_lcd_new_rgb_panel``
+
+DSI 工厂函数必须使用以下签名。函数负责根据 ``lcd_cfg`` 创建控制器专用 panel，并写入 ``lcd_handles->panel_handle``：
+
+.. code-block:: c
+
+    esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
+                                            dev_display_lcd_config_t *lcd_cfg,
+                                            dev_display_lcd_handles_t *lcd_handles);
+
+SPI、I80、PARLIO 和 RGB + 3-wire SPI 共享以下签名。函数应调用与 LCD 控制器匹配的 ``esp_lcd_new_panel_*`` API：
+
+.. code-block:: c
+
+    esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                         const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                         esp_lcd_panel_handle_t *ret_panel);
+
+基础开发板的实现建议声明为 ``__attribute__((weak))``，使 amend 可以提供同名强符号替换默认面板初始化。工厂函数使用的芯片驱动头文件和 API 必须与设备的 ``chip`` 及 ``dependencies`` 指向同一控制器。源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
+
 最小配置
 ------------
 
@@ -30,7 +69,7 @@
 DSI（``sub_type: dsi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``dsi`` 模式用于 MIPI DSI 屏，设备依赖 ``dsi`` 外设，可选引用 ``ldo`` 外设管理 MIPI 供电。
+``dsi`` 模式用于 MIPI DSI 屏，设备必须引用 ``dsi`` 与 ``ldo`` 外设；运行时会先获取 LDO 句柄，再创建 DSI panel IO。该模式必须实现 ``lcd_dsi_panel_factory_entry_t``。
 
 ``board_peripherals.yaml``：
 
@@ -90,7 +129,7 @@ DSI（``sub_type: dsi``）
 SPI（``sub_type: spi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``spi`` 模式用于通过 SPI panel IO 发送命令与像素数据的屏，设备依赖 ``spi`` 外设。
+``spi`` 模式用于通过 SPI panel IO 发送命令与像素数据的屏，设备依赖 ``spi`` 外设。该模式必须实现 ``lcd_panel_factory_entry_t``。
 
 ``board_peripherals.yaml``：
 
@@ -138,7 +177,7 @@ SPI（``sub_type: spi``）
 I80（``sub_type: i80``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``i80`` 模式使用 ``esp_lcd_new_i80_bus`` 与 ``esp_lcd_new_panel_io_i80`` 创建 panel IO，不依赖 ``spi`` 外设；I80 总线由设备内部基于 ``bus_config`` 创建，无需新增 ``board_peripherals.yaml`` 条目。
+``i80`` 模式使用 ``esp_lcd_new_i80_bus`` 与 ``esp_lcd_new_panel_io_i80`` 创建 panel IO，不依赖 ``spi`` 外设；I80 总线由设备内部基于 ``bus_config`` 创建，无需新增 ``board_peripherals.yaml`` 条目。该模式必须实现 ``lcd_panel_factory_entry_t``。
 
 ``board_devices.yaml``：
 
@@ -202,7 +241,7 @@ RGB（``sub_type: rgb``）
 RGB + 3-wire SPI（``sub_type: rgb_3wire_spi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``rgb_3wire_spi`` 模式在 RGB 像素总线之外增加 3-wire SPI 初始化 IO，无需 ``spi`` 外设；3-wire SPI 初始化线可直接使用 SoC GPIO，或通过 ``gpio_expander`` 设备提供。
+``rgb_3wire_spi`` 模式在 RGB 像素总线之外增加 3-wire SPI 初始化 IO，无需 ``spi`` 外设；3-wire SPI 初始化线可直接使用 SoC GPIO，或通过 ``gpio_expander`` 设备提供。该模式必须实现 ``lcd_panel_factory_entry_t``，用于执行控制器的命令初始化。
 
 ``board_devices.yaml``：
 
@@ -292,7 +331,7 @@ BMGR 在创建 RGB panel 前调用该回调，并将返回的指针传入 ``esp_
 PARLIO（``sub_type: parlio``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``parlio`` 模式使用 ``esp_lcd_new_panel_io_parl`` 创建 panel IO，无需 ``spi`` 外设；PARLIO 数据线、时钟线与控制线均在设备 ``io_parl_config`` 中配置，无需新增 ``board_peripherals.yaml`` 条目。
+``parlio`` 模式使用 ``esp_lcd_new_panel_io_parl`` 创建 panel IO，无需 ``spi`` 外设；PARLIO 数据线、时钟线与控制线均在设备 ``io_parl_config`` 中配置，无需新增 ``board_peripherals.yaml`` 条目。该模式必须实现 ``lcd_panel_factory_entry_t``。
 
 ``board_devices.yaml``：
 
@@ -778,7 +817,7 @@ PARLIO 完整字段
      - MIPI DSI 数据接口
    * - ``ldo``
      - 无
-     - ``dsi`` 模式按板级供电设计选择
+     - ``dsi`` 模式必选
      - MIPI 供电管理
    * - ``spi``
      - 无

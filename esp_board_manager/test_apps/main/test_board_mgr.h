@@ -7,13 +7,16 @@
 
 #pragma once
 
+#include "esp_err.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
 
-void test_board_mgr_audio_playback_and_record(void);
-void test_board_mgr_audio_playback_only(void);
-void test_board_mgr_audio_recording_after_playback(void);
+esp_err_t test_board_mgr_audio_embed_playback(void);
+esp_err_t test_board_mgr_audio_partition_record_playback(void);
+esp_err_t test_board_mgr_audio_fatfs_playback(void);
+esp_err_t test_board_mgr_audio_fatfs_record_playback(void);
 
 #ifdef __cplusplus
 }

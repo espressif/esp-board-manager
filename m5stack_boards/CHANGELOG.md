@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3
+
+### Changed
+
+- **M5STACK CORES3**: migrated AXP2101 power sequencing from a `type: custom` device (`axp2101_power_manager`) to the board manager's new `power_ctrl` `custom` sub-type (requires `esp_board_manager >= 0.6.1`). Consumer devices (`audio_dac`, `audio_adc`, `display_lcd`, `lcd_touch`, `fs_sdcard`) now reference it via `power_ctrl_device` instead of `depends_on`, so each device's power rail is enabled on demand when that device initializes, instead of all rails being enabled unconditionally during power-manager init.
+- **M5STACK CORES3**: replaced the board-local AW9523B IO expander driver with the published `espressif/esp_io_expander_aw9523` component (`1.0.0`).
+
 ## 0.5.2
 
 ### Modifications

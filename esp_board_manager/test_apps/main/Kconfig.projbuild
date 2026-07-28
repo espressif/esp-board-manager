@@ -1,0 +1,144 @@
+menu "Board Manager Test App"
+
+    menu "Device/Peripheral name overrides"
+        comment "Override the names the test cases initialize and look up."
+        comment "Leave at the default to use the conventional board manager name."
+
+        config BMGR_TEST_NAME_DISPLAY_LCD
+            string "Display LCD device name"
+            depends on ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
+            default "display_lcd"
+
+        config BMGR_TEST_NAME_LCD_TOUCH
+            string "LCD touch device name"
+            depends on ESP_BOARD_DEV_LCD_TOUCH_SUPPORT || ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT
+            default "lcd_touch"
+
+        config BMGR_TEST_NAME_LCD_BRIGHTNESS
+            string "LCD brightness (LEDC) device name"
+            depends on ESP_BOARD_DEV_LEDC_CTRL_SUPPORT
+            default "lcd_brightness"
+
+        config BMGR_TEST_NAME_LCD_POWER
+            string "LCD power control device name"
+            depends on ESP_BOARD_DEV_GPIO_CTRL_SUPPORT
+            default "lcd_power"
+
+        config BMGR_TEST_NAME_GPIO_EXPANDER
+            string "GPIO expander device name"
+            depends on ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT
+            default "gpio_expander"
+
+        config BMGR_TEST_NAME_CAMERA
+            string "Camera device name"
+            depends on ESP_BOARD_DEV_CAMERA_SUPPORT
+            default "camera"
+
+        config BMGR_TEST_NAME_LED_STRIP
+            string "LED strip device name"
+            depends on ESP_BOARD_DEV_LED_STRIP_SUPPORT
+            default "led_strip"
+
+        config BMGR_TEST_NAME_LITTLEFS
+            string "LittleFS device name"
+            depends on ESP_BOARD_DEV_LITTLEFS_SUPPORT
+            default "littlefs"
+
+        config BMGR_TEST_NAME_FS_SPIFFS
+            string "SPIFFS device name"
+            depends on ESP_BOARD_DEV_FS_SPIFFS_SUPPORT
+            default "fs_spiffs"
+
+        config BMGR_TEST_NAME_FS_FAT
+            string "FAT filesystem device name"
+            depends on ESP_BOARD_DEV_FS_FAT_SUPPORT
+            default "fs_sdcard"
+
+        config BMGR_TEST_NAME_AUDIO_DAC
+            string "Audio DAC (codec) device name"
+            depends on ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT
+            default "audio_dac"
+
+        config BMGR_TEST_NAME_AUDIO_ADC
+            string "Audio ADC (codec) device name"
+            depends on ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT
+            default "audio_adc"
+
+        config BMGR_TEST_NAME_AUDIO_POWER
+            string "Audio power control device name"
+            depends on ESP_BOARD_DEV_GPIO_CTRL_SUPPORT
+            default "audio_power"
+
+        config BMGR_TEST_NAME_CUSTOM
+            string "Custom device name"
+            depends on ESP_BOARD_DEV_CUSTOM_SUPPORT
+            default "my_custom_sensor"
+
+        config BMGR_TEST_NAME_GPIO_BUTTON
+            string "GPIO button device name"
+            depends on ESP_BOARD_DEV_BUTTON_SUPPORT
+            default "gpio_button_0"
+
+        config BMGR_TEST_NAME_CUSTOM_BUTTON
+            string "Custom button device name"
+            depends on ESP_BOARD_DEV_BUTTON_SUPPORT
+            default "button_l"
+
+        config BMGR_TEST_NAME_I2C_MASTER
+            string "I2C master peripheral name"
+            depends on ESP_BOARD_PERIPH_I2C_SUPPORT
+            default "i2c_master"
+
+        config BMGR_TEST_NAME_GPIO_PA_CONTROL
+            string "GPIO power-amp control peripheral name"
+            depends on ESP_BOARD_PERIPH_GPIO_SUPPORT
+            default "gpio_pa_control"
+
+        config BMGR_TEST_NAME_GPIO_MONITOR
+            string "GPIO monitor peripheral name (analog comparator test)"
+            depends on ESP_BOARD_PERIPH_ANACMPR_SUPPORT
+            default "gpio_monitor"
+
+        config BMGR_TEST_NAME_UART
+            string "UART peripheral name"
+            depends on ESP_BOARD_PERIPH_UART_SUPPORT
+            default "uart_1"
+
+        config BMGR_TEST_NAME_ADC
+            string "ADC peripheral name"
+            depends on ESP_BOARD_PERIPH_ADC_SUPPORT
+            default "adc_unit_1"
+
+        config BMGR_TEST_NAME_RMT_TX
+            string "RMT TX peripheral name"
+            depends on ESP_BOARD_PERIPH_RMT_SUPPORT
+            default "rmt_tx"
+
+        config BMGR_TEST_NAME_PCNT
+            string "PCNT peripheral name"
+            depends on ESP_BOARD_PERIPH_PCNT_SUPPORT
+            default "pcnt_unit"
+
+        config BMGR_TEST_NAME_DAC
+            string "DAC peripheral name"
+            depends on ESP_BOARD_PERIPH_DAC_SUPPORT
+            default "dac_channel_0"
+
+        config BMGR_TEST_NAME_SDM
+            string "SDM peripheral name"
+            depends on ESP_BOARD_PERIPH_SDM_SUPPORT
+            default "sdm"
+
+        config BMGR_TEST_NAME_MCPWM
+            string "MCPWM peripheral name"
+            depends on ESP_BOARD_PERIPH_MCPWM_SUPPORT
+            default "mcpwm_group_0"
+
+        config BMGR_TEST_NAME_ANACMPR
+            string "Analog comparator peripheral name"
+            depends on ESP_BOARD_PERIPH_ANACMPR_SUPPORT
+            default "anacmpr_unit_0"
+
+    endmenu
+
+endmenu

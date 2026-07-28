@@ -167,19 +167,21 @@ SPI 触摸完整字段
 - 新配置使用 ``type: lcd_touch`` 与 ``sub_type: i2c``。
 - ``sub_type: spi`` 当前不可用；不要在板级 YAML 中配置该子类型。
 - ``i2c_addr`` 使用 8-bit 左移地址，最多 4 个候选值。源码会逐个探测并记录探测成功的有效地址。
-- 工程中需提供 ``lcd_touch_factory_entry_t``，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。
+- 工程必须提供 ``lcd_touch_factory_entry_t``，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。
 - 修改 YAML 后需重新执行 ``idf.py bmgr -b <board>``。
 
 工厂函数与多地址选择
 --------------------
 
-工程需要提供 ``lcd_touch_factory_entry_t``，由 BMGR 在创建触摸设备时回调，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。函数签名为：
+工程必须在板级源文件中提供 ``lcd_touch_factory_entry_t``，由 BMGR 在创建触摸设备时回调，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。函数签名为：
 
 .. code-block:: c
 
    esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
                                        const esp_lcd_touch_config_t *touch_dev_config,
                                        esp_lcd_touch_handle_t *ret_touch)
+
+源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
 
 如果同一块开发板可能搭载不同触摸芯片（即 ``i2c_addr`` 写了多个候选地址），可以在工厂函数中通过 ``esp_board_device_get_i2c_effective_addr()`` 获取实际探测命中的地址，再选择对应驱动：
 

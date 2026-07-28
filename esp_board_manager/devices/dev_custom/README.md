@@ -92,7 +92,7 @@ typedef struct {
     bool        param3;         /*!< param3 */
     float       param4;         /*!< param4 */
     uint8_t     peripheral_count;  /*!< Number of peripherals */
-    const char *peripheral_names[MAX_PERIPHERALS];  /*!< Peripheral names array */
+    const char *peripheral_names[4];  /*!< Peripheral names array */
 } dev_custom_my_custom_device_config_t;
 ```
 
@@ -253,9 +253,9 @@ The custom device type includes comprehensive peripheral detection and validatio
 ### Peripheral Structure Generation
 
 - **Single Peripheral**: Uses `peripheral_name` field (not array)
-- **Multiple Peripherals**: Uses `peripheral_names[MAX_PERIPHERALS]` array
+- **Multiple Peripherals**: Uses a `peripheral_names[4]` array
 - **Peripheral Count**: Always includes `peripheral_count` field
-- **Maximum Peripherals**: Limited to `MAX_PERIPHERALS` (defined as 4 in dev_custom.h)
+- **Maximum Peripherals**: Limited to 4; configurations exceeding the limit are rejected during parsing
 
 ### Validation Example
 
@@ -286,7 +286,7 @@ peripherals_dict = {'i2c_master': 'valid'}
 
 ## Limitations
 
-- Maximum 4 peripherals per device (defined by `MAX_PERIPHERALS` constant in dev_custom.h)
+- Maximum 4 peripherals per device; configurations exceeding the limit are rejected during parsing
 - Field names must be valid C identifiers after sanitization
 - Configuration size is limited by available memory
 - No support for complex nested structures (arrays, structs)

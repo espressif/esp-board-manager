@@ -6,18 +6,21 @@
  */
 
 #include <string.h>
-#include "esp_log.h"
 #include "esp_err.h"
+#include "esp_lcd_panel_io.h"
+#include "esp_lcd_panel_rgb.h"
+#include "esp_log.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_err.h"
 #include "esp_lvgl_port.h"
-#include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_rgb.h"
+
 #ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
 #include "esp_lcd_touch.h"
 #endif  /* CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT */
 #include "esp_lcd_types.h"
 #include "esp_board_manager_includes.h"
+#include "bmgr_test_names.h"
+#include "test_dev_lcd_lvgl.h"
 
 #define TAG  "LCD_INIT"
 
@@ -72,10 +75,10 @@ static esp_err_t lcd_backlight_set(int brightness_percent)
 
     ESP_LOGI(TAG, "Setting LCD backlight: %d%%,", brightness_percent);
     if (ledc_handle == NULL) {
-        ESP_BOARD_RETURN_ON_ERROR(esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle), TAG, "Get LEDC control device handle failed");
+        ESP_BOARD_RETURN_ON_ERROR(esp_board_manager_get_device_handle(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle), TAG, "Get LEDC control device handle failed");
     }
     dev_ledc_ctrl_config_t *dev_ledc_cfg = NULL;
-    esp_err_t config_ret = esp_board_manager_get_device_config(ESP_BOARD_DEVICE_NAME_LCD_BRIGHTNESS, (void *)&dev_ledc_cfg);
+    esp_err_t config_ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void *)&dev_ledc_cfg);
     if (config_ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get LEDC peripheral config '%s': %s", "lcd_brightness", esp_err_to_name(config_ret));
         return ESP_FAIL;
@@ -106,7 +109,7 @@ static void lcd_unregister_rgb_callbacks(void)
     }
 
     dev_display_lcd_config_t *lcd_cfg = NULL;
-    esp_err_t ret = esp_board_manager_get_device_config(ESP_BOARD_DEVICE_NAME_DISPLAY_LCD, (void **)&lcd_cfg);
+    esp_err_t ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_DISPLAY_LCD, (void **)&lcd_cfg);
     if (ret != ESP_OK || !lcd_is_rgb_panel(lcd_cfg)) {
         return;
     }
@@ -121,10 +124,10 @@ static void lcd_unregister_rgb_callbacks(void)
 esp_err_t test_dev_lcd_lvgl_init(void)
 {
     // Initialize LVGL port
-    esp_err_t err = lcd_lvgl_port_init();
-    if (err != ESP_OK) {
+    esp_err_t ret = lcd_lvgl_port_init();
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "LVGL port initialization failed");
-        return ESP_FAIL;
+        return ret;
     }
 
     ESP_LOGI(TAG, "Initializing LCD display using Board Manager...");
@@ -132,10 +135,10 @@ esp_err_t test_dev_lcd_lvgl_init(void)
     lcd_backlight_set(100);
 #endif  /* CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT */
     // Get LCD device handle from board manager
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_DISPLAY_LCD, &lcd_handle);
+    ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_DISPLAY_LCD, &lcd_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get LCD device handle: %s", esp_err_to_name(ret));
-        return ESP_FAIL;
+        goto cleanup;
     }
 
     if (lcd_handle) {
@@ -146,10 +149,10 @@ esp_err_t test_dev_lcd_lvgl_init(void)
 
         // Get LCD configuration directly
         dev_display_lcd_config_t *lcd_cfg = NULL;
-        esp_err_t ret = esp_board_manager_get_device_config("display_lcd", (void **)&lcd_cfg);
+        ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_DISPLAY_LCD, (void **)&lcd_cfg);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to get LCD device config: %s", esp_err_to_name(ret));
-            return ESP_FAIL;
+            goto cleanup;
         }
 
         uint32_t lvgl_buffer_pixels = lcd_cfg->lcd_width * lcd_cfg->lcd_height;
@@ -197,7 +200,8 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             disp = lvgl_port_add_disp(&disp_cfg);
             if (disp == NULL) {
                 ESP_LOGE(TAG, "Failed to add unified %s LCD display", lcd_cfg->sub_type);
-                return ESP_FAIL;
+                ret = ESP_FAIL;
+                goto cleanup;
             }
         } else if (strcmp(lcd_cfg->sub_type, ESP_BOARD_DEVICE_LCD_SUB_TYPE_DSI) == 0) {
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_DSI_SUPPORT
@@ -212,11 +216,13 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             disp = lvgl_port_add_disp_dsi(&disp_cfg, &dsi_cfg);
             if (disp == NULL) {
                 ESP_LOGE(TAG, "Failed to add unified DSI LCD display");
-                return ESP_FAIL;
+                ret = ESP_FAIL;
+                goto cleanup;
             }
 #else
             ESP_LOGE(TAG, "DSI LCD display is not supported in this configuration");
-            return ESP_FAIL;
+            ret = ESP_FAIL;
+            goto cleanup;
 #endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_DSI_SUPPORT */
         } else if (strcmp(lcd_cfg->sub_type, ESP_BOARD_DEVICE_LCD_SUB_TYPE_RGB) == 0) {
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_SUPPORT
@@ -233,11 +239,13 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             disp = lvgl_port_add_disp_rgb(&disp_cfg, &rgb_cfg);
             if (disp == NULL) {
                 ESP_LOGE(TAG, "Failed to add unified RGB LCD display");
-                return ESP_FAIL;
+                ret = ESP_FAIL;
+                goto cleanup;
             }
 #else
             ESP_LOGE(TAG, "RGB LCD display is not supported in this configuration");
-            return ESP_FAIL;
+            ret = ESP_FAIL;
+            goto cleanup;
 #endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_SUPPORT */
         } else if (strcmp(lcd_cfg->sub_type, ESP_BOARD_DEVICE_LCD_SUB_TYPE_RGB_3WIRE_SPI) == 0) {
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_3WIRE_SPI_SUPPORT
@@ -254,22 +262,29 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             disp = lvgl_port_add_disp_rgb(&disp_cfg, &rgb_cfg);
             if (disp == NULL) {
                 ESP_LOGE(TAG, "Failed to add unified RGB 3-wire SPI LCD display");
-                return ESP_FAIL;
+                ret = ESP_FAIL;
+                goto cleanup;
             }
 #else
             ESP_LOGE(TAG, "RGB 3-wire SPI LCD display is not supported in this configuration");
-            return ESP_FAIL;
+            ret = ESP_FAIL;
+            goto cleanup;
 #endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_3WIRE_SPI_SUPPORT */
         } else {
             ESP_LOGE(TAG, "Unknown LCD sub_type: %s", lcd_cfg->sub_type);
-            return ESP_FAIL;
+            ret = ESP_FAIL;
+            goto cleanup;
         }
         ESP_LOGI(TAG, "LCD display initialized successfully");
         return ESP_OK;
-    } else {
-        ESP_LOGE(TAG, "LCD device handle is NULL");
-        return ESP_FAIL;
     }
+
+    ESP_LOGE(TAG, "LCD device handle is NULL");
+    ret = ESP_ERR_INVALID_STATE;
+
+cleanup:
+    test_dev_lcd_lvgl_deinit();
+    return ret;
 }
 
 esp_err_t test_dev_lcd_touch_init(void)
@@ -277,14 +292,14 @@ esp_err_t test_dev_lcd_touch_init(void)
 #ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
     ESP_LOGI(TAG, "Initializing touch input using Board Manager...");
 
-    if (!esp_board_manager_check_name(ESP_BOARD_DEVICE_NAME_LCD_TOUCH)) {
+    if (!esp_board_manager_check_name(BMGR_TEST_NAME_LCD_TOUCH)) {
         ESP_LOGI(TAG, "Touch device %s is not present on this board, continuing without touch",
-                 ESP_BOARD_DEVICE_NAME_LCD_TOUCH);
+                 BMGR_TEST_NAME_LCD_TOUCH);
         return ESP_FAIL;
     }
 
     // Get touch device handle from board manager
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_LCD_TOUCH, &touch_handle);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_LCD_TOUCH, &touch_handle);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Failed to get touch device handle: %s (continuing without touch)", esp_err_to_name(ret));
         return ESP_FAIL;

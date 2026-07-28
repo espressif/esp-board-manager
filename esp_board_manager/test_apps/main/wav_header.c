@@ -1,8 +1,8 @@
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
-#include "esp_log.h"
 #include "esp_err.h"
+#include "esp_log.h"
 
 static const char *TAG = "WAV_HEADER";
 
@@ -30,9 +30,8 @@ esp_err_t read_wav_header(FILE *fp, uint32_t *sample_rate, uint16_t *channels, u
     return ESP_OK;
 }
 
-esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels, uint16_t bits_per_sample, uint32_t duration_seconds)
+esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels, uint16_t bits_per_sample, uint32_t data_size)
 {
-    uint32_t data_size = sample_rate * channels * (bits_per_sample / 8) * duration_seconds;
     uint32_t file_size = 44 + data_size;
 
     uint8_t wav_header[44] = {

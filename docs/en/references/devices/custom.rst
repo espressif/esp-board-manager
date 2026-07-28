@@ -171,9 +171,9 @@ Peripheral Fields
 When peripherals are declared under the top-level ``peripherals:``, peripheral-related fields are appended to the end of the struct:
 
 - **Single peripheral**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_name``.
-- **Multiple peripherals**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_names[MAX_PERIPHERALS]``.
+- **Multiple peripherals**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_names[4]``.
 
-``MAX_PERIPHERALS`` is fixed at 4 (defined in ``esp_board_manager/devices/dev_custom/dev_custom.h``).
+The maximum number of peripherals is fixed at 4, the parser rejects a device definition that exceeds this limit.
 
 .. _custom-entry-impl:
 
@@ -210,7 +210,7 @@ To have BMGR automatically call board-level driver code during initialization, i
     /* The first argument must exactly match the device name in board_devices.yaml */
     CUSTOM_DEVICE_IMPLEMENT(my_sensor, my_sensor_init, my_sensor_deinit);
 
-``CUSTOM_DEVICE_IMPLEMENT`` uses GCC attributes to place the descriptor into a special linker section (``.esp_board_entries_desc``). At runtime, BMGR performs a linear scan of this section to find the init/deinit functions by device name.
+``CUSTOM_DEVICE_IMPLEMENT`` uses GCC attributes to place the descriptor into a special linker section (``.esp_board_entries_desc``). At runtime, BMGR performs a linear scan of this section to find the init/deinit functions by device name. See :doc:`/programming-guide/board-directory` for board source placement and build rules.
 
 CMakeLists.txt Requirements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -331,7 +331,7 @@ Notes
 - The first argument of ``CUSTOM_DEVICE_IMPLEMENT`` must exactly match the device ``name``, case-sensitively.
 - Components containing ``CUSTOM_DEVICE_IMPLEMENT`` must set ``WHOLE_ARCHIVE`` in CMakeLists.txt, otherwise the linker will discard the descriptor.
 - When no matching init entry is registered, initialization will not fail, but :cpp:func:`esp_board_manager_get_device_handle` returns an error; :cpp:func:`esp_board_manager_get_device_config` still returns a valid configuration struct.
-- The ``peripherals:`` list limit is ``MAX_PERIPHERALS = 4``; behavior is undefined when more peripherals than this limit are declared.
+- The ``peripherals:`` list limit is 4. The parser rejects configurations that declare more peripherals.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
 Debugging Tips

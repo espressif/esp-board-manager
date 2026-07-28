@@ -4,7 +4,7 @@
 # Bumped to accommodate IDF master where bootloader has grown past the 0x6000 limit.
 nvs,      data, nvs,     0xb000,  0x4000,
 phy_init, data, phy,     0xf000,  0x1000,
-factory,  app,  factory, 0x10000, 2M,
-record,   data, undefined, 0x210000, 0xB0000,
-storage,  data, spiffs,  0x2C0000, 0xF0000,
-littlefs, data, littlefs, 0x3B0000, 0x50000,
+factory,  app,  factory, 0x10000, 3M,
+record,   data, undefined, 0x310000, 0xB0000,
+storage,  data, spiffs,  0x3C0000, 0xF0000,
+littlefs, data, littlefs, 0x4B0000, 0x50000,

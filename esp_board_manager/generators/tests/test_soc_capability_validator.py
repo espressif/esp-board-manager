@@ -4,6 +4,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from generators.utils.soc_capabilities import SocCapabilityCatalog
@@ -272,6 +274,21 @@ def test_i2s_instance_count_deduplicates_entries_on_same_port() -> None:
     )
 
     assert [i.limit_key for i in issues] == []
+
+
+def test_rejects_i2s_peripherals_with_duplicate_port_and_direction() -> None:
+    issues = validate_soc_capabilities(
+        catalog=_catalog(),
+        chip='esp32s3',
+        instances=[
+            inst('i2s_playback_a', 'peripheral', 'i2s', {'format': 'std-out'}, [field(['port'], 0)]),
+            inst('i2s_playback_b', 'peripheral', 'i2s', {'format': 'std-out'}, [field(['port'], 0)]),
+        ],
+    )
+
+    assert [i.code for i in issues] == ['SOC_DUPLICATE_INSTANCE']
+    assert issues[0].path == ['peripherals', 'i2s_playback_b']
+    assert 'port 0 and direction tx' in issues[0].message
 
 
 def test_i2s_instance_count_counts_distinct_ports() -> None:
@@ -774,6 +791,20 @@ def test_generator_skip_soc_capability_check_flag_bypasses_yaml_validation(monke
             {'name': 'i2c1', 'type': 'i2c', 'config': {}},
         ],
     )
+
+
+def test_generator_rejects_duplicate_i2s_port_direction_when_soc_checks_are_skipped() -> None:
+    generator = BoardConfigGenerator(Path(__file__).parent.parent.parent)
+    generator.skip_soc_capability_check = True
+
+    with pytest.raises(ValueError, match='I2S port 0 and direction tx'):
+        generator._validate_soc_yaml_instances(
+            'peripheral',
+            [
+                {'name': 'i2s_playback_a', 'type': 'i2s', 'format': 'std-out', 'config': {'port': 0}},
+                {'name': 'i2s_playback_b', 'type': 'i2s', 'format': 'std-out', 'config': {'port': 0}},
+            ],
+        )
 
 
 def test_generator_skip_soc_capability_check_env_bypasses_yaml_validation(monkeypatch) -> None:

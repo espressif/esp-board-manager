@@ -16,12 +16,13 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+#include "esp_log.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
 #include "periph_adc.h"
+#include "bmgr_test_names.h"
 
 #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 #define EXAMPLE_ADC_OUTPUT_TYPE          ADC_DIGI_OUTPUT_FORMAT_TYPE1
@@ -55,14 +56,14 @@ static adc_digi_pattern_config_t get_first_pattern(const periph_adc_continuous_c
 void test_periph_adc(void)
 {
     periph_adc_handle_t *handle = NULL;
-    esp_err_t ret = esp_board_manager_get_periph_handle(ESP_BOARD_PERIPH_NAME_ADC, (void **)&handle);
+    esp_err_t ret = esp_board_manager_get_periph_handle(BMGR_TEST_NAME_ADC, (void **)&handle);
     if (ret != ESP_OK || handle == NULL) {
         ESP_LOGE(TAG, "Failed to get ADC handle");
         return;
     }
 
     periph_adc_config_t *adc_cfg = {0};
-    ret = esp_board_manager_get_periph_config(ESP_BOARD_PERIPH_NAME_ADC, (void *)&adc_cfg);
+    ret = esp_board_manager_get_periph_config(BMGR_TEST_NAME_ADC, (void *)&adc_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get ADC config %s", esp_err_to_name(ret));
         return;

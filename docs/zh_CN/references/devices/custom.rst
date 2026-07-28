@@ -171,9 +171,9 @@
 在 YAML 顶层 ``peripherals:`` 下声明外设时，结构体末尾追加外设相关字段：
 
 - \ **单个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_name``。
-- \ **多个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_names[MAX_PERIPHERALS]``。
+- \ **多个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_names[4]``。
 
-``MAX_PERIPHERALS`` 固定为 4（定义于 ``esp_board_manager/devices/dev_custom/dev_custom.h``）。
+外设数量上限固定为 4，超过该上限的设备定义会被解析器拒绝。
 
 .. _custom-entry-impl:
 
@@ -210,7 +210,7 @@
     /* 第一个参数必须与 board_devices.yaml 中该设备的 name 完全一致 */
     CUSTOM_DEVICE_IMPLEMENT(my_sensor, my_sensor_init, my_sensor_deinit);
 
-``CUSTOM_DEVICE_IMPLEMENT`` 通过 GCC 属性将描述符放入特殊链接器段（``.esp_board_entries_desc``），运行时 BMGR 按设备名线性扫描该段查找初始化/反初始化函数。
+``CUSTOM_DEVICE_IMPLEMENT`` 通过 GCC 属性将描述符放入特殊链接器段（``.esp_board_entries_desc``），运行时 BMGR 按设备名线性扫描该段查找初始化/反初始化函数。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`。
 
 CMakeLists.txt 要求
 ^^^^^^^^^^^^^^^^^^^
@@ -331,7 +331,7 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 - ``CUSTOM_DEVICE_IMPLEMENT`` 的第一个参数必须与设备 ``name`` 完全一致，区分大小写。
 - 包含 ``CUSTOM_DEVICE_IMPLEMENT`` 的组件须在 CMakeLists.txt 中设置 ``WHOLE_ARCHIVE``，否则链接器会优化丢弃描述符。
 - 未注册同名初始化入口时，初始化不会失败，但\ :cpp:func:`esp_board_manager_get_device_handle` 返回错误；:cpp:func:`esp_board_manager_get_device_config` 仍返回有效配置结构体。
-- ``peripherals:`` 列表上限为 ``MAX_PERIPHERALS = 4``，声明超出上限的外设时行为未定义。
+- ``peripherals:`` 列表上限为 4，声明超过该上限的配置会被解析器拒绝。
 - 修改 YAML 后需重新执行\ ``idf.py bmgr -b <board>``。
 
 调试技巧

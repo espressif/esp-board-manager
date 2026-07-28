@@ -9,11 +9,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_board_manager.h"
 #include "dev_button.h"
-#include "test_dev_button.h"
 #include "esp_board_device.h"
+#include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
+#include "bmgr_test_names.h"
+#include "test_dev_button.h"
 
 static const char *TAG = "TEST_BUTTON";
 
@@ -69,16 +70,16 @@ static int test_gpio_button(void)
     ESP_LOGI(TAG, "=== Testing GPIO Button ===");
     // Get button handle
     dev_button_handles_t *btn_handles = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle("gpio_button_0", (void **)&btn_handles);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_GPIO_BUTTON, (void **)&btn_handles);
     if (ret != ESP_OK || btn_handles == NULL) {
-        ESP_LOGE(TAG, "Failed to get gpio_button_0 handle");
+        ESP_LOGE(TAG, "Failed to get %s handle", BMGR_TEST_NAME_GPIO_BUTTON);
         return -1;
     }
     ESP_LOGI(TAG, "Successfully obtained button handle");
 
-    ret = esp_board_device_callback_register("gpio_button_0", simple_button_event_handler, NULL);
+    ret = esp_board_device_callback_register(BMGR_TEST_NAME_GPIO_BUTTON, simple_button_event_handler, NULL);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register callback for button: %s", "gpio_button_0");
+        ESP_LOGE(TAG, "Failed to register callback for button: %s", BMGR_TEST_NAME_GPIO_BUTTON);
         return -1;
     }
     return 0;
@@ -124,16 +125,16 @@ static int test_custom_button(void)
     ESP_LOGI(TAG, "=== Testing Custom Button ===");
 
     dev_button_handles_t *btn_handles = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle("button_l", (void **)&btn_handles);
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CUSTOM_BUTTON, (void **)&btn_handles);
     if (ret != ESP_OK || btn_handles == NULL) {
-        ESP_LOGE(TAG, "Failed to get button_l handle");
+        ESP_LOGE(TAG, "Failed to get %s handle", BMGR_TEST_NAME_CUSTOM_BUTTON);
         return -1;
     }
     ESP_LOGI(TAG, "Successfully obtained custom button handle");
 
-    ret = esp_board_device_callback_register("button_l", simple_button_event_handler, NULL);
+    ret = esp_board_device_callback_register(BMGR_TEST_NAME_CUSTOM_BUTTON, simple_button_event_handler, NULL);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register callback for button: %s", "button_l");
+        ESP_LOGE(TAG, "Failed to register callback for button: %s", BMGR_TEST_NAME_CUSTOM_BUTTON);
         return -1;
     }
     return 0;

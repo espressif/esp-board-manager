@@ -147,7 +147,7 @@ ADC 多按键
     }
     DEVICE_EXTRA_FUNC_REGISTER(custom_button_0, custom_button_0);
 
-注册函数名必须与 ``board_devices.yaml`` 中的 ``name`` 完全一致。BMGR 初始化时通过设备名查找该函数，并将返回的 ``button_driver_t`` 交给 ``iot_button_create()``。``custom`` 模式的 ``peripherals`` 列表必须为空；``events_cfg`` 与计时字段的配置方式与其他子类型一致。
+注册函数名必须与 ``board_devices.yaml`` 中的 ``name`` 完全一致。BMGR 初始化时通过设备名查找该函数，并将返回的 ``button_driver_t`` 交给 ``iot_button_create()``。``custom`` 模式的 ``peripherals`` 列表必须为空；``events_cfg`` 与计时字段的配置方式与其他子类型一致。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`。
 
 完整字段
 ------------

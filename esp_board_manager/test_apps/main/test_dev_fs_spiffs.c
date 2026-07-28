@@ -5,15 +5,16 @@
  * See LICENSE file for details.
  */
 
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
-#include <errno.h>
 #include "esp_log.h"
+#include "dev_fs_spiffs.h"
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
-#include "dev_fs_spiffs.h"
+#include "bmgr_test_names.h"
 
 static const char *TAG = "TEST_SPIFFS";
 
@@ -50,12 +51,12 @@ void test_spiffs(void)
     const char *expected_test_content = "This is esp board manager\n";
 
     dev_fs_spiffs_config_t *cfg = NULL;
-    if (esp_board_manager_get_device_config("fs_spiffs", (void **)&cfg) != ESP_OK) {
+    if (esp_board_manager_get_device_config(BMGR_TEST_NAME_FS_SPIFFS, (void **)&cfg) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get SPIFFS configuration");
         return;
     }
 
-    esp_board_device_show("fs_spiffs");
+    esp_board_device_show(BMGR_TEST_NAME_FS_SPIFFS);
 
     ESP_LOGI(TAG, "SPIFFS Configuration:");
     ESP_LOGI(TAG, "  Name: %s", cfg->name);

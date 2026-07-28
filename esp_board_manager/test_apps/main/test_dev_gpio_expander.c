@@ -6,13 +6,14 @@
  */
 
 #include <inttypes.h>
-#include "esp_log.h"
 #include "esp_check.h"
+#include "esp_io_expander.h"
+#include "esp_log.h"
+#include "dev_gpio_expander.h"
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
-#include "dev_gpio_expander.h"
-#include "esp_io_expander.h"
+#include "bmgr_test_names.h"
 
 #define GPIO_EXPANDER_TEST  IO_EXPANDER_PIN_NUM_1
 
@@ -21,14 +22,14 @@ static const char *TAG = "TEST_GPIO_EXPANDER";
 void test_dev_gpio_expander(void)
 {
     void *dev_cfg = NULL;
-    esp_err_t ret = esp_board_manager_get_device_config(ESP_BOARD_DEVICE_NAME_GPIO_EXPANDER, &dev_cfg);
+    esp_err_t ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_GPIO_EXPANDER, &dev_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get gpio_expander device config: %s", esp_err_to_name(ret));
         return;
     }
 
     void *dev_handle = NULL;
-    ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_GPIO_EXPANDER, &dev_handle);
+    ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_GPIO_EXPANDER, &dev_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get gpio_expander device handle: %s", esp_err_to_name(ret));
         return;

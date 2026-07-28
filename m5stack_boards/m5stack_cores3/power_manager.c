@@ -4,60 +4,74 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <string.h>
+
 #include "esp_log.h"
 #include "esp_err.h"
-#include "esp_check.h"
 #include "driver/i2c_master.h"
 #include "esp_board_device.h"
 #include "esp_board_periph.h"
 #include "gen_board_device_custom.h"
 #include "esp_io_expander.h"
-#include "power_manager.h"
+#include "dev_power_ctrl.h"
 
-static const char *TAG = "CUSTOM_POWER_MANAGER";
+static const char *TAG = "CORES3_POWER_CTRL";
 
-esp_err_t cores3_power_manager_enable(void *device_handle, cores3_power_manager_feature_t feature)
+typedef enum {
+    CORES3_POWER_CTRL_FEATURE_LCD,
+    CORES3_POWER_CTRL_FEATURE_TOUCH,
+    CORES3_POWER_CTRL_FEATURE_SPEAKER,
+    CORES3_POWER_CTRL_FEATURE_SD,
+    CORES3_POWER_CTRL_FEATURE_CAMERA,
+} cores3_power_ctrl_feature_t;
+
+static esp_err_t cores3_power_ctrl_enable(i2c_master_dev_handle_t pm_handle, cores3_power_ctrl_feature_t feature)
 {
-    i2c_master_dev_handle_t axp2101_h = ((cores3_power_manager_handle_t *)device_handle)->pm_handle;
     esp_err_t err = ESP_OK;
     uint8_t data[2];
     esp_io_expander_handle_t *gpio_exp_aw9523 = NULL;
     err = esp_board_device_get_handle("gpio_expander", (void **)&gpio_exp_aw9523);
     switch (feature) {
-        case CORES3_POWER_MANAGER_FEATURE_LCD:
+        case CORES3_POWER_CTRL_FEATURE_LCD:
             /* Enable LCD */
             err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 9), 1);
+            /* AXP DLDO1 Enable / LCD backlight (moved out of AXP init into LCD power path) */
+            data[0] = 0x90;
+            data[1] = 0xBF;
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            /* AXP DLDO1 voltage / LCD backlight */
+            data[0] = 0x99;
+            data[1] = 0b00011000;
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
             break;
-        case CORES3_POWER_MANAGER_FEATURE_TOUCH:
+        case CORES3_POWER_CTRL_FEATURE_TOUCH:
             /* Enable Touch */
             err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 0), 1);
             break;
-        case CORES3_POWER_MANAGER_FEATURE_SD:
-            /* AXP ALDO4 voltage / SD Card / 3V3 */
-            data[0] = 0x95;
-            data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(axp2101_h, data, sizeof(data), 1000);
-            /* Enable SD */
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 4), 1);
-            break;
-        case CORES3_POWER_MANAGER_FEATURE_SPEAKER:
+        case CORES3_POWER_CTRL_FEATURE_SPEAKER:
             /* AXP ALDO1 voltage / PA PVDD / 1V8 */
             data[0] = 0x92;
             data[1] = 0b00001101;  // 1V8
-            err |= i2c_master_transmit(axp2101_h, data, sizeof(data), 1000);
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
             /* AXP ALDO2 voltage / Codec / 3V3 */
             data[0] = 0x93;
             data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(axp2101_h, data, sizeof(data), 1000);
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
             /* AXP ALDO3 voltage / Codec+Mic / 3V3 */
             data[0] = 0x94;
             data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(axp2101_h, data, sizeof(data), 1000);
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
             err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 2), 1);
             break;
-        case CORES3_POWER_MANAGER_FEATURE_CAMERA:
+        case CORES3_POWER_CTRL_FEATURE_SD:
+            /* AXP ALDO4 voltage / SD Card / 3V3 */
+            data[0] = 0x95;
+            data[1] = 0b00011100;  // 3V3
+            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            /* Enable SD */
+            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 4), 1);
+            break;
+        case CORES3_POWER_CTRL_FEATURE_CAMERA:
             err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 8), 1);
             break;
         default:
@@ -68,71 +82,95 @@ esp_err_t cores3_power_manager_enable(void *device_handle, cores3_power_manager_
     return err;
 }
 
-int cores3_power_manager_init(void *config, int cfg_size, void **device_handle)
+/**
+ * @brief  Initialize the CoreS3 board power controller.
+ */
+static int cores3_power_ctrl_init(const dev_power_ctrl_config_t *config, void **context)
 {
-    ESP_LOGI(TAG, "Initializing power_manager device");
-    dev_custom_axp2101_power_manager_config_t *power_manager_cfg = (dev_custom_axp2101_power_manager_config_t *)config;
-
-    if (strcmp(power_manager_cfg->chip, "axp2101") != 0) {
-        ESP_LOGE(TAG, "Unsupported power_manager chip: %s", power_manager_cfg->chip);
+    const dev_power_ctrl_custom_sub_config_t *custom_cfg = &config->sub_cfg.custom;
+    const dev_custom_axp2101_power_manager_custom_config_t *power_cfg = custom_cfg->user_cfg;
+    if (power_cfg == NULL || custom_cfg->periph_count != 1 || custom_cfg->periph_names == NULL) {
+        ESP_LOGE(TAG, "Invalid AXP2101 power controller configuration");
         return ESP_ERR_INVALID_ARG;
     }
 
     i2c_master_bus_handle_t i2c_master_handle = NULL;
-    esp_err_t err = esp_board_periph_get_handle(power_manager_cfg->peripheral_name, (void **)&i2c_master_handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get i2c handle");
-        return err;
-    }
-
-    cores3_power_manager_handle_t *handle = calloc(1, sizeof(cores3_power_manager_handle_t));
-    if (handle == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate power_manager handle");
-        return ESP_ERR_NO_MEM;
+    esp_err_t err = esp_board_periph_get_handle(custom_cfg->periph_names[0], (void **)&i2c_master_handle);
+    if (err != ESP_OK || i2c_master_handle == NULL) {
+        ESP_LOGE(TAG, "Failed to get I2C handle %s: %d", custom_cfg->periph_names[0], err);
+        return err != ESP_OK ? err : ESP_ERR_INVALID_STATE;
     }
 
     const i2c_device_config_t axp2101_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = power_manager_cfg->i2c_addr,
-        .scl_speed_hz = power_manager_cfg->frequency,
+        .device_address = power_cfg->i2c_addr,
+        .scl_speed_hz = power_cfg->frequency,
     };
-    err = i2c_master_bus_add_device(i2c_master_handle, &axp2101_config, &handle->pm_handle);
+    i2c_master_dev_handle_t pm_handle = NULL;
+    err = i2c_master_bus_add_device(i2c_master_handle, &axp2101_config, &pm_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add AXP2101 device to I2C bus");
-        free(handle);
         return err;
     }
 
-    cores3_power_manager_enable(handle, CORES3_POWER_MANAGER_FEATURE_SD);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    cores3_power_manager_enable(handle, CORES3_POWER_MANAGER_FEATURE_SPEAKER);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    cores3_power_manager_enable(handle, CORES3_POWER_MANAGER_FEATURE_LCD);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    cores3_power_manager_enable(handle, CORES3_POWER_MANAGER_FEATURE_TOUCH);
-
-    const uint8_t lcd_bl_en[] = {0x90, 0xBF};  // AXP DLDO1 Enable
-    ESP_RETURN_ON_ERROR(i2c_master_transmit(handle->pm_handle, lcd_bl_en, sizeof(lcd_bl_en), 1000), TAG, "I2C write failed");
-    const uint8_t lcd_bl_val[] = {0x99, 0b00011000};  // AXP DLDO1 voltage
-    ESP_RETURN_ON_ERROR(i2c_master_transmit(handle->pm_handle, lcd_bl_val, sizeof(lcd_bl_val), 1000), TAG, "I2C write failed");
-
-    *device_handle = handle;
+    *context = pm_handle;
     return ESP_OK;
 }
 
-int cores3_power_manager_deinit(void *device_handle)
+static int cores3_power_ctrl_deinit(void *context)
 {
-    if (device_handle == NULL) {
-        ESP_LOGW(TAG, "Power manager device handle is NULL");
+    i2c_master_dev_handle_t pm_handle = (i2c_master_dev_handle_t)context;
+    if (pm_handle == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    cores3_power_manager_handle_t *handle = (cores3_power_manager_handle_t *)device_handle;
-    esp_err_t err = i2c_master_bus_rm_device(handle->pm_handle);
+
+    esp_err_t err = i2c_master_bus_rm_device(pm_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to remove AXP2101 device from I2C bus");
+        ESP_LOGE(TAG, "Failed to remove AXP2101 device from I2C bus: %d", err);
     }
-    free(handle);
-    return ESP_OK;
+    return err;
 }
 
-CUSTOM_DEVICE_IMPLEMENT(axp2101_power_manager, cores3_power_manager_init, cores3_power_manager_deinit);
+/**
+ * @brief  Set the power state for a CoreS3 consumer device.
+ */
+static int cores3_power_ctrl_set_power(void *context, const char *device_name, bool power_on)
+{
+    i2c_master_dev_handle_t pm_handle = (i2c_master_dev_handle_t)context;
+    if (pm_handle == NULL || device_name == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* The original board only ever powered rails up; powering off is a no-op. */
+    if (!power_on) {
+        return ESP_OK;
+    }
+
+    cores3_power_ctrl_feature_t feature;
+    if (strcmp(device_name, "display_lcd") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_LCD;
+    } else if (strcmp(device_name, "lcd_touch") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_TOUCH;
+    } else if (strcmp(device_name, "audio_dac") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_SPEAKER;
+    } else if (strcmp(device_name, "audio_adc") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_SPEAKER;
+    } else if (strcmp(device_name, "fs_sdcard") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_SD;
+    } else if (strcmp(device_name, "camera") == 0) {
+        feature = CORES3_POWER_CTRL_FEATURE_CAMERA;
+    } else {
+        ESP_LOGW(TAG, "no power branch for device %s", device_name);
+        return 0;
+    }
+
+    return cores3_power_ctrl_enable(pm_handle, feature);
+}
+
+static const dev_power_ctrl_custom_ops_t s_cores3_power_ctrl_ops = {
+    .init      = cores3_power_ctrl_init,
+    .deinit    = cores3_power_ctrl_deinit,
+    .set_power = cores3_power_ctrl_set_power,
+};
+
+DEVICE_EXTRA_FUNC_REGISTER(axp2101_power_manager, &s_cores3_power_ctrl_ops);

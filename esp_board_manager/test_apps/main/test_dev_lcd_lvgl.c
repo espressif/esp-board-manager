@@ -10,11 +10,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "lvgl.h"
-#include "esp_lvgl_port.h"
-#include "esp_board_manager.h"
 #include "esp_board_device.h"
+#include "esp_board_manager.h"
 #include "esp_board_periph.h"
+#include "esp_lvgl_port.h"
+#include "lvgl.h"
 #include "test_dev_lcd_lvgl.h"
 
 static const char *TAG = "TEST_DEV_LCD_LVGL";

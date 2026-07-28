@@ -28,7 +28,7 @@ class BoardManagerConfig:
     C_CONSTANT_PREFIXES = {
         'GPIO_', 'I2C_', 'I2S_', 'SDMMC_', 'SPI_', 'UART_', 'PWM_', 'LEDC_',
         'LCD_', 'SD_', 'ADC_', 'DAC_', 'RMT_', 'TWAI_', 'CAN_', 'USB_',
-        'BIT64'
+        'BIT64', 'esp_bmgr_'
     }
 
     # Default values
