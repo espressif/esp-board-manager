@@ -13,18 +13,17 @@ devices:
   - name: audio_dac
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 1
-      dac_channel_mask: "1"     # Mono: left channel
-      mclk_enabled: true        # ES8311 needs MCLK from ESP32
-      aec: false
+      sys_cfg:
+        no_mclk: false
+      dac_cfg:
+        ref_enable: true
     peripherals:
       - name: gpio_pa_control   # NS4150B CTRL
         gain: 6                 # NS4150B gain in dB (per datasheet typical value)
-        active_level: 1
+        pa_active_level: 1
       - name: i2s_audio_out
       - name: i2c_master
         address: 0x30           # ES8311 7-bit 0x18 << 1
@@ -34,16 +33,13 @@ devices:
   - name: audio_adc
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
       dac_enabled: false
-      adc_max_channel: 1
-      adc_channel_mask: "1"     # Mono: left channel (MIC1P/MIC1N)
-      adc_channel_labels: ['FC']  # Front-Center mono microphone
-      adc_init_gain: 0
-      mclk_enabled: true
-      aec: false
+      sys_cfg:
+        no_mclk: false
+      adc_cfg:
+        label: [FC, RE]
     peripherals:
       - name: i2s_audio_in
       - name: i2c_master

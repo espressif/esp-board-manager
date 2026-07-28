@@ -12,19 +12,15 @@ devices:
   - name: audio_dac
     chip: es8388
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 2
-      dac_channel_mask: "11"
-      dac_init_gain: 0
-      mclk_enabled: true
-      aec: false
+      sys_cfg:
+        no_mclk: false
     peripherals:
       - name: gpio_power_amp
         gain: 6
-        active_level: 1
+        pa_active_level: 1
       - name: i2s_audio_out
       - name: i2c_master
         address: 0x20
@@ -34,15 +30,12 @@ devices:
   - name: audio_adc
     chip: es8388
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 2
-      adc_channel_mask: "11"
-      adc_channel_labels: ["FL", "FR"]
-      adc_init_gain: 0
-      mclk_enabled: true
-      aec: false
+      sys_cfg:
+        no_mclk: false
+      adc_cfg:
+        label: [FL, FR]
     peripherals:
       - name: i2s_audio_in
       - name: i2c_master

@@ -15,7 +15,7 @@ peripherals:
   - name: i2s_audio_out
     type: i2s
     role: master
-    format: std-out
+    format: tdm-out
     config: &i2s_audio_config
       port: 1
       sample_rate_hz: 22050
@@ -35,7 +35,7 @@ peripherals:
   - name: i2s_audio_in
     type: i2s
     role: master
-    format: std-in
+    format: tdm-in
     config: *i2s_audio_config
 
   # Boot button on the main board.

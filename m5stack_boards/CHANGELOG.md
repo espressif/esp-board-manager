@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4
+
+### Modifications
+
+- Migrated M5STACK CORES3 and TAB5 audio codec configurations to the `esp_codec_dev` 2.0 initialization layout (`sys_cfg` and `adc_cfg`).
+
 ## 0.5.3
 
 ### Changed

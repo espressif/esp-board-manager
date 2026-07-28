@@ -20,9 +20,10 @@ devices:
   - name: audio_adc
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
+      sys_cfg:
+        no_mclk: true
     peripherals:
       - name: i2s_audio_in
       - &es8311_i2c_master
@@ -33,13 +34,14 @@ devices:
   - name: audio_dac
     chip: es8311
     type: audio_codec
-    version: default
     power_ctrl_device: codec_power
     config:
       dac_enabled: true
+      sys_cfg:
+        no_mclk: true
     peripherals:
       - name: i2s_audio_out
       - name: gpio_pa_control
         gain: 0                        # dB
-        active_level: 1                # 0-low, 1-high
+        pa_active_level: 1             # 0-low, 1-high
       - *es8311_i2c_master

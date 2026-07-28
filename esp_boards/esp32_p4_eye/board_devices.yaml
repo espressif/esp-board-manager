@@ -20,13 +20,9 @@ devices:
     chip: internal
     type: audio_codec
     power_ctrl_device: mic_power_ctrl
-    version: default
     config:
       adc_enabled: true
       dac_enabled: false
-      adc_max_channel: 1
-      adc_channel_mask: "1"
-      adc_init_gain: 0
     peripherals:
       - name: i2s_audio_in
 

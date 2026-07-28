@@ -57,17 +57,17 @@ devices:
   - name: audio_dac
     chip: es8389
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 2
-      dac_channel_mask: "11"
-      mclk_enabled: false
+      sys_cfg:
+        no_mclk: true
+      dac_cfg:
+        ref_enable: true
     peripherals:
       - name: gpio_pa_control
         gain: 6
-        active_level: 1
+        pa_active_level: 1
       - name: i2s_audio_out
       - name: i2c_master
         address: 0x20
@@ -77,15 +77,14 @@ devices:
   - name: audio_adc
     chip: es8389
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
       dac_enabled: false
-      adc_max_channel: 4
-      adc_channel_mask: "0111"
-      adc_channel_labels: ['NA', 'RE', 'FR', 'FL'] # MSB ~ LSB
-      adc_init_gain: 0
-      mclk_enabled: false
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
+        label: [FL, FR, RE, NA]
     peripherals:
       - name: i2s_audio_in
       - name: i2c_master
@@ -192,21 +191,49 @@ devices:
       - name: i2c_master
         i2c_addr: [0x28]  # GT1151 8-bit I2C address, from 7-bit 0x14
 
+  # Generate the 20 MHz camera XCLK before camera initialization.
+  - name: camera_xclk
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 100
+    peripherals:
+      - name: ledc_camera_xclk
+
+  # The OV3660 needs a stable external XCLK before the generic DVP device probes it.
+  - name: camera_sensor_bringup
+    type: custom
+    depends_on:
+      - camera_xclk
+    config:
+      i2c_name: i2c_master
+      sccb_addr: 60
+      reset_reg: 12296
+      reset_value: 130
+      xclk_stable_ms: 50
+      reset_delay_ms: 20
+      sccb_freq_hz: 200000
+      timeout_ms: 100
+    peripherals:
+      - name: i2c_master
+
   # DVP camera interface. SCCB shares i2c_master with audio/touch.
   - name: camera
     type: camera
     version: default
     sub_type: dvp
+    depends_on:
+      - camera_sensor_bringup
     config:
       dvp_config:
-        reset_io: 60
-        pwdn_io: 61
+        reset_io: -1
+        pwdn_io: -1
         vsync_io: 56
         data_width: CAM_CTLR_DATA_WIDTH_8
         de_io: 57
         pclk_io: 54
-        xclk_io: 55
-        xclk_freq: 20000000
+        xclk_io: -1
+        xclk_freq: 0
         data_io:
           data_io_0: 46
           data_io_1: 47
@@ -218,4 +245,4 @@ devices:
           data_io_7: 53
     peripherals:
       - name: i2c_master
-        frequency: 100000
+        frequency: 200000

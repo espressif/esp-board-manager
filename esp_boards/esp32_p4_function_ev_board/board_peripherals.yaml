@@ -13,7 +13,7 @@ peripherals:
   # I2S configuration for full-duplex audio with ES8311
   - name: i2s_audio_out
     type: i2s
-    format: "std-out"
+    format: tdm-out
     role: master
     config: &i2s_config
       port: 0
@@ -34,7 +34,7 @@ peripherals:
     # I2S configuration for full-duplex audio with ES8311
   - name: i2s_audio_in
     type: i2s
-    format: "std-in"
+    format: tdm-in
     role: master
     config: *i2s_config
 

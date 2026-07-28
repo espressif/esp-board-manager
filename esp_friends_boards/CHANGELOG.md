@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3
+
+### Modifications
+
+- Migrated friend-board audio codec configurations to the `esp_codec_dev` 2.0 initialization layout (`sys_cfg`, `adc_cfg`, and explicit PA GPIO fields).
+
 ## 0.5.2
 
 ### Bug Fixes

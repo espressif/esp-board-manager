@@ -77,7 +77,7 @@
           dac_enabled: true
         peripherals:
           - name: gpio_pa_control
-            active_level: 1
+            pa_active_level: 1
           - name: i2s_audio_out
           - name: i2c_master
             address: 0x30               # [TO_BE_CONFIRMED] I2C device address
@@ -263,9 +263,6 @@ PDM 数字麦克风是\ ``chip: internal``\ 路径中使用 I2S 的典型形态�
         config:
           adc_enabled: true
           dac_enabled: false
-          adc_max_channel: 1                # [TO_BE_CONFIRMED] 最大麦克风通道数
-          adc_channel_mask: "1"             # [TO_BE_CONFIRMED] 通道掩码，按位对应通道（"1" 表示通道 0）
-          adc_init_gain: 0                  # [TO_BE_CONFIRMED] 初始增益
         peripherals:
           - name: i2s_audio_in
 
@@ -323,7 +320,7 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
           - name: i2s_audio_out
           - name: gpio_pa_control           # 可选：PA 控制引脚
             gain: 6                         # [TO_BE_CONFIRMED] PA 增益（dB）
-            active_level: 1                 # PA 控制引脚有效电平
+            pa_active_level: 1              # PA 控制引脚有效电平
 
 若扬声器有 PA 控制引脚，需在 ``board_peripherals.yaml`` 中额外定义 ``gpio_pa_control`` 外设（``type: gpio``）。板级参考：``boards/esp32_c3_lyra/board_peripherals.yaml``、``boards/esp32_c3_lyra/board_devices.yaml``。
 
@@ -342,47 +339,43 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 
 .. code-block:: yaml
 
-    # Example Audio Codec device configuration (single-direction logical device)
+    # Codec_dev 2.0 initialization configuration (single-direction logical device)
     - name: audio_codec          # The name of the device, must be unique
       chip: generic_codec        # [TO_BE_CONFIRMED] Codec chip type (es8311, es7210, etc.)
-      type: audio_codec          # The type of the device, must be unique
-      version: 1.0.0
+      type: audio_codec
       config:
-        # NOTE:
         # A single logical dev_audio_codec instance must not enable both ADC and DAC at the same time.
-        # If your board uses one physical codec chip for full-duplex audio, model it as two logical
-        # devices in board_devices.yaml (for example: audio_adc and audio_dac).
+        # Model a full-duplex physical codec as two devices, for example audio_adc and audio_dac.
+        adc_enabled: false       # [TO_BE_CONFIRMED] Enable input device creation
+        dac_enabled: false       # [TO_BE_CONFIRMED] Enable output device creation
 
-        # ADC Configuration
-        adc_enabled: false                   # [TO_BE_CONFIRMED] Enable ADC functionality (default: false)
-        adc_max_channel: 0                   # Maximum number of ADC channels (default: 0)
-        # ADC channel mask: 1-enable, 0-disable, MSB to LSB: mic3,mic2,mic1,mic0
-        # Example: "0111" means Mic0=1(enable), Mic1=1(enable), Mic2=1(enable), Mic3=0(disable)
-        adc_channel_mask: "0"                # ADC channel mask (default: "0")
-        # ADC channel logical labels (supports the following only), comma separated string, MSB to LSB:
-        # - FC: Front Center
-        # - RE: Reference
-        # - FL/FR: Front Left/Right
-        # - SL/SR: Side Left/Right
-        # - BL/BR: Back Left/Right
-        # - NA: Not Available/Not Enable
-        adc_channel_labels: []               # ADC logic labels (default: [])
+        # Direct mapping to audio_codec_cfg_t.sys_cfg. Do not add a `codec:` level.
+        sys_cfg:
+          is_master: false       # Codec I2S role: false is slave, true is master
+          no_mclk: true          # true disables external MCLK; false requires external MCLK
 
-        adc_init_gain: 0                     # ADC initial gain in dB (default: 0)
+        # Direct mapping to audio_codec_cfg_t.adc_cfg.
+        adc_cfg:
+          digital_mic: false
+          # ADC channel logical labels (supports the following only), comma separated string, MSB to LSB:
+          # - FC: Front Center
+          # - RE: Reference
+          # - FL/FR: Front Left/Right
+          # - SL/SR: Side Left/Right
+          # - BL/BR: Back Left/Right
+          # - NA: Not Available/Not Enable
+          # Labels are in codec_dev 2.0 channel order, from LSB to MSB.
+          label: []
 
-        # DAC Configuration
-        dac_enabled: false                   # [TO_BE_CONFIRMED] Enable DAC functionality (default: false)
-        dac_max_channel: 0                   # Maximum number of DAC channels (default: 0)
-        # DAC channel mask: 1-enable, 0-disable, layout: left, right
-        # Example: "11" means both left and right channels enabled
-        dac_channel_mask: "0"                # DAC channel mask (default: "0")
-        dac_init_gain: 0                     # DAC initial gain in dB (default: 0)
+        # Direct mapping to audio_codec_cfg_t.dac_cfg. Configure only when the codec supports it.
+        dac_cfg:
+          ref_enable: false
+          ref_dac_ch: 0
+          real_adc_data_ch: 0
 
-        # Audio processing settings
-        mclk_enabled: false                  # Enable MCLK (Master Clock) output (default: false)
-        aec: false                           # Enable Acoustic Echo Cancellation (default: false)
-        eq: false                            # Enable Equalizer (default: false)
-        alc: false                           # Enable Automatic Level Control (default: false)
+        # adc_channel_mask/dac_channel_mask are esp_codec_dev_open() sample-info settings.
+        # *_init_gain requires post-open set_in_gain()/set_out_vol(); AEC, EQ and ALC need a separate
+        # runtime processing lifecycle. They are intentionally outside dev_audio_codec initialization.
 
         # Data interface will be auto-selected by parser:
         # 1) if peripherals includes adc_* -> ADC path (reuse handle)
@@ -391,10 +384,14 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 
       # Peripheral configuration
       peripherals:
-        # Power amplifier configuration, if using GPIO to control PA, this peripheral needs to be configured
-        - name: gpio                         # GPIO peripheral for power amplifier control
-          gain: 0.0                          # Amplifier gain in dB (default: 0.0)
-          active_level: 0                    # Active level (0-low, 1-high) (default: 0)
+        # PA GPIO dependency. It must reference a type: gpio peripheral from board_peripherals.yaml.
+        - name: gpio_power_amp
+          gain: 0.0
+          pa_active_level: 1
+
+        # Optional codec reset GPIO. reset_active_level is the asserted reset level.
+        - name: gpio_codec_reset
+          reset_active_level: 0
 
         # I2S interface configuration
         - name: i2s_audio_out                # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
@@ -565,7 +562,7 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
    * - ``gpio``
      - ``io``
      - 有 PA 控制或静音控制时使用
-     - 设备侧引用条目填写 ``gain`` 和 ``active_level``
+     - 设备侧引用条目填写 ``gain`` 和 ``pa_active_level``
    * - ``adc``
      - ``continuous``
      - 使用内部 ADC 音频输入并复用外设时使用

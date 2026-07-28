@@ -12,5 +12,5 @@
 
    from-manual-board-init
    migrate-to-0.6
+   migrate-to-0.7
    version-migration
-

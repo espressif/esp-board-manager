@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+### Features
+
+- Migrated `dev_audio_codec` to `espressif/esp_codec_dev` `^2.0.0-beta1`. Audio codec YAML now exposes the 2.0 initialization groups `sys_cfg`, `adc_cfg`, and `dac_cfg`; PA and reset GPIO controls are configured through peripheral references. See `docs/codec_dev_2_0_migration.md` for legacy YAML and runtime-setting migration details.
+
 ## 0.6.1
 
 ### Features

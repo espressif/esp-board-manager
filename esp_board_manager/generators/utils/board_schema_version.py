@@ -13,8 +13,11 @@ from typing import Any, FrozenSet, Optional
 # Schema generation implemented by this Board Manager toolchain (not “the only value forever”).
 CURRENT_BOARD_YAML_SCHEMA_VERSION = '1.0.0'
 
-# All schema tags this release’s parser accepts. Extend when new generations ship.
-SUPPORTED_BOARD_YAML_SCHEMA_VERSIONS: FrozenSet[str] = frozenset({CURRENT_BOARD_YAML_SCHEMA_VERSION})
+# The default remains 1.0.0 so omitted versions preserve the legacy contract.
+# Device dependencies do not define Board Manager YAML schema generations.
+SUPPORTED_BOARD_YAML_SCHEMA_VERSIONS: FrozenSet[str] = frozenset({
+    CURRENT_BOARD_YAML_SCHEMA_VERSION,
+})
 
 # YAML may use this alias; it resolves to CURRENT_BOARD_YAML_SCHEMA_VERSION for checks and metadata.
 _SCHEMA_DEFAULT_ALIAS = 'default'
@@ -81,11 +84,10 @@ def warn_if_invalid_board_yaml_schema_version(logger, value: Any, where: str) ->
         return
     logger.warning(
         '⚠️  WARNING: Unrecognized board YAML schema `version` in %s: %r. '
-        'This Board Manager release implements schema generation %r; omit `version`, '
-        'use `version: default` (same as current), or set `version: %r`. '
+        'This Board Manager release recognizes schema generations %s; omit `version`, '
+        'use `version: default` (same as the legacy default), or use one of those values. '
         'Other values will be reserved for future generations after breaking changes.',
         where,
         value,
-        CURRENT_BOARD_YAML_SCHEMA_VERSION,
-        CURRENT_BOARD_YAML_SCHEMA_VERSION,
+        ', '.join(sorted(SUPPORTED_BOARD_YAML_SCHEMA_VERSIONS)),
     )

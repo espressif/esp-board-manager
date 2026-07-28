@@ -20,13 +20,11 @@ devices:
   - name: audio_dac
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 1
-      dac_channel_mask: "1"
-      mclk_enabled: true
+      sys_cfg:
+        no_mclk: false
     peripherals:
       - name: i2s_audio_out
       - name: i2c_master
@@ -37,13 +35,13 @@ devices:
   - name: audio_adc
     chip: es7210
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 4
-      adc_channel_mask: "0111"
-      adc_channel_labels: ['NA', 'RE', 'FR', 'FL']
-      adc_init_gain: 0
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
+        label: [FL, FR, RE, NA]
     peripherals:
       - name: i2s_audio_in
       - name: i2c_master

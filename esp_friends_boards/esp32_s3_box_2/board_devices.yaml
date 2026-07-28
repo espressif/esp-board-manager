@@ -18,13 +18,10 @@ devices:
   - name: audio_dac
     chip: es8389
     type: audio_codec
-    version: default
     config:
       dac_enabled: true
-      dac_max_channel: 2
-      dac_channel_mask: "11"
-      dac_init_gain: 0
-      mclk_enabled: true
+      sys_cfg:
+        no_mclk: false
     peripherals:
       - name: i2s_audio_out
       - name: i2c_master
@@ -34,12 +31,10 @@ devices:
   - name: audio_adc
     chip: es8389
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 2
-      adc_channel_mask: "11"
-      adc_init_gain: 0
+      sys_cfg:
+        no_mclk: false
     peripherals:
       - name: i2s_audio_in
       - name: i2c_master

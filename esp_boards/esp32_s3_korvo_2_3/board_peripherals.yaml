@@ -44,7 +44,6 @@ peripherals:
       <<: *i2s_config                   # Inherit base I2S configuration
       mclk_multiple: 384                # Set MCLK multiple for 3 slots
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2  # Override specific slot mask
-      slot_mode: I2S_SLOT_MODE_STEREO
 
   # Power amplifier control
   - name: gpio_power_amp

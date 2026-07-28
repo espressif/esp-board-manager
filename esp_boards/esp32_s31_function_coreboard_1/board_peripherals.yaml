@@ -40,7 +40,7 @@ peripherals:
   - name: i2s_audio_out
     type: i2s
     role: master
-    format: std-out
+    format: tdm-out
     config: &i2s_audio_config
       port: 0
       sample_rate_hz: 48000
@@ -60,7 +60,7 @@ peripherals:
   - name: i2s_audio_in
     type: i2s
     role: master
-    format: std-in
+    format: tdm-in
     config: *i2s_audio_config
 
   # NS4150B PA enable. Schematic net: PA_CTRL (active-high).
