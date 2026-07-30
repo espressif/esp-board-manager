@@ -54,10 +54,10 @@ peripherals:
     config:
       spi_bus_config:
         spi_port: SPI2_HOST
-        data0_io_num: 13
-        data1_io_num: 14
-        data2_io_num: 15
-        data3_io_num: 16
+        data0_io_num: 11
+        data1_io_num: 13
+        data2_io_num: 14
+        data3_io_num: 9
         sclk_io_num: 12
         max_transfer_sz: 73600
 
@@ -131,5 +131,5 @@ peripherals:
     type: gpio
     role: io
     config:
-      pin: 11
+      pin: 16
       mode: GPIO_MODE_INPUT

@@ -163,7 +163,7 @@ devices:
       invert_color: false
       need_reset: true
       io_spi_config:
-        cs_gpio_num: 9
+        cs_gpio_num: 10
         dc_gpio_num: -1
         spi_mode: 0
         pclk_hz: 40000000
@@ -173,7 +173,7 @@ devices:
         flags:
           quad_mode: true
       lcd_panel_config:
-        reset_gpio_num: 10
+        reset_gpio_num: 15
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
         data_endian: LCD_RGB_DATA_ENDIAN_BIG
         bits_per_pixel: 16
