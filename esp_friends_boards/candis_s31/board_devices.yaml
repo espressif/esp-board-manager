@@ -208,7 +208,7 @@ devices:
           mirror_y: false
     peripherals:
       - name: i2c_main
-        i2c_addr: [0x2A]
+        i2c_addr: [0x2A]  # Board Manager uses the 8-bit form of 7-bit address 0x15.
 
   - name: camera
     type: camera

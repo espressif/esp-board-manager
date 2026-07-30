@@ -125,7 +125,18 @@ static int pmic_init(void *cfg, int cfg_size, void **device_handle)
         .scl_speed_hz = config->frequency_hz,
     };
     ret = tg28_sw_create(bus, &driver_config, (tg28_sw_handle_t *)device_handle);
+    if (ret == ESP_OK) {
+        ret = tg28_sw_configure_power_key_interrupts(
+                  (tg28_sw_handle_t)*device_handle, TG28_SW_POWER_KEY_IRQ_ALL);
+    }
+    if (ret == ESP_OK) {
+        ret = tg28_sw_configure_external_fixed_ts((tg28_sw_handle_t)*device_handle);
+    }
     if (ret != ESP_OK) {
+        if (*device_handle != NULL) {
+            tg28_sw_delete((tg28_sw_handle_t)*device_handle);
+            *device_handle = NULL;
+        }
         custom_unref_peripherals(config->peripheral_names, config->peripheral_count);
     }
     return ret;
@@ -211,7 +222,7 @@ static int type_c_init(void *cfg, int cfg_size, void **device_handle)
     }
 
     gpio_set_level(enable->gpio_num, config->enable_active_level);
-    vTaskDelay(pdMS_TO_TICKS(2));
+    vTaskDelay(pdMS_TO_TICKS(FUSB303B_ENABLE_TO_I2C_DELAY_MS));
 
     fusb303b_handle_t driver = NULL;
     for (size_t index = 0; index < 2; ++index) {
