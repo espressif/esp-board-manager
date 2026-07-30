@@ -26,3 +26,4 @@ For more information about ESP Board Manager, see the [`esp_board_manager` compo
 | [`ESP32-C5-Spot`](https://oshwhub.com/esp-college/esp-spot) | ESP32-C5 | ES8311 dual | - | - | - | - | - | - |
 | ESP32-S3-BOX-2 | ESP32-S3 | ES8389 + ES7210 | SPI | ST7789 | - | - | GPIO button | - |
 | ESP32-S3-Korvo-2L | ESP32-S3 | ES8311 | SDMMC | - | - | - | - | - |
+| Candis-S31 | ESP32-S31 | ES8389 | SDMMC | CO5300 | CST820 | DVP | - | WS2812 |
