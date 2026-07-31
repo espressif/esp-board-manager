@@ -17,9 +17,7 @@
 #include "esp_board_extra_func_entry.h"
 #include "esp_board_periph.h"
 #include "esp_err.h"
-#include "esp_lcd_co5300.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_lcd_touch_cst820.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -29,8 +27,23 @@
 #include "rx8130ce.h"
 #include "tg28_sw.h"
 
+/* Optional chip driver headers: guard the include and the matching weak
+ * factory body together so a project or amend built without that driver
+ * component still compiles and links. This is the weak + __has_include
+ * convention from docs/programming-guide/board-directory (reference:
+ * esp32_s3_korvo_2_3/setup_device.c). */
+#if __has_include(<esp_lcd_co5300.h>)
+#define HAS_CO5300  1
+#include "esp_lcd_co5300.h"
+#endif  /* __has_include(<esp_lcd_co5300.h>) */
+#if __has_include(<esp_lcd_touch_cst820.h>)
+#define HAS_CST820  1
+#include "esp_lcd_touch_cst820.h"
+#endif  /* __has_include(<esp_lcd_touch_cst820.h>) */
+
 static const char *TAG = "CANDIS_S31_SETUP";
 
+#if defined(HAS_CO5300)
 static const co5300_lcd_init_cmd_t s_panel_init[] = {
     {0xFE, (uint8_t[]) {0x00}, 1, 0},
     {0xC4, (uint8_t[]) {0x80}, 1, 0},
@@ -51,9 +64,10 @@ static const co5300_vendor_config_t s_panel_vendor_config = {
     .flags.use_qspi_interface = 1,
 };
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
-                                    const esp_lcd_panel_dev_config_t *panel_config,
-                                    esp_lcd_panel_handle_t *ret_panel)
+/* Weak hook: an amend directory can override it with a strong symbol. */
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                          const esp_lcd_panel_dev_config_t *panel_config,
+                                                          esp_lcd_panel_handle_t *ret_panel)
 {
     esp_lcd_panel_dev_config_t config = {0};
     memcpy(&config, panel_config, sizeof(config));
@@ -73,13 +87,17 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
     }
     return ret;
 }
+#endif  /* defined(HAS_CO5300) */
 
-esp_err_t lcd_touch_factory_entry_t(const esp_lcd_panel_io_handle_t io,
-                                    const esp_lcd_touch_config_t *config,
-                                    esp_lcd_touch_handle_t *ret_touch)
+#if defined(HAS_CST820)
+/* Weak hook: an amend directory can override it with a strong symbol. */
+__attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(const esp_lcd_panel_io_handle_t io,
+                                                          const esp_lcd_touch_config_t *config,
+                                                          esp_lcd_touch_handle_t *ret_touch)
 {
     return esp_lcd_touch_new_i2c_cst820(io, config, ret_touch);
 }
+#endif  /* defined(HAS_CST820) */
 
 static int custom_ref_peripheral(const char *name, void **handle)
 {
