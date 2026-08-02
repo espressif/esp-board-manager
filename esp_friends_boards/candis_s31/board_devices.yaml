@@ -5,7 +5,7 @@ devices:
     type: custom
     version: 1.0.0
     dependencies:
-      espressif/tg28_sw: "^0.1.0"
+      espressif/tg28_sw: "^0.3.0"
     config:
       i2c_address: 0x34
       frequency_hz: 400000
@@ -18,7 +18,7 @@ devices:
     type: custom
     version: 1.0.0
     dependencies:
-      espressif/rx8130ce: "^0.1.0"
+      espressif/rx8130ce: "^0.3.0"
     config:
       i2c_address: 0x32
       frequency_hz: 400000
@@ -31,7 +31,7 @@ devices:
     type: custom
     version: 1.0.0
     dependencies:
-      espressif/fusb303b: "^0.1.0"
+      espressif/fusb303b: "^0.2.0"
     config:
       i2c_addresses: [0x21, 0x31]
       frequency_hz: 400000
@@ -68,6 +68,7 @@ devices:
     type: led_strip
     sub_type: rmt
     version: 1.0.0
+    power_ctrl_device: board_power_ctrl
     config:
       strip_gpio_num: 4
       max_leds: 1
@@ -224,7 +225,7 @@ devices:
         de_io: 57
         pclk_io: 54
         xclk_io: 55
-        xclk_freq: 20000000
+        xclk_freq: 24000000
         data_io:
           data_io_0: 46
           data_io_1: 47

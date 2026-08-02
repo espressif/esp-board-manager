@@ -144,11 +144,23 @@ static int pmic_init(void *cfg, int cfg_size, void **device_handle)
     };
     ret = tg28_sw_create(bus, &driver_config, (tg28_sw_handle_t *)device_handle);
     if (ret == ESP_OK) {
+        /* Clear latched interrupt status before enabling the power-key
+         * IRQs, so stale events from the boot ROM or a previous reset do
+         * not fire immediately (same order as the BSP). */
+        uint8_t pending[3] = {0};
+        ret = tg28_sw_get_and_clear_interrupts(
+                  (tg28_sw_handle_t)*device_handle, pending);
+    }
+    if (ret == ESP_OK) {
         ret = tg28_sw_configure_power_key_interrupts(
                   (tg28_sw_handle_t)*device_handle, TG28_SW_POWER_KEY_IRQ_ALL);
     }
     if (ret == ESP_OK) {
-        ret = tg28_sw_configure_external_fixed_ts((tg28_sw_handle_t)*device_handle);
+        /* The board battery has no NTC resistor: the TS pin is the external
+         * fixed input and its current source stays off. */
+        ret = tg28_sw_set_ts_config((tg28_sw_handle_t)*device_handle,
+                                    TG28_SW_TS_MODE_EXTERNAL_FIXED,
+                                    TG28_SW_TS_CURRENT_SOURCE_OFF, 50);
     }
     if (ret != ESP_OK) {
         if (*device_handle != NULL) {
@@ -194,6 +206,8 @@ static int rtc_init(void *cfg, int cfg_size, void **device_handle)
     const rx8130ce_config_t driver_config = {
         .device_address = config->i2c_address,
         .scl_speed_hz = config->frequency_hz,
+        /* Candis-S31 uses a primary backup cell: never charge it. */
+        .backup_charge_enable = false,
     };
     ret = rx8130ce_create(bus, &driver_config, (rx8130ce_handle_t *)device_handle);
     if (ret != ESP_OK) {
@@ -501,6 +515,12 @@ static int board_power_set(void *context, const char *device_name, bool power_on
             vTaskDelay(pdMS_TO_TICKS(10));
         }
         return ret;
+    }
+    if (strcmp(device_name, "led_strip") == 0) {
+        /* DLDO1 is strapped as a switch passing DCDC1 (3.3V) through
+         * directly, so no voltage programming applies; it is OTP-off and
+         * must be enabled before the WS2812B is driven. */
+        return tg28_sw_regulator_enable(power->pmic, TG28_SW_DLDO1, power_on);
     }
 
     ESP_LOGW(TAG, "No power sequence for device %s", device_name);

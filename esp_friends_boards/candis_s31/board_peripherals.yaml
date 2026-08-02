@@ -116,7 +116,10 @@ peripherals:
       pin: 2
       mode: GPIO_MODE_INPUT
       pull_up: true
-      intr_type: GPIO_INTR_NEGEDGE
+      # TG28 and RX8130CE share this wire-ORed line: an event asserted while
+      # the other device still holds it low produces no new edge, so it must
+      # be level-triggered (same fix as the BSP).
+      intr_type: GPIO_INTR_LOW_LEVEL
 
   - name: gpio_type_c_interrupt
     type: gpio
@@ -125,7 +128,9 @@ peripherals:
       pin: 43
       mode: GPIO_MODE_INPUT
       pull_up: true
-      intr_type: GPIO_INTR_NEGEDGE
+      # The FUSB303B interrupt output stays low until every pending status
+      # bit is cleared, so it is level-active as well.
+      intr_type: GPIO_INTR_LOW_LEVEL
 
   - name: gpio_display_te
     type: gpio
