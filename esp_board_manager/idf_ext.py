@@ -279,54 +279,15 @@ def _append_resolved_sdkconfig_defaults(
         defaults_list.append(resolved)
 
 
-def _find_active_symbol_assignments(defaults_path: str) -> List[Tuple[int, str]]:
-    """Return active CONFIG_* assignments from a defaults file."""
-    line_re_set = re.compile(r'^(CONFIG_[A-Za-z0-9_]+)\s*=')
-    line_re_unset = re.compile(r'^#\s+(CONFIG_[A-Za-z0-9_]+)\s+is\s+not\s+set\s*$')
-    assignments: List[Tuple[int, str]] = []
-
-    with open(defaults_path, 'r', encoding='utf-8') as f:
-        for line_no, raw in enumerate(f, start=1):
-            line = raw.strip()
-            if not line:
-                continue
-            match = line_re_set.match(line) or line_re_unset.match(line)
-            if match:
-                assignments.append((line_no, match.group(1)))
-    return assignments
-
-
-def _warn_user_defaults_shadowed_by_board(
-    *,
-    patch_file: str,
-    project_defaults_paths: List[str],
-    project_dir: str,
-) -> None:
-    """Warn when project sdkconfig.defaults sets symbols also defined by the board."""
-    if not project_defaults_paths or not os.path.exists(patch_file):
-        return
-    board_symbols = {
-        symbol: line_no
-        for line_no, symbol in _find_active_symbol_assignments(patch_file)
-    }
-    if not board_symbols:
-        return
-    idf_target = _parse_idf_target_from_defaults(patch_file)
-    checked_paths = list(project_defaults_paths)
-    if idf_target:
-        checked_paths = _iter_sdkconfig_defaults_with_target(project_defaults_paths, idf_target)
-    for defaults_path in checked_paths:
-        if not os.path.exists(defaults_path):
-            continue
-        for line_no, symbol in _find_active_symbol_assignments(defaults_path):
-            if symbol not in board_symbols:
-                continue
-            rel_path = os.path.relpath(defaults_path, project_dir)
-            print(
-                f'[Board Manager] Warning: {rel_path}:{line_no} sets {symbol}, '
-                'but board_manager.defaults takes precedence. '
-                'Use amend (-a or auto-amend) for board-specific overrides.'
-            )
+def _print_board_defaults_precedence_hint() -> None:
+    print(
+        '[Board Manager] board_manager.defaults has higher priority than the project '
+        'sdkconfig.defaults.'
+    )
+    print(
+        '[Board Manager] If a configuration does not take effect, inspect: '
+        'components/gen_bmgr_codes/board_manager.defaults'
+    )
 
 
 def action_extensions(base_actions: Dict, project_path: str) -> Dict:
@@ -393,6 +354,8 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         if not os.path.exists(patch_file):
             return
 
+        _print_board_defaults_precedence_hint()
+
         sdk_file = os.path.join(proj_dir, 'sdkconfig')
         if os.path.exists(sdk_file):
             if _env_flag_true('ESP_BOARD_MANAGER_SKIP_SDKCONFIG_CHECK'):
@@ -436,14 +399,11 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             return
 
         defaults_list: List[str] = []
-        project_defaults_paths: List[str] = []
-
         sdkconfig_defaults = os.path.join(proj_dir, 'sdkconfig.defaults')
         if os.path.exists(sdkconfig_defaults):
             sdkconfig_defaults_abs = os.path.abspath(sdkconfig_defaults)
             if sdkconfig_defaults_abs not in defaults_list:
                 defaults_list.append(sdkconfig_defaults_abs)
-            project_defaults_paths.append(sdkconfig_defaults_abs)
 
         abs_patch_file = os.path.abspath(patch_file)
         if abs_patch_file not in defaults_list:
@@ -469,12 +429,6 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                         continue
                     _append_resolved_sdkconfig_defaults(defaults_list, f, proj_dir)
                 break
-
-        _warn_user_defaults_shadowed_by_board(
-            patch_file=patch_file,
-            project_defaults_paths=project_defaults_paths,
-            project_dir=proj_dir,
-        )
 
         os.environ['SDKCONFIG_DEFAULTS'] = ';'.join(defaults_list)
 
@@ -651,6 +605,14 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             raise RuntimeError('ESP Board Manager configuration generation failed!')
 
         print('✅ ESP Board Manager configuration generation completed successfully!')
+
+        # ``bmgr`` is excluded from the global callback, so report the same
+        # defaults precedence and shadowing diagnostics directly on ``-b``.
+        patch_file = os.path.join(
+            project_dir, 'components', 'gen_bmgr_codes', 'board_manager.defaults'
+        )
+        if os.path.exists(patch_file):
+            _print_board_defaults_precedence_hint()
 
     def _run_bmgr_gen(target_name: str, ctx, args, **kwargs) -> None:
         """

@@ -8,7 +8,7 @@ Board Manager web configurator：[https://board-manager.espressif.com](https://b
 
 This is a board management component developed by Espressif that focuses on the initialization of development board devices. It uses YAML files to describe the configuration of the main controller and external functional devices, automatically generates configuration code, and simplifies the process of adding new boards. It provides a unified device management interface, which not only improves the reusability of device initialization code but also simplifies the adaptation of applications to various development boards.
 
-> **Version Requirements:** Compatible with ESP-IDF release/v5.4(>= v5.4.3) and release/v5.5(>= v5.5.2) branches.
+> **Version Requirements:** Compatible with ESP-IDF release/v5.4(>= v5.4.4) and release/v5.5(>= v5.5.3) branches.
 
 ## Features
 

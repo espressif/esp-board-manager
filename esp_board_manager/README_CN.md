@@ -8,7 +8,7 @@ Board Manager 网页工具：[https://board-manager.espressif.com](https://board
 
 这是由 Espressif 开发的专注于开发板设备初始化的板级管理组件。使用 YAML 文件来描述主控制器和外部功能设备的配置，能够自动生成配置代码，简化了添加新板子的过程。提供了统一的设备管理接口，不仅提高了设备初始化代码的可重用性，还简化了应用程序对各种开发板的适配。
 
-> **版本要求:** 兼容 ESP-IDF release/v5.4(>= v5.4.3) 和 release/v5.5(>= v5.5.2) 分支。
+> **版本要求:** 兼容 ESP-IDF release/v5.4(>= v5.4.4) 和 release/v5.5(>= v5.5.3) 分支。
 
 ## 功能特性
 

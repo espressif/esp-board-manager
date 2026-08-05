@@ -4,7 +4,7 @@
 # See LICENSE file for details.
 
 # Audio codec device config parser
-VERSION = 'v1.0.0'
+VERSION = 'v2.0.0'
 
 import logging
 import sys
@@ -15,6 +15,37 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from generators.adc_channel_mapper import adc_channels_to_gpios, adc_patterns_to_gpios
 
 logger = logging.getLogger(__name__)
+
+_AUDIO_CODEC_PERIPHERAL_ONLY_CONFIG_GROUPS = ('pa_cfg', 'reset_cfg')
+_AUDIO_CODEC_LEGACY_INIT_FIELDS = frozenset({
+    'mclk_enabled',
+    'adc_channel_labels',
+    'adc_max_channel',
+    'adc_channel_mask',
+    'adc_init_gain',
+    'dac_max_channel',
+    'dac_channel_mask',
+    'dac_init_gain',
+    'aec',
+    'eq',
+    'alc',
+})
+
+
+def _validate_audio_codec_config_layout(device_name: str, device_config: dict) -> None:
+    for config_group in _AUDIO_CODEC_PERIPHERAL_ONLY_CONFIG_GROUPS:
+        if config_group in device_config:
+            raise ValueError(
+                f'Audio codec device {device_name} config.{config_group} is configured through peripherals; '
+                f'declare the corresponding GPIO under peripherals instead.'
+            )
+
+    adc_cfg = device_config.get('adc_cfg', {})
+    if isinstance(adc_cfg, dict) and 'adc_channel_labels' in device_config and 'label' in adc_cfg:
+        raise ValueError(
+            f'Audio codec device {device_name} cannot specify both config.adc_channel_labels and '
+            'config.adc_cfg.label.'
+        )
 
 def get_includes() -> list:
     """Return list of required include headers for audio codec device"""
@@ -59,6 +90,22 @@ def _is_input_i2s_peripheral(peripherals_dict, periph_name: str) -> bool:
         return True
     return 'in' in str(format_str).lower().split('-')
 
+def _parse_codec_gpio_peripheral(device_name: str, periph_name: str, peripherals_dict, purpose: str) -> int:
+    _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
+    peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
+    if peripherals_dict is not None:
+        peripheral = peripherals_dict[periph_name]
+        if getattr(peripheral, 'type', None) != 'gpio':
+            raise ValueError(
+                f'Audio codec device {device_name} {purpose} GPIO peripheral must have type gpio'
+            )
+    if 'pin' not in peripheral_config:
+        raise ValueError(
+            f'Audio codec device {device_name} {purpose} GPIO peripheral must define config.pin'
+        )
+    return int(peripheral_config['pin'])
+
+
 def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_dict=None):
     """Parse non-ADC peripherals and collect ADC reuse peripheral name (if any)."""
     # These fields are struct members in dev_audio_codec_config_t (not pointers),
@@ -68,6 +115,11 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
         'port': -1,
         'active_level': 0,
         'gain': 0.0,
+    }
+    reset_cfg = {
+        'name': None,
+        'port': -1,
+        'active_level': 0,
     }
     i2c_cfg = {
         'name': None,
@@ -88,13 +140,73 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
 
     for periph in peripherals:
         periph_name = periph.get('name', '')
+        has_pa_active_level = 'pa_active_level' in periph
+        has_reset_active_level = 'reset_active_level' in periph
+        has_legacy_active_level = 'active_level' in periph
 
-        if periph_name.startswith('gpio'):
-            _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
-            peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
+        if periph.get('role') == 'reset':
+            raise ValueError(
+                f'Audio codec device {device_name} does not support role: reset; '
+                'use reset_active_level on the GPIO peripheral instead.'
+            )
+        if has_pa_active_level and has_reset_active_level:
+            raise ValueError(
+                f'Audio codec device {device_name} peripheral {periph_name} cannot specify both '
+                'pa_active_level and reset_active_level.'
+            )
+        if has_legacy_active_level and has_pa_active_level:
+            raise ValueError(
+                f'Audio codec device {device_name} peripheral {periph_name} cannot specify both '
+                'active_level and pa_active_level.'
+            )
+        if has_legacy_active_level and has_reset_active_level:
+            raise ValueError(
+                f'Audio codec device {device_name} peripheral {periph_name} cannot specify both '
+                'active_level and reset_active_level.'
+            )
+
+        if has_reset_active_level:
+            if reset_cfg['name'] is not None:
+                raise ValueError(
+                    f'Audio codec device {device_name} references multiple reset GPIO peripherals, only one is supported'
+                )
+            reset_cfg = {
+                'name': periph_name,
+                'port': _parse_codec_gpio_peripheral(
+                    device_name, periph_name, peripherals_dict, 'reset'),
+                'active_level': int(periph['reset_active_level']),
+            }
+            continue
+
+        if has_pa_active_level:
+            if pa_cfg['name'] is not None:
+                raise ValueError(
+                    f'Audio codec device {device_name} references multiple PA GPIO peripherals, only one is supported'
+                )
             pa_cfg = {
                 'name': periph_name,
-                'port': peripheral_config.get('pin', -1),
+                'port': _parse_codec_gpio_peripheral(
+                    device_name, periph_name, peripherals_dict, 'PA'),
+                'active_level': int(periph['pa_active_level']),
+                'gain': float(periph.get('gain', 0.0)),
+            }
+            continue
+
+        if periph_name.startswith('gpio'):
+            if pa_cfg['name'] is not None:
+                raise ValueError(
+                    f'Audio codec device {device_name} references multiple PA GPIO peripherals, only one is supported'
+                )
+            logger.warning(
+                'Audio codec device %s peripheral %s uses legacy PA inference; '
+                'add pa_active_level explicitly.',
+                device_name,
+                periph_name,
+            )
+            pa_cfg = {
+                'name': periph_name,
+                'port': _parse_codec_gpio_peripheral(
+                    device_name, periph_name, peripherals_dict, 'PA'),
                 'active_level': int(periph.get('active_level', 0)),
                 'gain': float(periph.get('gain', 0.0)),
             }
@@ -135,7 +247,7 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             f'Audio codec device {device_name} references multiple adc peripherals, only one is supported currently'
         )
 
-    return pa_cfg, i2c_cfg, i2s_cfg, adc_periph_name
+    return pa_cfg, i2c_cfg, i2s_cfg, adc_periph_name, reset_cfg
 
 
 def _parse_adc_local_cfg(device_name: str, device_config: dict) -> dict:
@@ -275,6 +387,104 @@ def _build_disabled_adc_cfg() -> dict:
         },
     }
 
+
+def _parse_codec_label(value, device_name: str) -> str:
+    if value is None:
+        return ''
+    if isinstance(value, list):
+        if not all(isinstance(item, str) for item in value):
+            raise ValueError(f'Audio codec device {device_name} adc_cfg.label must contain strings')
+        return ','.join(value)
+    if isinstance(value, str):
+        return value
+    raise ValueError(f'Audio codec device {device_name} adc_cfg.label must be a string or list')
+
+
+def _parse_codec_cfg_map(device_name: str, device_config: dict, key: str) -> dict:
+    value = device_config.get(key, {})
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f'Audio codec device {device_name} config.{key} must be a map')
+    return value
+
+
+def _warn_deprecated_codec_configs(device_name: str, device_config: dict) -> None:
+    if 'mclk_enabled' in device_config:
+        logger.warning(
+            'Audio codec device %s uses deprecated config.mclk_enabled; migrate it to config.sys_cfg.no_mclk '
+            '(the value is inverted during legacy parsing).',
+            device_name,
+        )
+    if 'adc_channel_labels' in device_config:
+        logger.warning(
+            'Audio codec device %s uses deprecated config.adc_channel_labels; it is copied without reordering '
+            'to config.adc_cfg.label. Codec_dev 2.0 interprets labels from LSB to MSB; the legacy field '
+            'was documented from MSB to LSB. Review and migrate to config.adc_cfg.label.',
+            device_name,
+        )
+
+    deferred_fields = (
+        'adc_max_channel',
+        'adc_channel_mask',
+        'dac_max_channel',
+        'dac_channel_mask',
+        'adc_init_gain',
+        'dac_init_gain',
+        'aec',
+        'eq',
+        'alc',
+    )
+    configured_fields = [field for field in deferred_fields if field in device_config]
+    if configured_fields:
+        logger.warning(
+            'Audio codec device %s uses deprecated config.%s; these are not codec initialization settings '
+            'in esp_codec_dev 2.0 and are ignored by dev_audio_codec.',
+            device_name,
+            ', config.'.join(configured_fields),
+        )
+
+
+def _parse_codec_init_configs(device_name: str, device_config: dict, pa_peripheral_cfg: dict,
+                              reset_peripheral_cfg: dict) -> tuple:
+    sys_input = _parse_codec_cfg_map(device_name, device_config, 'sys_cfg')
+    adc_input = _parse_codec_cfg_map(device_name, device_config, 'adc_cfg')
+    dac_input = _parse_codec_cfg_map(device_name, device_config, 'dac_cfg')
+
+    legacy_mclk_enabled = _parse_bool(device_config.get('mclk_enabled', False), False)
+    codec_sys_cfg = {
+        'is_master': _parse_bool(sys_input.get('is_master', False), False),
+        'no_mclk': _parse_bool(sys_input.get('no_mclk', not legacy_mclk_enabled), not legacy_mclk_enabled),
+    }
+    legacy_labels = device_config.get('adc_channel_labels', [])
+    codec_adc_cfg = {
+        'digital_mic': _parse_bool(adc_input.get('digital_mic', False), False),
+        'label': _parse_codec_label(adc_input.get('label', legacy_labels), device_name),
+    }
+    codec_dac_cfg = {
+        'ref_enable': _parse_bool(dac_input.get('ref_enable', False), False),
+        'ref_dac_ch': int(dac_input.get('ref_dac_ch', 0)),
+        'real_adc_data_ch': int(dac_input.get('real_adc_data_ch', 0)),
+    }
+
+    pa_peripheral = {'name': pa_peripheral_cfg['name'], 'port': pa_peripheral_cfg['port']}
+    pa_active_low = pa_peripheral_cfg['active_level'] != 1
+    pa_gain = pa_peripheral_cfg['gain']
+    codec_pa_cfg = {
+        'pa_pin': pa_peripheral['port'],
+        'pa_active_low': pa_active_low,
+        'hw_gain': {'pa_gain': pa_gain},
+    }
+
+    reset_peripheral = {'name': reset_peripheral_cfg['name'], 'port': reset_peripheral_cfg['port']}
+    codec_reset_cfg = {
+        'reset_pin': reset_peripheral['port'],
+        'reset_active_low': reset_peripheral_cfg['active_level'] != 1,
+    }
+    return (pa_peripheral, reset_peripheral, codec_sys_cfg, codec_adc_cfg,
+            codec_dac_cfg, codec_pa_cfg, codec_reset_cfg)
+
+
 def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     # Parse the device name - use name directly for C naming
     c_name = name.replace('-', '_')  # Convert hyphens to underscores for C naming
@@ -286,21 +496,25 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     # Get chip name from device level
     chip_name = config.get('chip', 'unknown')
 
-    pa_cfg, i2c_cfg, i2s_cfg, adc_periph_name = _parse_codec_peripherals(name, peripherals, peripherals_dict)
+    _validate_audio_codec_config_layout(name, device_config)
+    _warn_deprecated_codec_configs(name, device_config)
+
+    pa_cfg, i2c_cfg, i2s_cfg, adc_periph_name, reset_cfg = _parse_codec_peripherals(
+        name, peripherals, peripherals_dict)
     adc_enabled = bool(device_config.get('adc_enabled', False))
     dac_enabled = bool(device_config.get('dac_enabled', False))
     _validate_direction_flags(name, adc_enabled, dac_enabled)
 
     if adc_periph_name != '':
         has_adc_local = False
-        adc_cfg = {
+        adc_data_cfg = {
             'periph_name': adc_periph_name,
         }
     else:
         adc_local_cfg = _parse_adc_local_cfg(name, device_config)
         has_adc_local = adc_local_cfg['has_adc_local']
         if has_adc_local:
-            adc_cfg = {
+            adc_data_cfg = {
                 'sample_rate_hz': adc_local_cfg['sample_rate_hz'],
                 'max_store_buf_size': adc_local_cfg['max_store_buf_size'],
                 'conv_frame_size': adc_local_cfg['conv_frame_size'],
@@ -311,7 +525,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
                 'cfg': adc_local_cfg['cfg'],
             }
         else:
-            adc_cfg = _build_disabled_adc_cfg()
+            adc_data_cfg = _build_disabled_adc_cfg()
     data_if_type = 1 if (adc_periph_name != '' or has_adc_local) else 0
     _validate_internal_adc_config(
         name,
@@ -323,24 +537,9 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         peripherals_dict,
     )
 
-    # Convert string masks to integers
-    adc_channel_mask = device_config.get('adc_channel_mask', '0011')
-    if isinstance(adc_channel_mask, str):
-        # Convert binary string to hex (e.g., "1110" -> 0xE)
-        adc_channel_mask = int(adc_channel_mask, 2)
-
-    dac_channel_mask = device_config.get('dac_channel_mask', '0')
-    if isinstance(dac_channel_mask, str):
-        # Convert binary string to hex (e.g., "1110" -> 0xE)
-        dac_channel_mask = int(dac_channel_mask, 2)
-
-    # Parse ADC channel labels
-    adc_channel_labels = device_config.get('adc_channel_labels', [])
-    # Convert list to comma-separated string if it's a list
-    if isinstance(adc_channel_labels, list):
-        adc_channel_labels_str = ','.join(adc_channel_labels) if adc_channel_labels else ''
-    else:
-        adc_channel_labels_str = str(adc_channel_labels) if adc_channel_labels else ''
+    (pa_peripheral, reset_peripheral, codec_sys_cfg, codec_adc_cfg,
+     codec_dac_cfg, codec_pa_cfg, codec_reset_cfg) = _parse_codec_init_configs(
+         name, device_config, pa_cfg, reset_cfg)
 
     # Parse metadata if provided
     metadata = device_config.get('metadata', None)
@@ -355,24 +554,19 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
             'type': str(config.get('type', 'audio_codec')),
             'data_if_type': data_if_type,
             'adc_enabled': adc_enabled,
-            'adc_max_channel': int(device_config.get('adc_max_channel', 0)),
-            'adc_channel_mask': adc_channel_mask,
-            'adc_channel_labels': adc_channel_labels_str,
-            'adc_init_gain': int(device_config.get('adc_init_gain', 0)),
             'dac_enabled': dac_enabled,
-            'dac_max_channel': int(device_config.get('dac_max_channel', 0)),
-            'dac_channel_mask': dac_channel_mask,
-            'dac_init_gain': int(device_config.get('dac_init_gain', 0)),
-            'pa_cfg': pa_cfg,
+            'pa_peripheral': pa_peripheral,
+            'reset_peripheral': reset_peripheral,
             'i2c_cfg': i2c_cfg,
             'i2s_cfg': i2s_cfg,
-            'adc_cfg': adc_cfg,
+            'adc_data_cfg': adc_data_cfg,
+            'codec_sys_cfg': codec_sys_cfg,
+            'codec_adc_cfg': codec_adc_cfg,
+            'codec_dac_cfg': codec_dac_cfg,
+            'codec_pa_cfg': codec_pa_cfg,
+            'codec_reset_cfg': codec_reset_cfg,
             'metadata': metadata,
             'metadata_size': metadata_size,
-            'mclk_enabled': bool(device_config.get('mclk_enabled', False)),
-            'aec_enabled': bool(device_config.get('aec', False)),
-            'eq_enabled': bool(device_config.get('eq', False)),
-            'alc_enabled': bool(device_config.get('alc', False))
         }
     }
     return result
@@ -380,7 +574,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
 
 def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: dict) -> dict:
     chip_name = context.get('chip')
-    adc_cfg = parse_result.get('struct_init', {}).get('adc_cfg', {})
+    adc_cfg = parse_result.get('struct_init', {}).get('adc_data_cfg', {})
 
     if adc_cfg.get('periph_name'):
         return {'io': {}}

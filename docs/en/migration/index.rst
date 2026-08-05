@@ -12,4 +12,5 @@ This chapter explains how to migrate existing projects to BMGR, and how to contr
 
    from-manual-board-init
    migrate-to-0.6
+   migrate-to-0.7
    version-migration

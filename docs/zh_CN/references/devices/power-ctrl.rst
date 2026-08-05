@@ -147,14 +147,12 @@ GPIO 电源控制完整字段
     # - name: audio_dac
     #   chip: es8311
     #   type: audio_codec
-    #   version: default
     #   power_ctrl_device: audio_power_ctrl  # Reference to power control device
     #   config:
     #     adc_enabled: false
     #     dac_enabled: true
-    #     dac_max_channel: 1
-    #     dac_channel_mask: "1"
-    #     mclk_enabled: true
+    #     sys_cfg:
+    #       no_mclk: false
     #   peripherals:
     #     - name: i2s_audio_out
     #     - name: i2c_master

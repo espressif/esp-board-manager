@@ -379,12 +379,12 @@ def test_callback_env_and_define_cache_override_board_manager_defaults(
     assert cache_index > board_index
 
 
-def test_callback_warns_when_project_defaults_shadow_board_symbols(
+def test_callback_does_not_scan_project_defaults_for_conflicts(
     bmgr_root, tmp_path, monkeypatch, capsys
 ):
     project_dir = _make_project(tmp_path, with_sdkconfig=False)
     (project_dir / 'sdkconfig.defaults').write_text(
-        'CONFIG_ESP_BOARD_PERIPH_I2C_SUPPORT=y\n',
+        '# CONFIG_ESP_BOARD_PERIPH_I2C_SUPPORT is not set\n',
         encoding='utf-8',
     )
     callback, _ = _load_callback(bmgr_root, project_dir)
@@ -397,5 +397,5 @@ def test_callback_warns_when_project_defaults_shadow_board_symbols(
     )
 
     out = capsys.readouterr().out
-    assert 'Warning:' in out
-    assert 'takes precedence' in out
+    assert 'board_manager.defaults has higher priority' in out
+    assert 'Warning:' not in out

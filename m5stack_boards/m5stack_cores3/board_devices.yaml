@@ -32,16 +32,11 @@ devices:
     chip: aw88298
     type: audio_codec
     power_ctrl_device: axp2101_power_manager
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 1
-      dac_channel_mask: "1"
-      dac_init_gain: 0
-
-      # Audio processing settings
-      mclk_enabled: false
+      sys_cfg:
+        no_mclk: true
 
     peripherals:
       - name: i2s_audio_out
@@ -53,12 +48,13 @@ devices:
     chip: es7210
     type: audio_codec
     power_ctrl_device: axp2101_power_manager
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 4
-      adc_channel_mask: "0011"
-      adc_init_gain: 0
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # Codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
+        label: [FL, FR, RE, NA]
 
     # Power amplifier configuration
     peripherals:

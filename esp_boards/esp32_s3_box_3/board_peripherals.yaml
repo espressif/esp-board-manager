@@ -13,8 +13,8 @@ peripherals:
   - name: i2s_audio_out
     type: i2s
     role: master
-    format: std-out # std-out, std-in
-    config: &i2s0_config
+    format: tdm-out # std-out, std-in
+    config: &i2s_config
       port: 0  # Explicitly specify I2S port number
       # Clock configuration
       sample_rate_hz: 48000           # Sample rate in Hz
@@ -26,7 +26,7 @@ peripherals:
       slot_mode: I2S_SLOT_MODE_STEREO               # MONO or STEREO,I2S_SLOT_MODE_STEREO
       slot_mask: I2S_STD_SLOT_BOTH                  # LEFT, RIGHT, or BOTH slots
       ws_width: 16                    # WS signal width in BCLK ticks
-
+      total_slot: 4
       # GPIO configuration
       pins:
         mclk: 2                       # GPIO number for MCLK
@@ -38,9 +38,11 @@ peripherals:
   - name: i2s_audio_in
     type: i2s
     role: master
-    format: std-in
+    format: tdm-in
     # i2s0 work on duplex mode, so reuse i2s_audio_out configuration
-    config: *i2s0_config
+    config:
+      <<: *i2s_config
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2  # Override specific slot mask
 
   # LCD SPI Configuration for ST77916 QSPI
   - name: spi_display

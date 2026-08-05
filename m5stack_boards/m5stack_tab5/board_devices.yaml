@@ -4,14 +4,11 @@ devices:
     chip: es8388
     type: audio_codec
     depends_on: gpio_expander
-    version: default
     config:
       adc_enabled: false
-
       dac_enabled: true
-      dac_max_channel: 1
-      # DAC channel mask, 1-enable, 0-disable, layout: left,right
-      dac_channel_mask: "1"     # Left enable
+      sys_cfg:
+        no_mclk: true
 
     # Power amplifier configuration
     peripherals:
@@ -23,12 +20,13 @@ devices:
   - name: audio_adc
     chip: es7210
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 4
-      adc_channel_mask: "0111"
-      adc_init_gain: 0           # dB
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # Codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
+        label: [FL, FR, RE, NA]
 
     # Power amplifier configuration
     peripherals:

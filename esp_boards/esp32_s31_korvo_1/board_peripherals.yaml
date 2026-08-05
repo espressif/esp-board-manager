@@ -23,8 +23,9 @@ peripherals:
       data_bit_width: 16
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
       slot_mode: I2S_SLOT_MODE_STEREO
-      slot_mask: I2S_STD_SLOT_BOTH
       ws_width: 16
+      total_slot: 4
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
       pins:
         mclk: -1
         bclk: 3
@@ -37,7 +38,9 @@ peripherals:
     type: i2s
     role: master
     format: tdm-in
-    config: *i2s_audio_config
+    config:
+      <<: *i2s_audio_config
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2
 
   # NS4150 left/right speaker amplifier enable. Schematic net: PA_CTRL=GPIO7.
   - name: gpio_pa_control
@@ -56,6 +59,20 @@ peripherals:
       pin: 39
       mode: GPIO_MODE_OUTPUT
       default_level: 1
+
+  # Camera XCLK. Keep a 20 MHz clock on GPIO55 before DVP initialization.
+  - name: ledc_camera_xclk
+    type: ledc
+    config:
+      gpio_num: 55
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_1
+      freq_hz: 20000000
+      duty: 0
+      duty_resolution: LEDC_TIMER_1_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+      output_invert: false
+      sleep_mode: LEDC_SLEEP_MODE_NO_ALIVE_NO_PD
 
   # ADC button ladder. Schematic net: ADC_KEY=GPIO42, ESP32-S31 ADC1 channel 0.
   - name: adc_oneshot

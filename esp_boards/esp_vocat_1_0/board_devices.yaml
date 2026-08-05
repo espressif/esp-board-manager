@@ -11,20 +11,17 @@ devices:
   - name: audio_dac
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 1
-      # DAC channel mask, 1-enable, 0-disable, layout: left,right
-      dac_channel_mask: "1"            # Left, Right enable
-      mclk_enabled: true
+      sys_cfg:
+        no_mclk: false
 
     # Power amplifier configuration
     peripherals:
       - name: gpio_pa_control
         gain: 6                    # dB
-        active_level: 1            # 0-low, 1-high
+        pa_active_level: 1         # 0-low, 1-high
       - name: i2s_audio_out
       - name: i2c_master
         address: 0x30
@@ -34,15 +31,13 @@ devices:
   - name: audio_adc
     chip: es7210
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 4
-      # The channel mask, 1-enable, 0-disable
-      # e.g."0111", bit0: Mic0 enable, bit1: Mic1 enable, bit2: Mic2 enable, bit3: Mic3 enable, bit4: Mic4 disable
-      adc_channel_mask: "0111"           # Mic0, Mic1, Mic2 enable
-      adc_channel_labels: ['NA', 'RE', 'FR', 'FL']  # MSB ~ LSB
-      adc_init_gain: 0                   # dB
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
+        label: [FL, FR, RE, NA]
 
     # I2S interface configuration
     peripherals:

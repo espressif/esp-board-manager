@@ -3,19 +3,17 @@ devices:
   - name: audio_dac
     chip: es8311
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 1
-      # DAC channel mask, 1-enable, 0-disable, layout: left,right
-      dac_channel_mask: "1"     # Left enable
+      sys_cfg:
+        no_mclk: true
 
     # Power amplifier configuration
     peripherals:
       - name: gpio_pa_control
         gain: 6                    # dB
-        active_level: 1            # 0-low, 1-high
+        pa_active_level: 1         # 0-low, 1-high
 
       # I2S interface configuration
       - name: i2s_audio_out
@@ -28,18 +26,17 @@ devices:
   - name: audio_adc
     chip: es8311
     type: audio_codec
-    version: default
     # NOTE:
     # The physical ES8311 supports full-duplex, but board manager models it as two
     # logical single-direction devices: `audio_adc` and `audio_dac`.
     config:
       adc_enabled: true
-      adc_max_channel: 1
-      # The channel mask, 1-enable, 0-disable
-      # e.g.“0111”, bit0: Mic0 enable, bit1: Mic1 enable, bit2: Mic2 enable, bit3: Mic3 enable, bit4: Mic4 disable
-      adc_channel_mask: "1"            # Mic0 enable
-      adc_channel_labels: ['RE','FC']  # Mic0 and reference enable, MSB ~ LSB
       dac_enabled: false
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # codec_dev 2.0 label order is LSB to MSB: microphone, reference.
+        label: [FC, RE]
 
     peripherals:
       - name: i2s_audio_in

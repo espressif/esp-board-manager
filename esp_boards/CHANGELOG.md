@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.4
+
+### Modifications
+
+- Migrated official audio codec board configurations to the `esp_codec_dev` 2.0 initialization layout (`sys_cfg`, `adc_cfg`, `dac_cfg`, and explicit PA GPIO fields).
+- Added explicit camera XCLK and sensor bring-up sequencing for the **ESP32-S31-Korvo-1** DVP camera.
+
+### Bug Fixes
+
+- Corrected the default PSRAM frequency to 200 MHz for **ESP32-S31-Function-Coreboard-1** and **ESP32-S31-Korvo-1**.
+
 ## 0.5.3~1
 
 ### Bug Fixes

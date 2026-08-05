@@ -541,11 +541,12 @@ DEVICE_CASES = [
             'chip': 'generic_codec',
             'config': {
                 'dac_enabled': True,
-                'dac_max_channel': 2,
-                'dac_channel_mask': '11',
+                'sys_cfg': {
+                    'no_mclk': True,
+                },
             },
             'peripherals': [
-                {'name': 'gpio_power_amp'},
+                {'name': 'gpio_power_amp', 'gain': 6.0, 'pa_active_level': 1},
                 {'name': 'i2s_audio_out'},
                 {'name': 'i2c_master', 'address': 0x30, 'frequency': 400000},
             ],

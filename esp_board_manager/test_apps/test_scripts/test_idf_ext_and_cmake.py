@@ -73,6 +73,54 @@ def test_idf_extension_registers_bmgr_action(bmgr_root):
     assert skip_soc_option['is_flag'] is True
 
 
+def test_bmgr_board_generation_reports_defaults_precedence(
+    bmgr_root, tmp_path, monkeypatch, capsys
+):
+    """The ``-b`` action reports the same defaults hint as the global callback."""
+    project_dir = tmp_path / 'project'
+    board_dir = tmp_path / 'board'
+    (project_dir / 'components' / 'gen_bmgr_codes').mkdir(parents=True)
+    board_dir.mkdir()
+    (board_dir / 'board_info.yaml').write_text('board: test_board\n', encoding='utf-8')
+    (project_dir / 'sdkconfig.defaults').write_text(
+        '# CONFIG_ESP_BOARD_TEST_BOARD is not set\n', encoding='utf-8'
+    )
+    (project_dir / 'components' / 'gen_bmgr_codes' / 'board_manager.defaults').write_text(
+        'CONFIG_ESP_BOARD_TEST_BOARD=y\n', encoding='utf-8'
+    )
+
+    class _FakeConfigGenerator:
+        @staticmethod
+        def _is_board_directory(path):
+            return path == str(board_dir)
+
+    class _FakeGenerator:
+        def __init__(self, *args, **kwargs):
+            self.project_dir = str(project_dir)
+            self.config_generator = _FakeConfigGenerator()
+
+        @staticmethod
+        def run(*args, **kwargs):
+            return True
+
+    sys.path.insert(0, str(bmgr_root))
+    import idf_ext
+    monkeypatch.setattr(idf_ext, 'BoardConfigGenerator', _FakeGenerator)
+    callback = idf_ext.action_extensions({}, str(project_dir))['actions']['bmgr']['callback']
+
+    callback(
+        'bmgr',
+        None,
+        SimpleNamespace(project_dir=str(project_dir)),
+        board=str(board_dir),
+    )
+
+    out = capsys.readouterr().out
+    assert 'board_manager.defaults has higher priority' in out
+    assert 'components/gen_bmgr_codes/board_manager.defaults' in out
+    assert 'Warning:' not in out
+
+
 def test_idf_extension_rejects_mixed_legacy_and_new_bmgr_styles(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     import idf_ext

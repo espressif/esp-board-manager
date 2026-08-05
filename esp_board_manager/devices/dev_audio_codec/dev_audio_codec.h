@@ -37,14 +37,12 @@ typedef struct {
 } dev_audio_codec_handles_t;
 
 /**
- * @brief  Board codec power amplifier configuration structure
+ * @brief  Board GPIO peripheral reference used by a codec hardware config
  */
 typedef struct {
-    const char *name;          /*!< Power amplifier name */
-    int16_t     port;          /*!< GPIO port number */
-    float       gain;          /*!< Amplifier gain value */
-    int16_t     active_level;  /*!< Active level (high/low) */
-} board_codec_pa_t;
+    const char *name;  /*!< GPIO peripheral name */
+    int16_t     port;  /*!< Resolved GPIO pin number */
+} board_codec_gpio_ref_t;
 
 /**
  * @brief  Board codec I2C configuration structure
@@ -113,49 +111,33 @@ typedef struct {
  * @brief  Audio codec configuration structure
  *
  *         This structure contains all the configuration parameters needed to initialize
- *         an audio codec device, including ADC/DAC settings, power amplifier configuration,
- *         I2C/I2S interface settings, and feature enable flags.
+ *         an audio codec device, including device direction, data interfaces, and
+ *         esp_codec_dev 2.0 codec hardware initialization settings.
  */
 typedef struct {
-    const char *name;                /*!< Codec device name */
-    const char *chip;                /*!< Codec chip type */
-    const char *type;                /*!< Codec type */
-    uint8_t     data_if_type;        /*!< Auto-selected data interface type: DEV_AUDIO_CODEC_DATA_IF_TYPE_* */
-    /* ADC Configuration */
-    bool        adc_enabled;         /*!< Enable ADC functionality */
-    uint8_t     adc_max_channel;     /*!< Maximum number of ADC channels */
-    uint32_t    adc_channel_mask;    /*!< ADC channel mask string */
-    const char *adc_channel_labels;  /*!< ADC channel labels,
-                                        # - FC: Front Center
-                                        # - RE: Reference
-                                        # - FL/FR: Front Left/Right
-                                        # - SL/SR: Side Left/Right
-                                        # - BL/BR: Back Left/Right
-                                        # - NA: Not Available/Not Enable
-                                        */
-    int         adc_init_gain;       /*!< ADC initial gain in dB */
-
-    /* DAC Configuration */
-    bool      dac_enabled;       /*!< Enable DAC functionality */
-    uint8_t   dac_max_channel;   /*!< Maximum number of DAC channels */
-    uint32_t  dac_channel_mask;  /*!< DAC channel mask string */
-    int       dac_init_gain;     /*!< DAC initial gain in dB */
+    const char *name;          /*!< Codec device name */
+    const char *chip;          /*!< Codec chip type */
+    const char *type;          /*!< Codec type */
+    uint8_t     data_if_type;  /*!< Auto-selected data interface type: DEV_AUDIO_CODEC_DATA_IF_TYPE_* */
+    bool        adc_enabled;   /*!< Enable ADC functionality */
+    bool        dac_enabled;   /*!< Enable DAC functionality */
 
     /* Interface Configuration */
-    board_codec_pa_t   pa_cfg;   /*!< Power amplifier configuration */
-    board_codec_i2c_t  i2c_cfg;  /*!< I2C interface configuration */
-    board_codec_i2s_t  i2s_cfg;  /*!< I2S interface configuration */
-    board_codec_adc_t  adc_cfg;  /*!< ADC data-if configuration */
+    board_codec_gpio_ref_t  pa_peripheral;     /*!< PA GPIO peripheral reference */
+    board_codec_gpio_ref_t  reset_peripheral;  /*!< Reset GPIO peripheral reference */
+    board_codec_i2c_t       i2c_cfg;           /*!< I2C interface configuration */
+    board_codec_i2s_t       i2s_cfg;           /*!< I2S interface configuration */
+    board_codec_adc_t       adc_data_cfg;      /*!< ADC data-if configuration */
+    audio_hw_sys_cfg_t      codec_sys_cfg;     /*!< Codec system clock configuration */
+    audio_hw_adc_cfg_t      codec_adc_cfg;     /*!< Codec ADC configuration */
+    audio_hw_dac_cfg_t      codec_dac_cfg;     /*!< Codec DAC configuration */
+    audio_hw_pa_cfg_t       codec_pa_cfg;      /*!< Codec PA configuration */
+    audio_hw_reset_cfg_t    codec_reset_cfg;   /*!< Codec reset configuration */
 
     /* Metadata */
     uint8_t *metadata;       /*!< Metadata buffer */
     int      metadata_size;  /*!< Metadata buffer size */
 
-    /* Feature Flags */
-    uint8_t  mclk_enabled : 1;  /*!< Enable MCLK output */
-    uint8_t  aec_enabled  : 1;  /*!< Enable Acoustic Echo Cancellation */
-    uint8_t  eq_enabled   : 1;  /*!< Enable Equalizer */
-    uint8_t  alc_enabled  : 1;  /*!< Enable Automatic Level Control */
 } dev_audio_codec_config_t;
 
 /**

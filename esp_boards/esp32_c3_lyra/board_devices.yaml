@@ -2,7 +2,6 @@ devices:
   - name: audio_adc
     chip: internal
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
     peripherals:
@@ -26,11 +25,10 @@ devices:
   - name: audio_dac
     chip: internal
     type: audio_codec
-    version: default
     config:
       dac_enabled: true
     peripherals:
       - name: i2s_audio_out
       - name: gpio_pa_control
         gain: 6
-        active_level: 1
+        pa_active_level: 1

@@ -1646,6 +1646,7 @@ def test_esp32_lyrat_4_3_audio_sdcard_generation_matches_schematic(bmgr_root, tm
     assert '.d3 = -1' in device_content
     assert '.cd = 34' in device_content
 
+
 def test_device_descriptor_generation_emits_desc_level_sub_type(bmgr_root, tmp_path):
     sys.path.insert(0, str(bmgr_root))
     from gen_bmgr_config_codes import BoardConfigGenerator
@@ -1736,6 +1737,7 @@ def test_audio_codec_rejects_simultaneous_adc_and_dac_enablement(bmgr_root):
             },
         )
 
+
 def test_audio_codec_without_pa_uses_disabled_pin_sentinel(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_audio_codec import dev_audio_codec as mod
@@ -1755,9 +1757,395 @@ def test_audio_codec_without_pa_uses_disabled_pin_sentinel(bmgr_root):
         },
     )
 
-    pa_cfg = result['struct_init']['pa_cfg']
-    assert pa_cfg['name'] is None
-    assert pa_cfg['port'] == -1
+    pa_peripheral = result['struct_init']['pa_peripheral']
+    assert pa_peripheral['name'] is None
+    assert pa_peripheral['port'] == -1
+    assert result['struct_init']['codec_pa_cfg']['pa_pin'] == -1
+
+
+def test_audio_codec_parses_codec_dev_2_initialization_configs_without_version(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_power_amp': SimpleNamespace(type='gpio', config={'pin': 12}),
+        'gpio_codec_reset': SimpleNamespace(type='gpio', config={'pin': 13}),
+        'i2c_master': SimpleNamespace(type='i2c', config={'port': 0}),
+        'i2s_audio_in': SimpleNamespace(type='i2s', format='in', config={'port': 0}),
+    }
+    result = mod.parse(
+        'audio_adc',
+        {
+            'type': 'audio_codec',
+            'chip': 'es7210',
+            'config': {
+                'adc_enabled': True,
+                'dac_enabled': False,
+                'sys_cfg': {
+                    'is_master': False,
+                    'no_mclk': False,
+                },
+                'adc_cfg': {
+                    'digital_mic': False,
+                    'label': ['FL', 'FR', 'RE', 'NA'],
+                },
+                'dac_cfg': {
+                    'ref_enable': True,
+                    'ref_dac_ch': 1,
+                    'real_adc_data_ch': 2,
+                },
+            },
+            'peripherals': [
+                {'name': 'gpio_power_amp', 'gain': 3.0, 'pa_active_level': 1},
+                {'name': 'gpio_codec_reset', 'reset_active_level': 0},
+                {'name': 'i2s_audio_in'},
+                {'name': 'i2c_master', 'address': 0x40},
+            ],
+        },
+        peripherals_dict=peripherals_dict,
+    )
+
+    init = result['struct_init']
+    assert init['codec_sys_cfg'] == {'is_master': False, 'no_mclk': False}
+    assert init['codec_adc_cfg'] == {'digital_mic': False, 'label': 'FL,FR,RE,NA'}
+    assert init['codec_dac_cfg'] == {
+        'ref_enable': True,
+        'ref_dac_ch': 1,
+        'real_adc_data_ch': 2,
+    }
+    assert init['pa_peripheral'] == {'name': 'gpio_power_amp', 'port': 12}
+    assert init['codec_pa_cfg'] == {
+        'pa_pin': 12,
+        'pa_active_low': False,
+        'hw_gain': {'pa_gain': 3.0},
+    }
+    assert init['reset_peripheral'] == {'name': 'gpio_codec_reset', 'port': 13}
+    assert init['codec_reset_cfg'] == {'reset_pin': 13, 'reset_active_low': True}
+
+
+def test_audio_codec_version_does_not_reject_new_initialization_layout(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    result = mod.parse(
+        'audio_dac',
+        {
+            'type': 'audio_codec',
+            'chip': 'es8311',
+            'version': '1.0.0',
+            'config': {
+                'dac_enabled': True,
+                'sys_cfg': {'no_mclk': True},
+            },
+            'peripherals': [],
+        },
+    )
+
+    assert result['struct_init']['codec_sys_cfg']['no_mclk'] is True
+
+
+def test_audio_codec_version_does_not_reject_legacy_initialization_layout(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'version': '2.0.0',
+                'config': {
+                    'dac_enabled': True,
+                    'mclk_enabled': True,
+                },
+                'peripherals': [],
+            },
+        )
+
+    assert result['struct_init']['codec_sys_cfg']['no_mclk'] is False
+    assert 'config.mclk_enabled' in caplog.text
+
+
+def test_audio_codec_v2_rejects_pa_and_reset_config_groups(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with pytest.raises(ValueError, match='config.pa_cfg.*peripherals'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {
+                    'dac_enabled': True,
+                    'pa_cfg': {},
+                },
+                'peripherals': [],
+            },
+        )
+
+    with pytest.raises(ValueError, match='config.reset_cfg.*peripherals'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {
+                    'dac_enabled': True,
+                    'reset_cfg': {},
+                },
+                'peripherals': [],
+            },
+        )
+
+
+def test_audio_codec_warns_for_deferred_legacy_runtime_configs(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {
+                    'dac_enabled': True,
+                    'mclk_enabled': True,
+                    'adc_channel_labels': ['FC'],
+                    'adc_channel_mask': '1',
+                    'dac_channel_mask': '1',
+                    'adc_init_gain': 3,
+                    'dac_init_gain': 4,
+                    'aec': True,
+                    'eq': True,
+                    'alc': True,
+                },
+                'peripherals': [],
+            },
+        )
+
+    assert result['struct_init']['codec_sys_cfg']['no_mclk'] is False
+    assert result['struct_init']['codec_adc_cfg']['label'] == 'FC'
+    assert 'adc_channel_mask' not in result['struct_init']
+    assert 'dac_init_gain' not in result['struct_init']
+    assert 'aec_enabled' not in result['struct_init']
+    assert 'not codec initialization settings' in caplog.text
+    assert 'config.adc_channel_labels; it is copied without reordering' in caplog.text
+    assert 'LSB to MSB' in caplog.text
+
+
+@pytest.mark.parametrize(
+    ('peripheral', 'expected_active_level', 'expected_gain'),
+    [
+        ({'name': 'gpio_power_amp', 'gain': 3.0, 'active_level': 1}, 1, 3.0),
+        ({'name': 'gpio_power_amp', 'active_level': 1}, 1, 0.0),
+        ({'name': 'gpio_power_amp', 'gain': 3.0}, 0, 3.0),
+        ({'name': 'gpio_power_amp'}, 0, 0.0),
+    ],
+)
+def test_audio_codec_legacy_pa_forms_are_inferred_with_warning(
+        bmgr_root, caplog, peripheral, expected_active_level, expected_gain):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_power_amp': SimpleNamespace(type='gpio', config={'pin': 12}),
+    }
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [peripheral],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+    codec_pa_cfg = result['struct_init']['codec_pa_cfg']
+    assert codec_pa_cfg['pa_active_low'] is (expected_active_level != 1)
+    assert codec_pa_cfg['hw_gain']['pa_gain'] == expected_gain
+    assert 'legacy PA' in caplog.text
+
+
+def test_audio_codec_rejects_conflicting_pa_and_reset_peripheral_fields(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_codec': SimpleNamespace(type='gpio', config={'pin': 12}),
+    }
+    with pytest.raises(ValueError, match='both pa_active_level and reset_active_level'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'gpio_codec', 'pa_active_level': 1, 'reset_active_level': 0},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+
+def test_audio_codec_rejects_legacy_and_dedicated_pa_fields_together(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_power_amp': SimpleNamespace(type='gpio', config={'pin': 12}),
+    }
+    with pytest.raises(ValueError, match='both active_level and pa_active_level'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'gpio_power_amp', 'active_level': 1, 'pa_active_level': 1},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+
+def test_audio_codec_rejects_role_reset_and_duplicate_dedicated_gpios(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_power_amp': SimpleNamespace(type='gpio', config={'pin': 11}),
+        'gpio_power_amp_2': SimpleNamespace(type='gpio', config={'pin': 10}),
+        'gpio_codec_reset': SimpleNamespace(type='gpio', config={'pin': 12}),
+        'gpio_codec_reset_2': SimpleNamespace(type='gpio', config={'pin': 13}),
+    }
+    with pytest.raises(ValueError, match='role: reset.*reset_active_level'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'gpio_codec_reset', 'role': 'reset', 'active_level': 0},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+    with pytest.raises(ValueError, match='multiple PA GPIO'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'gpio_power_amp', 'pa_active_level': 1},
+                    {'name': 'gpio_power_amp_2', 'pa_active_level': 1},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+    with pytest.raises(ValueError, match='multiple reset GPIO'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'gpio_codec_reset', 'reset_active_level': 0},
+                    {'name': 'gpio_codec_reset_2', 'reset_active_level': 0},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+
+def test_audio_codec_rejects_duplicate_adc_label_sources(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with pytest.raises(ValueError, match='both config.adc_channel_labels and config.adc_cfg.label'):
+        mod.parse(
+            'audio_adc',
+            {
+                'type': 'audio_codec',
+                'chip': 'es7210',
+                'config': {
+                    'adc_enabled': True,
+                    'adc_channel_labels': ['FC'],
+                    'adc_cfg': {'label': ['RE']},
+                },
+                'peripherals': [],
+            },
+        )
+
+
+def test_audio_codec_rejects_non_gpio_init_config_peripheral(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'gpio_bad': SimpleNamespace(type='i2c', config={'port': 0}),
+    }
+    with pytest.raises(ValueError, match='PA GPIO peripheral must have type gpio'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {
+                    'dac_enabled': True,
+                },
+                'peripherals': [{'name': 'gpio_bad'}],
+            },
+            peripherals_dict=peripherals_dict,
+        )
+
+
+def test_audio_codec_rejects_non_gpio_reset_peripheral(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals_dict = {
+        'codec_reset': SimpleNamespace(type='i2c', config={'port': 0}),
+    }
+    with pytest.raises(ValueError, match='reset GPIO peripheral must have type gpio'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'name': 'codec_reset', 'reset_active_level': 0},
+                ],
+            },
+            peripherals_dict=peripherals_dict,
+        )
 
 
 def test_new_board_device_options_hide_internal_dedupe_keys(bmgr_root):

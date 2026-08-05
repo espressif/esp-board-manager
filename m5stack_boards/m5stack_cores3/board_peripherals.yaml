@@ -13,7 +13,7 @@ peripherals:
   - name: i2s_audio_out
     type: i2s
     role: master
-    format: std-out
+    format: tdm-out
     config: &i2s0_config
       port: 0
       # Clock configuration
@@ -38,7 +38,7 @@ peripherals:
   - name: i2s_audio_in
     type: i2s
     role: master
-    format: std-in
+    format: tdm-in
     config: *i2s0_config
 
   # LCD SPI Configuration

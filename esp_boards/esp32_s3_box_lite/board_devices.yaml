@@ -3,19 +3,15 @@ devices:
   - name: audio_dac
     chip: es8156
     type: audio_codec
-    version: default
     config:
       adc_enabled: false
       dac_enabled: true
-      dac_max_channel: 2
-      # DAC channel mask, 1-enable, 0-disable, layout: left,right
-      dac_channel_mask: "11"
-      dac_init_gain: 0
-      mclk_enabled: true
+      sys_cfg:
+        no_mclk: false
     peripherals:
       - name: gpio_pa_control
         gain: 6
-        active_level: 1
+        pa_active_level: 1
       - name: i2s_audio_out
       - name: i2c_master
         address: 0x10
@@ -24,11 +20,8 @@ devices:
   - name: audio_adc
     chip: es7243e
     type: audio_codec
-    version: default
     config:
       adc_enabled: true
-      adc_max_channel: 2
-      adc_channel_mask: "11"
       dac_enabled: false
     peripherals:
       - name: i2s_audio_in
