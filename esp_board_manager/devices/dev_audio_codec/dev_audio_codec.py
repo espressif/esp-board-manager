@@ -137,12 +137,120 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
     }
     adc_periph_name = ''
     adc_periph_count = 0
+    explicit = {'pa': [], 'reset': [], 'i2c': [], 'i2s': [], 'adc': []}
+    legacy = []
 
     for periph in peripherals:
+        if not isinstance(periph, dict):
+            periph = {'name': periph}
+        else:
+            role_keys = [key for key in periph if key.endswith('_name') and key != 'name']
+            if len(role_keys) > 1:
+                raise ValueError(
+                    f'Audio codec device {device_name} peripheral cannot contain more than one role-specific name field'
+                )
+            if role_keys:
+                role_key = role_keys[0]
+                if 'name' in periph:
+                    raise ValueError(
+                        f"Audio codec device {device_name} peripheral cannot contain both '{role_key}' and 'name'"
+                    )
+                periph = dict(periph)
+                periph['name'] = periph.pop(role_key)
+                periph['_binding_role'] = role_key[:-5]
+        binding_role = periph.get('_binding_role')
+        if binding_role in explicit:
+            explicit[binding_role].append(periph)
+        elif binding_role is None:
+            legacy.append(periph)
+        else:
+            raise ValueError(
+                f'Audio codec device {device_name} does not support peripheral binding role: {binding_role}'
+            )
+
+    for role, refs in explicit.items():
+        if len(refs) > 1:
+            role_label = 'PA GPIO' if role == 'pa' else 'reset GPIO' if role == 'reset' else role
+            raise ValueError(
+                f'Audio codec device {device_name} references multiple {role_label} peripherals, only one is supported'
+            )
+        if not refs:
+            continue
+        periph = refs[0]
+        periph_name = periph['name']
+        expected_type = 'gpio' if role in ('pa', 'reset') else role
+        _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
+        if peripherals_dict is not None and getattr(peripherals_dict[periph_name], 'type', None) != expected_type:
+            raise ValueError(
+                f'Audio codec device {device_name} {role} peripheral must have type {expected_type}'
+            )
+        if role == 'pa':
+            if 'pa_active_level' in periph:
+                raise ValueError(
+                    f'Audio codec device {device_name} cannot combine pa_name with pa_active_level; '
+                    'use active_level with pa_name instead.'
+                )
+            pa_cfg = {
+                'name': periph_name,
+                'port': _parse_codec_gpio_peripheral(device_name, periph_name, peripherals_dict, 'PA'),
+                'active_level': int(periph.get('active_level', 0)),
+                'gain': float(periph.get('gain', 0.0)),
+            }
+        elif role == 'reset':
+            if 'reset_active_level' in periph:
+                raise ValueError(
+                    f'Audio codec device {device_name} cannot combine reset_name with reset_active_level; '
+                    'use active_level with reset_name instead.'
+                )
+            reset_cfg = {
+                'name': periph_name,
+                'port': _parse_codec_gpio_peripheral(device_name, periph_name, peripherals_dict, 'reset'),
+                'active_level': int(periph.get('active_level', 0)),
+            }
+        elif role == 'i2c':
+            peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
+            i2c_cfg = {
+                'name': periph_name,
+                'port': peripheral_config.get('port', 0),
+                'address': periph.get('address', 0x30),
+                'frequency': int(periph.get('frequency', 100000)),
+            }
+        elif role == 'i2s':
+            peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
+            i2s_cfg = {
+                'name': periph_name,
+                'port': peripheral_config.get('port', 0),
+                'clk_src': periph.get('clk_src', 0),
+                'tx_aux_out_io': int(periph.get('tx_aux_out_io', -1)),
+                'tx_aux_out_line': int(periph.get('tx_aux_out_line', 0)),
+                'tx_aux_out_invert': _parse_bool(periph.get('tx_aux_out_invert', False), False),
+            }
+        elif role == 'adc':
+            adc_periph_name = periph_name
+            adc_periph_count += 1
+
+    for periph in legacy:
         periph_name = periph.get('name', '')
         has_pa_active_level = 'pa_active_level' in periph
         has_reset_active_level = 'reset_active_level' in periph
         has_legacy_active_level = 'active_level' in periph
+
+        legacy_role = None
+        if has_reset_active_level:
+            legacy_role = 'reset'
+        elif has_pa_active_level or periph_name.startswith('gpio'):
+            legacy_role = 'pa'
+        elif periph_name.startswith('i2c'):
+            legacy_role = 'i2c'
+        elif periph_name.startswith('i2s'):
+            legacy_role = 'i2s'
+        elif periph_name.startswith('adc'):
+            legacy_role = 'adc'
+        if legacy_role and explicit[legacy_role]:
+            raise ValueError(
+                f'Audio codec device {device_name} cannot mix {legacy_role}_name with legacy '
+                f'peripheral binding for the same role'
+            )
 
         if periph.get('role') == 'reset':
             raise ValueError(
@@ -166,6 +274,10 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             )
 
         if has_reset_active_level:
+            logger.warning(
+                'Audio codec device %s uses legacy reset binding on peripheral %s; migrate to reset_name.',
+                device_name, periph_name,
+            )
             if reset_cfg['name'] is not None:
                 raise ValueError(
                     f'Audio codec device {device_name} references multiple reset GPIO peripherals, only one is supported'
@@ -179,6 +291,10 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             continue
 
         if has_pa_active_level:
+            logger.warning(
+                'Audio codec device %s uses legacy PA binding on peripheral %s; migrate to pa_name.',
+                device_name, periph_name,
+            )
             if pa_cfg['name'] is not None:
                 raise ValueError(
                     f'Audio codec device {device_name} references multiple PA GPIO peripherals, only one is supported'
@@ -213,6 +329,10 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             continue
 
         if periph_name.startswith('i2c'):
+            logger.warning(
+                'Audio codec device %s uses legacy I2C peripheral inference; migrate to i2c_name.',
+                device_name,
+            )
             _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
             peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
             i2c_cfg = {
@@ -224,6 +344,10 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             continue
 
         if periph_name.startswith('i2s'):
+            logger.warning(
+                'Audio codec device %s uses legacy I2S peripheral inference; migrate to i2s_name.',
+                device_name,
+            )
             _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
             peripheral_config = _get_peripheral_base_config(peripherals_dict, periph_name)
             i2s_cfg = {
@@ -237,6 +361,10 @@ def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_di
             continue
 
         if periph_name.startswith('adc'):
+            logger.warning(
+                'Audio codec device %s uses legacy ADC peripheral inference; migrate to adc_name.',
+                device_name,
+            )
             _validate_peripheral_reference(device_name, periph_name, peripherals_dict)
             adc_periph_count += 1
             if adc_periph_count == 1:

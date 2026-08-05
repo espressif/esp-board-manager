@@ -10,14 +10,14 @@ devices:
       dac_cfg:
         ref_enable: true
     peripherals:
-      - name: gpio_pa_control
+      - pa_name: gpio_pa_control
         gain: 6
-        pa_active_level: 1
+        active_level: 1
       # I2S interface for audio output
-      - name: i2s_audio_out
+      - i2s_name: i2s_audio_out
 
       # I2C interface for codec control
-      - name: i2c_master
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000
 
@@ -35,10 +35,10 @@ devices:
     # Peripheral configuration
     peripherals:
       # I2S interface for audio input
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
 
       # I2C interface for codec control
-      - name: i2c_master
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000
 
@@ -77,7 +77,6 @@ devices:
     config:
       reset_gpio_num: 27
       rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
-      data_endian: LCD_RGB_DATA_ENDIAN_BIG
       bits_per_pixel: 16
       reset_active_high: 0
       dbi_config:
@@ -105,8 +104,8 @@ devices:
           vsync_pulse_width : 1
           vsync_front_porch : 20
     peripherals:
-    - name: ldo_mipi
-    - name: dsi_display
+    - ldo_name: ldo_mipi
+    - dsi_name: dsi_display
 
   # Touch Panel Configuration
   - name: lcd_touch
@@ -128,14 +127,14 @@ devices:
           mirror_x: true
           mirror_y: true
     peripherals:
-      - name: i2c_master    # I2C peripheral for touch communication
+      - i2c_name: i2c_master    # I2C peripheral for touch communication
         i2c_addr: [0xBA, 0x28]  # GT911 8-bit I2C addresses, from 7-bit 0x5D/0x14
 
   - name: lcd_brightness
     type: ledc_ctrl
     version: default
     peripherals:
-      - name: ledc_backlight
+      - ledc_name: ledc_backlight
 
   - name: camera
     type: camera
@@ -147,6 +146,6 @@ devices:
         pwdn_io: -1
         dont_init_ldo: true  # Using periph_ldo to manager this peripheral
     peripherals:
-      - name: "i2c_master"
+      - i2c_name: i2c_master
         frequency: 100000
-      - name: ldo_mipi
+      - ldo_name: ldo_mipi

@@ -6,7 +6,11 @@
 # LCD Display device config parser
 VERSION = 'v1.0.0'
 
+import logging
+
 from generators.utils.idf_version import get_idf_version
+
+logger = logging.getLogger(__name__)
 
 DEV_DISPLAY_LCD_IO_LIST = {
     'dsi': [
@@ -54,6 +58,160 @@ IDF_VERSION_WITH_SPI_PSRAM_DMA_DIRECT = (6, 1, 0)
 # it is not present in the v6.0.0 release.
 IDF_VERSION_WITH_I80_ALLOW_PD = (6, 0, 1)
 
+_FRAME_FORMAT_TOKENS = {
+    'RGB565_LE': 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE',
+    'RGB565_BE': 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE',
+    'BGR888': 'DEV_DISPLAY_LCD_FRAME_FORMAT_BGR888',
+    'RGB888': 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888',
+}
+
+
+def _frame_format_from_color_format(color_format, idf_version):
+    if not isinstance(color_format, str):
+        return None
+    if 'RGB565' in color_format:
+        return 'RGB565_LE'
+    if 'RGB888' in color_format:
+        return 'BGR888' if idf_version[0] >= 6 else 'RGB888'
+    return None
+
+
+def _color_format_from_legacy_pixel_format(pixel_format):
+    if not isinstance(pixel_format, str):
+        return None
+    return {
+        'LCD_COLOR_PIXEL_FORMAT_RGB565': 'LCD_COLOR_FMT_RGB565',
+        'LCD_COLOR_PIXEL_FORMAT_RGB666': 'LCD_COLOR_FMT_RGB666',
+        'LCD_COLOR_PIXEL_FORMAT_RGB888': 'LCD_COLOR_FMT_RGB888',
+    }.get(pixel_format)
+
+
+def _legacy_pixel_format_from_color_format(color_format):
+    if not isinstance(color_format, str):
+        return None
+    return {
+        'LCD_COLOR_FMT_RGB565': 'LCD_COLOR_PIXEL_FORMAT_RGB565',
+        'LCD_COLOR_FMT_RGB666': 'LCD_COLOR_PIXEL_FORMAT_RGB666',
+        'LCD_COLOR_FMT_RGB888': 'LCD_COLOR_PIXEL_FORMAT_RGB888',
+    }.get(color_format)
+
+
+def _resolve_dsi_color_formats(dpi_config, warn_on_conflict=False):
+    pixel_format = dpi_config.get('pixel_format')
+    explicit_input = dpi_config.get('in_color_format')
+    legacy_input = _color_format_from_legacy_pixel_format(pixel_format)
+
+    if explicit_input is not None:
+        input_format = explicit_input
+        if warn_on_conflict and legacy_input is not None and legacy_input != explicit_input:
+            logger.warning(
+                'LCD display DSI in_color_format overrides pixel_format because the formats differ.'
+            )
+    else:
+        input_format = legacy_input or 'LCD_COLOR_FMT_RGB565'
+
+    output_format = dpi_config.get('out_color_format', input_format)
+    if pixel_format is None:
+        pixel_format = (
+            _legacy_pixel_format_from_color_format(input_format)
+            or 'LCD_COLOR_PIXEL_FORMAT_RGB565'
+        )
+    return pixel_format, input_format, output_format
+
+
+def _frame_format_from_data_endian(data_endian):
+    if data_endian == 'LCD_RGB_DATA_ENDIAN_BIG':
+        return 'RGB565_BE'
+    if data_endian == 'LCD_RGB_DATA_ENDIAN_LITTLE':
+        return 'RGB565_LE'
+    return None
+
+
+def _frame_format_from_bits_per_pixel(bits_per_pixel):
+    if int(bits_per_pixel) == 16:
+        return 'RGB565_LE'
+    return None
+
+
+def _derive_frame_format(full_config, sub_type):
+    """Derive BMGR's stable frame format from raw, pre-default YAML fields."""
+    config = full_config.get('config') or {}
+    override = config.get('frame_format')
+    if override is not None and override not in _FRAME_FORMAT_TOKENS:
+        raise ValueError(
+            'LCD display frame_format must be one of RGB565_LE, RGB565_BE, BGR888, RGB888'
+        )
+
+    authoritative_format = None
+    data_endian = None
+    data_endian_present = False
+    swap_color_bytes = False
+    unsupported_reason = None
+
+    if sub_type == 'dsi':
+        dpi_config = config.get('dpi_config') or {}
+        idf_version = get_idf_version()
+        _, input_format, _ = _resolve_dsi_color_formats(dpi_config, warn_on_conflict=True)
+        authoritative_format = _frame_format_from_color_format(input_format, idf_version)
+        unsupported_reason = 'DSI in_color_format'
+    elif sub_type in ('rgb', 'rgb_3wire_spi'):
+        rgb_config = config.get('rgb_panel_config') or {}
+        if get_idf_version()[0] < 6:
+            authoritative_format = _frame_format_from_bits_per_pixel(
+                rgb_config.get('bits_per_pixel', config.get('bits_per_pixel', 16))
+            )
+            unsupported_reason = 'RGB bits_per_pixel'
+        else:
+            authoritative_format = _frame_format_from_color_format(
+                rgb_config.get('in_color_format', 'LCD_COLOR_FMT_RGB565'),
+                get_idf_version(),
+            )
+            unsupported_reason = 'RGB in_color_format'
+    elif sub_type in ('spi', 'i80'):
+        panel_key = 'lcd_panel_config' if sub_type == 'spi' else 'panel_config'
+        panel_config = config.get(panel_key) or {}
+        data_endian_present = 'data_endian' in panel_config
+        data_endian = panel_config.get('data_endian')
+        bits_per_pixel = panel_config.get('bits_per_pixel', config.get('bits_per_pixel', 16))
+        if int(bits_per_pixel) != 16:
+            unsupported_reason = f'{sub_type} bits_per_pixel'
+        if sub_type == 'i80':
+            io_flags = (config.get('io_config') or {}).get('flags') or {}
+            swap_color_bytes = bool(io_flags.get('swap_color_bytes', False))
+            if io_flags.get('reverse_color_bits', False):
+                unsupported_reason = 'I80 reverse_color_bits'
+            elif io_flags.get('lsb_first', False):
+                unsupported_reason = 'I80 lsb_first'
+        else:
+            io_flags = (config.get('io_spi_config') or {}).get('flags') or {}
+            if io_flags.get('lsb_first', False):
+                unsupported_reason = 'SPI lsb_first'
+    else:
+        unsupported_reason = 'sub_type'
+
+    auto_format = authoritative_format
+    if auto_format is None and unsupported_reason is None:
+        auto_format = _frame_format_from_data_endian(data_endian) if data_endian_present else 'RGB565_BE'
+        if auto_format is None:
+            unsupported_reason = 'data_endian'
+    if sub_type == 'i80' and auto_format is not None and swap_color_bytes:
+        auto_format = 'RGB565_LE' if auto_format == 'RGB565_BE' else 'RGB565_BE'
+
+    if override is not None:
+        if auto_format is None or override != auto_format:
+            logger.warning(
+                'LCD display frame_format %s differs from automatically inferred format %s; '
+                'using the explicit value.',
+                override,
+                auto_format or 'UNKNOWN',
+            )
+        return _FRAME_FORMAT_TOKENS[override]
+
+    if auto_format is None:
+        logger.warning('LCD display frame format is UNKNOWN: unsupported %s.', unsupported_reason)
+        return 'DEV_DISPLAY_LCD_FRAME_FORMAT_UNKNOWN'
+    return _FRAME_FORMAT_TOKENS[auto_format]
+
 def _iter_peripheral_names(peripherals_list):
     """Yield normalized peripheral names from YAML list items."""
     if not peripherals_list:
@@ -79,6 +237,42 @@ def _find_peripheral_name_in_list(device_name: str, peripherals_list, prefix: st
                 raise ValueError(f"LCD display device {device_name} references undefined peripheral '{periph_name}'")
             return periph_name
     return None
+
+
+def _find_bound_peripheral(device_name, peripherals_list, role, peripherals_dict=None):
+    """Resolve an explicit role binding, falling back to legacy prefix syntax."""
+    explicit = []
+    legacy = []
+    for periph in peripherals_list or []:
+        if isinstance(periph, dict):
+            if f'{role}_name' in periph:
+                explicit.append(periph[f'{role}_name'])
+            elif periph.get('_binding_role') == role:
+                explicit.append(periph.get('name'))
+            elif 'name' in periph and periph['name'].startswith(role):
+                legacy.append(periph['name'])
+        elif isinstance(periph, str) and periph.startswith(role):
+            legacy.append(periph)
+    if len(explicit) > 1:
+        raise ValueError(f'LCD display device {device_name} references multiple {role} peripherals')
+    if explicit and legacy:
+        raise ValueError(f'LCD display device {device_name} cannot mix {role}_name with legacy {role} binding')
+    if explicit:
+        name = explicit[0]
+        if not isinstance(name, str) or not name:
+            raise ValueError(f'LCD display device {device_name} {role}_name must be a non-empty string')
+        if peripherals_dict is not None:
+            if name not in peripherals_dict:
+                raise ValueError(f"LCD display device {device_name} references undefined peripheral '{name}'")
+            if getattr(peripherals_dict[name], 'type', None) != role:
+                raise ValueError(f'LCD display device {device_name} {role} peripheral must have type {role}')
+        return name, True
+    if len(legacy) > 1:
+        raise ValueError(f'LCD display device {device_name} references multiple legacy {role} peripherals')
+    if legacy:
+        logger.warning('LCD display device %s uses legacy %s peripheral inference; migrate to %s_name.', device_name, role, role)
+        return legacy[0], False
+    return None, False
 
 
 def _find_peripheral_name_in_dict(peripherals_dict, prefix: str):
@@ -125,15 +319,14 @@ def parse_dsi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     # Get DPI configuration
     dpi_config = sub_config.get('dpi_config', {})
 
-    pixel_format_val = dpi_config.get('pixel_format')
-    in_color_format_val = dpi_config.get('in_color_format', 'LCD_COLOR_FMT_RGB565')
+    pixel_format_val, in_color_format_val, out_color_format_val = _resolve_dsi_color_formats(dpi_config)
 
     dpi_config_parsed = {
         'virtual_channel': dpi_config.get('virtual_channel', 0),
         'dpi_clk_src': dpi_config.get('dpi_clk_src', 'MIPI_DSI_DPI_CLK_SRC_DEFAULT'),
         'dpi_clock_freq_mhz': dpi_config.get('dpi_clock_freq_mhz', 48),
         'in_color_format': in_color_format_val,
-        'out_color_format': dpi_config.get('out_color_format', 'LCD_COLOR_FMT_RGB565'),
+        'out_color_format': out_color_format_val,
         'num_fbs': dpi_config.get('num_fbs', 1),
         'flags': {
             'disable_lp': dpi_config.get('flags', {}).get('disable_lp', False)
@@ -145,7 +338,7 @@ def parse_dsi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     idf_major = idf_version[0]
     if idf_major < 6:
         # v5: include legacy pixel_format and use_dma2d struct fields
-        dpi_config_parsed['pixel_format'] = pixel_format_val if pixel_format_val else 'LCD_COLOR_PIXEL_FORMAT_RGB565'
+        dpi_config_parsed['pixel_format'] = pixel_format_val
         dpi_config_parsed['flags']['use_dma2d'] = use_dma2d_flag
 
     # Get video timing configuration
@@ -173,14 +366,18 @@ def parse_dsi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
         peripherals_list = sub_config.get('peripherals')
 
     if peripherals_list:
-        dsi_bus_name = _find_peripheral_name_in_list(device_name, peripherals_list, 'dsi', peripherals_dict)
-        ldo_name = _find_peripheral_name_in_list(device_name, peripherals_list, 'ldo', peripherals_dict)
+        dsi_bus_name, explicit_dsi = _find_bound_peripheral(device_name, peripherals_list, 'dsi', peripherals_dict)
+        ldo_name, explicit_ldo = _find_bound_peripheral(device_name, peripherals_list, 'ldo', peripherals_dict)
+    else:
+        explicit_dsi = explicit_ldo = False
 
     # Fallback to peripherals_dict if not found in config
-    if not dsi_bus_name and peripherals_dict:
+    if not dsi_bus_name and peripherals_dict and not explicit_dsi:
+        logger.warning('LCD display device %s uses legacy global DSI fallback; add dsi_name.', device_name)
         dsi_bus_name = _find_peripheral_name_in_dict(peripherals_dict, 'dsi')
 
-    if not ldo_name and peripherals_dict:
+    if not ldo_name and peripherals_dict and not explicit_ldo:
+        logger.warning('LCD display device %s uses legacy global LDO fallback; add ldo_name.', device_name)
         ldo_name = _find_peripheral_name_in_dict(peripherals_dict, 'ldo')
 
     if not dsi_bus_name:
@@ -251,10 +448,13 @@ def parse_spi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
         peripherals_list = io_spi_config.get('peripherals')
 
     if peripherals_list:
-        spi_bus_name = _find_peripheral_name_in_list(device_name, peripherals_list, 'spi', peripherals_dict)
+        spi_bus_name, explicit_spi = _find_bound_peripheral(device_name, peripherals_list, 'spi', peripherals_dict)
+    else:
+        explicit_spi = False
 
     # Fallback to peripherals_dict if not found in config
-    if not spi_bus_name and peripherals_dict:
+    if not spi_bus_name and peripherals_dict and not explicit_spi:
+        logger.warning('LCD display device %s uses legacy global SPI fallback; add spi_name.', device_name)
         spi_bus_name = _find_peripheral_name_in_dict(peripherals_dict, 'spi')
 
     if not spi_bus_name:
@@ -556,6 +756,8 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
     if sub_type not in ['dsi', 'spi', 'parlio', 'rgb', 'rgb_3wire_spi', 'i80']:
         raise ValueError(f"LCD Display device '{name}' has invalid 'sub_type' value '{sub_type}'")
 
+    frame_format = _derive_frame_format(full_config, sub_type)
+
     # Parse sub configuration based on sub_type and extract common parameters
     if sub_type == 'dsi':
         sub_cfg = parse_dsi_sub_config(full_config, peripherals_dict)
@@ -674,6 +876,7 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
             'rgb_ele_order': rgb_ele_order,
             'data_endian': data_endian,
             'bits_per_pixel': bits_per_pixel,
+            'frame_format': frame_format,
             'sub_cfg': sub_cfg_union
         }
     }

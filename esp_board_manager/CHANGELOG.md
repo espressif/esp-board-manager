@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1
+
+### Features
+
+- Added role-specific peripheral selectors for supported device bindings, such as `i2c_name`, `spi_name`, `gpio_name`, `pa_name`, and `reset_name`. Legacy string and `name` references remain supported with compatibility warnings, while invalid roles and referenced peripheral types are rejected during parsing.
+- Added `dev_display_lcd` `frame_format` generation for application consumers. The format is derived from the LCD configuration or can be explicitly set to `RGB565_LE`, `RGB565_BE`, `BGR888`, or `RGB888`.
+
+### Modifications
+
+- Updated LCD test applications to select byte swapping and image-conversion output from the generated `frame_format` instead of relying on panel-driver-specific byte-order assumptions.
+
 ## 0.7.0
 
 ### Features

@@ -5,7 +5,7 @@ devices:
     type: power_ctrl
     sub_type: gpio
     peripherals:
-    - name: gpio_sd_power
+    - gpio_name: gpio_sd_power
       active_level: 0
 
   - name: audio_dac
@@ -19,11 +19,11 @@ devices:
 
     # Power amplifier configuration
     peripherals:
-      - name: gpio_pa_control
+      - pa_name: gpio_pa_control
         gain: 6                    # dB
-        pa_active_level: 1         # 0-low, 1-high
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1         # 0-low, 1-high
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000          # Hz
 
@@ -41,9 +41,9 @@ devices:
     # Power amplifier configuration
     peripherals:
       # I2S interface configuration
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
       # I2C interface configuration
-      - name: i2c_master
+      - i2c_name: i2c_master
         address: 0x80
         frequency: 400000          # Hz
 
@@ -86,14 +86,13 @@ devices:
 
       lcd_panel_config:
         reset_gpio_num: 48
-        data_endian: "LCD_RGB_DATA_ENDIAN_LITTLE" # LCD_RGB_DATA_ENDIAN_LITTLE
         flags:
           reset_active_high: true
         # ST77916 specific configuration
         vendor_config: NULL
 
     peripherals:
-    - name: spi_display            # SPI peripheral for LCD communication
+    - spi_name: spi_display            # SPI peripheral for LCD communication
 
   # Touch Panel Configuration
   - name: lcd_touch
@@ -114,11 +113,11 @@ devices:
         y_max: 240                        # Maximum Y coordinate (BSP_LCD_V_RES)
         int_gpio_num: 3                   # Interrupt GPIO (BSP_LCD_TOUCH_INT)
     peripherals:
-      - name: i2c_master              # I2C peripheral for touch communication
+      - i2c_name: i2c_master              # I2C peripheral for touch communication
         i2c_addr: [0xBA, 0x28, 0x48]  # GT911/TT21100 8-bit I2C addresses, from 7-bit 0x5D/0x14/0x24
 
   - name: lcd_brightness
     type: ledc_ctrl
     version: default
     peripherals:
-      - name: ledc_backlight               # LEDC peripheral for GPIO 47
+      - ledc_name: ledc_backlight               # LEDC peripheral for GPIO 47

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "esp_err.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
@@ -14,6 +16,8 @@ extern "C" {
 void test_periph_gpio(void);
 
 void test_periph_i2c(void);
+
+esp_err_t test_periph_i2c_probe(void);
 
 void test_periph_uart(void);
 

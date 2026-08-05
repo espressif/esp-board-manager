@@ -45,7 +45,7 @@ GPIO Power Control
         type: power_ctrl
         sub_type: gpio
         peripherals:
-          - name: gpio_power_audio
+          - gpio_name: gpio_power_audio
             active_level: 1
 
       - name: audio_dac
@@ -56,8 +56,8 @@ GPIO Power Control
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: i2s_audio_out
-          - name: i2c_master
+          - i2s_name: i2s_audio_out
+          - i2c_name: i2c_master
             address: 0x30
             frequency: 400000
 
@@ -67,6 +67,8 @@ Custom Power Control
 ^^^^^^^^^^^^^^^^^^^^
 
 Use ``custom`` when a board needs a PMIC, IO expander, several rails, or an ordered power sequence. Register operations under the same name as the ``power_ctrl`` device. See :doc:`/programming-guide/board-directory` for board source placement and build rules. ``init`` and ``deinit`` are optional; ``set_power`` is required. The framework retains configured ``peripherals`` before ``init`` and releases them after ``deinit``. Use ``depends_on`` for other device dependencies, such as a separately modelled PMIC device.
+
+Role-specific selectors such as ``gpio_name`` and ``i2c_name`` apply only to binding scenarios explicitly supported by the device rules. They do not apply to the ``peripherals`` list of a ``custom`` power controller, which declares lifecycle dependencies. The ``peripherals`` list of a ``custom`` power controller continues to use the legacy ``name`` reference form.
 
 ``board_devices.yaml``:
 
@@ -130,7 +132,7 @@ GPIO Power Control All Fields
       type: power_ctrl                # The type of the device, must be unique
       sub_type: gpio                  # The sub type of the device, must be 'gpio'
       peripherals:
-        - name: gpio                  # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+        - gpio_name: gpio             # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
           active_level: 1             # [TO_BE_CONFIRMED] Active level (0-low, 1-high) when power is on
 
 Custom Power Control All Fields
@@ -158,8 +160,8 @@ Custom Power Control All Fields
     #     sys_cfg:
     #       no_mclk: false
     #   peripherals:
-    #     - name: i2s_audio_out
-    #     - name: i2c_master
+    #     - i2s_name: i2s_audio_out
+    #     - i2c_name: i2c_master
     #       address: 0x30
     #       frequency: 400000
 

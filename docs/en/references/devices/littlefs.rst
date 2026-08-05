@@ -125,7 +125,7 @@ Both the SDMMC and SDSPI SD backends depend on the SD card support of the ``jolt
             cs_gpio_num: 15
             frequency: SDMMC_FREQ_DEFAULT
         peripherals:
-          - name: spi_master
+          - spi_name: spi_master
 
 All Fields
 ----------
@@ -219,7 +219,7 @@ SPI SD Card All Fields
           cs_gpio_num: 15                     # [IO] SD card chip-select pin (default: 15)
           frequency: SDMMC_FREQ_DEFAULT       # SD clock frequency (default: SDMMC_FREQ_DEFAULT); same enum values as the SDMMC frequency field
       peripherals:
-        - name: spi_master                    # Referenced SPI master peripheral (type: spi, role: master)
+        - spi_name: spi_master                 # Referenced SPI master peripheral (type: spi, role: master)
 
 In ``esp_vfs_littlefs_conf_t``, the ``partition``, ``sdcard``, and ``blockdev`` fields are runtime mount-source fields and cannot be written in YAML. BMGR sets the corresponding mount source during initialization according to ``sub_type``.
 

@@ -48,9 +48,9 @@ GPIO Output Control
           active_level: 1
           default_level: 0
         peripherals:
-          - name: gpio_power
+          - gpio_name: gpio_power
 
-``gpio_ctrl`` binds to a single ``gpio`` peripheral. The parser requires the ``peripherals`` list to contain at least one entry whose name starts with ``gpio`` or ``gpio_``; when peripheral validation is enabled, that name must exist in ``board_peripherals.yaml``.
+``gpio_ctrl`` binds to a single ``gpio`` peripheral through ``gpio_name``. The selected name must exist in ``board_peripherals.yaml`` and reference a peripheral of type ``gpio``.
 
 ``active_level`` is the level written during device initialization and is also the level the application should write when enabling the control signal. ``default_level`` is not written back automatically during deinitialization; the application must actively call the GPIO driver to set this level when powering off or disabling the signal.
 
@@ -73,7 +73,7 @@ GPIO Output Control All Fields
         active_level: 1           # [TO_BE_CONFIRMED] Active level (0 or 1) - GPIO level when device is active
         default_level: 0          # Default level (0 or 1) - GPIO level when device is inactive
       peripherals:
-        - name: gpio              # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+        - gpio_name: gpio         # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
 
 Component Dependencies
 ----------------------
@@ -112,7 +112,7 @@ Board Reference
 Notes
 -----
 
-- The ``gpio`` peripheral name referenced by the device must match the instance name in ``board_peripherals.yaml`` and must start with ``gpio`` or ``gpio_``.
+- The device uses ``gpio_name`` to select the ``gpio`` peripheral instance.
 - During ``gpio_ctrl`` initialization, the GPIO is set to ``active_level``. If the board power should be off by default, verify that the initialization order and ``active_level`` setting are consistent with the hardware design.
 - To deactivate the control signal, the application must actively write ``default_level`` using the retrieved ``periph_gpio_handle_t`` and the device configuration.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.

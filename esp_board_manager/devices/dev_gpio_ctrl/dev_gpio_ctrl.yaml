@@ -9,4 +9,4 @@
     active_level: 1           # [TO_BE_CONFIRMED] Active level (0 or 1) - GPIO level when device is active
     default_level: 0          # Default level (0 or 1) - GPIO level when device is inactive
   peripherals:
-    - name: gpio              # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+    - gpio_name: gpio          # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)

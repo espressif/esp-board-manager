@@ -75,4 +75,4 @@
       cs_gpio_num: 15                     # [IO] SD card chip-select pin (default: 15)
       frequency: SDMMC_FREQ_DEFAULT       # SD clock frequency (default: SDMMC_FREQ_DEFAULT); same enum values as the SDMMC frequency field
   peripherals:
-    - name: spi_master                    # Referenced SPI master peripheral (type: spi, role: master)
+    - spi_name: spi_master                # Referenced SPI master peripheral (type: spi, role: master)

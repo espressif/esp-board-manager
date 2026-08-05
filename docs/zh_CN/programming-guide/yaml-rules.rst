@@ -70,3 +70,21 @@ BMGR 不限制 YAML 解析行为，因此 ``&`` 锚点、``*`` 引用、``<<:`` 
          <<: *spi_master_default
          mosi_io_num: 35        # [IO]
          sclk_io_num: 36        # [IO]
+
+语义化外设绑定
+------------------------
+
+设备条目按语义角色引用外设。请使用与设备类型和子类型匹配的 ``*_name`` 字段，不要依赖外设名称前缀或列表顺序：
+
+.. code-block:: yaml
+
+   devices:
+     - name: display_lcd
+       type: display_lcd
+       sub_type: spi
+       peripherals:
+         - spi_name: spi_lcd
+
+选择器由设备类型和子类型决定。例如，编解码器 GPIO 使用 ``pa_name`` 和 ``reset_name``，I2C 控制总线使用 ``i2c_name``，SPI 总线使用 ``spi_name``，DSI LCD 使用 ``dsi_name`` 和 ``ldo_name``，GPIO 控制线使用 ``gpio_name``。每个外设条目最多只能包含一个角色选择器。
+
+为保持兼容，仍接受字符串引用以及只包含 ``name`` 的映射。BMGR 会根据设备上下文推断角色并发出告警。未知选择器、重复角色、同时包含 ``name`` 和 ``*_name`` 的引用，或引用外设类型不匹配时，解析阶段会拒绝该配置。

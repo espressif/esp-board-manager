@@ -7,7 +7,7 @@
   type: power_ctrl                # The type of the device, must be unique
   sub_type: gpio                  # The sub type of the device, must be 'gpio'
   peripherals:
-    - name: gpio                  # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+    - gpio_name: gpio              # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
       active_level: 1             # [TO_BE_CONFIRMED] Active level (0-low, 1-high) when power is on
 
 # Example Power Control device with custom sub type configuration

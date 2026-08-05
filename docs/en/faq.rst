@@ -164,6 +164,25 @@ Typical errors:
 2. Then run ``idf.py bmgr -b <board>`` to regenerate.
 3. If errors persist, refer to the `IDF Component Manager Manifest documentation <https://docs.espressif.com/projects/idf-component-manager/en/latest/reference/manifest_file.html#dependencies>`_ to check the syntax of the ``dependencies`` field in the device YAML.
 
+Board Component and Board Manager Version Mismatch
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Symptoms**
+
+The following problems can occur when board component and Board Manager versions do not match:
+
+- With ``0.6.0`` board components, older Board Manager releases do not recognize semantic peripheral reference fields such as ``i2c_name``, ``spi_name``, and ``pa_name``, causing board YAML parsing to fail.
+- With the published ``esp_boards 0.5.4``, ``esp_friends_boards 0.5.3``, and ``m5stack_boards 0.5.4`` releases, older Board Manager releases do not recognize the ``pa_active_level`` PA configuration field in ``dev_audio_codec`` (now deprecated), causing PA configuration parsing to fail.
+
+**Recommended Actions**
+
+If the project must use an older Board Manager release, add the board component actually used by the project to ``idf_component.yml`` and specify a matching version.
+
+**Version Relationship**
+
+- ``esp_boards 0.6.0``, ``esp_friends_boards 0.6.0``, and ``m5stack_boards 0.6.0`` require ``esp_board_manager >=0.7.1``.
+- ``esp_boards 0.5.4``, ``esp_friends_boards 0.5.3``, and ``m5stack_boards 0.5.4`` require ``esp_board_manager >=0.7.0``.
+
 Runtime Phase
 -------------
 

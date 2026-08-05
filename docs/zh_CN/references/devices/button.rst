@@ -51,7 +51,7 @@ GPIO 按键
         config:
           active_level: 0
         peripherals:
-          - name: gpio_button_io_0
+          - gpio_name: gpio_button_io_0
 
 ADC 单按键
 ^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ ADC 单按键
           min_voltage: 0
           max_voltage: 500
         peripherals:
-          - name: adc_oneshot
+          - adc_name: adc_oneshot
 
 ADC 多按键
 ^^^^^^^^^^^^^
@@ -116,7 +116,7 @@ ADC 多按键
           button_labels: ["VOLUME_UP", "VOLUME_DOWN", "SET", "PLAY", "MUTE", "REC"]
           max_voltage: 3000
         peripherals:
-          - name: adc_oneshot
+          - adc_name: adc_oneshot
 
 自定义按键
 ^^^^^^^^^^^^
@@ -191,7 +191,7 @@ GPIO 按键完整字段
           press_end: false           # Enable press end event (default: false)
 
       peripherals:
-        - name: gpio                 # [TO_BE_CONFIRMED] GPIO peripheral name
+        - gpio_name: gpio            # [TO_BE_CONFIRMED] GPIO peripheral name
 
 ADC 单按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -232,7 +232,7 @@ ADC 单按键完整字段
           press_end: false           # Enable press end event (default: false)
 
       peripherals:
-        - name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
+        - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
 
 ADC 多按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -279,7 +279,7 @@ ADC 多按键完整字段
           press_end: false           # Enable press end event (default: false)
 
       peripherals:
-        - name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
+        - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
 
 自定义按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^

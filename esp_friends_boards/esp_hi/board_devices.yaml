@@ -25,10 +25,10 @@ devices:
       adc_enabled: false
       dac_enabled: true
     peripherals:
-      - name: i2s_audio_out
+      - i2s_name: i2s_audio_out
         tx_aux_out_io: 7
         tx_aux_out_invert: true
-      - name: gpio_pa_control
+      - pa_name: gpio_pa_control
         active_level: 1
 
   - name: display_lcd
@@ -53,10 +53,9 @@ devices:
       lcd_panel_config:
         reset_gpio_num: -1
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG
         bits_per_pixel: 16
     peripherals:
-      - name: spi_display
+      - spi_name: spi_display
 
   - name: boot_button
     type: button
@@ -84,4 +83,4 @@ devices:
         press_repeat_done: false
         press_end: false
     peripherals:
-      - name: gpio_boot_button
+      - gpio_name: gpio_boot_button

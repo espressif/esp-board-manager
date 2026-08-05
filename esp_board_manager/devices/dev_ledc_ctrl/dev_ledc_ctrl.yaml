@@ -8,4 +8,4 @@
   config:
     default_percent: 100        # [TO_BE_CONFIRMED] Default brightness percentage (0-100)
   peripherals:
-    - name: ledc_backlight      # LEDC peripheral name (must reference an LEDC peripheral)
+    - ledc_name: ledc_backlight # LEDC peripheral name (must reference an LEDC peripheral)

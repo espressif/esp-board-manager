@@ -9,11 +9,11 @@ devices:
       sys_cfg:
         no_mclk: false
     peripherals:
-      - name: gpio_pa_control
+      - pa_name: gpio_pa_control
         gain: 6
-        pa_active_level: 1
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x10
         frequency: 400000
 
@@ -24,8 +24,8 @@ devices:
       adc_enabled: true
       dac_enabled: false
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 400000
 
@@ -53,10 +53,10 @@ devices:
         data_endian: LCD_RGB_DATA_ENDIAN_BIG
         vendor_config: NULL
     peripherals:
-    - name: spi_display
+    - spi_name: spi_display
 
   - name: lcd_brightness
     type: ledc_ctrl
     version: default
     peripherals:
-      - name: ledc_backlight               # LEDC peripheral for GPIO 47
+      - ledc_name: ledc_backlight               # LEDC peripheral for GPIO 47

@@ -33,7 +33,7 @@ YAML 迁移
        ref_dac_ch: 0
        real_adc_data_ch: 0
 
-``adc_cfg.label`` 按 codec-dev 2.0 从 LSB 到 MSB 的通道顺序配置。PA 和复位 GPIO 不属于 ``config`` 配置组，应在 ``peripherals`` 中引用 GPIO 外设，并使用 ``pa_active_level`` 或 ``reset_active_level``。
+``adc_cfg.label`` 按 codec-dev 2.0 从 LSB 到 MSB 的通道顺序配置。PA 和复位 GPIO 不属于 ``config`` 配置组，应在 ``peripherals`` 中通过 ``pa_name`` 或 ``reset_name`` 引用 GPIO 外设，并在同一条目中设置 ``active_level``。
 
 旧字段兼容性
 ------------
@@ -43,7 +43,6 @@ YAML 迁移
 - ``mclk_enabled`` 映射为反向的 ``sys_cfg.no_mclk``。
 - ``adc_channel_labels`` 会原样复制，不会调整顺序。替换为 ``adc_cfg.label`` 前需检查旧字段的 MSB 到 LSB 顺序。
 - ``adc_channel_mask``、``dac_channel_mask``、``adc_max_channel``、``dac_max_channel``、``adc_init_gain``、``dac_init_gain``、``aec``、``eq`` 和 ``alc`` 不参与 codec 初始化。
-- 使用 ``active_level`` 的 GPIO 引用按旧 PA 控制处理，应改为 ``pa_active_level``。
 
 运行时设置
 ----------

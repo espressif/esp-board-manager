@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+### Modifications
+
+- Migrated friend-board device peripheral references to role-specific selectors.
+
 ## 0.5.3
 
 ### Modifications

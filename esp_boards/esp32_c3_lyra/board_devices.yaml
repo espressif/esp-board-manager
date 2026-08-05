@@ -5,7 +5,7 @@ devices:
     config:
       adc_enabled: true
     peripherals:
-      - name: adc_audio_in
+      - adc_name: adc_audio_in
 
   # - name: audio_adc
   #   chip: internal
@@ -28,7 +28,7 @@ devices:
     config:
       dac_enabled: true
     peripherals:
-      - name: i2s_audio_out
-      - name: gpio_pa_control
+      - i2s_name: i2s_audio_out
+      - pa_name: gpio_pa_control
         gain: 6
-        pa_active_level: 1
+        active_level: 1

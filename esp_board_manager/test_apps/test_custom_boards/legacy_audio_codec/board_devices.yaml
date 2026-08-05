@@ -1,0 +1,22 @@
+devices:
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: true
+    peripherals:
+      # Legacy binding: inferred as adc_name from the peripheral name.
+      - name: adc_audio_in
+
+  - name: audio_dac
+    chip: internal
+    type: audio_codec
+    config:
+      dac_enabled: true
+    peripherals:
+      # Legacy binding: inferred as i2s_name from the peripheral name.
+      - name: i2s_audio_out
+      # Legacy PA binding: pa_active_level is replaced by active_level with pa_name.
+      - name: gpio_pa_control
+        gain: 6
+        pa_active_level: 1

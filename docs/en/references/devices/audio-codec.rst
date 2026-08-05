@@ -76,10 +76,10 @@ Playback mode is for DAC output through an external codec. ``board_peripherals.y
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: gpio_pa_control
-            pa_active_level: 1
-          - name: i2s_audio_out
-          - name: i2c_master
+          - pa_name: gpio_pa_control
+            active_level: 1
+          - i2s_name: i2s_audio_out
+          - i2c_name: i2c_master
             address: 0x30               # [TO_BE_CONFIRMED] I2C device address
             frequency: 400000
 
@@ -132,8 +132,8 @@ Recording mode is for ADC input through an external codec. ``board_peripherals.y
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
-          - name: i2c_master
+          - i2s_name: i2s_audio_in
+          - i2c_name: i2c_master
             address: 0x30               # [TO_BE_CONFIRMED] I2C device address
             frequency: 400000
 
@@ -156,9 +156,9 @@ Full-duplex mode is for a single physical codec chip that handles both playback 
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: i2s_audio_out
+          - i2s_name: i2s_audio_out
           - &es8311_i2c_master
-            name: i2c_master
+            i2c_name: i2c_master
             address: 0x30
             frequency: 400000
 
@@ -169,7 +169,7 @@ Full-duplex mode is for a single physical codec chip that handles both playback 
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
+          - i2s_name: i2s_audio_in
           - *es8311_i2c_master
 
 .. _audio-codec-internal:
@@ -198,7 +198,7 @@ Reusing an ``adc`` peripheral:
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: adc_audio_in
+          - adc_name: adc_audio_in
 
 Creating an ADC continuous handle via ``audio_codec``:
 
@@ -264,7 +264,7 @@ A PDM digital microphone is the typical I2S form in the ``chip: internal`` path.
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
+          - i2s_name: i2s_audio_in
 
 If the microphone has a dedicated power control, add ``power_ctrl_device: mic_power_ctrl`` to the device and define the corresponding ``power_ctrl`` device in ``board_devices.yaml``. Board reference: ``boards/esp32_p4_eye/board_devices.yaml``.
 
@@ -317,10 +317,10 @@ I2S PDM output can directly drive a PDM speaker or PDM amplifier without an exte
           dac_enabled: true
           adc_enabled: false
         peripherals:
-          - name: i2s_audio_out
-          - name: gpio_pa_control           # Optional: PA control pin
+          - i2s_name: i2s_audio_out
+          - pa_name: gpio_pa_control           # Optional: PA control pin
             gain: 6                         # [TO_BE_CONFIRMED] PA gain in dB
-            pa_active_level: 1              # Active level of the PA control pin
+            active_level: 1                 # Active level of the PA control pin
 
 If the speaker has a PA control pin, an additional ``gpio_pa_control`` peripheral (``type: gpio``) must be defined in ``board_peripherals.yaml``. Board references: ``boards/esp32_c3_lyra/board_peripherals.yaml``, ``boards/esp32_c3_lyra/board_devices.yaml``.
 
@@ -385,23 +385,23 @@ External Codec Chip
       # Peripheral configuration
       peripherals:
         # PA GPIO dependency. It must reference a type: gpio peripheral from board_peripherals.yaml.
-        - name: gpio_power_amp
+        - pa_name: gpio_power_amp
           gain: 0.0
-          pa_active_level: 1
+          active_level: 1
 
-        # Optional codec reset GPIO. reset_active_level is the asserted reset level.
-        - name: gpio_codec_reset
-          reset_active_level: 0
+        # Optional codec reset GPIO. active_level is the asserted reset level.
+        - reset_name: gpio_codec_reset
+          active_level: 0
 
         # I2S interface configuration
-        - name: i2s_audio_out                # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
+        - i2s_name: i2s_audio_out            # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
           clk_src: 0                         # I2S clock source, need converted from `i2s_clock_src_t`. If set to 0 will use default clock source (default: 0)
           tx_aux_out_io: -1                  # Optional mirrored/inverted I2S TX auxiliary output IO, -1 disables this feature
           tx_aux_out_line: 0                 # Optional TX data line index (0: main line, >0: extra TX data line when supported)
           tx_aux_out_invert: false           # Optional invert flag for the auxiliary output signal
 
         # I2C interface configuration
-        - name: i2c_master                   # [TO_BE_CONFIRMED] I2C peripheral for codec control
+        - i2c_name: i2c_master                # [TO_BE_CONFIRMED] I2C peripheral for codec control
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
           frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
@@ -427,10 +427,10 @@ Internal ADC Data Path: Reusing ADC Peripheral
         # ADC peripheral reference. The peripheral must be declared in board_peripherals.yaml
         # and configured as continuous mode (`role: continuous`).
         # Example:
-        # - name: adc_audio_in
+        # - adc_name: adc_audio_in
         #   type: adc
         #   role: continuous
-        - name: adc_audio_in                 # ADC peripheral name to be reused by dev_audio_codec
+        - adc_name: adc_audio_in              # ADC peripheral name to be reused by dev_audio_codec
 
 Internal ADC Data Path: Local Single-Unit Configuration with Patterns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -562,7 +562,7 @@ Required Peripherals
    * - ``gpio``
      - ``io``
      - Used when PA control or mute control is present
-     - Device-side reference entry fills in ``gain`` and ``pa_active_level``
+     - Device-side reference entry fills in ``gain`` and ``active_level``
    * - ``adc``
      - ``continuous``
      - Used when internal ADC audio input is used and the peripheral is reused

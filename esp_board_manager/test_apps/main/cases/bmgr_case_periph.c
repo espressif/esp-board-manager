@@ -24,6 +24,14 @@ static esp_err_t run_periph_i2c(bmgr_test_context_t *ctx, int argc, char **argv)
     return ESP_OK;
 }
 
+static esp_err_t run_periph_i2c_probe(bmgr_test_context_t *ctx, int argc, char **argv)
+{
+    (void)ctx;
+    (void)argc;
+    (void)argv;
+    return test_periph_i2c_probe();
+}
+
 static esp_err_t run_periph_gpio(bmgr_test_context_t *ctx, int argc, char **argv)
 {
     (void)ctx;
@@ -132,6 +140,16 @@ void bmgr_register_periph_cases(void)
                 BMGR_TEST_RESOURCE_REQUIRED(BMGR_TEST_NAME_I2C_MASTER),
             },
             .run = run_periph_i2c,
+            .flags = BMGR_TEST_CASE_FLAG_MANUAL | BMGR_TEST_CASE_FLAG_NEEDS_BOARD,
+        },
+        {
+            .name = "periph.i2c_probe",
+            .group = "periph",
+            .help = "Probe all valid I2C addresses",
+            .resources = {
+                BMGR_TEST_RESOURCE_REQUIRED(BMGR_TEST_NAME_I2C_MASTER),
+            },
+            .run = run_periph_i2c_probe,
             .flags = BMGR_TEST_CASE_FLAG_MANUAL | BMGR_TEST_CASE_FLAG_NEEDS_BOARD,
         },
         {

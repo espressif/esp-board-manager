@@ -57,7 +57,7 @@ DVP (``sub_type: dvp``)
               data_io_6: 41              # [IO]
               data_io_7: 39              # [IO]
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             frequency: 100000
 
 .. _camera-csi:
@@ -84,9 +84,9 @@ CSI (``sub_type: csi``)
               xclk_pin: -1               # [IO]
               xclk_freq_hz: 20000000     # [TO_BE_CONFIRMED]
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             frequency: 100000
-          - name: ldo_mipi
+          - ldo_name: ldo_mipi
 
 .. _camera-spi:
 
@@ -122,7 +122,7 @@ SPI Camera (``sub_type: spi``)
               clk_cfg: LEDC_AUTO_CLK     # [TO_BE_CONFIRMED]
               channel: 0                 # [TO_BE_CONFIRMED]
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             frequency: 100000
 
 Full Field Reference
@@ -177,7 +177,7 @@ DVP Full Fields
 
       # I2C configuration for camera control (For the USB-UVC camera, this configuration is not required)
       peripherals:
-        - name: i2c_master     # [TO_BE_CONFIRMED] I2C bus name for camera control (default: depends on implementation)
+        - i2c_name: i2c_master # [TO_BE_CONFIRMED] I2C bus name for camera control (default: depends on implementation)
           frequency: 100000    # I2C frequency in Hz (default: 400kHz)
 
 CSI Full Fields
@@ -202,9 +202,9 @@ CSI Full Fields
 
       # I2C configuration for camera control
       peripherals:
-        - name: i2c_master      # [TO_BE_CONFIRMED] I2C bus name for camera control
+        - i2c_name: i2c_master  # [TO_BE_CONFIRMED] I2C bus name for camera control
           frequency: 100000     # I2C frequency in Hz
-        - name: ldo_mipi        # [TO_BE_CONFIRMED] LDO peripheral for csi power management
+        - ldo_name: ldo_mipi    # [TO_BE_CONFIRMED] LDO peripheral for csi power management
 
 SPI Camera Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -243,7 +243,7 @@ SPI Camera Full Fields
             clk_cfg: LEDC_AUTO_CLK            # [TO_BE_CONFIRMED] LEDC source clock from ledc_clk_cfg_t
             channel: 0                        # [TO_BE_CONFIRMED] LEDC channel used for XCLK
       peripherals:
-        - name: i2c_master                   # Must match a periph_i2c name; provides SCCB i2c_handle to esp_video
+        - i2c_name: i2c_master               # Must match a periph_i2c name; provides SCCB i2c_handle to esp_video
           frequency: 100000                   # SCCB I2C frequency (Hz)
 
 Component Dependencies

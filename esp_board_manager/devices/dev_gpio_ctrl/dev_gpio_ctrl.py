@@ -7,6 +7,9 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_includes():
     """Get required header includes for GPIO control device"""
@@ -33,21 +36,29 @@ def parse(name, config, peripherals_dict=None):
     default_level = device_config.get('default_level', 0)
 
     # Extract GPIO peripheral name from peripherals list
-    gpio_name = 'gpio-0'  # Default fallback
-    if peripherals_list and len(peripherals_list) > 0:
-        gpio_periph = peripherals_list[0]
-        if isinstance(gpio_periph, dict) and 'name' in gpio_periph:
-            gpio_periph_name = gpio_periph['name']
+    explicit = []
+    legacy = []
+    for periph in peripherals_list:
+        if isinstance(periph, dict) and ('gpio_name' in periph or periph.get('_binding_role') == 'gpio'):
+            explicit.append(periph.get('gpio_name', periph.get('name')))
         else:
-            gpio_periph_name = str(gpio_periph)
-
-        if gpio_periph_name.startswith('gpio') or gpio_periph_name.startswith('gpio_'):
-            # Check if peripheral exists in peripherals_dict if provided
-            if peripherals_dict is not None and gpio_periph_name not in peripherals_dict:
-                raise ValueError(f"GPIO device {name} references undefined peripheral '{gpio_periph_name}'")
-            gpio_name = gpio_periph_name
-        else:
-            raise ValueError(f'GPIO device {name} should reference a GPIO peripheral, got: {gpio_periph_name}')
+            periph_name = periph.get('name') if isinstance(periph, dict) else str(periph)
+            if periph_name.startswith('gpio'):
+                legacy.append(periph_name)
+    if len(explicit) > 1 or len(legacy) > 1:
+        raise ValueError(f'GPIO device {name} references multiple GPIO peripherals')
+    if explicit and legacy:
+        raise ValueError(f'GPIO device {name} cannot mix gpio_name with legacy GPIO binding')
+    if explicit:
+        gpio_name = explicit[0]
+        if peripherals_dict is not None:
+            if gpio_name not in peripherals_dict or getattr(peripherals_dict[gpio_name], 'type', None) != 'gpio':
+                raise ValueError(f'GPIO device {name} gpio peripheral must have type gpio')
+    elif legacy:
+        gpio_name = legacy[0]
+        logger.warning('GPIO device %s uses legacy GPIO peripheral inference; migrate to gpio_name.', name)
+        if peripherals_dict is not None and gpio_name not in peripherals_dict:
+            raise ValueError(f"GPIO device {name} references undefined peripheral '{gpio_name}'")
     else:
         raise ValueError(f'GPIO device {name} must have at least one GPIO peripheral defined')
 

@@ -76,10 +76,10 @@
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: gpio_pa_control
-            pa_active_level: 1
-          - name: i2s_audio_out
-          - name: i2c_master
+          - pa_name: gpio_pa_control
+            active_level: 1
+          - i2s_name: i2s_audio_out
+          - i2c_name: i2c_master
             address: 0x30               # [TO_BE_CONFIRMED] I2C device address
             frequency: 400000
 
@@ -132,8 +132,8 @@
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
-          - name: i2c_master
+          - i2s_name: i2s_audio_in
+          - i2c_name: i2c_master
             address: 0x30               # [TO_BE_CONFIRMED] I2C device address
             frequency: 400000
 
@@ -156,9 +156,9 @@
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: i2s_audio_out
+          - i2s_name: i2s_audio_out
           - &es8311_i2c_master
-            name: i2c_master
+            i2c_name: i2c_master
             address: 0x30
             frequency: 400000
 
@@ -169,7 +169,7 @@
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
+          - i2s_name: i2s_audio_in
           - *es8311_i2c_master
 
 .. _audio-codec-internal:
@@ -198,7 +198,7 @@
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: adc_audio_in
+          - adc_name: adc_audio_in
 
 通过 ``audio_codec`` 创建 ADC continuous 句柄：
 
@@ -264,7 +264,7 @@ PDM 数字麦克风是\ ``chip: internal``\ 路径中使用 I2S 的典型形态�
           adc_enabled: true
           dac_enabled: false
         peripherals:
-          - name: i2s_audio_in
+          - i2s_name: i2s_audio_in
 
 若麦克风有独立供电控制，可在设备中添加 ``power_ctrl_device: mic_power_ctrl``，并在 ``board_devices.yaml`` 中同时定义对应的 ``power_ctrl`` 设备。板级参考：``boards/esp32_p4_eye/board_devices.yaml``。
 
@@ -317,10 +317,10 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
           dac_enabled: true
           adc_enabled: false
         peripherals:
-          - name: i2s_audio_out
-          - name: gpio_pa_control           # 可选：PA 控制引脚
+          - i2s_name: i2s_audio_out
+          - pa_name: gpio_pa_control           # 可选：PA 控制引脚
             gain: 6                         # [TO_BE_CONFIRMED] PA 增益（dB）
-            pa_active_level: 1              # PA 控制引脚有效电平
+            active_level: 1                 # PA 控制引脚有效电平
 
 若扬声器有 PA 控制引脚，需在 ``board_peripherals.yaml`` 中额外定义 ``gpio_pa_control`` 外设（``type: gpio``）。板级参考：``boards/esp32_c3_lyra/board_peripherals.yaml``、``boards/esp32_c3_lyra/board_devices.yaml``。
 
@@ -385,23 +385,23 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
       # Peripheral configuration
       peripherals:
         # PA GPIO dependency. It must reference a type: gpio peripheral from board_peripherals.yaml.
-        - name: gpio_power_amp
+        - pa_name: gpio_power_amp
           gain: 0.0
-          pa_active_level: 1
+          active_level: 1
 
-        # Optional codec reset GPIO. reset_active_level is the asserted reset level.
-        - name: gpio_codec_reset
-          reset_active_level: 0
+        # Optional codec reset GPIO. active_level is the asserted reset level.
+        - reset_name: gpio_codec_reset
+          active_level: 0
 
         # I2S interface configuration
-        - name: i2s_audio_out                # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
+        - i2s_name: i2s_audio_out            # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
           clk_src: 0                         # I2S clock source, need converted from `i2s_clock_src_t`. If set to 0 will use default clock source (default: 0)
           tx_aux_out_io: -1                  # Optional mirrored/inverted I2S TX auxiliary output IO, -1 disables this feature
           tx_aux_out_line: 0                 # Optional TX data line index (0: main line, >0: extra TX data line when supported)
           tx_aux_out_invert: false           # Optional invert flag for the auxiliary output signal
 
         # I2C interface configuration
-        - name: i2c_master                   # [TO_BE_CONFIRMED] I2C peripheral for codec control
+        - i2c_name: i2c_master                # [TO_BE_CONFIRMED] I2C peripheral for codec control
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
           frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
@@ -427,10 +427,10 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
         # ADC peripheral reference. The peripheral must be declared in board_peripherals.yaml
         # and configured as continuous mode (`role: continuous`).
         # Example:
-        # - name: adc_audio_in
+        # - adc_name: adc_audio_in
         #   type: adc
         #   role: continuous
-        - name: adc_audio_in                 # ADC peripheral name to be reused by dev_audio_codec
+        - adc_name: adc_audio_in              # ADC peripheral name to be reused by dev_audio_codec
 
 使用芯片内部 ADC 读取数据：本地采样模式列表（patterns）配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -562,7 +562,7 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
    * - ``gpio``
      - ``io``
      - 有 PA 控制或静音控制时使用
-     - 设备侧引用条目填写 ``gain`` 和 ``pa_active_level``
+     - 设备侧引用条目填写 ``gain`` 和 ``active_level``
    * - ``adc``
      - ``continuous``
      - 使用内部 ADC 音频输入并复用外设时使用

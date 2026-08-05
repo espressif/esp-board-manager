@@ -33,7 +33,7 @@ New codec initialization fields are grouped under ``config``:
        ref_dac_ch: 0
        real_adc_data_ch: 0
 
-``adc_cfg.label`` uses codec-dev 2.0 channel order from LSB to MSB. PA and reset GPIOs are not ``config`` groups. Reference the GPIO peripherals from ``peripherals`` and use ``pa_active_level`` or ``reset_active_level``.
+``adc_cfg.label`` uses codec-dev 2.0 channel order from LSB to MSB. PA and reset GPIOs are not ``config`` groups. Reference them from ``peripherals`` with ``pa_name`` or ``reset_name`` and set their ``active_level`` in the same entry.
 
 Legacy Field Compatibility
 --------------------------
@@ -43,7 +43,6 @@ Existing board YAML remains parseable with warnings:
 - ``mclk_enabled`` maps to the inverse ``sys_cfg.no_mclk`` value.
 - ``adc_channel_labels`` is copied without reordering. Review its legacy MSB-to-LSB order before replacing it with ``adc_cfg.label``.
 - ``adc_channel_mask``, ``dac_channel_mask``, ``adc_max_channel``, ``dac_max_channel``, ``adc_init_gain``, ``dac_init_gain``, ``aec``, ``eq``, and ``alc`` do not configure codec initialization.
-- A GPIO reference using ``active_level`` is treated as legacy PA control. Replace it with ``pa_active_level``.
 
 Runtime Settings
 ----------------

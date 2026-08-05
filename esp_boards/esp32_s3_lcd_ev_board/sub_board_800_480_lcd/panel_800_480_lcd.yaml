@@ -73,5 +73,5 @@ devices:
         y_max: 480
     peripherals:
       # GT1151 7-bit address 0x14 -> 8-bit write address 0x28.
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x28]

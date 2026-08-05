@@ -6,6 +6,10 @@
 # LittleFS device config parser
 VERSION = 'v1.0.0'
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 LITTLEFS_SUB_TYPES = ['flash', 'sdmmc', 'spi']
 
 DEV_LITTLEFS_IO_LIST = {
@@ -169,6 +173,28 @@ def parse_spi_sub_config(sub_config: dict, device_peripherals: list = None, peri
             'in device-level peripherals'
         )
 
+    explicit = []
+    legacy = []
+    for peripheral in device_peripherals:
+        if isinstance(peripheral, dict) and ('spi_name' in peripheral or peripheral.get('_binding_role') == 'spi'):
+            explicit.append(peripheral.get('spi_name', peripheral.get('name')))
+        else:
+            legacy.append(peripheral)
+    if len(explicit) > 1:
+        raise ValueError('LittleFS device with spi sub_type references multiple SPI peripherals')
+    if explicit and legacy:
+        raise ValueError('LittleFS device with spi sub_type cannot mix spi_name with legacy SPI binding')
+    if explicit:
+        periph_name = explicit[0]
+        periph_obj = peripherals_dict.get(periph_name)
+        if not periph_obj or getattr(periph_obj, 'type', None) != 'spi' or getattr(periph_obj, 'role', None) != 'master':
+            raise ValueError('LittleFS device spi_name must reference a type spi, role master peripheral')
+        return {
+            'cs_gpio_num': cs_gpio_num,
+            'spi_bus_name': periph_name,
+        }
+
+    logger.warning('LittleFS device uses legacy SPI peripheral selection; migrate to spi_name.')
     checked_peripherals = []
     missing_peripherals = []
 

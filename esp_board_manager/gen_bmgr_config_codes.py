@@ -1289,10 +1289,12 @@ class BoardConfigGenerator(LoggerMixin):
             flattened_peripherals = self.peripheral_parser.flatten_peripherals(raw_peripherals)
             for periph in flattened_peripherals:
                 if isinstance(periph, dict):
-                    periph_name = periph.get('name')
+                    periph_copy = self.device_parser.normalize_peripheral_reference(
+                        periph, d.type, full_config.get('sub_type')
+                    )
+                    periph_name = periph_copy.get('name')
                     if periph_name:
                         mapped_name = periph_name_map.get(periph_name, periph_name)
-                        periph_copy = periph.copy()
                         periph_copy['name'] = mapped_name
                         peripherals.append(periph_copy)
                 else:

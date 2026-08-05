@@ -21,9 +21,10 @@ peripherals:
       clk_src: "I2S_CLK_SRC_DEFAULT"
       mclk_multiple: 256
       data_bit_width: 16
-      slot_mode: "I2S_SLOT_MODE_STEREO"
-      slot_mask: "I2S_STD_SLOT_BOTH"
+      slot_mode: I2S_SLOT_MODE_STEREO
       ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
       pins:
         mclk: 13
         bclk: 12
@@ -36,7 +37,10 @@ peripherals:
     type: i2s
     format: tdm-in
     role: master
-    config: *i2s_config
+    config:
+      <<: *i2s_config
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
 
   # PA CONTROL
   - name: gpio_pa_control

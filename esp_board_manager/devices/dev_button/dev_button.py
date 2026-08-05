@@ -7,8 +7,11 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+logger = logging.getLogger(__name__)
 
 def get_includes() -> list:
     """Return list of required include headers for  button device"""
@@ -17,15 +20,65 @@ def get_includes() -> list:
     ]
 
 
-def _find_named_peripheral(peripherals, prefix: str):
+def _normalize_reference(periph):
+    if not isinstance(periph, dict):
+        return {'name': periph} if isinstance(periph, str) else periph
+    role_keys = [key for key in periph if key.endswith('_name') and key != 'name']
+    if len(role_keys) > 1:
+        raise ValueError('Peripheral reference cannot contain more than one role-specific name field')
+    if not role_keys:
+        return periph
+    key = role_keys[0]
+    if 'name' in periph:
+        raise ValueError(f"Peripheral reference cannot contain both '{key}' and 'name'")
+    if not isinstance(periph.get(key), str) or not periph[key]:
+        raise ValueError(f"Peripheral reference field '{key}' must be a non-empty string")
+    normalized = dict(periph)
+    normalized['name'] = normalized.pop(key)
+    normalized['_binding_role'] = key[:-5]
+    return normalized
+
+
+def _find_named_peripheral(peripherals, role: str, expected_type: str, device_name: str,
+                           peripherals_dict=None):
+    explicit = []
+    legacy = []
     for periph in peripherals:
-        if isinstance(periph, dict):
-            periph_name = periph.get('name', '')
-            if periph_name.startswith(prefix):
-                return periph_name
-        elif isinstance(periph, str) and periph.startswith(prefix):
-            return periph
-    return None
+        ref = _normalize_reference(periph)
+        if not isinstance(ref, dict):
+            continue
+        periph_name = ref.get('name', '')
+        if ref.get('_binding_role') == role:
+            explicit.append(periph_name)
+        elif ref.get('_binding_role') is None and periph_name.startswith(role):
+            legacy.append(periph_name)
+    if len(explicit) > 1:
+        raise ValueError(f'Button device {device_name} references multiple {role} peripherals, only one is supported')
+    if explicit and legacy:
+        raise ValueError(
+            f'Button device {device_name} cannot mix {role}_name with legacy {role} binding'
+        )
+    if explicit:
+        selected = explicit[0]
+    elif legacy:
+        if len(legacy) > 1:
+            raise ValueError(f'Button device {device_name} references multiple {role} peripherals, only one is supported')
+        selected = legacy[0]
+        logger.warning(
+            'Button device %s uses legacy %s peripheral inference; migrate to %s_name.',
+            device_name, role, role,
+        )
+    else:
+        return None
+    if peripherals_dict is not None:
+        if selected not in peripherals_dict:
+            raise ValueError(f"Button device {device_name} references undefined peripheral '{selected}'")
+        actual_type = getattr(peripherals_dict[selected], 'type', None)
+        if actual_type != expected_type:
+            raise ValueError(
+                f'Button device {device_name} {role} peripheral must have type {expected_type}'
+            )
+    return selected
 
 
 def parse(name: str, config: dict, peripherals_dict=None) -> dict:
@@ -87,11 +140,11 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         if multi_click_value is not None and isinstance(multi_click_value, list):
             multi_click_counts = []
             multi_click_counts = [int(x) for x in multi_click_value]
-            name = c_name + '_click[]'
+            struct_name = c_name + '_click[]'
             ptr = c_name + '_click'
             extra_configs.append({
                 'struct_type': 'uint8_t',
-                'struct_var': name.upper(),
+                'struct_var': struct_name.upper(),
                 'struct_init': multi_click_counts,
             })
             events_cfg['multi_click'] = {
@@ -99,7 +152,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
                 'count': len(multi_click_counts)
             }
         else:
-            raise ValueError('YAML validation error in  button device: Multi-click value must be an array.')
+            raise ValueError('YAML validation error in button device: Multi-click value must be an array.')
 
     if enabled_events['long_press_start'] == 1:
         # Handle long_press_start_time array
@@ -107,11 +160,11 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         if long_press_start_times is not None and isinstance(long_press_start_times, list):
             long_press_start_durations = []
             long_press_start_durations = [int(x) for x in long_press_start_times]
-            name = c_name + '_lp_start[]'
+            struct_name = c_name + '_lp_start[]'
             ptr = c_name + '_lp_start'
             extra_configs.append({
                 'struct_type': 'uint16_t',
-                'struct_var': name.upper(),
+                'struct_var': struct_name.upper(),
                 'struct_init': long_press_start_durations,
             })
             events_cfg['long_press_start'] = {
@@ -119,7 +172,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
                 'count': len(long_press_start_durations)
             }
         elif long_press_start_times is not None and not isinstance(long_press_start_times, list):
-            raise ValueError('YAML validation error in  button device: Long press start time value must be an array.')
+            raise ValueError('YAML validation error in button device: Long press start time value must be an array.')
 
     if enabled_events['long_press_up'] == 1:
         # Handle long_press_up_time array
@@ -127,11 +180,11 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         if long_press_up_times is not None and isinstance(long_press_up_times, list):
             long_press_up_durations = []
             long_press_up_durations = [int(x) for x in long_press_up_times]
-            name = c_name + '_lp_up[]'
+            struct_name = c_name + '_lp_up[]'
             ptr = c_name + '_lp_up'
             extra_configs.append({
                 'struct_type': 'uint16_t',
-                'struct_var': name.upper(),
+                'struct_var': struct_name.upper(),
                 'struct_init': long_press_up_durations,
             })
             events_cfg['long_press_up'] = {
@@ -139,7 +192,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
                 'count': len(long_press_up_durations)
             }
         elif long_press_up_times is not None and not isinstance(long_press_up_times, list):
-            raise ValueError('YAML validation error in  button device: Long press up time value must be an array.')
+            raise ValueError('YAML validation error in button device: Long press up time value must be an array.')
 
     # Initialize button configuration structure with nested events structure
     button_config = {
@@ -153,24 +206,20 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     if button_type == 'gpio':
         if 'gpio_name' in device_config:
             raise ValueError(
-                "YAML validation error in  button device: Legacy 'config.gpio_name' is no longer supported. "
+                "YAML validation error in button device: Legacy 'config.gpio_name' is no longer supported. "
                 "Declare the GPIO peripheral under top-level 'peripherals'."
             )
 
-        gpio_name = _find_named_peripheral(peripherals, 'gpio')
+        gpio_name = _find_named_peripheral(peripherals, 'gpio', 'gpio', name, peripherals_dict)
         if gpio_name is None:
             raise ValueError(
-                "YAML validation error in  button device: Missing GPIO peripheral in top-level 'peripherals'"
+                "YAML validation error in button device: Missing GPIO peripheral in top-level 'peripherals'"
             )
-
-        # Validate GPIO peripheral exists if peripherals_dict is provided
-        if peripherals_dict is not None and gpio_name not in peripherals_dict:
-            raise ValueError(f" button device {name} references undefined peripheral '{gpio_name}'")
 
         # Get active level
         active_level = int(device_config.get('active_level', 0))
         if active_level not in [0, 1]:
-            raise ValueError(f"YAML validation error in  button device: Invalid active_level '{active_level}'. Valid values: [0, 1]")
+            raise ValueError(f"YAML validation error in button device: Invalid active_level '{active_level}'. Valid values: [0, 1]")
 
         # Get power save configuration
         enable_power_save = bool(device_config.get('enable_power_save', False))
@@ -191,19 +240,15 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     elif button_type == 'adc_multi' or button_type == 'adc_single':
         if 'adc_name' in device_config:
             raise ValueError(
-                "YAML validation error in  button device: Legacy 'config.adc_name' is no longer supported. "
+                "YAML validation error in button device: Legacy 'config.adc_name' is no longer supported. "
                 "Declare the ADC peripheral under top-level 'peripherals'."
             )
 
-        adc_name = _find_named_peripheral(peripherals, 'adc')
+        adc_name = _find_named_peripheral(peripherals, 'adc', 'adc', name, peripherals_dict)
         if adc_name is None:
             raise ValueError(
-                "YAML validation error in  button device: Missing ADC peripheral in top-level 'peripherals'"
+                "YAML validation error in button device: Missing ADC peripheral in top-level 'peripherals'"
             )
-
-        # Validate ADC peripheral exists if peripherals_dict is provided
-        if peripherals_dict is not None and adc_name not in peripherals_dict:
-            raise ValueError(f" button device {name} references undefined peripheral '{adc_name}'")
 
         # Determine configuration based on sub_type
         if button_type == 'adc_multi':
@@ -213,26 +258,26 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
             button_labels = device_config.get('button_labels')
 
             if button_num is None:
-                raise ValueError(f'YAML validation error in  button device: Missing button_num field for ADC multi-button configuration')
+                raise ValueError(f'YAML validation error in button device: Missing button_num field for ADC multi-button configuration')
             if voltage_range is None:
-                raise ValueError(f'YAML validation error in  button device: Missing voltage_range field for ADC multi-button configuration')
+                raise ValueError(f'YAML validation error in button device: Missing voltage_range field for ADC multi-button configuration')
 
             button_num = int(button_num)
             if button_num <= 1:
-                raise ValueError(f'YAML validation error in  button device: button_num must be > 1 for multi-button configuration')
+                raise ValueError(f'YAML validation error in button device: button_num must be > 1 for multi-button configuration')
             if not isinstance(voltage_range, list):
-                raise ValueError(f'YAML validation error in  button device: voltage_range must be a list')
+                raise ValueError(f'YAML validation error in button device: voltage_range must be a list')
             if len(voltage_range) != button_num:
-                raise ValueError(f'YAML validation error in  button device: voltage_range length ({len(voltage_range)}) must match button_num ({button_num})')
+                raise ValueError(f'YAML validation error in button device: voltage_range length ({len(voltage_range)}) must match button_num ({button_num})')
 
             max_voltage = device_config.get('max_voltage', 3000)
             voltage_range = [int(v) for v in voltage_range]
             # Validate button_labels if provided
             if button_labels is not None:
                 if not isinstance(button_labels, list):
-                    raise ValueError(f'YAML validation error in  button device: button_labels must be a list')
+                    raise ValueError(f'YAML validation error in button device: button_labels must be a list')
                 if len(button_labels) != button_num:
-                    raise ValueError(f'YAML validation error in  button device: button_labels length ({len(button_labels)}) must match button_num ({button_num})')
+                    raise ValueError(f'YAML validation error in button device: button_labels length ({len(button_labels)}) must match button_num ({button_num})')
                 # Keep as list of strings
                 button_labels = [f'"{label}"' for label in button_labels]
             else:
@@ -254,7 +299,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
             min_voltage = int(device_config.get('min_voltage', 0))
             max_voltage = int(device_config.get('max_voltage', 500))
             if min_voltage >= max_voltage:
-                raise ValueError(f'YAML validation error in  button device: min_voltage ({min_voltage}) must be less than max_voltage ({max_voltage})')
+                raise ValueError(f'YAML validation error in button device: min_voltage ({min_voltage}) must be less than max_voltage ({max_voltage})')
 
             # Build ADC button configuration with single union
             adc_cfg = {

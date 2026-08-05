@@ -7,8 +7,11 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
 
 from devices.dev_custom import dev_custom
+
+logger = logging.getLogger(__name__)
 
 def get_includes():
     """Get required header includes for power control device"""
@@ -56,17 +59,33 @@ def parse(name, config, peripherals_dict=None):
             if not peripherals:
                 raise ValueError(f"GPIO power control device '{name}' missing required field 'peripherals'")
 
-        # Find the GPIO peripheral
-        gpio_peripheral = None
+        # ``custom`` deliberately keeps its arbitrary handle-list behavior.
+        explicit = []
+        legacy = []
         for periph in peripherals:
-            if isinstance(periph, dict) and 'name' in periph:
-                # Check if this peripheral is a GPIO peripheral
-                periph_name = periph.get('name', '')
-                if peripherals_dict and periph_name in peripherals_dict:
-                    periph_obj = peripherals_dict[periph_name]
-                    if hasattr(periph_obj, 'type') and periph_obj.type == 'gpio':
-                        gpio_peripheral = periph
-                        break
+            if not isinstance(periph, dict):
+                continue
+            if 'gpio_name' in periph or periph.get('_binding_role') == 'gpio':
+                explicit.append(periph)
+            elif periph.get('name', '').startswith('gpio'):
+                legacy.append(periph)
+        if len(explicit) > 1 or len(legacy) > 1:
+            raise ValueError(f"GPIO power control device '{name}' references multiple GPIO peripherals")
+        if explicit and legacy:
+            raise ValueError(f"GPIO power control device '{name}' cannot mix gpio_name with legacy GPIO binding")
+        gpio_peripheral = explicit[0] if explicit else (legacy[0] if legacy else None)
+        if gpio_peripheral and explicit:
+            gpio_peripheral = dict(gpio_peripheral)
+            gpio_peripheral['name'] = gpio_peripheral.get('gpio_name', gpio_peripheral.get('name'))
+            periph_name = gpio_peripheral['name']
+            if peripherals_dict is not None:
+                if periph_name not in peripherals_dict or getattr(peripherals_dict[periph_name], 'type', None) != 'gpio':
+                    raise ValueError(f"GPIO power control device '{name}' gpio peripheral must have type gpio")
+        elif gpio_peripheral:
+            logger.warning('GPIO power control device %s uses legacy GPIO peripheral inference; migrate to gpio_name.', name)
+            periph_name = gpio_peripheral.get('name')
+            if peripherals_dict is not None and periph_name not in peripherals_dict:
+                raise ValueError(f"GPIO power control device '{name}' references undefined peripheral '{periph_name}'")
 
         if not gpio_peripheral:
             raise ValueError(f"GPIO power control device '{name}' missing GPIO peripheral in peripherals list")

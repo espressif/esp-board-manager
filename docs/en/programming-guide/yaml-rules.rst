@@ -70,3 +70,21 @@ BMGR does not restrict YAML parsing behavior, so standard syntax such as ``&`` a
          <<: *spi_master_default
          mosi_io_num: 35        # [IO]
          sclk_io_num: 36        # [IO]
+
+Semantic Peripheral Bindings
+----------------------------
+
+Device entries reference peripherals by semantic role. Use the role-specific ``*_name`` field that matches the device parser, instead of relying on the peripheral name prefix or list order:
+
+.. code-block:: yaml
+
+   devices:
+     - name: display_lcd
+       type: display_lcd
+       sub_type: spi
+       peripherals:
+         - spi_name: spi_lcd
+
+The supported selector is determined by the device type and sub-type. Examples include ``pa_name`` and ``reset_name`` for codec GPIOs, ``i2c_name`` for I2C control buses, ``spi_name`` for SPI buses, ``dsi_name`` and ``ldo_name`` for DSI displays, and ``gpio_name`` for GPIO control lines. Each peripheral entry must contain at most one role-specific selector.
+
+Legacy string references and mappings that contain only ``name`` remain accepted for compatibility. BMGR infers the role from the device context and emits a warning. An unknown selector, a duplicate role, a reference that combines ``name`` with ``*_name``, or a referenced peripheral with the wrong type is rejected during parsing.

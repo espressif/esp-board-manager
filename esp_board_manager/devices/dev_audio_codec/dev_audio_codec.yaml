@@ -48,23 +48,23 @@
   # Peripheral configuration
   peripherals:
     # PA GPIO dependency. It must reference a type: gpio peripheral from board_peripherals.yaml.
-    - name: gpio_power_amp
+    - pa_name: gpio_power_amp
       gain: 0.0
-      pa_active_level: 1
+      active_level: 1
 
-    # Optional codec reset GPIO. reset_active_level is the asserted reset level.
-    - name: gpio_codec_reset
-      reset_active_level: 0
+    # Optional codec reset GPIO. active_level is the asserted reset level.
+    - reset_name: gpio_codec_reset
+      active_level: 0
 
     # I2S interface configuration
-    - name: i2s_audio_out                # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
+    - i2s_name: i2s_audio_out            # [TO_BE_CONFIRMED] I2S peripheral for audio data interface
       clk_src: 0                         # I2S clock source, need converted from `i2s_clock_src_t`. If set to 0 will use default clock source (default: 0)
       tx_aux_out_io: -1                  # Optional mirrored/inverted I2S TX auxiliary output IO, -1 disables this feature
       tx_aux_out_line: 0                 # Optional TX data line index (0: main line, >0: extra TX data line when supported)
       tx_aux_out_invert: false           # Optional invert flag for the auxiliary output signal
 
     # I2C interface configuration
-    - name: i2c_master                   # [TO_BE_CONFIRMED] I2C peripheral for codec control
+    - i2c_name: i2c_master               # [TO_BE_CONFIRMED] I2C peripheral for codec control
       address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
       frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 

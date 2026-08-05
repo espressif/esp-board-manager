@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <string.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_board_manager_includes.h"
+#include "sd_file_cache.h"
 #include "wav_header.h"
 
 static const char *TAG = "BMGR_PLAY_SDCARD_MUSIC";
@@ -22,6 +26,8 @@ void app_main(void)
     dev_audio_codec_handles_t *dac_handle = NULL;
     FILE *fp = NULL;
     uint8_t *playback_buffer = NULL;
+    sd_file_cache_t file_cache = { 0 };
+    wav_info_t wav_info = { 0 };
 
     // Initialize audio DAC device
     ret = esp_board_manager_init_device_by_name(ESP_BOARD_DEVICE_NAME_AUDIO_DAC);
@@ -50,24 +56,29 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to open file %s", DEFAULT_PLAY_URL);
         goto cleanup;
     }
+    ret = sd_file_cache_attach(fp, &file_cache, SD_FILE_CACHE_DEFAULT_SIZE,
+        SD_FILE_CACHE_MIN_SIZE);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Using default stdio buffer: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "SD file cache enabled: %u bytes", (unsigned)file_cache.size);
+    }
 
     // Read WAV header
-    uint32_t sample_rate;
-    uint16_t channels, bits_per_sample;
-    ret = read_wav_header(fp, &sample_rate, &channels, &bits_per_sample);
+    ret = read_wav_info(fp, &wav_info);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read WAV header");
         goto cleanup;
     }
 
     ESP_LOGI(TAG, "Play WAV file info: %" PRIu32 " Hz, %" PRIu16 " channels, %" PRIu16 " bits",
-             sample_rate, channels, bits_per_sample);
+        wav_info.sample_rate, wav_info.channels, wav_info.bits_per_sample);
 
     // Configure codec device with file's audio format
     esp_codec_dev_sample_info_t fs = {
-        .sample_rate = sample_rate,
-        .channel = channels,
-        .bits_per_sample = bits_per_sample,
+        .sample_rate = wav_info.sample_rate,
+        .channel = wav_info.channels,
+        .bits_per_sample = wav_info.bits_per_sample,
     };
     ret = esp_codec_dev_open(dac_handle->codec_dev, &fs);
     if (ret != ESP_CODEC_DEV_OK) {
@@ -84,6 +95,11 @@ void app_main(void)
 
     // Allocate playback buffer
     const size_t buffer_size = 1 * 1024;
+    const size_t transfer_size = buffer_size - (buffer_size % wav_info.block_align);
+    if (transfer_size == 0) {
+        ESP_LOGE(TAG, "WAV block alignment exceeds playback buffer size");
+        goto cleanup;
+    }
     playback_buffer = malloc(buffer_size);
     if (playback_buffer == NULL) {
         ESP_LOGE(TAG, "Failed to allocate playback buffer");
@@ -91,17 +107,29 @@ void app_main(void)
     }
 
     // Stream audio data from file to DAC
-    size_t bytes_read;
-    while ((bytes_read = fread(playback_buffer, 1, buffer_size, fp)) > 0) {
+    size_t bytes_remaining = wav_info.data_size;
+    while (bytes_remaining > 0) {
+        size_t bytes_to_read = bytes_remaining > transfer_size ? transfer_size : bytes_remaining;
+        size_t bytes_read = fread(playback_buffer, 1, bytes_to_read, fp);
+        if (bytes_read != bytes_to_read) {
+            ESP_LOGE(TAG, "Failed to read WAV data");
+            break;
+        }
         ret = esp_codec_dev_write(dac_handle->codec_dev, playback_buffer, bytes_read);
         if (ret != ESP_CODEC_DEV_OK) {
             ESP_LOGE(TAG, "Failed to write to DAC");
             break;
         }
+        bytes_remaining -= bytes_read;
     }
     ESP_LOGI(TAG, "Play WAV file completed.");
     free(playback_buffer);
-    fclose(fp);
+    playback_buffer = NULL;
+    ret = sd_file_cache_close(&fp, &file_cache);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to close WAV file");
+        goto cleanup;
+    }
 
     // Deinitialize audio DAC device and SD card filesystem
     ret = esp_board_manager_deinit_device_by_name(ESP_BOARD_DEVICE_NAME_AUDIO_DAC);
@@ -120,6 +148,6 @@ cleanup:
         free(playback_buffer);
     }
     if (fp) {
-        fclose(fp);
+        sd_file_cache_close(&fp, &file_cache);
     }
 }

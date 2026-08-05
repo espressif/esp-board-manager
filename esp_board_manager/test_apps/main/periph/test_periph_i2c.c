@@ -9,6 +9,10 @@
 #include "sdmmc_cmd.h"
 #include "bmgr_test_names.h"
 
+#define I2C_PROBE_TIMEOUT_MS  50
+#define I2C_PROBE_FIRST_ADDR  0x03
+#define I2C_PROBE_LAST_ADDR   0x77
+
 void test_periph_i2c(void)
 {
     /* Initialize I2C peripheral */
@@ -59,4 +63,42 @@ cleanup:
     /* Cleanup */
     esp_board_periph_deinit(BMGR_TEST_NAME_I2C_MASTER);
     printf("I2C master peripheral deinitialized\n");
+}
+
+esp_err_t test_periph_i2c_probe(void)
+{
+    void *bus = NULL;
+    esp_err_t ret = esp_board_manager_get_periph_handle(BMGR_TEST_NAME_I2C_MASTER, &bus);
+    if (ret != ESP_OK || bus == NULL) {
+        printf("Failed to get I2C master handle: %s\n", esp_err_to_name(ret));
+        return ret != ESP_OK ? ret : ESP_ERR_INVALID_STATE;
+    }
+
+    size_t found_count = 0;
+    printf("I2C probe scan (0x%02x..0x%02x), timeout=%d ms\n",
+           I2C_PROBE_FIRST_ADDR, I2C_PROBE_LAST_ADDR, I2C_PROBE_TIMEOUT_MS);
+    printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
+    for (uint16_t row = 0; row < 0x80; row += 0x10) {
+        printf("%02x: ", (unsigned)row);
+        for (uint16_t offset = 0; offset < 0x10; offset++) {
+            uint16_t address = row + offset;
+            if (address < I2C_PROBE_FIRST_ADDR || address > I2C_PROBE_LAST_ADDR) {
+                printf("   ");
+                continue;
+            }
+
+            ret = i2c_master_probe((i2c_master_bus_handle_t)bus, address, I2C_PROBE_TIMEOUT_MS);
+            if (ret == ESP_OK) {
+                printf("%02x ", (unsigned)address);
+                found_count++;
+            } else if (ret == ESP_ERR_TIMEOUT) {
+                printf("UU ");
+            } else {
+                printf("-- ");
+            }
+        }
+        printf("\n");
+    }
+    printf("I2C probe found %u device(s)\n", (unsigned)found_count);
+    return ESP_OK;
 }

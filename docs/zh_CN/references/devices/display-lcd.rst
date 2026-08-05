@@ -22,6 +22,54 @@
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
+帧格式
+------
+
+``dev_display_lcd`` 会在设备配置中生成 ``frame_format``，供需要选择像素缓冲区或转换格式的应用使用。解析器能够确定像素表示格式时，取值为 ``RGB565_LE``、``RGB565_BE``、``BGR888`` 或 ``RGB888``。无法确定或不支持的布局使用 ``UNKNOWN``。
+
+可以通过 ``config.frame_format`` 覆盖自动推导结果：
+
+.. code-block:: yaml
+
+    config:
+      frame_format: RGB565_LE
+
+解析阶段会校验覆盖值。如果显式值与 BMGR 能够自动推导的格式不同，解析器会发出告警。生成的值由应用代码使用；LCD 测试应用根据该值选择 LVGL 字节交换或图像转换输出格式。
+
+未配置 ``config.frame_format`` 时，BMGR 按以下规则自动推导：
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``sub_type``
+     - 推导依据
+   * - ``dsi``
+     - ESP-IDF 5.x 使用 ``dpi_config.pixel_format``；ESP-IDF 6.x 及以上使用 ``dpi_config.in_color_format``
+   * - ``rgb``、``rgb_3wire_spi``
+     - ESP-IDF 5.x 使用 ``bits_per_pixel``；ESP-IDF 6.x 及以上使用 ``rgb_panel_config.in_color_format``
+   * - ``spi``
+     - 使用 ``lcd_panel_config.data_endian``；未配置时默认为 ``RGB565_BE``
+   * - ``i80``
+     - 使用 ``panel_config.data_endian``，并根据 ``io_config.flags.swap_color_bytes`` 调整结果
+   * - ``parlio``
+     - 当前无法自动确定，建议显式配置 ``frame_format``
+
+.. note::
+
+   配置 ``data_endian`` 前，需要核对对应的屏幕芯片实现是否读取 ``esp_lcd_panel_dev_config_t.data_endian``。
+
+   即使屏幕芯片实现不读取 ``data_endian``，SPI 和 I80 模式仍可能使用该字段推导应用侧的 ``frame_format``。因此，删除或修改 ``data_endian`` 可能改变 ``frame_format`` 的推导结果。
+
+主要映射关系如下：
+
+- RGB565 色彩格式映射为 ``RGB565_LE``。
+- RGB888 色彩格式映射为 ``BGR888``。
+- 16-bit RGB 配置映射为 ``RGB565_LE``。
+- ``LCD_RGB_DATA_ENDIAN_BIG`` 映射为 ``RGB565_BE``。
+- ``LCD_RGB_DATA_ENDIAN_LITTLE`` 映射为 ``RGB565_LE``。
+
+当配置不足或组合不受支持时，自动推导结果为 ``UNKNOWN``，并输出告警。
+
 板级 panel 工厂函数
 --------------------------
 
@@ -121,8 +169,8 @@ DSI（``sub_type: dsi``）
               vsync_pulse_width: 1        # [TO_BE_CONFIRMED]
               vsync_front_porch: 10       # [TO_BE_CONFIRMED]
         peripherals:
-          - name: ldo_mipi
-          - name: dsi_display
+          - ldo_name: ldo_mipi
+          - dsi_name: dsi_display
 
 .. _display-lcd-spi:
 
@@ -170,7 +218,7 @@ SPI（``sub_type: spi``）
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 16            # [TO_BE_CONFIRMED]
         peripherals:
-          - name: spi_master
+          - spi_name: spi_master
 
 .. _display-lcd-i80:
 
@@ -386,11 +434,12 @@ DSI 完整字段
         # Valid values:
         # - LCD_RGB_ELEMENT_ORDER_RGB
         # - LCD_RGB_ELEMENT_ORDER_BGR
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 传递给 DSI panel factory 的面板数据字节序
         # Valid values:
         # - LCD_RGB_DATA_ENDIAN_BIG
         # - LCD_RGB_DATA_ENDIAN_LITTLE
         bits_per_pixel: 24                        # [TO_BE_CONFIRMED] Bits per pixel (24bpp, RGB888)
+        frame_format: RGB565_LE                   # 应用帧缓冲格式，应与 dpi_config 的像素格式保持一致
         reset_active_high: 0                      # Reset pin active level (0 = active low)
 
         # DBI interface configuration (command/parameter transfer)
@@ -435,8 +484,8 @@ DSI 完整字段
             vsync_front_porch: 20   # [TO_BE_CONFIRMED] Vertical front porch
 
       peripherals:
-        - name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
-        - name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
+        - ldo_name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
+        - dsi_name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
 
 SPI 完整字段
 ^^^^^^^^^^^^^^^^
@@ -488,7 +537,7 @@ SPI 完整字段
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -500,7 +549,7 @@ SPI 完整字段
           vendor_config: ""                 # Vendor-specific configuration (default: empty string)
 
       peripherals:
-        - name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
+        - spi_name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
 
 I80 完整字段
 ^^^^^^^^^^^^^^^^
@@ -562,7 +611,7 @@ I80 完整字段
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE

@@ -49,9 +49,9 @@ LEDC PWM 控制
         config:
           default_percent: 100
         peripherals:
-          - name: ledc_backlight
+          - ledc_name: ledc_backlight
 
-``ledc_ctrl`` 只绑定一个 ``ledc`` 外设；解析脚本要求 ``peripherals`` 列表中至少包含一个名称以 ``ledc`` 或 ``ledc_`` 开头的外设引用，启用外设校验时该名称必须存在于 ``board_peripherals.yaml``。
+``ledc_ctrl`` 通过 ``ledc_name`` 绑定一个 ``ledc`` 外设。所选名称必须存在于 ``board_peripherals.yaml``，并且引用的外设类型必须为 ``ledc``。
 
 ``default_percent`` 表示初始化时写入的百分比，驱动会按 ``duty = default_percent * (2^duty_resolution - 1) / 100`` 计算初始 duty，并调用 ``ledc_set_duty`` 与 ``ledc_update_duty`` 生效。后续亮度或 PWM 变化由应用直接使用 LEDC 驱动完成。
 
@@ -73,7 +73,7 @@ LEDC PWM 控制完整字段
       config:
         default_percent: 100        # [TO_BE_CONFIRMED] Default brightness percentage (0-100)
       peripherals:
-        - name: ledc_backlight      # LEDC peripheral name (must reference an LEDC peripheral)
+        - ledc_name: ledc_backlight  # LEDC peripheral name (must reference an LEDC peripheral)
 
 组件依赖
 ------------
@@ -112,7 +112,7 @@ LEDC PWM 控制完整字段
 注意事项
 ------------
 
-- 设备引用的 ``ledc`` 外设名称必须与 ``board_peripherals.yaml`` 中的实例名一致，并且名称需以 ``ledc`` 或 ``ledc_`` 开头。
+- 设备通过 ``ledc_name`` 选择 ``ledc`` 外设实例。
 - ``default_percent`` 只用于初始化时设置 duty；运行时改变亮度需要应用重新调用 LEDC 驱动设置 duty 并更新通道。
 - ``ledc_ctrl`` 去初始化时会调用 ``ledc_stop``，停止电平参数为 ``0``。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。

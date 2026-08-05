@@ -4,7 +4,7 @@ devices:
     type: power_ctrl
     sub_type: gpio
     peripherals:
-      - name: gpio_sd_power
+      - gpio_name: gpio_sd_power
         active_level: 0
 
   # On-board WS2812 status LED. Schematic net: GPIO37.
@@ -51,7 +51,7 @@ devices:
       voltage_range: [380, 820, 1340, 1870]
       button_labels: ["SET", "MODE", "VOLUME_DOWN", "VOLUME_UP"]
     peripherals:
-      - name: adc_oneshot
+      - adc_name: adc_oneshot
 
   # ES8389 DAC drives ES_LOUTP/N and ES_ROUTP/N into two NS4150 power amplifiers.
   - name: audio_dac
@@ -65,11 +65,11 @@ devices:
       dac_cfg:
         ref_enable: true
     peripherals:
-      - name: gpio_pa_control
+      - pa_name: gpio_pa_control
         gain: 6
-        pa_active_level: 1
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 400000
 
@@ -82,12 +82,14 @@ devices:
       dac_enabled: false
       sys_cfg:
         no_mclk: true
+      dac_cfg:
+        ref_enable: true
       adc_cfg:
         # codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
         label: [FL, FR, RE, NA]
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 400000
 
@@ -188,7 +190,7 @@ devices:
           mirror_x: false
           mirror_y: false
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x28]  # GT1151 8-bit I2C address, from 7-bit 0x14
 
   # Generate the 20 MHz camera XCLK before camera initialization.
@@ -198,7 +200,7 @@ devices:
     config:
       default_percent: 100
     peripherals:
-      - name: ledc_camera_xclk
+      - ledc_name: ledc_camera_xclk
 
   # The OV3660 needs a stable external XCLK before the generic DVP device probes it.
   - name: camera_sensor_bringup
@@ -244,5 +246,5 @@ devices:
           data_io_6: 52
           data_io_7: 53
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         frequency: 200000

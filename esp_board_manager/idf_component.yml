@@ -1,4 +1,4 @@
-version: 0.7.0
+version: 0.7.1
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -21,7 +21,7 @@ examples:
 
 dependencies:
   espressif/esp_boards:
-    version: "*"
+    version: "~0.6.0"
 
   espressif/esp_codec_dev:
     require: public
@@ -43,7 +43,7 @@ dependencies:
 
   espressif/esp_video:
     require: public
-    version: "^2.1.0"
+    version: "^2.3.0"
     matches:
       - if: "$CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True"
 
