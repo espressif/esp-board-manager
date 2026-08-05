@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4~1
+
+### Bug Fixes
+
+- Aligned the **ESP32-P4-Function-EV-Board** DSI LCD `bits_per_pixel` setting with its RGB565 color format.
+
 ## 0.5.4
 
 ### Modifications
