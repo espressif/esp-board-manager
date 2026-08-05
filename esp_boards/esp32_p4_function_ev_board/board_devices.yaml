@@ -78,7 +78,7 @@ devices:
       reset_gpio_num: 27
       rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
       data_endian: LCD_RGB_DATA_ENDIAN_BIG
-      bits_per_pixel: 24
+      bits_per_pixel: 16
       reset_active_high: 0
       dbi_config:
         virtual_channel: 0
