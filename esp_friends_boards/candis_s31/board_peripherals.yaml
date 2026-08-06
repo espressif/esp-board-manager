@@ -28,7 +28,15 @@ peripherals:
     format: std-out
     config: &i2s_audio_config
       port: 0
-      sample_rate_hz: 22050
+      # Keep in sync with BSP_I2S_SAMPLE_RATE in bsp/candis_s31.h (BSP is the
+      # primary line, this definition is the parallel BM adaptation).
+      # 16000 Hz is a row in the es8389 driver's coeff_div[] table
+      # (8000/16000/24000/32000/44100/48000/88200/96000/192000); the previous
+      # 22050 Hz is not. The codec is clocked from MCLK (use_mclk=true), which
+      # makes es8389_set_fs() skip that lookup, so 22050 Hz did not fail
+      # outright - it left the codec clock dividers at their reset defaults.
+      # Staying inside the table keeps both clocking paths valid.
+      sample_rate_hz: 16000
       mclk_multiple: 256
       data_bit_width: 16
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO

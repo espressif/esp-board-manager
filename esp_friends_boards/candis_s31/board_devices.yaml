@@ -190,6 +190,14 @@ devices:
     power_ctrl_device: board_power_ctrl
     version: default
     dependencies:
+      # "espressif/esp_lcd_touch_cst820" does not exist in the public
+      # component registry (only a kodediy fork is published there), but the
+      # dependency name must stay unchanged: the project-level
+      # idf_component.yml override_path targets this exact name and points at
+      # the locally maintained driver in
+      # esp-bsp/components/lcd_touch/esp_lcd_touch_cst820. The kodediy
+      # version is unusable with this module: it is incompatible with the
+      # panel's 15-byte touch report format.
       espressif/esp_lcd_touch_cst820: "^1.0.0"
     config:
       io_i2c_config:
@@ -225,6 +233,15 @@ devices:
         de_io: 57
         pclk_io: 54
         xclk_io: 55
+        # XCLK is 24 MHz (measured baseline): the OV5640 register tables are
+        # calculated for a 24 MHz input, so keep this in sync with
+        # BSP_CAMERA_XCLK_CLOCK_MHZ in bsp/candis_s31.h. With sub_type dvp
+        # the ESP32-S31 DVP camera controller derives XCLK itself from
+        # PLL_F160M and routes it to xclk_io through the GPIO output matrix,
+        # therefore no LEDC channel is configured on this BM path. (The BSP
+        # additionally starts a redundant LEDC XCLK on the same pin for
+        # compatibility, but the GPIO matrix lets the cam controller's later
+        # write win. Do not reintroduce an LEDC channel in this YAML.)
         xclk_freq: 24000000
         data_io:
           data_io_0: 46
