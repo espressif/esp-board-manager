@@ -1,4 +1,8 @@
 # Devices Configuration for Candis-S31
+# Type-C2 is intentionally absent: Board Manager currently exposes custom
+# driver handles and GPIO controls independently, so it cannot enforce this
+# board's atomic Source-before-boost sequence or 500 mA-only advertisement.
+# Applications that need Type-C2 USB Host must use the Candis-S31 BSP API.
 devices:
   - name: pmic
     chip: tg28_sw
@@ -26,20 +30,6 @@ devices:
       - name: i2c_low_power
       - name: gpio_pmic_rtc_interrupt
 
-  - name: type_c_controller
-    chip: fusb303b
-    type: custom
-    version: 1.0.0
-    dependencies:
-      espressif/fusb303b: "^0.2.0"
-    config:
-      i2c_addresses: [0x21, 0x31]
-      frequency_hz: 400000
-      enable_active_level: 0
-    peripherals:
-      - name: i2c_main
-      - name: gpio_type_c_enable
-      - name: gpio_type_c_interrupt
 
   - name: board_power_ctrl
     type: power_ctrl
@@ -54,14 +44,6 @@ devices:
       - name: gpio_sd_power
       - name: gpio_pa_control
 
-  - name: usb_otg_power
-    type: gpio_ctrl
-    version: default
-    config:
-      active_level: 1
-      default_level: 0
-    peripherals:
-      - name: gpio_usb_otg_enable
 
   - name: led_strip
     chip: ws2812
@@ -237,11 +219,11 @@ devices:
         # calculated for a 24 MHz input, so keep this in sync with
         # BSP_CAMERA_XCLK_CLOCK_MHZ in bsp/candis_s31.h. With sub_type dvp
         # the ESP32-S31 DVP camera controller derives XCLK itself from
-        # PLL_F160M and routes it to xclk_io through the GPIO output matrix,
-        # therefore no LEDC channel is configured on this BM path. (The BSP
-        # additionally starts a redundant LEDC XCLK on the same pin for
-        # compatibility, but the GPIO matrix lets the cam controller's later
-        # write win. Do not reintroduce an LEDC channel in this YAML.)
+        # PLL_F160M and routes it to xclk_io through the GPIO output matrix.
+        # No LEDC channel is configured on this BM path. The BSP also uses the
+        # camera controller by default; its separate LEDC XCLK exists only
+        # behind the disabled-by-default diagnostic Kconfig option
+        # CONFIG_BSP_CAMERA_XCLK_USE_LEDC.
         xclk_freq: 24000000
         data_io:
           data_io_0: 46
