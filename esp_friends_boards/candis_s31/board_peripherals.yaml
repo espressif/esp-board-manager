@@ -108,6 +108,10 @@ peripherals:
       pin: 1
       mode: GPIO_MODE_OUTPUT
       default_level: 1
+      # No Board Manager device consumes this pin: the type_c_controller
+      # device was removed (see board_devices.yaml header). The entry stays
+      # to pin FUSB303_EN_N to a safe default (high = controller disabled)
+      # for BSP coexistence; the BSP drives Type-C.
 
   - name: gpio_usb_otg_enable
     type: gpio
@@ -139,6 +143,9 @@ peripherals:
       # The FUSB303B interrupt output stays low until every pending status
       # bit is cleared, so it is level-active as well.
       intr_type: GPIO_INTR_LOW_LEVEL
+      # Kept only to hold a documented safe default for the FUSB303B
+      # interrupt pad (level-active, pull-up); no BM device references it
+      # since the type_c_controller removal. The BSP owns the controller.
 
   - name: gpio_display_te
     type: gpio

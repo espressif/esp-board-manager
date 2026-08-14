@@ -271,25 +271,38 @@ static esp_err_t set_camera_safe_state(candis_power_context_t *context)
 }
 #define CANDIS_PIN_COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
-/* Park peripheral pins as pure inputs before their rail is switched off, so
- * a pad left driving high cannot back-feed the sinking rail. These off
- * callbacks run only after the matching device has been de-initialized
- * (Board Manager power_ctrl semantics), so no active driver contends the
- * pins. Pin numbers mirror board_peripherals.yaml / board_devices.yaml and
- * hardware/facts.md; keep them in sync. */
+/* Park peripheral signal pins as pure inputs before their rail is switched
+ * off, so a pad left driving high cannot back-feed the sinking rail through
+ * the peripheral's ESD/protection diodes.
+ *
+ * Caller contract, NOT a framework guarantee: Board Manager never calls
+ * set_power(name, false) during device deinit, and the public
+ * esp_board_device_power_ctrl(name, false) may be invoked at any time. The
+ * application must stop or deinitialize the device before requesting power
+ * off; otherwise this tri-states pins an active driver still owns (for
+ * example the SPI/QSPI display bus, an I2S channel, or a mounted SDMMC
+ * slot, including its internal pull-ups).
+ *
+ * Camera PWDN/RST are deliberately NOT parked: they are configured as
+ * outputs only once in board_power_init, so parking them would leave
+ * set_camera_safe_state() writing to input-mode pads on every later power
+ * cycle; they keep driving their safe levels (PWDN high, RST low) instead.
+ * Pins that are never outputs (display TE, SD card detect) carry no
+ * back-feed risk and stay out of the lists. Pin numbers mirror
+ * board_peripherals.yaml / board_devices.yaml and hardware/facts.md; keep
+ * them in sync. */
 static const gpio_num_t s_display_pins[] = {
-    15, 16, 10, 11, 13, 14, 9, 12,  /* RST, TE, CS, SIO0-3, CLK */
+    15, 10, 11, 13, 14, 9, 12,        /* RST, CS, SIO0-3, CLK */
 };
 static const gpio_num_t s_audio_pins[] = {
     35, 18, 19, 8, 44,               /* MCLK, BCLK, LRCK, DOUT, DIN */
 };
 static const gpio_num_t s_camera_pins[] = {
-    40, 39,                          /* PWDN, RST */
     46, 47, 48, 49, 50, 51, 52, 53,  /* D0-D7 */
     54, 55, 56, 57,                  /* PCLK, XCLK, VSYNC, HSYNC */
 };
 static const gpio_num_t s_sd_pins[] = {
-    0, 24, 25, 20, 21, 22, 23,       /* CD, CLK, CMD, D0-D3 */
+    24, 25, 20, 21, 22, 23,          /* CLK, CMD, D0-D3 */
 };
 
 static esp_err_t park_pins_input(const gpio_num_t *pins, size_t count)
