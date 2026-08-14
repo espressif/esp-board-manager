@@ -49,7 +49,12 @@ static const co5300_lcd_init_cmd_t s_panel_init[] = {
     {0x3A, (uint8_t[]) {0x55}, 1, 0},
     {0x35, (uint8_t[]) {0x00}, 1, 0},
     {0x53, (uint8_t[]) {0x20}, 1, 0},
-    {0x51, (uint8_t[]) {0xFF}, 1, 0},
+    /* First backlight at 0x4C (about 30 percent), matching
+     * CO5300_FIRST_BRIGHTNESS_HW in the BSP: full-scale first light
+     * violates the panel bring-up limit. 0x63 (WRHBMDISBV) stays at
+     * 0xFF because it only applies in HBM mode, which this board never
+     * enables. */
+    {0x51, (uint8_t[]) {0x4C}, 1, 0},
     {0x63, (uint8_t[]) {0xFF}, 1, 0},
     {0x2A, (uint8_t[]) {0x00, 0x0A, 0x01, 0xD5}, 4, 0},
     {0x2B, (uint8_t[]) {0x00, 0x00, 0x01, 0xCB}, 4, 0},
@@ -439,10 +444,11 @@ static int board_power_set(void *context, const char *device_name, bool power_on
         return ret;
     }
     if (strcmp(device_name, "led_strip") == 0) {
-        /* DLDO1 is strapped as a switch passing DCDC1 (3.3V) through
-         * directly, so no voltage programming applies; it is OTP-off and
-         * must be enabled before the WS2812B is driven. */
-        return tg28_sw_regulator_enable(power->pmic, TG28_SW_DLDO1, power_on);
+        /* The DLDO1 pin is OTP-strapped as the DC1SW load switch, which
+         * passes DCDC1 (3.3 V) straight through: use the switch API, no
+         * voltage programming applies. It is OTP-off and must be enabled
+         * before the WS2812E (U24) is driven. */
+        return tg28_sw_switch_enable(power->pmic, TG28_SW_SWITCH_DC1SW, power_on);
     }
 
     ESP_LOGW(TAG, "No power sequence for device %s", device_name);
