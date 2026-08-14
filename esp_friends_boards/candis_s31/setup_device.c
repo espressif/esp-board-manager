@@ -269,6 +269,44 @@ static esp_err_t set_camera_safe_state(candis_power_context_t *context)
     }
     return ret;
 }
+#define CANDIS_PIN_COUNT(a) (sizeof(a) / sizeof((a)[0]))
+
+/* Park peripheral pins as pure inputs before their rail is switched off, so
+ * a pad left driving high cannot back-feed the sinking rail. These off
+ * callbacks run only after the matching device has been de-initialized
+ * (Board Manager power_ctrl semantics), so no active driver contends the
+ * pins. Pin numbers mirror board_peripherals.yaml / board_devices.yaml and
+ * hardware/facts.md; keep them in sync. */
+static const gpio_num_t s_display_pins[] = {
+    15, 16, 10, 11, 13, 14, 9, 12,  /* RST, TE, CS, SIO0-3, CLK */
+};
+static const gpio_num_t s_audio_pins[] = {
+    35, 18, 19, 8, 44,               /* MCLK, BCLK, LRCK, DOUT, DIN */
+};
+static const gpio_num_t s_camera_pins[] = {
+    40, 39,                          /* PWDN, RST */
+    46, 47, 48, 49, 50, 51, 52, 53,  /* D0-D7 */
+    54, 55, 56, 57,                  /* PCLK, XCLK, VSYNC, HSYNC */
+};
+static const gpio_num_t s_sd_pins[] = {
+    0, 24, 25, 20, 21, 22, 23,       /* CD, CLK, CMD, D0-D3 */
+};
+
+static esp_err_t park_pins_input(const gpio_num_t *pins, size_t count)
+{
+    uint64_t mask = 0;
+    for (size_t index = 0; index < count; ++index) {
+        mask |= 1ULL << pins[index];
+    }
+    const gpio_config_t config = {
+        .pin_bit_mask = mask,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    return gpio_config(&config);
+}
 
 static int board_power_init(const dev_power_ctrl_config_t *config, void **context)
 {
@@ -352,7 +390,10 @@ static int board_power_set_display(candis_power_context_t *context, bool power_o
         return ret;
     }
 
-    esp_err_t ret = set_gpio(context->display_vci, 0);
+    esp_err_t ret = park_pins_input(s_display_pins, CANDIS_PIN_COUNT(s_display_pins));
+    if (ret == ESP_OK) {
+        ret = set_gpio(context->display_vci, 0);
+    }
     vTaskDelay(pdMS_TO_TICKS(2));
     if (ret == ESP_OK) {
         ret = set_gpio(context->display_vbat, 0);
@@ -372,7 +413,11 @@ static int board_power_set_audio(candis_power_context_t *context,
         context->audio_adc_on = power_on;
     }
     const bool rail_on = context->audio_dac_on || context->audio_adc_on;
-    esp_err_t ret = set_regulator(context->pmic, TG28_SW_ALDO3, 3300, rail_on);
+    esp_err_t ret = rail_on ? ESP_OK
+                  : park_pins_input(s_audio_pins, CANDIS_PIN_COUNT(s_audio_pins));
+    if (ret == ESP_OK) {
+        ret = set_regulator(context->pmic, TG28_SW_ALDO3, 3300, rail_on);
+    }
     if (ret == ESP_OK && rail_on) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -403,8 +448,10 @@ static int board_power_set_camera(candis_power_context_t *context, bool power_on
         }
         return ret;
     }
-
-    ret = set_regulator(context->pmic, TG28_SW_DCDC2, 1500, false);
+    ret = park_pins_input(s_camera_pins, CANDIS_PIN_COUNT(s_camera_pins));
+    if (ret == ESP_OK) {
+        ret = set_regulator(context->pmic, TG28_SW_DCDC2, 1500, false);
+    }
     if (ret == ESP_OK) {
         ret = set_regulator(context->pmic, TG28_SW_ALDO4, 2800, false);
     }
@@ -437,7 +484,11 @@ static int board_power_set(void *context, const char *device_name, bool power_on
         return board_power_set_camera(power, power_on);
     }
     if (strcmp(device_name, "fs_sdcard") == 0) {
-        int ret = set_gpio(power->sd_power, power_on ? 0 : 1);
+        int ret = power_on ? ESP_OK
+                  : park_pins_input(s_sd_pins, CANDIS_PIN_COUNT(s_sd_pins));
+        if (ret == ESP_OK) {
+            ret = set_gpio(power->sd_power, power_on ? 0 : 1);
+        }
         if (ret == ESP_OK && power_on) {
             vTaskDelay(pdMS_TO_TICKS(10));
         }
