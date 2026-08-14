@@ -21,7 +21,6 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "fusb303b.h"
 #include "gen_board_device_custom.h"
 #include "periph_gpio.h"
 #include "rx8130ce.h"
@@ -227,83 +226,6 @@ static int rtc_deinit(void *device_handle)
     return ret;
 }
 
-static int type_c_init(void *cfg, int cfg_size, void **device_handle)
-{
-    if (cfg == NULL || device_handle == NULL ||
-        cfg_size != sizeof(dev_custom_type_c_controller_config_t)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    const dev_custom_type_c_controller_config_t *config = cfg;
-    i2c_master_bus_handle_t bus = NULL;
-    periph_gpio_handle_t *enable = NULL;
-    void *interrupt = NULL;
-
-    int ret = custom_ref_peripheral(config->peripheral_names[0], (void **)&bus);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-    ret = custom_ref_peripheral(config->peripheral_names[1], (void **)&enable);
-    if (ret != ESP_OK) {
-        esp_board_periph_unref_handle(config->peripheral_names[0]);
-        return ret;
-    }
-    ret = custom_ref_peripheral(config->peripheral_names[2], &interrupt);
-    if (ret != ESP_OK) {
-        custom_unref_peripherals(config->peripheral_names, 2);
-        return ret;
-    }
-
-    gpio_set_level(enable->gpio_num, config->enable_active_level);
-    vTaskDelay(pdMS_TO_TICKS(FUSB303B_ENABLE_TO_I2C_DELAY_MS));
-
-    fusb303b_handle_t driver = NULL;
-    for (size_t index = 0; index < 2; ++index) {
-        const fusb303b_config_t driver_config = {
-            .device_address = config->i2c_addresses[index],
-            .scl_speed_hz = config->frequency_hz,
-        };
-        ret = fusb303b_create(bus, &driver_config, &driver);
-        if (ret == ESP_OK) {
-            break;
-        }
-    }
-    if (ret == ESP_OK) {
-        ret = fusb303b_set_enabled(driver, true);
-    }
-    if (ret == ESP_OK) {
-        ret = fusb303b_set_global_interrupt_mask(driver, false);
-    }
-    if (ret != ESP_OK) {
-        if (driver != NULL) {
-            fusb303b_delete(driver);
-        }
-        gpio_set_level(enable->gpio_num, !config->enable_active_level);
-        custom_unref_peripherals(config->peripheral_names, config->peripheral_count);
-        return ret;
-    }
-
-    *device_handle = driver;
-    return ESP_OK;
-}
-
-static int type_c_deinit(void *device_handle)
-{
-    dev_custom_type_c_controller_config_t *config = NULL;
-    esp_board_device_get_config_by_handle(device_handle, (void **)&config);
-    if (config == NULL) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    periph_gpio_handle_t *enable = NULL;
-    esp_board_periph_get_handle(config->peripheral_names[1], (void **)&enable);
-    fusb303b_set_enabled((fusb303b_handle_t)device_handle, false);
-    int ret = fusb303b_delete((fusb303b_handle_t)device_handle);
-    if (enable != NULL) {
-        gpio_set_level(enable->gpio_num, !config->enable_active_level);
-    }
-    custom_unref_peripherals(config->peripheral_names, config->peripheral_count);
-    return ret;
-}
 
 typedef struct {
     tg28_sw_handle_t      pmic;
@@ -535,5 +457,4 @@ static const dev_power_ctrl_custom_ops_t s_board_power_ops = {
 
 CUSTOM_DEVICE_IMPLEMENT(pmic, pmic_init, pmic_deinit);
 CUSTOM_DEVICE_IMPLEMENT(rtc, rtc_init, rtc_deinit);
-CUSTOM_DEVICE_IMPLEMENT(type_c_controller, type_c_init, type_c_deinit);
 DEVICE_EXTRA_FUNC_REGISTER(board_power_ctrl, &s_board_power_ops);
