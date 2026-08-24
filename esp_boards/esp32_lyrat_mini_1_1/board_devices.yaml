@@ -5,7 +5,7 @@ devices:
     type: power_ctrl
     sub_type: gpio
     peripherals:
-      - name: gpio_sd_power
+      - gpio_name: gpio_sd_power
         active_level: 0
 
   # Audio Codec (ES8311) - DAC for audio output
@@ -17,11 +17,11 @@ devices:
       sys_cfg:
         no_mclk: true
     peripherals:
-      - name: gpio_power_amp
+      - pa_name: gpio_power_amp
         gain: 20                   # BOARD_PA_GAIN (dB)
-        pa_active_level: 1         # High level active
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1         # High level active
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x30              # ES8311 I2C address,  0x18 << 1 = 0x30
         frequency: 100000          # 100kHz I2C frequency
 
@@ -35,8 +35,8 @@ devices:
       adc_cfg:
         label: [RE, FL]
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x20              # ES7243E I2C address (0x26 for ES7243)
         frequency: 100000          # 100kHz I2C frequency
 
@@ -69,4 +69,4 @@ devices:
       voltage_range: [380, 820, 1180, 1570, 1980, 2410]
       button_labels: ["VOLUME_UP", "VOLUME_DOWN", "SET", "PLAY", "Mode", "REC"]
     peripherals:
-    - name: adc_button
+    - adc_name: adc_button

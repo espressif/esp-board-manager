@@ -43,7 +43,7 @@ I2C IO Expansion
           output_io_level_mask: [1, 1, 0]
           input_io_mask: NULL
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             i2c_addr: [0x70, 0x7A]        # [TO_BE_CONFIRMED]
 
 During initialization, ``gpio_expander`` references the ``i2c`` peripheral handle and probes the addresses in the ``i2c_addr`` list for a responding device. After the driver is created successfully, the device sets the output pins, input pins, default output levels, optional output modes, and optional pull configurations according to the config. After initialization, BMGR records the detected valid I2C address for use by other logic on the same I2C bus.
@@ -106,7 +106,7 @@ I2C IO Expansion All Fields
                                           # List of pins configured with pull-down resistors
         input_io_mask: NULL               # List of pins configured as input (NULL if unused), maximum number is 32
       peripherals:
-        - name: i2c_master                # I2C peripheral used by the IO expander
+        - i2c_name: i2c_master             # I2C peripheral used by the IO expander
           i2c_addr: [0x70, 0x7A]          # [TO_BE_CONFIRMED] I2C address of the IO expander
 
 Component Dependencies

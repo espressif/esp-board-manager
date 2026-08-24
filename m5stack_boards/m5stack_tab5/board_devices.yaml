@@ -12,8 +12,8 @@ devices:
 
     # Power amplifier configuration
     peripherals:
-      - name: i2s_audio_out
-      - name: i2c_master
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 400000          # Hz
 
@@ -31,9 +31,9 @@ devices:
     # Power amplifier configuration
     peripherals:
       # I2S interface configuration
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
       # I2C interface configuration
-      - name: i2c_master
+      - i2c_name: i2c_master
         address: 0x80
         frequency: 400000          # Hz
 
@@ -75,7 +75,7 @@ devices:
       output_io_mode_mask: [0, 0, 0, 0, 0, 0, 0]
       input_io_mask: [7]  # P7(HEAD_PHONE_DET)
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: 0x86         # I2C address of the IO expander
 
   - name: gpio_expander_2
@@ -90,7 +90,7 @@ devices:
       output_io_level_mask : [1, 1, 0, 0, 0, 0]
       output_io_mode_mask: [0, 0, 0, 0, 0, 0]
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: 0x88         # I2C address of the IO expander
 
   - name: lcd_brightness
@@ -99,7 +99,7 @@ devices:
     config:
       default_percent: 100
     peripherals:
-      - name: ledc_backlight
+      - ledc_name: ledc_backlight
 
   # DSI Display Device
   - name: display_lcd
@@ -142,15 +142,15 @@ devices:
           vsync_pulse_width : 4
           vsync_front_porch : 20
     peripherals:
-      - name: ldo_mipi
-      - name: dsi_display
+      - ldo_name: ldo_mipi
+      - dsi_name: dsi_display
 
   # Power Control for Touch Panel
   - name: touch_power_ctrl
     type: power_ctrl
     sub_type: gpio
     peripherals:
-      - name: gpio_power_touch
+      - gpio_name: gpio_power_touch
         active_level: 0
 
   # Touch Panel Configuration
@@ -173,7 +173,7 @@ devices:
         x_max: 720                        # Maximum X coordinate (BSP_LCD_H_RES)
         y_max: 1280                        # Maximum Y coordinate (BSP_LCD_V_RES)
     peripherals:
-      - name: i2c_master                   # I2C peripheral for touch communication
+      - i2c_name: i2c_master                   # I2C peripheral for touch communication
         i2c_addr: [0x28, 0xaa]             # 0x28=GT911(7b 0x14), 0xaa=ST7123(7b 0x55)
 
   - name: camera
@@ -187,6 +187,6 @@ devices:
         pwdn_io: -1
         dont_init_ldo: true  # Using periph_ldo to manager this peripheral
     peripherals:
-      - name: "i2c_master"
+      - i2c_name: "i2c_master"
         frequency: 100000
-      - name: ldo_mipi
+      - ldo_name: ldo_mipi

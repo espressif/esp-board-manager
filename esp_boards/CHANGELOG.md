@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+### Modifications
+
+- Migrated official board device peripheral references to role-specific selectors.
+- Updated LCD device configurations to use the generated frame-format model where application pixel byte order must be identified.
+- Fixed I2S slot configurations on some boards to ensure that the total slot count and slot mask match the actual ADC/DAC channel configuration of the codec.
+
 ## 0.5.4~1
 
 ### Bug Fixes

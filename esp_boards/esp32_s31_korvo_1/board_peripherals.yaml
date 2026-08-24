@@ -24,7 +24,7 @@ peripherals:
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
       slot_mode: I2S_SLOT_MODE_STEREO
       ws_width: 16
-      total_slot: 4
+      total_slot: 2
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
       pins:
         mclk: -1
@@ -40,6 +40,7 @@ peripherals:
     format: tdm-in
     config:
       <<: *i2s_audio_config
+      total_slot: 4
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2
 
   # NS4150 left/right speaker amplifier enable. Schematic net: PA_CTRL=GPIO7.

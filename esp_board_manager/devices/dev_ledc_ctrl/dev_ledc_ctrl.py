@@ -7,6 +7,9 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_includes():
     """Get required header includes for LEDC control device"""
@@ -32,21 +35,29 @@ def parse(name, config, peripherals_dict=None):
     default_percent = device_config.get('default_percent', 100)  # Default 100% brightness
 
     # Extract LEDC peripheral name from peripherals list
-    # ledc_name = "ledc-0"  # Default fallback
-    if peripherals_list and len(peripherals_list) > 0:
-        ledc_periph = peripherals_list[0]
-        if isinstance(ledc_periph, dict) and 'name' in ledc_periph:
-            ledc_periph_name = ledc_periph['name']
+    explicit = []
+    legacy = []
+    for periph in peripherals_list:
+        if isinstance(periph, dict) and ('ledc_name' in periph or periph.get('_binding_role') == 'ledc'):
+            explicit.append(periph.get('ledc_name', periph.get('name')))
         else:
-            ledc_periph_name = str(ledc_periph)
-
-        if ledc_periph_name.startswith('ledc') or ledc_periph_name.startswith('ledc_'):
-            # Check if peripheral exists in peripherals_dict if provided
-            if peripherals_dict is not None and ledc_periph_name not in peripherals_dict:
-                raise ValueError(f"LEDC device {name} references undefined peripheral '{ledc_periph_name}'")
-            ledc_name = ledc_periph_name
-        else:
-            raise ValueError(f'LEDC device {name} should reference an LEDC peripheral, got: {ledc_periph_name}')
+            periph_name = periph.get('name') if isinstance(periph, dict) else str(periph)
+            if periph_name.startswith('ledc'):
+                legacy.append(periph_name)
+    if len(explicit) > 1 or len(legacy) > 1:
+        raise ValueError(f'LEDC device {name} references multiple LEDC peripherals')
+    if explicit and legacy:
+        raise ValueError(f'LEDC device {name} cannot mix ledc_name with legacy LEDC binding')
+    if explicit:
+        ledc_name = explicit[0]
+        if peripherals_dict is not None:
+            if ledc_name not in peripherals_dict or getattr(peripherals_dict[ledc_name], 'type', None) != 'ledc':
+                raise ValueError(f'LEDC device {name} ledc peripheral must have type ledc')
+    elif legacy:
+        ledc_name = legacy[0]
+        logger.warning('LEDC device %s uses legacy LEDC peripheral inference; migrate to ledc_name.', name)
+        if peripherals_dict is not None and ledc_name not in peripherals_dict:
+            raise ValueError(f"LEDC device {name} references undefined peripheral '{ledc_name}'")
     else:
         raise ValueError(f'LEDC device {name} must have at least one LEDC peripheral defined')
 

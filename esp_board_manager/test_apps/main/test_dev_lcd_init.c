@@ -8,7 +8,6 @@
 #include <string.h>
 #include "esp_err.h"
 #include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_rgb.h"
 #include "esp_log.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_err.h"
@@ -95,6 +94,13 @@ static esp_err_t lcd_backlight_set(int brightness_percent)
 }
 #endif  /* CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT */
 
+static bool lcd_frame_format_is_rgb565(dev_display_lcd_frame_format_t frame_format)
+{
+    return frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE ||
+           frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE;
+}
+
+#if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_SUPPORT || CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_3WIRE_SPI_SUPPORT
 static bool lcd_is_rgb_panel(const dev_display_lcd_config_t *lcd_cfg)
 {
     return lcd_cfg &&
@@ -120,6 +126,11 @@ static void lcd_unregister_rgb_callbacks(void)
         ESP_LOGW(TAG, "Failed to unregister RGB LCD callbacks: %s", esp_err_to_name(ret));
     }
 }
+#else
+static void lcd_unregister_rgb_callbacks(void)
+{
+}
+#endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_SUPPORT || CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_RGB_3WIRE_SPI_SUPPORT */
 
 esp_err_t test_dev_lcd_lvgl_init(void)
 {
@@ -154,6 +165,11 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             ESP_LOGE(TAG, "Failed to get LCD device config: %s", esp_err_to_name(ret));
             goto cleanup;
         }
+        if (!lcd_frame_format_is_rgb565(lcd_cfg->frame_format)) {
+            ESP_LOGE(TAG, "LCD frame format %d is unsupported by the RGB565 LVGL test", lcd_cfg->frame_format);
+            ret = ESP_ERR_NOT_SUPPORTED;
+            goto cleanup;
+        }
 
         uint32_t lvgl_buffer_pixels = lcd_cfg->lcd_width * lcd_cfg->lcd_height;
         bool lvgl_double_buffer = true;
@@ -183,7 +199,7 @@ esp_err_t test_dev_lcd_lvgl_init(void)
                 .buff_spiram = lvgl_use_spiram,
                 .buff_dma = !lvgl_use_spiram,
 #if LVGL_VERSION_MAJOR >= 9
-                .swap_bytes = true,
+                .swap_bytes = lcd_cfg->frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE,
 #endif  /* LVGL_VERSION_MAJOR >= 9 */
             }};
 
@@ -211,7 +227,7 @@ esp_err_t test_dev_lcd_lvgl_init(void)
                 },
             };
 #if LVGL_VERSION_MAJOR >= 9
-            disp_cfg.flags.swap_bytes = false;
+            disp_cfg.flags.swap_bytes = lcd_cfg->frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE;
 #endif  /* LVGL_VERSION_MAJOR >= 9 */
             disp = lvgl_port_add_disp_dsi(&disp_cfg, &dsi_cfg);
             if (disp == NULL) {
@@ -234,7 +250,7 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             };
             disp_cfg.flags.direct_mode = rgb_cfg.flags.avoid_tearing;
 #if LVGL_VERSION_MAJOR >= 9
-            disp_cfg.flags.swap_bytes = false;
+            disp_cfg.flags.swap_bytes = lcd_cfg->frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE;
 #endif  /* LVGL_VERSION_MAJOR >= 9 */
             disp = lvgl_port_add_disp_rgb(&disp_cfg, &rgb_cfg);
             if (disp == NULL) {
@@ -257,7 +273,7 @@ esp_err_t test_dev_lcd_lvgl_init(void)
             };
             disp_cfg.flags.direct_mode = rgb_cfg.flags.avoid_tearing;
 #if LVGL_VERSION_MAJOR >= 9
-            disp_cfg.flags.swap_bytes = false;
+            disp_cfg.flags.swap_bytes = lcd_cfg->frame_format == DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE;
 #endif  /* LVGL_VERSION_MAJOR >= 9 */
             disp = lvgl_port_add_disp_rgb(&disp_cfg, &rgb_cfg);
             if (disp == NULL) {

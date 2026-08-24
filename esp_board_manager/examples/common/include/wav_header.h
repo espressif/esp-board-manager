@@ -6,46 +6,55 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdio.h>
+#include "esp_err.h"
+
 #ifdef __cplusplus
 extern "C" {
-#endif  /* __cplusplus */
+#endif /* __cplusplus */
+
+typedef struct {
+    uint32_t  sample_rate;
+    uint32_t  data_size;
+    uint16_t  channels;
+    uint16_t  bits_per_sample;
+    uint16_t  block_align;
+} wav_info_t;
 
 /**
- * @brief  Read WAV file header and extract audio parameters
+ * @brief  Read a PCM WAV stream and locate its data chunk.
  *
- *         This function reads the first 44 bytes of a WAV file and validates the RIFF header.
- *         It extracts sample rate, number of channels, and bits per sample.
+ *         This function scans RIFF chunks, allowing metadata and format-extension
+ *         chunks before the audio data. Only PCM and WAVE_FORMAT_EXTENSIBLE PCM
+ *         streams are supported. On success, @p fp points to the first data byte.
  *
- * @param[in]   fp               Pointer to the opened file stream (must be opened in binary read mode)
- * @param[out]  sample_rate      Pointer to store the sample rate in Hz
- * @param[out]  channels         Pointer to store the number of audio channels (1 for mono, 2 for stereo)
- * @param[out]  bits_per_sample  Pointer to store the bits per sample (e.g., 16, 24, 32)
+ * @param[in]   fp    Pointer to an opened binary read stream.
+ * @param[out]  info  Parsed stream information.
  *
  * @return
- *       - ESP_OK    Successfully read and parsed the WAV header
- *       - ESP_FAIL  File read error or invalid WAV format
+ *       - ESP_OK               Successfully read and parsed the WAV header.
+ *       - ESP_ERR_INVALID_ARG  Invalid argument.
+ *       - ESP_FAIL             File read error or unsupported/invalid WAV format.
  */
-esp_err_t read_wav_header(FILE *fp, uint32_t *sample_rate, uint16_t *channels, uint16_t *bits_per_sample);
+esp_err_t read_wav_info(FILE *fp, wav_info_t *info);
 
 /**
- * @brief  Write a standard 44‑byte WAV header to a file
+ * @brief  Write a standard 44-byte PCM WAV header to a file.
  *
- *         This function writes a RIFF/WAVE header with the provided audio parameters.
- *         The file pointer should be positioned at the beginning of the file (or where the header should be written).
- *         The header includes a placeholder for the data size based on the given duration.
- *
- * @param[in]  fp                Pointer to the opened file stream (must be opened in binary write mode)
- * @param[in]  sample_rate       Sample rate in Hz
- * @param[in]  channels          Number of audio channels (1 for mono, 2 for stereo)
- * @param[in]  bits_per_sample   Bits per sample (e.g., 16, 24, 32)
- * @param[in]  duration_seconds  Duration of the audio data in seconds (used to calculate data size)
+ * @param[in]  fp                Pointer to an opened binary write stream.
+ * @param[in]  sample_rate       Sample rate in Hz.
+ * @param[in]  channels          Number of audio channels.
+ * @param[in]  bits_per_sample   Bits per sample.
+ * @param[in]  duration_seconds  Duration used to calculate the data size.
  *
  * @return
- *       - ESP_OK    Header written successfully
- *       - ESP_FAIL  File write error
+ *       - ESP_OK    Header written successfully.
+ *       - ESP_FAIL  File write error.
  */
-esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels, uint16_t bits_per_sample, uint32_t duration_seconds);
+esp_err_t write_wav_header(FILE *fp, uint32_t sample_rate, uint16_t channels,
+    uint16_t bits_per_sample, uint32_t duration_seconds);
 
 #ifdef __cplusplus
 }
-#endif  /* __cplusplus */
+#endif /* __cplusplus */

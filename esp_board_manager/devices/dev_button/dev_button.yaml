@@ -39,7 +39,7 @@
       press_repeat_done: false   # Enable press repeat done event (default: false)
       press_end: false           # Enable press end event (default: false)
   peripherals:
-    - name: gpio                 # [TO_BE_CONFIRMED] GPIO peripheral name
+    - gpio_name: gpio                 # [TO_BE_CONFIRMED] GPIO peripheral name
 
 # Example ADC Button device configuration (Single button)
 - name: adc_button_0      # The name of the device, must be unique
@@ -75,7 +75,7 @@
       press_end: false           # Enable press end event (default: false)
 
   peripherals:
-    - name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
+    - adc_name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
 
 # Example ADC Button device configuration (Multi buttons)
 - name: adc_button_group         # The name of the device, must be unique
@@ -117,7 +117,7 @@
       press_end: false           # Enable press end event (default: false)
 
   peripherals:
-    - name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
+    - adc_name: adc_oneshot          # [TO_BE_CONFIRMED] ADC peripheral name
 
 # Example Custom Button device configuration
 - name: custom_button_0          # The name of the device, must be unique

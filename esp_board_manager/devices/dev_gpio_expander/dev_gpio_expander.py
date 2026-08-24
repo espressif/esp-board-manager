@@ -7,10 +7,12 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 DEV_IO_EXPANDER_MAX_ADDR_COUNT = 2
+logger = logging.getLogger(__name__)
 
 def get_includes() -> list:
     """Return list of required include headers for IO Expander device"""
@@ -62,21 +64,31 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     i2c_name = ''
     i2c_addr = ''
     i2c_addr_count = 0
+    matches = []
     for periph in peripherals:
-        periph_name = periph.get('name', '')
-        if periph_name.startswith('i2c'):
+        periph_name = periph.get('i2c_name', periph.get('name', ''))
+        explicit = 'i2c_name' in periph or periph.get('_binding_role') == 'i2c'
+        if explicit or periph_name.startswith('i2c'):
+            matches.append((periph, periph_name, explicit))
+    if len(matches) > 1:
+        raise ValueError(f'IO Expander device {name} references multiple i2c peripherals')
+    if matches:
+        periph, periph_name, explicit = matches[0]
+        if explicit and peripherals_dict is not None and (periph_name not in peripherals_dict or getattr(peripherals_dict[periph_name], 'type', None) != 'i2c'):
+            raise ValueError(f'IO Expander device {name} i2c peripheral must have type i2c')
+        if not explicit:
+            logger.warning('IO Expander device %s uses legacy I2C peripheral inference; migrate to i2c_name.', name)
             # Check if peripheral exists in peripherals_dict if provided
-            if peripherals_dict is not None and periph_name not in peripherals_dict:
-                raise ValueError(f"❌ IO Expander device {name} references undefined peripheral '{periph_name}'")
-            i2c_name = periph_name
-            i2c_addr = periph.get('i2c_addr')
-            if i2c_addr is None:
-                raise ValueError(f"❌ IO Expander device {name} peripheral '{periph_name}' does not have 'i2c_addr' field")
-            i2c_addr = parse_i2c_addresses(i2c_addr)
-            i2c_addr_count = len(i2c_addr)
-            if i2c_addr_count > DEV_IO_EXPANDER_MAX_ADDR_COUNT:
-                raise ValueError(f'❌ Too many I2C addresses ({i2c_addr_count}), Maximum allowed is {DEV_IO_EXPANDER_MAX_ADDR_COUNT}')
-            break
+        if peripherals_dict is not None and periph_name not in peripherals_dict:
+            raise ValueError(f"❌ IO Expander device {name} references undefined peripheral '{periph_name}'")
+        i2c_name = periph_name
+        i2c_addr = periph.get('i2c_addr')
+        if i2c_addr is None:
+            raise ValueError(f"❌ IO Expander device {name} peripheral '{periph_name}' does not have 'i2c_addr' field")
+        i2c_addr = parse_i2c_addresses(i2c_addr)
+        i2c_addr_count = len(i2c_addr)
+        if i2c_addr_count > DEV_IO_EXPANDER_MAX_ADDR_COUNT:
+            raise ValueError(f'❌ Too many I2C addresses ({i2c_addr_count}), Maximum allowed is {DEV_IO_EXPANDER_MAX_ADDR_COUNT}')
 
     # Get max pins
     max_pins = int(device_config.get('max_pins', 8))  # 8 is default

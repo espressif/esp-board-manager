@@ -23,8 +23,7 @@ static esp_err_t run_custom_basic(bmgr_test_context_t *ctx, int argc, char **arg
     (void)ctx;
     (void)argc;
     (void)argv;
-    test_dev_custom();
-    return ESP_OK;
+    return test_dev_custom();
 }
 #endif  /* CONFIG_ESP_BOARD_DEV_CUSTOM_SUPPORT */
 

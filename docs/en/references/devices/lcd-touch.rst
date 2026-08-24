@@ -59,7 +59,7 @@ In I2C mode, ``lcd_touch`` uses the ``i2c`` peripheral to provide the bus handle
             x_max: 1024          # [TO_BE_CONFIRMED]
             y_max: 600           # [TO_BE_CONFIRMED]
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             i2c_addr: [0xBA, 0x28]
 
 SPI Touch (Reserved)
@@ -116,7 +116,7 @@ I2C Touch All Fields
             mirror_x: false                 # Mirror X coordinates (default: false)
             mirror_y: false                 # Mirror Y coordinates (default: false)
       peripherals:
-        - name: i2c_master              # I2C peripheral for touch communication
+        - i2c_name: i2c_master           # I2C peripheral for touch communication
           i2c_addr: [0xba]              # [TO_BE_CONFIRMED] I2C address candidates, 8-bit / left-shifted values, up to 4 entries
 
 SPI Touch All Fields

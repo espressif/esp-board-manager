@@ -6,6 +6,10 @@
 # FS_FAT device config parser
 VERSION = 'v1.0.0'
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 DEV_FS_FAT_IO_LIST = {
     'sdmmc': [
         'clk',
@@ -158,8 +162,27 @@ def parse_spi_sub_config(sub_config: dict, device_peripherals: list = None, peri
     cs_gpio_num = sub_config.get('cs_gpio_num', 15)
     spi_bus_name = None
 
+    explicit = []
+    legacy = []
+    for peripheral in device_peripherals or []:
+        if isinstance(peripheral, dict) and ('spi_name' in peripheral or peripheral.get('_binding_role') == 'spi'):
+            explicit.append(peripheral.get('spi_name', peripheral.get('name')))
+        else:
+            legacy.append(peripheral)
+    if len(explicit) > 1:
+        raise ValueError('FS_FAT device with SPI sub type references multiple SPI peripherals')
+    if explicit and legacy:
+        raise ValueError('FS_FAT device with SPI sub type cannot mix spi_name with legacy SPI binding')
+    if explicit:
+        periph_name = explicit[0]
+        periph_obj = peripherals_dict.get(periph_name) if peripherals_dict else None
+        if not periph_obj or getattr(periph_obj, 'type', None) != 'spi' or getattr(periph_obj, 'role', None) != 'master':
+            raise ValueError('FS_FAT device spi_name must reference a type spi, role master peripheral')
+        spi_bus_name = periph_name
+
     # Get SPI peripheral from device-level peripherals
-    if device_peripherals:
+    if not explicit and device_peripherals:
+        logger.warning('FS_FAT device uses legacy SPI peripheral selection; migrate to spi_name.')
         for peripheral in device_peripherals:
             periph_name = None
             if isinstance(peripheral, dict):

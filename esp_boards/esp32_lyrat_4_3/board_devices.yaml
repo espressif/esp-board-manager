@@ -5,7 +5,7 @@ devices:
     type: power_ctrl
     sub_type: gpio
     peripherals:
-      - name: gpio_sd_power
+      - gpio_name: gpio_sd_power
         active_level: 1
 
   # Audio Codec (ES8388) - DAC for audio output.
@@ -18,11 +18,11 @@ devices:
       sys_cfg:
         no_mclk: false
     peripherals:
-      - name: gpio_power_amp
+      - pa_name: gpio_power_amp
         gain: 6
-        pa_active_level: 1
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 100000
 
@@ -37,8 +37,8 @@ devices:
       adc_cfg:
         label: [FL, FR]
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 100000
 

@@ -6,10 +6,13 @@
 VERSION = 'v1.0.0'
 
 import sys
+import logging
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from generators.utils.idf_version import get_idf_version
+
+logger = logging.getLogger(__name__)
 
 DEV_LCD_TOUCH_I2C_MAX_ADDR_COUNT = 4
 
@@ -39,14 +42,27 @@ def _iter_peripheral_entries(peripherals_list):
 
 def _find_i2c_peripheral(device_name: str, full_config: dict, peripherals_dict=None) -> dict:
     matched = []
+    explicit_count = 0
+    legacy_count = 0
     for periph in _iter_peripheral_entries(full_config.get('peripherals')):
-        periph_name = periph.get('name', '')
+        explicit = 'i2c_name' in periph or periph.get('_binding_role') == 'i2c'
+        periph_name = periph.get('i2c_name', periph.get('name', ''))
         if not periph_name and 'i2c_addr' in periph:
             raise ValueError(f'LCD touch device {device_name} I2C peripheral requires name')
-        if periph_name.startswith('i2c'):
+        if explicit or periph_name.startswith('i2c'):
+            explicit_count += int(explicit)
+            legacy_count += int(not explicit)
             if peripherals_dict is not None and periph_name not in peripherals_dict:
                 raise ValueError(f"LCD touch device {device_name} references undefined peripheral '{periph_name}'")
-            matched.append(periph)
+            if explicit and peripherals_dict is not None and getattr(peripherals_dict[periph_name], 'type', None) != 'i2c':
+                raise ValueError(f'LCD touch device {device_name} i2c peripheral must have type i2c')
+            if not explicit:
+                logger.warning('LCD touch device %s uses legacy I2C peripheral inference; migrate to i2c_name.', device_name)
+            selected = dict(periph)
+            selected['name'] = periph_name
+            matched.append(selected)
+    if explicit_count and legacy_count:
+        raise ValueError(f'LCD touch device {device_name} cannot mix i2c_name with legacy I2C binding')
     if len(matched) == 1:
         return matched[0]
     if len(matched) > 1:

@@ -49,9 +49,9 @@ LEDC PWM Control
         config:
           default_percent: 100
         peripherals:
-          - name: ledc_backlight
+          - ledc_name: ledc_backlight
 
-``ledc_ctrl`` binds to a single ``ledc`` peripheral. The parser requires the ``peripherals`` list to contain at least one entry whose name starts with ``ledc`` or ``ledc_``; when peripheral validation is enabled, that name must exist in ``board_peripherals.yaml``.
+``ledc_ctrl`` binds to a single ``ledc`` peripheral through ``ledc_name``. The selected name must exist in ``board_peripherals.yaml`` and reference a peripheral of type ``ledc``.
 
 ``default_percent`` is the percentage written during initialization. The driver calculates the initial duty as ``duty = default_percent * (2^duty_resolution - 1) / 100`` and applies it by calling ``ledc_set_duty`` and ``ledc_update_duty``. Subsequent brightness or PWM changes are made by the application directly using the LEDC driver.
 
@@ -73,7 +73,7 @@ LEDC PWM Control All Fields
       config:
         default_percent: 100        # [TO_BE_CONFIRMED] Default brightness percentage (0-100)
       peripherals:
-        - name: ledc_backlight      # LEDC peripheral name (must reference an LEDC peripheral)
+        - ledc_name: ledc_backlight  # LEDC peripheral name (must reference an LEDC peripheral)
 
 Component Dependencies
 ----------------------
@@ -112,7 +112,7 @@ Board Reference
 Notes
 -----
 
-- The ``ledc`` peripheral name referenced by the device must match the instance name in ``board_peripherals.yaml`` and must start with ``ledc`` or ``ledc_``.
+- The device uses ``ledc_name`` to select the ``ledc`` peripheral instance.
 - ``default_percent`` is used only for setting the initial duty during initialization; changing brightness at runtime requires the application to call the LEDC driver again to set the duty and update the channel.
 - During ``ledc_ctrl`` deinitialization, ``ledc_stop`` is called with an idle level of ``0``.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.

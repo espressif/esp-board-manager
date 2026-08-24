@@ -11,11 +11,11 @@ devices:
 
     # Power amplifier configuration
     peripherals:
-      - name: gpio_power_amp
+      - pa_name: gpio_power_amp
         gain: 6                    # dB
-        pa_active_level: 1         # 0-low, 1-high
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1         # 0-low, 1-high
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000          # Hz
 
@@ -33,9 +33,9 @@ devices:
     # Power amplifier configuration
     peripherals:
       # I2S interface configuration
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
       # I2C interface configuration
-      - name: i2c_master
+      - i2c_name: i2c_master
         address: 0x80
         frequency: 400000          # Hz
 
@@ -63,7 +63,7 @@ devices:
       output_io_level_mask: [1, 1, 1]  # List of pins with initial output level
       input_io_mask: NULL
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x70, 0x40]         # I2C address of the IO expander
 
   - name: display_lcd
@@ -93,12 +93,11 @@ devices:
       lcd_panel_config:
         reset_gpio_num: -1
         rgb_ele_order: "LCD_RGB_ELEMENT_ORDER_BGR"
-        data_endian: "LCD_RGB_DATA_ENDIAN_BIG" # LCD_RGB_DATA_ENDIAN_LITTLE
         # ST77916 specific configuration
         vendor_config: NULL
 
     peripherals:
-      - name: spi_display             # SPI peripheral for LCD communication
+      - spi_name: spi_display             # SPI peripheral for LCD communication
 
   - name: lcd_touch
     chip: auto
@@ -116,7 +115,7 @@ devices:
           mirror_x: false
           mirror_y: false
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x48, 0x28]        # TT21100/GT911 8-bit I2C addresses, from 7-bit 0x24/0x14
 
   - name: camera
@@ -143,7 +142,7 @@ devices:
           data_io_6: 41
           data_io_7: 39
     peripherals:
-      - name: "i2c_master"
+      - i2c_name: "i2c_master"
         frequency: 100000
 
   # ADC Button Devices Configuration for multiple buttons
@@ -170,4 +169,4 @@ devices:
       voltage_range: [380, 820, 1110, 1650, 1980, 2410]
       button_labels: ["VOLUME_UP", "VOLUME_DOWN", "SET", "PLAY", "MUTE", "REC"]
     peripherals:
-    - name: adc_oneshot
+    - adc_name: adc_oneshot

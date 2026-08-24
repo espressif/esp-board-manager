@@ -607,6 +607,51 @@ def test_adc_schema_demotes_cross_role_fields_to_debug(bmgr_root, caplog):
     assert typo_issues[0].key_path == 'channel_id_typoz'
 
 
+@pytest.mark.parametrize(
+    ('sub_type', 'config'),
+    [
+        ('dsi', {
+            'frame_format': 'RGB888',
+            'data_endian': 'LCD_RGB_DATA_ENDIAN_LITTLE',
+        }),
+        ('spi', {
+            'frame_format': 'RGB565_LE',
+            'lcd_panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_LITTLE'},
+        }),
+        ('rgb', {
+            'frame_format': 'RGB565_LE',
+            'data_endian': 'LCD_RGB_DATA_ENDIAN_BIG',
+        }),
+        ('rgb_3wire_spi', {
+            'frame_format': 'RGB565_LE',
+            'lcd_panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_LITTLE'},
+        }),
+        ('parlio', {
+            'frame_format': 'RGB565_BE',
+            'lcd_panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_BIG'},
+        }),
+        ('i80', {
+            'frame_format': 'RGB565_BE',
+            'panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_BIG'},
+        }),
+    ],
+)
+def test_display_lcd_schema_accepts_frame_format_and_data_endian(
+        bmgr_root, sub_type, config):
+    """LCD template keys must remain configurable instead of warning as unknown."""
+    sys.path.insert(0, str(bmgr_root))
+    from generators.schema_validator import DeviceSchemaValidator
+
+    validator = DeviceSchemaValidator(bmgr_root / 'devices')
+
+    assert validator.validate_config(
+        device_type='display_lcd',
+        sub_type=sub_type,
+        config=config,
+        device_name='display_lcd',
+    ) == []
+
+
 def test_i2c_rejects_lp_port_with_regular_clk_source(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     from peripherals.periph_i2c import periph_i2c as mod
@@ -896,6 +941,40 @@ devices:
     assert '.chip = "mx16161",' in config_c
     assert '.chip = "mx16161",' in handles_c
 
+
+def test_process_devices_preserves_explicit_adc_name_binding(bmgr_root, tmp_path):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from gen_bmgr_config_codes import BoardConfigGenerator
+
+    dev_yaml = tmp_path / 'board_devices.yaml'
+    dev_yaml.write_text(
+        '''
+devices:
+  - name: audio_adc
+    type: audio_codec
+    chip: internal
+    config:
+      adc_enabled: true
+    peripherals:
+      - adc_name: microphone_input
+'''.lstrip(),
+        encoding='utf-8',
+    )
+    generator = BoardConfigGenerator(bmgr_root)
+    generator.set_project_dir(str(tmp_path))
+    generator.process_devices(
+        str(dev_yaml),
+        {'microphone_input': SimpleNamespace(type='adc', config={})},
+        {'microphone_input': 'microphone_input'},
+    )
+
+    generated = (tmp_path / 'components' / 'gen_bmgr_codes' / 'gen_board_device_config.c').read_text(
+        encoding='utf-8'
+    )
+    assert '.periph_name = "microphone_input",' in generated
+
 def test_camera_dvp_requires_i2c_peripheral(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_camera import dev_camera as mod
@@ -935,6 +1014,31 @@ def test_button_gpio_rejects_legacy_gpio_name_and_events_keys(bmgr_root):
             },
         )
 
+
+@pytest.mark.parametrize('reference', [{'name': 'gpio_legacy'}, 'gpio_legacy'])
+def test_button_legacy_name_and_string_references_warn(bmgr_root, caplog, reference):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_button import dev_button
+
+    with caplog.at_level('WARNING'):
+        result = dev_button.parse(
+            'legacy_button',
+            {
+                'type': 'button',
+                'sub_type': 'gpio',
+                'config': {},
+                'peripherals': [reference],
+            },
+            peripherals_dict={
+                'gpio_legacy': SimpleNamespace(type='gpio', config={'pin': 1}),
+            },
+        )
+
+    assert result['struct_init']['sub_cfg']['gpio']['gpio_name'] == 'gpio_legacy'
+    assert 'legacy gpio peripheral inference' in caplog.text
+
 def test_button_gpio_requires_top_level_gpio_peripheral(bmgr_root):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_button import dev_button as mod
@@ -971,6 +1075,156 @@ def test_button_adc_requires_top_level_adc_peripheral(bmgr_root):
                     'max_voltage': 500,
                 },
             },
+        )
+
+
+def test_button_gpio_resolves_explicit_gpio_name_without_prefix(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_button import dev_button as mod
+
+    result = mod.parse(
+        'button_0',
+        {
+            'type': 'button',
+            'sub_type': 'gpio',
+            'config': {'events_cfg': {}},
+            'peripherals': [{'gpio_name': 'panel_enable'}],
+        },
+        peripherals_dict={'panel_enable': SimpleNamespace(type='gpio', config={'pin': 4})},
+    )
+    assert result['struct_init']['sub_cfg']['gpio']['gpio_name'] == 'panel_enable'
+
+
+def test_button_gpio_rejects_explicit_binding_with_wrong_type(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_button import dev_button as mod
+
+    with pytest.raises(ValueError, match='must have type gpio'):
+        mod.parse(
+            'button_0',
+            {
+                'type': 'button',
+                'sub_type': 'gpio',
+                'config': {},
+                'peripherals': [{'gpio_name': 'panel_enable'}],
+            },
+            peripherals_dict={'panel_enable': SimpleNamespace(type='i2c', config={})},
+        )
+
+
+def test_button_error_keeps_original_device_name_when_event_arrays_are_configured(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_button import dev_button as mod
+
+    with pytest.raises(ValueError, match=r'Button device button_0 references undefined peripheral'):
+        mod.parse(
+            'button_0',
+            {
+                'type': 'button',
+                'sub_type': 'gpio',
+                'config': {'events_cfg': {'long_press_up_time': [3000]}},
+                'peripherals': [{'gpio_name': 'missing_gpio'}],
+            },
+            peripherals_dict={},
+        )
+
+
+@pytest.mark.parametrize(
+    ('sub_type', 'binding_key', 'legacy_name'),
+    [
+        ('gpio', 'gpio_name', 'gpio_legacy'),
+        ('adc_single', 'adc_name', 'adc_legacy'),
+    ],
+)
+def test_button_rejects_explicit_and_legacy_binding_for_same_role(
+        bmgr_root, sub_type, binding_key, legacy_name):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_button import dev_button as mod
+
+    periph_type = 'gpio' if sub_type == 'gpio' else 'adc'
+    with pytest.raises(ValueError, match=f'cannot mix {binding_key}'):
+        mod.parse(
+            'button_0',
+            {
+                'type': 'button',
+                'sub_type': sub_type,
+                'config': {},
+                'peripherals': [
+                    {binding_key: 'button_input'},
+                    {'name': legacy_name},
+                ],
+            },
+            peripherals_dict={
+                'button_input': SimpleNamespace(type=periph_type),
+                legacy_name: SimpleNamespace(type=periph_type),
+            },
+        )
+
+
+def test_device_parser_keeps_custom_label_name_as_user_data(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from generators.device_parser import DeviceParser
+
+    reference = {'name': 'gpio_line', 'label_name': 'speaker'}
+    assert DeviceParser.normalize_peripheral_reference(reference, 'custom') == reference
+    assert DeviceParser.normalize_peripheral_reference(reference, 'power_ctrl', 'custom') == reference
+
+
+def test_audio_codec_resolves_explicit_pa_and_reset_names(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    result = mod.parse(
+        'audio_dac',
+        {
+            'type': 'audio_codec',
+            'chip': 'es8311',
+            'config': {'dac_enabled': True},
+            'peripherals': [
+                {'pa_name': 'enable_line', 'active_level': 1},
+                {'reset_name': 'codec_line', 'active_level': 0},
+            ],
+        },
+        peripherals_dict={
+            'enable_line': SimpleNamespace(type='gpio', config={'pin': 12}),
+            'codec_line': SimpleNamespace(type='gpio', config={'pin': 13}),
+        },
+    )
+    assert result['struct_init']['pa_peripheral']['name'] == 'enable_line'
+    assert result['struct_init']['reset_peripheral']['name'] == 'codec_line'
+
+
+def test_audio_codec_rejects_duplicate_explicit_pa_bindings(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripherals = {
+        'enable_a': SimpleNamespace(type='gpio', config={'pin': 12}),
+        'enable_b': SimpleNamespace(type='gpio', config={'pin': 13}),
+    }
+    with pytest.raises(ValueError, match='multiple PA GPIO'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [
+                    {'pa_name': 'enable_a', 'active_level': 1},
+                    {'pa_name': 'enable_b', 'active_level': 1},
+                ],
+            },
+            peripherals_dict=peripherals,
         )
 
 def test_camera_csi_allows_missing_ldo_when_dont_init_ldo_false(bmgr_root):
@@ -1071,6 +1325,175 @@ def test_display_lcd_spi_fallback_uses_generic_spi_prefix(bmgr_root):
 
     assert result['struct_init']['sub_cfg']['spi']['spi_name'] == 'spi_bus_custom'
 
+
+def test_display_lcd_explicit_spi_name_uses_exact_type_without_fallback(bmgr_root, caplog):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd', 'type': 'display_lcd', 'sub_type': 'spi',
+                'config': {'io_spi_config': {}},
+                'peripherals': [{'spi_name': 'panel_bus'}],
+            },
+            peripherals_dict={'panel_bus': SimpleNamespace(type='spi')},
+        )
+    assert result['struct_init']['sub_cfg']['spi']['spi_name'] == 'panel_bus'
+    assert not caplog.records
+
+
+def test_display_lcd_legacy_global_spi_fallback_warns(bmgr_root, caplog):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd', 'type': 'display_lcd', 'sub_type': 'spi',
+                'config': {'io_spi_config': {}},
+            },
+            peripherals_dict={'spi_bus': SimpleNamespace(type='spi')},
+        )
+    assert 'legacy global SPI fallback' in caplog.text
+
+
+def test_camera_explicit_i2c_name_uses_actual_type(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_camera import dev_camera as mod
+
+    result = mod.parse(
+        'camera',
+        {
+            'type': 'camera', 'sub_type': 'dvp',
+            'config': {'dvp_config': {}},
+            'peripherals': [{'i2c_name': 'sensor_bus'}],
+        },
+        peripherals_dict={'sensor_bus': SimpleNamespace(type='i2c')},
+    )
+    assert result['struct_init']['sub_cfg']['dvp']['i2c_name'] == 'sensor_bus'
+
+
+def test_lcd_touch_explicit_i2c_name_uses_actual_type(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_lcd_touch import dev_lcd_touch as mod
+
+    result = mod.parse(
+        'lcd_touch',
+        {
+            'type': 'lcd_touch', 'sub_type': 'i2c', 'config': {},
+            'peripherals': [{'i2c_name': 'touch_bus', 'i2c_addr': 0xBA}],
+        },
+        peripherals_dict={'touch_bus': SimpleNamespace(type='i2c')},
+    )
+    assert result['struct_init']['sub_cfg']['i2c']['i2c_name'] == 'touch_bus'
+
+
+def test_gpio_expander_explicit_i2c_name_uses_actual_type(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_gpio_expander import dev_gpio_expander as mod
+
+    result = mod.parse(
+        'expander',
+        {
+            'type': 'gpio_expander', 'config': {},
+            'peripherals': [{'i2c_name': 'expander_bus', 'i2c_addr': 0x70}],
+        },
+        peripherals_dict={'expander_bus': SimpleNamespace(type='i2c')},
+    )
+    assert result['struct_init']['i2c_name'] == 'expander_bus'
+
+
+def test_power_ctrl_gpio_resolves_explicit_gpio_name(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_power_ctrl import dev_power_ctrl as mod
+
+    result = mod.parse(
+        'panel_power',
+        {
+            'type': 'power_ctrl', 'sub_type': 'gpio', 'config': {},
+            'peripherals': [{'gpio_name': 'panel_enable', 'active_level': 1}],
+        },
+        peripherals_dict={'panel_enable': SimpleNamespace(type='gpio')},
+    )
+    assert result['struct_init']['sub_cfg']['gpio']['gpio_name'] == 'panel_enable'
+
+
+def test_power_ctrl_gpio_skips_type_validation_without_peripherals_dict(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_power_ctrl import dev_power_ctrl as mod
+
+    result = mod.parse(
+        'panel_power',
+        {
+            'type': 'power_ctrl', 'sub_type': 'gpio', 'config': {},
+            'peripherals': [{'gpio_name': 'panel_enable', 'active_level': 1}],
+        },
+    )
+    assert result['struct_init']['sub_cfg']['gpio']['gpio_name'] == 'panel_enable'
+
+
+@pytest.mark.parametrize(
+    ('module_name', 'device_type', 'binding_key', 'peripheral_type', 'expected_key'),
+    [
+        ('dev_gpio_ctrl', 'gpio_ctrl', 'gpio_name', 'gpio', 'gpio_name'),
+        ('dev_ledc_ctrl', 'ledc_ctrl', 'ledc_name', 'ledc', 'ledc_name'),
+    ],
+)
+def test_control_devices_resolve_explicit_binding_names(
+        bmgr_root, module_name, device_type, binding_key, peripheral_type, expected_key):
+    from types import SimpleNamespace
+    import importlib
+
+    sys.path.insert(0, str(bmgr_root))
+    mod = importlib.import_module(f'devices.{module_name}.{module_name}')
+    result = mod.parse(
+        'control',
+        {
+            'type': device_type,
+            'config': {},
+            'peripherals': [{binding_key: 'control_line'}],
+        },
+        peripherals_dict={'control_line': SimpleNamespace(type=peripheral_type)},
+    )
+    assert result['struct_init'][expected_key] == 'control_line'
+
+
+@pytest.mark.parametrize('module_name, device_type', [
+    ('dev_fs_fat', 'fs_fat'),
+    ('dev_littlefs', 'littlefs'),
+])
+def test_spi_filesystems_resolve_explicit_spi_name(bmgr_root, module_name, device_type):
+    from types import SimpleNamespace
+    import importlib
+
+    sys.path.insert(0, str(bmgr_root))
+    mod = importlib.import_module(f'devices.{module_name}.{module_name}')
+    result = mod.parse(
+        'storage',
+        {
+            'type': device_type, 'sub_type': 'spi',
+            'config': {'sub_config': {}},
+            'peripherals': [{'spi_name': 'storage_bus'}],
+        },
+        peripherals_dict={'storage_bus': SimpleNamespace(type='spi', role='master')},
+    )
+    assert result['struct_init']['sub_cfg']['spi']['spi_bus_name'] == 'storage_bus'
+
 def test_display_lcd_spi_psram_dma_direct_is_idf61_only(bmgr_root, monkeypatch, capsys):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_display_lcd import dev_display_lcd as mod
@@ -1136,6 +1559,298 @@ def test_display_lcd_i80_allow_pd_is_idf6_only(bmgr_root, monkeypatch, capsys):
     bus_cfg = result['struct_init']['sub_cfg']['i80']['bus_config']
     assert 'flags' not in bus_cfg
     assert 'requires ESP-IDF v6.0.1' in capsys.readouterr().out
+
+
+def test_display_lcd_spi_frame_format_tracks_raw_data_endian_presence(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    base_config = {
+        'name': 'display_lcd',
+        'type': 'display_lcd',
+        'sub_type': 'spi',
+        'config': {'io_spi_config': {}},
+        'peripherals': [{'name': 'spi_master'}],
+    }
+
+    omitted = mod.parse('display_lcd', base_config, peripherals_dict={'spi_master': object()})
+    explicit = mod.parse(
+        'display_lcd',
+        {
+            **base_config,
+            'config': {
+                'io_spi_config': {},
+                'lcd_panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_LITTLE'},
+            },
+        },
+        peripherals_dict={'spi_master': object()},
+    )
+
+    assert omitted['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE'
+    assert explicit['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE'
+
+
+def test_display_lcd_spi_frame_format_override_is_allowed_when_endian_is_unresolved(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'spi',
+                'config': {
+                    'frame_format': 'RGB565_LE',
+                    'io_spi_config': {},
+                },
+                'peripherals': [{'name': 'spi_master'}],
+            },
+            peripherals_dict={'spi_master': object()},
+        )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE'
+    assert 'differs from automatically inferred format RGB565_BE' in caplog.text
+
+
+@pytest.mark.parametrize(
+    'config, error',
+    [
+        ({'frame_format': 'UNKNOWN', 'io_spi_config': {}}, 'frame_format must be one of'),
+    ],
+)
+def test_display_lcd_spi_frame_format_rejects_invalid_override(bmgr_root, config, error):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with pytest.raises(ValueError, match=error):
+        mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'spi',
+                'config': config,
+                'peripherals': [{'name': 'spi_master'}],
+            },
+            peripherals_dict={'spi_master': object()},
+        )
+
+
+@pytest.mark.parametrize('sub_type', ['rgb', 'rgb_3wire_spi'])
+@pytest.mark.parametrize(
+    'idf_version, rgb_panel_config, bits_per_pixel, expected',
+    [
+        ((5, 5, 0), {}, 16, 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE'),
+        ((6, 0, 0), {'in_color_format': 'LCD_COLOR_FMT_RGB888'}, 16,
+         'DEV_DISPLAY_LCD_FRAME_FORMAT_BGR888'),
+    ],
+)
+def test_display_lcd_rgb_frame_format_uses_version_specific_raw_fields(
+        bmgr_root, monkeypatch, sub_type, idf_version, rgb_panel_config, bits_per_pixel, expected):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: idf_version)
+    result = mod.parse(
+        'display_lcd',
+        {
+            'name': 'display_lcd',
+            'type': 'display_lcd',
+            'sub_type': sub_type,
+            'config': {
+                'bits_per_pixel': bits_per_pixel,
+                'rgb_panel_config': rgb_panel_config,
+            },
+        },
+    )
+
+    assert result['struct_init']['frame_format'] == expected
+
+
+def test_display_lcd_dsi_frame_format_warns_on_conflicting_override(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'dsi',
+                'config': {
+                    'frame_format': 'RGB888',
+                    'dbi_config': {},
+                    'dpi_config': {'in_color_format': 'LCD_COLOR_FMT_RGB565'},
+                },
+                'peripherals': [{'name': 'dsi_panel'}, {'name': 'ldo_panel'}],
+            },
+            peripherals_dict={'dsi_panel': object(), 'ldo_panel': object()},
+        )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888'
+    assert 'differs from automatically inferred format RGB565_LE' in caplog.text
+
+
+@pytest.mark.parametrize(
+    'idf_version, pixel_format, in_color_format, expected',
+    [
+        ((5, 4, 4), 'LCD_COLOR_PIXEL_FORMAT_RGB565', 'LCD_COLOR_FMT_RGB888',
+         'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888'),
+        ((5, 5, 4), 'LCD_COLOR_PIXEL_FORMAT_RGB888', 'LCD_COLOR_FMT_RGB565',
+         'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE'),
+        ((6, 0, 0), None, 'LCD_COLOR_FMT_RGB888',
+         'DEV_DISPLAY_LCD_FRAME_FORMAT_BGR888'),
+    ],
+)
+def test_display_lcd_dsi_frame_format_uses_effective_input_format(
+        bmgr_root, monkeypatch, caplog, idf_version, pixel_format, in_color_format, expected):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: idf_version)
+    dpi_config = {'in_color_format': in_color_format}
+    if pixel_format is not None:
+        dpi_config['pixel_format'] = pixel_format
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'dsi',
+                'config': {
+                    'dbi_config': {},
+                    'dpi_config': dpi_config,
+                },
+                'peripherals': [{'name': 'dsi_panel'}, {'name': 'ldo_panel'}],
+            },
+            peripherals_dict={'dsi_panel': object(), 'ldo_panel': object()},
+        )
+
+    assert result['struct_init']['frame_format'] == expected
+    if pixel_format is not None and pixel_format.replace('LCD_COLOR_PIXEL_FORMAT_', '') != in_color_format.replace('LCD_COLOR_FMT_', ''):
+        assert 'in_color_format overrides pixel_format' in caplog.text
+
+
+def test_display_lcd_dsi_legacy_pixel_format_populates_effective_idf5_formats(
+        bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    monkeypatch.setattr(mod, 'get_idf_version', lambda: (5, 5, 4))
+    result = mod.parse(
+        'display_lcd',
+        {
+            'name': 'display_lcd',
+            'type': 'display_lcd',
+            'sub_type': 'dsi',
+            'config': {
+                'dbi_config': {},
+                'dpi_config': {'pixel_format': 'LCD_COLOR_PIXEL_FORMAT_RGB888'},
+            },
+            'peripherals': [{'name': 'dsi_panel'}, {'name': 'ldo_panel'}],
+        },
+        peripherals_dict={'dsi_panel': object(), 'ldo_panel': object()},
+    )
+
+    dpi_config = result['struct_init']['sub_cfg']['dsi']['dpi_config']
+    assert dpi_config['in_color_format'] == 'LCD_COLOR_FMT_RGB888'
+    assert dpi_config['out_color_format'] == 'LCD_COLOR_FMT_RGB888'
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888'
+
+
+def test_display_lcd_i80_frame_format_applies_swap_color_bytes(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    result = mod.parse(
+        'display_lcd',
+        {
+            'name': 'display_lcd',
+            'type': 'display_lcd',
+            'sub_type': 'i80',
+            'config': {
+                'panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_LITTLE'},
+                'io_config': {'flags': {'swap_color_bytes': True}},
+            },
+        },
+    )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE'
+
+
+def test_display_lcd_i80_frame_format_override_wins_over_transfer_derived_value(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'i80',
+                'config': {
+                    'frame_format': 'RGB565_BE',
+                    'panel_config': {'data_endian': 'LCD_RGB_DATA_ENDIAN_BIG'},
+                    'io_config': {'flags': {'swap_color_bytes': True}},
+                },
+            },
+        )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE'
+    assert 'differs from automatically inferred format RGB565_LE' in caplog.text
+
+
+def test_display_lcd_parlio_frame_format_override_warns_when_auto_derivation_is_unavailable(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'parlio',
+                'config': {'frame_format': 'RGB888'},
+            },
+        )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888'
+    assert 'differs from automatically inferred format UNKNOWN' in caplog.text
+
+
+def test_display_lcd_i80_frame_format_warns_when_color_bits_are_reversed(bmgr_root, caplog):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_display_lcd import dev_display_lcd as mod
+
+    with caplog.at_level('WARNING'):
+        result = mod.parse(
+            'display_lcd',
+            {
+                'name': 'display_lcd',
+                'type': 'display_lcd',
+                'sub_type': 'i80',
+                'config': {
+                    'io_config': {'flags': {'reverse_color_bits': True}},
+                },
+            },
+        )
+
+    assert result['struct_init']['frame_format'] == 'DEV_DISPLAY_LCD_FRAME_FORMAT_UNKNOWN'
+    assert 'reverse_color_bits' in caplog.text
+
+
+def test_lcd_lvgl_rejects_non_rgb565_frame_formats(bmgr_root):
+    source = (bmgr_root / 'test_apps' / 'main' / 'test_dev_lcd_init.c').read_text(encoding='utf-8')
+
+    assert 'static bool lcd_frame_format_is_rgb565' in source
+    assert 'if (!lcd_frame_format_is_rgb565(lcd_cfg->frame_format))' in source
+
 
 def test_display_lcd_parlio_rejects_known_idf_before_5_5(bmgr_root, monkeypatch):
     sys.path.insert(0, str(bmgr_root))
@@ -1763,6 +2478,27 @@ def test_audio_codec_without_pa_uses_disabled_pin_sentinel(bmgr_root):
     assert result['struct_init']['codec_pa_cfg']['pa_pin'] == -1
 
 
+def test_internal_audio_codec_accepts_explicit_adc_name(bmgr_root):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    result = mod.parse(
+        'audio_adc',
+        {
+            'type': 'audio_codec',
+            'chip': 'internal',
+            'config': {'adc_enabled': True},
+            'peripherals': [{'adc_name': 'microphone_input'}],
+        },
+        peripherals_dict={'microphone_input': SimpleNamespace(type='adc', config={})},
+    )
+
+    assert result['struct_init']['data_if_type'] == 1
+    assert result['struct_init']['adc_data_cfg']['periph_name'] == 'microphone_input'
+
+
 def test_audio_codec_parses_codec_dev_2_initialization_configs_without_version(bmgr_root):
     from types import SimpleNamespace
 
@@ -1975,6 +2711,37 @@ def test_audio_codec_legacy_pa_forms_are_inferred_with_warning(
     assert 'legacy PA' in caplog.text
 
 
+@pytest.mark.parametrize(
+    ('reference', 'warning_fragment'),
+    [
+        ({'name': 'gpio_legacy', 'pa_active_level': 1}, 'legacy PA binding'),
+        ({'name': 'gpio_legacy', 'reset_active_level': 0}, 'legacy reset binding'),
+    ],
+)
+def test_audio_codec_legacy_active_level_bindings_warn(
+        bmgr_root, caplog, reference, warning_fragment):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec
+
+    with caplog.at_level('WARNING'):
+        dev_audio_codec.parse(
+            'legacy_codec',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [reference],
+            },
+            peripherals_dict={
+                'gpio_legacy': SimpleNamespace(type='gpio', config={'pin': 1}),
+            },
+        )
+
+    assert warning_fragment in caplog.text
+
+
 def test_audio_codec_rejects_conflicting_pa_and_reset_peripheral_fields(bmgr_root):
     from types import SimpleNamespace
 
@@ -2020,6 +2787,34 @@ def test_audio_codec_rejects_legacy_and_dedicated_pa_fields_together(bmgr_root):
                 ],
             },
             peripherals_dict=peripherals_dict,
+        )
+
+
+@pytest.mark.parametrize(
+    ('peripheral', 'legacy_field', 'binding_key'),
+    [
+        ({'pa_name': 'gpio_power_amp', 'active_level': 1, 'pa_active_level': 1}, 'pa_active_level', 'pa_name'),
+        ({'reset_name': 'gpio_codec_reset', 'active_level': 0, 'reset_active_level': 0}, 'reset_active_level', 'reset_name'),
+    ],
+)
+def test_audio_codec_rejects_explicit_binding_with_legacy_active_level_field(
+        bmgr_root, peripheral, legacy_field, binding_key):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    peripheral_name = peripheral[binding_key]
+    with pytest.raises(ValueError, match=f'{binding_key}.*{legacy_field}'):
+        mod.parse(
+            'audio_dac',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'config': {'dac_enabled': True},
+                'peripherals': [peripheral],
+            },
+            peripherals_dict={peripheral_name: SimpleNamespace(type='gpio', config={'pin': 12})},
         )
 
 

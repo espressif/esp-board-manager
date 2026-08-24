@@ -5,7 +5,7 @@ devices:
     sub_type: gpio
     version: default
     peripherals:
-      - name: gpio_sd_power
+      - gpio_name: gpio_sd_power
         active_level: 0
 
   - name: mic_power_ctrl
@@ -13,7 +13,7 @@ devices:
     sub_type: gpio
     version: default
     peripherals:
-      - name: gpio_mic_power
+      - gpio_name: gpio_mic_power
         active_level: 1
 
   - name: audio_adc
@@ -24,7 +24,7 @@ devices:
       adc_enabled: true
       dac_enabled: false
     peripherals:
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
 
   - name: fs_sdcard
     type: fs_fat
@@ -76,7 +76,7 @@ devices:
           reset_active_high: false
         vendor_config: NULL
     peripherals:
-      - name: spi_display
+      - spi_name: spi_display
 
   - name: lcd_brightness
     type: ledc_ctrl
@@ -84,7 +84,7 @@ devices:
     config:
       default_percent: 100
     peripherals:
-      - name: ledc_backlight
+      - ledc_name: ledc_backlight
 
   - name: camera
     type: camera
@@ -100,7 +100,7 @@ devices:
           xclk_pin: 11
           xclk_freq_hz: 24000000
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         frequency: 100000
 
   - name: button_1
@@ -114,7 +114,7 @@ devices:
       long_press_time: 2000
       short_press_time: 100
     peripherals:
-      - name: gpio_button_1
+      - gpio_name: gpio_button_1
 
   - name: button_2
     type: button
@@ -127,7 +127,7 @@ devices:
       long_press_time: 2000
       short_press_time: 100
     peripherals:
-      - name: gpio_button_2
+      - gpio_name: gpio_button_2
 
   - name: button_3
     type: button
@@ -140,7 +140,7 @@ devices:
       long_press_time: 2000
       short_press_time: 100
     peripherals:
-      - name: gpio_button_3
+      - gpio_name: gpio_button_3
 
   - name: flashlight
     chip: gpio_led
@@ -150,4 +150,4 @@ devices:
       active_level: 0
       default_level: 0
     peripherals:
-      - name: gpio_flashlight
+      - gpio_name: gpio_flashlight

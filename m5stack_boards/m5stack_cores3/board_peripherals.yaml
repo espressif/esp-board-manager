@@ -14,7 +14,7 @@ peripherals:
     type: i2s
     role: master
     format: tdm-out
-    config: &i2s0_config
+    config: &i2s_config
       port: 0
       # Clock configuration
       sample_rate_hz: 48000
@@ -24,8 +24,9 @@ peripherals:
       data_bit_width: 16
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
       slot_mode: I2S_SLOT_MODE_STEREO
-      slot_mask: I2S_STD_SLOT_BOTH
       ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
 
       # GPIO configuration
       pins:
@@ -39,7 +40,11 @@ peripherals:
     type: i2s
     role: master
     format: tdm-in
-    config: *i2s0_config
+    config:
+      <<: *i2s_config
+      total_slot: 4
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2
+
 
   # LCD SPI Configuration
   - name: spi_master

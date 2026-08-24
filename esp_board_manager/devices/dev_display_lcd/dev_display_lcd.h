@@ -43,6 +43,17 @@ extern "C" {
 
 typedef struct dev_display_lcd_config dev_display_lcd_config_t;
 
+/**
+ * @brief Stable pixel frame format exposed by the Board Manager LCD device.
+ */
+typedef enum {
+    DEV_DISPLAY_LCD_FRAME_FORMAT_UNKNOWN = 0,  /*!< Frame format could not be determined. */
+    DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE,    /*!< RGB565 pixels stored least-significant byte first. */
+    DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE,    /*!< RGB565 pixels stored most-significant byte first. */
+    DEV_DISPLAY_LCD_FRAME_FORMAT_BGR888,       /*!< 24-bit pixels in BGR byte order. */
+    DEV_DISPLAY_LCD_FRAME_FORMAT_RGB888,       /*!< 24-bit pixels in RGB byte order. */
+} dev_display_lcd_frame_format_t;
+
 #if CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_DSI_SUPPORT
 
 /**
@@ -195,6 +206,7 @@ struct dev_display_lcd_config {
         dev_display_lcd_i80_sub_config_t  i80;
 #endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUB_I80_SUPPORT */
     } sub_cfg;
+    dev_display_lcd_frame_format_t frame_format;  /*!< Stable frame format derived from the LCD configuration. */
 };
 
 /**

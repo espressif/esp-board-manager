@@ -45,7 +45,7 @@ GPIO 电源控制
         type: power_ctrl
         sub_type: gpio
         peripherals:
-          - name: gpio_power_audio
+          - gpio_name: gpio_power_audio
             active_level: 1
 
       - name: audio_dac
@@ -56,8 +56,8 @@ GPIO 电源控制
           adc_enabled: false
           dac_enabled: true
         peripherals:
-          - name: i2s_audio_out
-          - name: i2c_master
+          - i2s_name: i2s_audio_out
+          - i2c_name: i2c_master
             address: 0x30
             frequency: 400000
 
@@ -67,6 +67,8 @@ GPIO 电源控制
 ^^^^^^^^^^^^^^^^^
 
 板级需要使用 PMIC、IO 扩展器、多路电源或特定上电时序时使用 ``custom``。在板级代码中以与 ``power_ctrl`` 设备同名的名称注册操作。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`\ 。``init`` 与 ``deinit`` 为可选，``set_power`` 为必选。框架会在调用 ``init`` 前引用 ``peripherals`` 中的外设，并在 ``deinit`` 后释放引用。PMIC 等独立 device 依赖应使用 ``depends_on`` 声明。
+
+``gpio_name``、``i2c_name`` 等语义化选择器仅适用于设备规则明确支持的绑定场景，不适用于 ``custom`` 电源控制器中用于声明生命周期依赖的 ``peripherals`` 列表。``custom`` 电源控制器中的 ``peripherals`` 列表仍使用旧版的 ``name`` 引用写法。
 
 ``board_devices.yaml``：
 
@@ -126,7 +128,7 @@ GPIO 电源控制完整字段
       type: power_ctrl                # The type of the device, must be unique
       sub_type: gpio                  # The sub type of the device, must be 'gpio'
       peripherals:
-        - name: gpio                  # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+        - gpio_name: gpio             # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
           active_level: 1             # [TO_BE_CONFIRMED] Active level (0-low, 1-high) when power is on
 
 自定义电源控制完整字段
@@ -154,8 +156,8 @@ GPIO 电源控制完整字段
     #     sys_cfg:
     #       no_mclk: false
     #   peripherals:
-    #     - name: i2s_audio_out
-    #     - name: i2c_master
+    #     - i2s_name: i2s_audio_out
+    #     - i2c_name: i2c_master
     #       address: 0x30
     #       frequency: 400000
 

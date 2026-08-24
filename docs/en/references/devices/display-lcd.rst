@@ -22,6 +22,54 @@ Supported Usage Modes
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
+Frame Format
+------------
+
+``dev_display_lcd`` generates ``frame_format`` in the device configuration for application consumers that need to select a pixel buffer or conversion format. The value is one of ``RGB565_LE``, ``RGB565_BE``, ``BGR888``, or ``RGB888`` when the parser can determine the representation. Unsupported or insufficiently specified layouts use ``UNKNOWN``.
+
+Set ``config.frame_format`` to override the derived value:
+
+.. code-block:: yaml
+
+    config:
+      frame_format: RGB565_LE
+
+The override is validated during parsing. A warning is emitted when it differs from a format that BMGR can derive automatically. The generated value is consumed by application code; the LCD test applications use it to select LVGL byte swapping or image-conversion output.
+
+When ``config.frame_format`` is omitted, BMGR derives the value according to the following rules:
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``sub_type``
+     - Derivation source
+   * - ``dsi``
+     - ``dpi_config.pixel_format`` for ESP-IDF 5.x; ``dpi_config.in_color_format`` for ESP-IDF 6.x and later
+   * - ``rgb``, ``rgb_3wire_spi``
+     - ``bits_per_pixel`` for ESP-IDF 5.x; ``rgb_panel_config.in_color_format`` for ESP-IDF 6.x and later
+   * - ``spi``
+     - ``lcd_panel_config.data_endian``; defaults to ``RGB565_BE`` when omitted
+   * - ``i80``
+     - ``panel_config.data_endian``, adjusted by ``io_config.flags.swap_color_bytes``
+   * - ``parlio``
+     - Not automatically determined; an explicit ``frame_format`` is recommended
+
+.. note::
+
+   Before configuring ``data_endian``, verify whether the corresponding LCD chip implementation reads ``esp_lcd_panel_dev_config_t.data_endian``.
+
+   Even when the LCD chip implementation does not read ``data_endian``, SPI and I80 modes may use the field to derive the application-side ``frame_format``. Removing or changing ``data_endian`` may therefore change the derived ``frame_format``.
+
+The main mappings are:
+
+- RGB565 color formats map to ``RGB565_LE``.
+- RGB888 color formats map to ``BGR888``.
+- A 16-bit RGB configuration maps to ``RGB565_LE``.
+- ``LCD_RGB_DATA_ENDIAN_BIG`` maps to ``RGB565_BE``.
+- ``LCD_RGB_DATA_ENDIAN_LITTLE`` maps to ``RGB565_LE``.
+
+When the configuration is insufficient or unsupported, the derived value is ``UNKNOWN`` and a warning is emitted.
+
 Board-Level Panel Factory Functions
 -----------------------------------
 
@@ -121,8 +169,8 @@ The ``dsi`` mode is for MIPI DSI displays. The device must reference both the ``
               vsync_pulse_width: 1        # [TO_BE_CONFIRMED]
               vsync_front_porch: 10       # [TO_BE_CONFIRMED]
         peripherals:
-          - name: ldo_mipi
-          - name: dsi_display
+          - ldo_name: ldo_mipi
+          - dsi_name: dsi_display
 
 .. _display-lcd-spi:
 
@@ -170,7 +218,7 @@ The ``spi`` mode is for displays that send commands and pixel data via SPI panel
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 16            # [TO_BE_CONFIRMED]
         peripherals:
-          - name: spi_master
+          - spi_name: spi_master
 
 .. _display-lcd-i80:
 
@@ -387,11 +435,12 @@ DSI Full Fields
         # Valid values:
         # - LCD_RGB_ELEMENT_ORDER_RGB
         # - LCD_RGB_ELEMENT_ORDER_BGR
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Panel data endian passed to the DSI panel factory
         # Valid values:
         # - LCD_RGB_DATA_ENDIAN_BIG
         # - LCD_RGB_DATA_ENDIAN_LITTLE
         bits_per_pixel: 24                        # [TO_BE_CONFIRMED] Bits per pixel (24bpp, RGB888)
+        frame_format: RGB565_LE                   # Application frame-buffer format; keep consistent with dpi_config pixel format
         reset_active_high: 0                      # Reset pin active level (0 = active low)
 
         # DBI interface configuration (command/parameter transfer)
@@ -436,8 +485,8 @@ DSI Full Fields
             vsync_front_porch: 20   # [TO_BE_CONFIRMED] Vertical front porch
 
       peripherals:
-        - name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
-        - name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
+        - ldo_name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
+        - dsi_name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
 
 SPI Full Fields
 ^^^^^^^^^^^^^^^
@@ -489,7 +538,7 @@ SPI Full Fields
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -501,7 +550,7 @@ SPI Full Fields
           vendor_config: ""                 # Vendor-specific configuration (default: empty string)
 
       peripherals:
-        - name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
+        - spi_name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
 
 I80 Full Fields
 ^^^^^^^^^^^^^^^
@@ -563,7 +612,7 @@ I80 Full Fields
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Data endianness (default: BIG)
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE

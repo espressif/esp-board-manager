@@ -125,7 +125,7 @@ SDMMC 和 SDSPI 两种 SD 后端都依赖 ``joltwallet/littlefs`` 组件的 SD c
             cs_gpio_num: 15
             frequency: SDMMC_FREQ_DEFAULT
         peripherals:
-          - name: spi_master
+          - spi_name: spi_master
 
 完整字段
 ------------
@@ -219,7 +219,7 @@ SPI SD 卡完整字段
           cs_gpio_num: 15                     # [IO] SD card chip-select pin (default: 15)
           frequency: SDMMC_FREQ_DEFAULT       # SD clock frequency (default: SDMMC_FREQ_DEFAULT); same enum values as the SDMMC frequency field
       peripherals:
-        - name: spi_master                    # Referenced SPI master peripheral (type: spi, role: master)
+        - spi_name: spi_master                 # Referenced SPI master peripheral (type: spi, role: master)
 
 ``esp_vfs_littlefs_conf_t`` 中的 ``partition``、``sdcard`` 和 ``blockdev`` 是运行期挂载源字段，不能写入 YAML。BMGR 根据 ``sub_type`` 在初始化过程中设置相应挂载源。
 

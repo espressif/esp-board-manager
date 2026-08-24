@@ -48,9 +48,9 @@ GPIO 输出控制
           active_level: 1
           default_level: 0
         peripherals:
-          - name: gpio_power
+          - gpio_name: gpio_power
 
-``gpio_ctrl`` 只绑定一个 ``gpio`` 外设；解析脚本要求 ``peripherals`` 列表中至少包含一个名称以 ``gpio`` 或 ``gpio_`` 开头的外设引用，启用外设校验时该名称必须存在于 ``board_peripherals.yaml``。
+``gpio_ctrl`` 通过 ``gpio_name`` 绑定一个 ``gpio`` 外设。所选名称必须存在于 ``board_peripherals.yaml``，并且引用的外设类型必须为 ``gpio``。
 
 ``active_level`` 是设备初始化时写入的电平，也是应用启用该控制信号时应写入的电平。``default_level`` 不会在去初始化时自动写回，应用需要在关闭电源或禁用信号时根据设备配置主动调用 GPIO 驱动设置该电平。
 
@@ -73,7 +73,7 @@ GPIO 输出控制完整字段
         active_level: 1           # [TO_BE_CONFIRMED] Active level (0 or 1) - GPIO level when device is active
         default_level: 0          # Default level (0 or 1) - GPIO level when device is inactive
       peripherals:
-        - name: gpio              # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
+        - gpio_name: gpio         # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
 
 组件依赖
 ------------
@@ -112,7 +112,7 @@ GPIO 输出控制完整字段
 注意事项
 ------------
 
-- 设备引用的 ``gpio`` 外设名称必须与 ``board_peripherals.yaml`` 中的实例名一致，并且名称需以 ``gpio`` 或 ``gpio_`` 开头。
+- 设备通过 ``gpio_name`` 选择 ``gpio`` 外设实例。
 - ``gpio_ctrl`` 初始化时会把 GPIO 设置为 ``active_level``；如果板级电源默认应关闭，需要确认初始化顺序和 ``active_level`` 设置符合硬件设计。
 - 关闭控制信号时，应用需要通过获取到的 ``periph_gpio_handle_t`` 和设备配置主动写入 ``default_level``。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。

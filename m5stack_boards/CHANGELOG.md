@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+### Modifications
+
+- Migrated M5Stack board device peripheral references to role-specific selectors.
+
 ## 0.5.4
 
 ### Modifications

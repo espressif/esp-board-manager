@@ -43,7 +43,7 @@ I2C IO 扩展
           output_io_level_mask: [1, 1, 0]
           input_io_mask: NULL
         peripherals:
-          - name: i2c_master
+          - i2c_name: i2c_master
             i2c_addr: [0x70, 0x7A]        # [TO_BE_CONFIRMED]
 
 ``gpio_expander`` 初始化时引用 ``i2c`` 外设句柄，并按 ``i2c_addr`` 列表探测可响应的地址。驱动创建成功后，设备会按配置设置输出、输入、默认输出电平、可选输出模式以及可选上下拉。初始化完成后，BMGR 会记录探测到的有效 I2C 地址，供同一 I2C 总线上的其他逻辑使用。
@@ -106,7 +106,7 @@ I2C IO 扩展完整字段
                                           # List of pins configured with pull-down resistors
         input_io_mask: NULL               # List of pins configured as input (NULL if unused), maximum number is 32
       peripherals:
-        - name: i2c_master                # I2C peripheral used by the IO expander
+        - i2c_name: i2c_master             # I2C peripheral used by the IO expander
           i2c_addr: [0x70, 0x7A]          # [TO_BE_CONFIRMED] I2C address of the IO expander
 
 组件依赖

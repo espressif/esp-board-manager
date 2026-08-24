@@ -18,6 +18,10 @@ dependencies:
 
 关于 ESP Board Manager 的更多信息，请参考 [`esp_board_manager` 组件文档](https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README_CN.md)。
 
+## 已知兼容性问题
+
+本组件 `0.6.0` 需要配合 `0.7.1` 或更高版本的 `espressif/esp_board_manager` 使用。
+
 ## 支持的板级
 
 | 板子名称 | 芯片 | 音频 | SD卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 |

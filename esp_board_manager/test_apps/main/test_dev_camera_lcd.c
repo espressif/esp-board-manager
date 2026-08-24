@@ -106,22 +106,24 @@ static uint32_t camera_lcd_get_source_stride(const camera_lcd_video_format_t *ca
     return camera_fmt->bytesperline != 0 ? camera_fmt->bytesperline : tight_stride;
 }
 
-static bool camera_lcd_lcd_uses_panel_data_endian(const dev_display_lcd_config_t *lcd_cfg)
+static bool camera_lcd_get_output_fmt(const dev_display_lcd_config_t *lcd_cfg,
+                                      esp_imgfx_pixel_fmt_t *output_fmt)
 {
-    return lcd_cfg != NULL && lcd_cfg->sub_type != NULL &&
-           (strcmp(lcd_cfg->sub_type, "spi") == 0 ||
-            strcmp(lcd_cfg->sub_type, "i80") == 0 ||
-            strcmp(lcd_cfg->sub_type, "parlio") == 0);
-}
-
-static esp_imgfx_pixel_fmt_t camera_lcd_lcd_output_fmt(const dev_display_lcd_config_t *lcd_cfg)
-{
-    if (camera_lcd_lcd_uses_panel_data_endian(lcd_cfg) &&
-        lcd_cfg->data_endian == LCD_RGB_DATA_ENDIAN_BIG) {
-        return ESP_IMGFX_PIXEL_FMT_RGB565_BE;
+    if (lcd_cfg == NULL || output_fmt == NULL) {
+        return false;
     }
 
-    return ESP_IMGFX_PIXEL_FMT_RGB565_LE;
+    switch (lcd_cfg->frame_format) {
+    case DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_LE:
+        *output_fmt = ESP_IMGFX_PIXEL_FMT_RGB565_LE;
+        return true;
+    case DEV_DISPLAY_LCD_FRAME_FORMAT_RGB565_BE:
+        *output_fmt = ESP_IMGFX_PIXEL_FMT_RGB565_BE;
+        return true;
+    default:
+        ESP_LOGE(TAG, "LCD frame format %d is unsupported by the RGB565 camera preview", lcd_cfg->frame_format);
+        return false;
+    }
 }
 
 static void *camera_lcd_aligned_calloc(size_t size)
@@ -254,7 +256,9 @@ static esp_err_t camera_lcd_pipeline_init(const camera_lcd_video_format_t *camer
     }
 
     camera_lcd_calc_viewport(camera_fmt, lcd_cfg, pipeline);
-    pipeline->output_fmt = camera_lcd_lcd_output_fmt(lcd_cfg);
+    if (!camera_lcd_get_output_fmt(lcd_cfg, &pipeline->output_fmt)) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
     pipeline->need_convert = pipeline->input_fmt != pipeline->output_fmt;
     pipeline->tight_rgb565_stride = camera_fmt->width * CAMERA_LCD_BYTES_PER_PIXEL;
     pipeline->source_stride = pipeline->need_convert ? pipeline->tight_rgb565_stride : camera_lcd_get_source_stride(camera_fmt);

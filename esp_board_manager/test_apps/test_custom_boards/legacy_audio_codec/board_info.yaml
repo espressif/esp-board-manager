@@ -1,0 +1,4 @@
+board: legacy_audio_codec
+chip: esp32c3
+version: 1.0.0
+description: "Test fixture for legacy audio_codec peripheral bindings"

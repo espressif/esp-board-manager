@@ -17,7 +17,7 @@
 
 static const char *TAG = "TEST_DEV_CUSTOM";
 
-void test_dev_custom(void)
+esp_err_t test_dev_custom(void)
 {
     ESP_LOGI(TAG, "=== Custom Device Test ===");
     /* Get the custom device handle */
@@ -25,16 +25,17 @@ void test_dev_custom(void)
     esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CUSTOM, (void **)&custom_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get my_custom_sensor device handle: %s", esp_err_to_name(ret));
-        return;
+        return ret;
     }
     /* Get the device configuration */
     void *custom_config = NULL;
     ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_CUSTOM, &custom_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get my_custom_sensor device config: %s", esp_err_to_name(ret));
-        return;
+        return ret;
     }
     ESP_LOGI(TAG, "Custom device handle and config obtained successfully");
     ESP_LOGI(TAG, "  Device handle obtained: %p", custom_handle);
     ESP_LOGI(TAG, "Custom device test completed successfully!");
+    return ESP_OK;
 }

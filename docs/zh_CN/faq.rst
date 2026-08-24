@@ -164,6 +164,25 @@ undefined reference to g_esp_board_*
 2. 再执行 ``idf.py bmgr -b <board>`` 重新生成。
 3. 若仍报错，参照 `IDF Component Manager Manifest 文档 <https://docs.espressif.com/projects/idf-component-manager/en/latest/reference/manifest_file.html#dependencies>`_ 检查 device YAML 中 ``dependencies`` 字段的写法。
 
+板卡组件与 Board Manager 版本不兼容
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**现象**
+
+板卡组件与 Board Manager 版本不匹配时，可能出现以下问题：
+
+- 使用 ``0.6.0`` 版本的板卡组件时，旧版 Board Manager 不识别 ``i2c_name``、``spi_name``、``pa_name`` 等语义化外设引用字段，导致板级 YAML 解析失败。
+- 使用已发布的 ``esp_boards 0.5.4``、``esp_friends_boards 0.5.3`` 和 ``m5stack_boards 0.5.4`` 时，旧版 Board Manager 不识别 ``dev_audio_codec`` 的 PA 配置字段 ``pa_active_level`` （现已弃用），导致 PA 配置解析失败。
+
+**推荐动作**
+
+如果工程必须使用旧版 Board Manager，请在工程的 ``idf_component.yml`` 中手动添加实际使用的板卡组件，并指定匹配版本。
+
+**版本关系**
+
+- ``esp_boards 0.6.0``、``esp_friends_boards 0.6.0`` 和 ``m5stack_boards 0.6.0`` 要求配合 ``esp_board_manager >=0.7.1`` 使用。
+- ``esp_boards 0.5.4``、``esp_friends_boards 0.5.3`` 和 ``m5stack_boards 0.5.4`` 要求配合 ``esp_board_manager >=0.7.0`` 使用。
+
 运行时阶段
 --------------
 

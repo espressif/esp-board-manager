@@ -18,6 +18,10 @@ This component provides board-level configuration files that can be recognized a
 
 For more information about ESP Board Manager, see the [`esp_board_manager` component documentation](https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md).
 
+## Known Compatibility Issue
+
+The `0.6.0` release of this component requires `espressif/esp_board_manager` `0.7.1` or later.
+
 ## Supported Boards
 
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip |

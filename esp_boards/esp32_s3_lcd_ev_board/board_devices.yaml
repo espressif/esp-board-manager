@@ -13,7 +13,7 @@ devices:
       output_io_level_mask: [1, 1, 1, 1]
       input_io_mask: NULL
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x40]
 
   # ES8311 speaker codec.
@@ -26,8 +26,8 @@ devices:
       sys_cfg:
         no_mclk: false
     peripherals:
-      - name: i2s_audio_out
-      - name: i2c_master
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000
 
@@ -43,8 +43,8 @@ devices:
         # codec_dev 2.0 label order is LSB to MSB: MIC1, MIC2, MIC3, MIC4.
         label: [FL, FR, RE, NA]
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x82
         frequency: 400000
 
@@ -90,7 +90,6 @@ devices:
       lcd_panel_config:
         reset_gpio_num: -1
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG
         bits_per_pixel: 18
         vendor_config: auto
         auto_del_panel_io: true
@@ -155,7 +154,7 @@ devices:
           mirror_x: false
           mirror_y: false
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x70]
 
   - name: gpio_button
@@ -184,4 +183,4 @@ devices:
         press_repeat_done: false
         press_end: false
     peripherals:
-      - name: gpio_boot_button
+      - gpio_name: gpio_boot_button

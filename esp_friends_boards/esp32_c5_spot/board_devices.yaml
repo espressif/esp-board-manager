@@ -8,13 +8,13 @@ devices:
       active_level: 1
       default_level: 0
     peripherals:
-      - name: gpio_power_control
+      - gpio_name: gpio_power_control
 
   - name: codec_power
     type: power_ctrl
     sub_type: gpio
     peripherals:
-    - name: gpio_power_codec
+    - gpio_name: gpio_power_codec
       active_level: 1
 
   - name: audio_adc
@@ -25,9 +25,9 @@ devices:
       sys_cfg:
         no_mclk: true
     peripherals:
-      - name: i2s_audio_in
+      - i2s_name: i2s_audio_in
       - &es8311_i2c_master
-        name: i2c_master
+        i2c_name: i2c_master
         address: 0x30
         frequency: 400000          # Hz
 
@@ -40,8 +40,8 @@ devices:
       sys_cfg:
         no_mclk: true
     peripherals:
-      - name: i2s_audio_out
-      - name: gpio_pa_control
+      - i2s_name: i2s_audio_out
+      - pa_name: gpio_pa_control
         gain: 0                        # dB
-        pa_active_level: 1             # 0-low, 1-high
+        active_level: 1             # 0-low, 1-high
       - *es8311_i2c_master

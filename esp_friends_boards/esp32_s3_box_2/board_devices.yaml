@@ -12,7 +12,7 @@ devices:
       output_io_level_mask: [0, 0, 1, 1, 1, 0, 1, 1]
       input_io_mask: [0, 1, 2, 5, 6, 7, 14, 15]
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x40]
 
   - name: audio_dac
@@ -23,8 +23,8 @@ devices:
       sys_cfg:
         no_mclk: false
     peripherals:
-      - name: i2s_audio_out
-      - name: i2c_master
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 100000          # Hz
 
@@ -36,8 +36,8 @@ devices:
       sys_cfg:
         no_mclk: false
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x20
         frequency: 100000
 
@@ -49,7 +49,7 @@ devices:
         cs_gpio_num: 15
         frequency: SDMMC_FREQ_DEFAULT
     peripherals:
-      - name: spi_master
+      - spi_name: spi_master
 
   - name: lcd_rd_gpio_ctrl
     type: gpio_ctrl
@@ -57,7 +57,7 @@ devices:
       active_level: 1
       default_level: 0
     peripherals:
-      - name: gpio_lcd_rd
+      - gpio_name: gpio_lcd_rd
 
   - name: lcd_bl_gpio_ctrl
     type: gpio_ctrl
@@ -65,7 +65,7 @@ devices:
       active_level: 1
       default_level: 0
     peripherals:
-      - name: gpio_lcd_bl
+      - gpio_name: gpio_lcd_bl
 
   - name: display_lcd
     type: display_lcd

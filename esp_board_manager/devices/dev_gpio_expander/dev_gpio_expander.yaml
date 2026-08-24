@@ -19,5 +19,5 @@
                                       # List of pins configured with pull-down resistors
     input_io_mask: NULL               # List of pins configured as input (NULL if unused), maximum number is 32
   peripherals:
-    - name: i2c_master                # I2C peripheral used by the IO expander
+    - i2c_name: i2c_master            # I2C peripheral used by the IO expander
       i2c_addr: [0x70, 0x7A]          # [TO_BE_CONFIRMED] I2C address of the IO expander, 8-bit address

@@ -41,15 +41,16 @@ peripherals:
     type: i2s
     role: master
     format: tdm-out
-    config: &i2s_audio_config
+    config: &i2s_config
       port: 0
       sample_rate_hz: 48000
       mclk_multiple: 256
       data_bit_width: 16
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
       slot_mode: I2S_SLOT_MODE_STEREO
-      slot_mask: I2S_STD_SLOT_BOTH
       ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
       pins:
         mclk: 52    # [TO_BE_CONFIRMED] I2S_MCLK
         bclk: 53    # I2S_SCLK
@@ -61,7 +62,10 @@ peripherals:
     type: i2s
     role: master
     format: tdm-in
-    config: *i2s_audio_config
+    config:
+      <<: *i2s_config
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
 
   # NS4150B PA enable. Schematic net: PA_CTRL (active-high).
   - name: gpio_pa_control

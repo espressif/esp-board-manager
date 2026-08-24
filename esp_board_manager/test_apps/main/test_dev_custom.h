@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "esp_err.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
@@ -19,7 +21,7 @@ extern "C" {
  *         - Displaying device information (name, chip, type)
  *         - Testing custom device initialization and deinitialization
  */
-void test_dev_custom(void);
+esp_err_t test_dev_custom(void);
 
 #ifdef __cplusplus
 }

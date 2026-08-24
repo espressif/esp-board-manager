@@ -16,15 +16,16 @@ peripherals:
     type: i2s
     role: master
     format: tdm-out
-    config: &i2s_audio_config
+    config: &i2s_config
       port: 1
       sample_rate_hz: 22050
       mclk_multiple: 256
       data_bit_width: 16
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
-      slot_mode: I2S_SLOT_MODE_MONO
-      slot_mask: I2S_STD_SLOT_BOTH
+      slot_mode: I2S_SLOT_MODE_STEREO
       ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
       pins:
         mclk: 5
         bclk: 16
@@ -36,7 +37,11 @@ peripherals:
     type: i2s
     role: master
     format: tdm-in
-    config: *i2s_audio_config
+    config:
+      <<: *i2s_config
+      total_slot: 4
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2
+
 
   # Boot button on the main board.
   - name: gpio_boot_button

@@ -23,11 +23,10 @@ peripherals:
       # Slot configuration
       data_bit_width: 16                # Data bit width (valid data bits per sample)
       slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO  # Total bits per slot (I2S_SLOT_BIT_WIDTH_AUTO or specific value)
-      slot_mode: I2S_SLOT_MODE_MONO     # I2S_SLOT_MODE_MONO or I2S_SLOT_MODE_STEREO
-      slot_mask: I2S_TDM_SLOT0          # I2S_STD_SLOT_LEFT, I2S_STD_SLOT_RIGHT, or I2S_STD_SLOT_BOTH slots
+      slot_mode: I2S_SLOT_MODE_STEREO
       ws_width: 16                      # WS signal width in BCLK ticks
-
-      # GPIO configuration
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
       pins:
         mclk: 42                        # GPIO42 - I2S_MCLK (BSP_I2S_MCLK)
         bclk: 40                        # GPIO40 - I2S_SCLK (BSP_I2S_SCLK)
@@ -41,6 +40,7 @@ peripherals:
     format: tdm-in
     config:
       <<: *i2s_config                                           # Inherit base I2S configuration
+      total_slot: 4
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2  # Override specific slot mask
 
   # LCD SPI Configuration for ST77916 QSPI

@@ -80,7 +80,7 @@ SPI
           sub_config:
             cs_gpio_num: 15
         peripherals:
-          - name: spi_master
+          - spi_name: spi_master
 
 完整字段
 ------------
@@ -165,7 +165,7 @@ SPI 完整字段
       # Peripherals must be defined at device level (consistent with other devices)
       # The SPI peripheral must have: type: spi and role: master
       peripherals:
-        - name: spi_master  # [TO_BE_CONFIRMED] SPI bus name (can be any name, e.g., spi_0, spi_sdcard, etc.)
+        - spi_name: spi_master  # [TO_BE_CONFIRMED] SPI bus name (can be any name, e.g., spi_0, spi_sdcard, etc.)
 
 组件依赖
 ------------

@@ -45,6 +45,77 @@ class DeviceParser(LoggerMixin):
             })()
         return self.parser_loader
 
+    _PERIPHERAL_BINDING_ROLES = {
+        ('audio_codec', None): {'pa', 'reset', 'i2c', 'i2s', 'adc'},
+        ('button', 'gpio'): {'gpio'},
+        ('button', 'adc_single'): {'adc'},
+        ('button', 'adc_multi'): {'adc'},
+        ('display_lcd', 'dsi'): {'dsi', 'ldo'},
+        ('display_lcd', 'spi'): {'spi'},
+        ('camera', 'dvp'): {'i2c'},
+        ('camera', 'csi'): {'i2c', 'ldo'},
+        ('camera', 'spi'): {'i2c'},
+        ('lcd_touch', 'i2c'): {'i2c'},
+        ('gpio_expander', None): {'i2c'},
+        ('gpio_ctrl', None): {'gpio'},
+        ('ledc_ctrl', None): {'ledc'},
+        ('power_ctrl', 'gpio'): {'gpio'},
+        ('fs_fat', 'spi'): {'spi'},
+        ('littlefs', 'spi'): {'spi'},
+    }
+
+    @classmethod
+    def _allowed_peripheral_binding_roles(cls, device_type: str = None,
+                                          sub_type: str = None) -> set:
+        return cls._PERIPHERAL_BINDING_ROLES.get(
+            (device_type, sub_type), cls._PERIPHERAL_BINDING_ROLES.get((device_type, None), set())
+        )
+
+    @classmethod
+    def normalize_peripheral_reference(cls, periph: Any, device_type: str = None,
+                                       sub_type: str = None) -> Any:
+        """Normalize an explicit ``<role>_name`` reference to the internal form.
+
+        The public YAML syntax may contain exactly one role-specific name key,
+        such as ``gpio_name`` or ``pa_name``.  Device parsers continue to
+        consume ``name`` while ``_binding_role`` records the semantic binding.
+        Legacy string and ``name`` references are intentionally left without a
+        binding role so device parsers can apply their compatibility rules.
+        """
+        if not isinstance(periph, dict):
+            return periph
+        allowed_roles = cls._allowed_peripheral_binding_roles(device_type, sub_type)
+        if not allowed_roles:
+            return periph
+        role_keys = [f'{role}_name' for role in allowed_roles if f'{role}_name' in periph]
+        if len(role_keys) > 1:
+            raise ValueError(
+                'Peripheral reference cannot contain more than one role-specific name field: '
+                + ', '.join(sorted(role_keys))
+            )
+        if not role_keys:
+            return periph
+        role_key = role_keys[0]
+        periph_name = periph.get(role_key)
+        if not isinstance(periph_name, str) or not periph_name:
+            raise ValueError(f"Peripheral reference field '{role_key}' must be a non-empty string")
+        if 'name' in periph:
+            raise ValueError(
+                f"Peripheral reference cannot contain both '{role_key}' and 'name'"
+            )
+        normalized = dict(periph)
+        normalized['name'] = periph_name
+        normalized['_binding_role'] = role_key[:-5]
+        del normalized[role_key]
+        return normalized
+
+    @classmethod
+    def normalize_peripheral_references(cls, peripherals: Any, device_type: str = None,
+                                        sub_type: str = None) -> Any:
+        if not isinstance(peripherals, list):
+            return peripherals
+        return [cls.normalize_peripheral_reference(periph, device_type, sub_type) for periph in peripherals]
+
     def parse_devices_yaml(self, yaml_path: str, peripherals_dict: Dict[str, Any],
                           periph_name_map: Dict[str, str], board_path: str = '',
                           extra_configs: Dict[str, Any] = None,
@@ -167,6 +238,9 @@ class DeviceParser(LoggerMixin):
 
                 # Validate peripheral references
                 if 'peripherals' in dev:
+                    dev['peripherals'] = self.normalize_peripheral_references(
+                        dev['peripherals'], dev.get('type'), dev.get('sub_type')
+                    )
                     for periph in dev['peripherals']:
                         if isinstance(periph, dict):
                             if 'name' not in periph:
@@ -338,6 +412,7 @@ class DeviceParser(LoggerMixin):
                 for j, p in enumerate(self.peripheral_parser.flatten_peripherals(device_peripherals)):
                     try:
                         if isinstance(p, dict):
+                            p = self.normalize_peripheral_reference(p, dev.get('type'), dev.get('sub_type'))
                             pname = p.get('name')
                             if not pname:
                                 self.logger.error(f'Peripheral missing name! Path: {yaml_path}')

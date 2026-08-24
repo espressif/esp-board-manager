@@ -6,6 +6,10 @@
 # Camera device config parser
 VERSION = 'v1.0.0'
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 DEV_CAMERA_IO_LIST = {
     'dvp': [
         'reset_io',
@@ -46,6 +50,41 @@ DEV_CAMERA_IO_LIST = {
         'xclk_pin',
     ],
 }
+
+
+def _find_peripheral(peripherals, role, device_name, peripherals_dict=None):
+    explicit = []
+    legacy = []
+    for periph in peripherals:
+        if not isinstance(periph, dict):
+            periph = {'name': periph}
+        if f'{role}_name' in periph:
+            explicit.append(periph)
+        elif periph.get('_binding_role') == role:
+            explicit.append(periph)
+        elif str(periph.get('name', '')).startswith(role):
+            legacy.append(periph)
+    if len(explicit) > 1:
+        raise ValueError(f'Camera device {device_name} references multiple {role} peripherals')
+    if explicit and legacy:
+        raise ValueError(f'Camera device {device_name} cannot mix {role}_name with legacy {role} binding')
+    if explicit:
+        selected = explicit[0]
+        periph_name = selected.get(f'{role}_name', selected.get('name'))
+        if peripherals_dict is not None:
+            if periph_name not in peripherals_dict:
+                raise ValueError(f"Camera device {device_name} references undefined peripheral '{periph_name}'")
+            if getattr(peripherals_dict[periph_name], 'type', None) != role:
+                raise ValueError(f'Camera device {device_name} {role} peripheral must have type {role}')
+        selected = dict(selected)
+        selected['name'] = periph_name
+        return selected
+    if len(legacy) > 1:
+        raise ValueError(f'Camera device {device_name} references multiple legacy {role} peripherals')
+    if legacy:
+        logger.warning('Camera device %s uses legacy %s peripheral inference; migrate to %s_name.', device_name, role, role)
+        return legacy[0]
+    return None
 
 import sys
 from pathlib import Path
@@ -147,15 +186,10 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         i2c_name = ''
         i2c_freq = 0
         peripherals = config.get('peripherals', [])
-        for periph in peripherals:
-            periph_name = periph.get('name', '')
-            if periph_name.startswith('i2c'):
-                # Check if peripheral exists in peripherals_dict if provided
-                if peripherals_dict is not None and periph_name not in peripherals_dict:
-                    raise ValueError(f"Camera device {name} references undefined peripheral '{periph_name}'")
-                i2c_name = periph_name
-                i2c_freq = int(periph.get('frequency', 100000))
-                break
+        periph = _find_peripheral(peripherals, 'i2c', name, peripherals_dict)
+        if periph:
+            i2c_name = periph['name']
+            i2c_freq = int(periph.get('frequency', 100000))
 
         if not i2c_name:
             raise ValueError(f"Camera device {name} (dvp) requires an i2c peripheral in 'peripherals'")
@@ -212,19 +246,13 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         csi_config_dict = device_config.get('csi_config', {})
         dont_init_ldo = bool(csi_config_dict.get('dont_init_ldo', True))
         peripherals = config.get('peripherals', [])
-        for periph in peripherals:
-            periph_name = periph.get('name', '')
-            if periph_name.startswith('i2c'):
-                # Check if peripheral exists in peripherals_dict if provided
-                if peripherals_dict is not None and periph_name not in peripherals_dict:
-                    raise ValueError(f"Camera device {name} references undefined peripheral '{periph_name}'")
-                i2c_name = periph_name
-                i2c_freq = int(periph.get('frequency', 100000))
-            elif periph_name.startswith('ldo'):
-                # Check if peripheral exists in peripherals_dict if provided
-                if peripherals_dict is not None and periph_name not in peripherals_dict:
-                    raise ValueError(f"Camera device {name} references undefined peripheral '{periph_name}'")
-                ldo_name = periph_name
+        periph = _find_peripheral(peripherals, 'i2c', name, peripherals_dict)
+        if periph:
+            i2c_name = periph['name']
+            i2c_freq = int(periph.get('frequency', 100000))
+        periph = _find_peripheral(peripherals, 'ldo', name, peripherals_dict)
+        if periph:
+            ldo_name = periph['name']
 
         if not i2c_name:
             raise ValueError(f"Camera device {name} (csi) requires an i2c peripheral in 'peripherals'")
@@ -270,14 +298,10 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
         i2c_name = ''
         i2c_freq = 0
         peripherals = config.get('peripherals', [])
-        for periph in peripherals:
-            periph_name = periph.get('name', '')
-            if periph_name.startswith('i2c'):
-                if peripherals_dict is not None and periph_name not in peripherals_dict:
-                    raise ValueError(f"Camera device {name} references undefined peripheral '{periph_name}'")
-                i2c_name = periph_name
-                i2c_freq = int(periph.get('frequency', 100000))
-                break
+        periph = _find_peripheral(peripherals, 'i2c', name, peripherals_dict)
+        if periph:
+            i2c_name = periph['name']
+            i2c_freq = int(periph.get('frequency', 100000))
 
         if not i2c_name:
             raise ValueError(f"Camera device {name} (spi) requires an i2c peripheral in 'peripherals'")

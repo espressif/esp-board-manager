@@ -21,11 +21,11 @@ devices:
       dac_cfg:
         ref_enable: true
     peripherals:
-      - name: gpio_pa_control   # NS4150B CTRL
+      - pa_name: gpio_pa_control   # NS4150B CTRL
         gain: 6                 # NS4150B gain in dB (per datasheet typical value)
-        pa_active_level: 1
-      - name: i2s_audio_out
-      - name: i2c_master
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x30           # ES8311 7-bit 0x18 << 1
         frequency: 400000
 
@@ -41,8 +41,8 @@ devices:
       adc_cfg:
         label: [FC, RE]
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x30
         frequency: 400000
 

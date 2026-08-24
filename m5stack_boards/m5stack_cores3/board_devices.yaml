@@ -15,7 +15,7 @@ devices:
       output_io_level_mask: [0, 0, 0, 0, 0, 0, 0, 0, 0]
       input_io_mask: NULL
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0xb0]
 
   - name: axp2101_power_manager
@@ -39,8 +39,8 @@ devices:
         no_mclk: true
 
     peripherals:
-      - name: i2s_audio_out
-      - name: i2c_master
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
         address: 0x6c
         frequency: 400000
 
@@ -58,8 +58,8 @@ devices:
 
     # Power amplifier configuration
     peripherals:
-      - name: i2s_audio_in
-      - name: i2c_master
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
         address: 0x80
         frequency: 400000
 
@@ -101,11 +101,10 @@ devices:
         reset_gpio_num: -1
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_BGR
         bits_per_pixel: 16
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG
         flags:
           reset_active_high: true
     peripherals:
-      - name: spi_master
+      - spi_name: spi_master
 
   # Touch Panel Configuration
   - name: lcd_touch
@@ -125,5 +124,5 @@ devices:
         x_max: 320
         y_max: 240
     peripherals:
-      - name: i2c_master
+      - i2c_name: i2c_master
         i2c_addr: [0x70]  # FT5x06 8-bit I2C address, from 7-bit 0x38

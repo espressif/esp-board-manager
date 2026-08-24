@@ -4,12 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <string.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include "esp_board_manager_includes.h"
+#include "sd_file_cache.h"
 #include "wav_header.h"
 
 static const char *TAG = "BMGR_RECORD_TO_SDCARD";
@@ -27,6 +30,7 @@ void app_main(void)
     esp_err_t ret = ESP_OK;
     dev_audio_codec_handles_t *adc_handle = NULL;
     FILE *fp = NULL;
+    sd_file_cache_t file_cache = { 0 };
 
     // Allocate record buffer
     const size_t buffer_size = 4096;
@@ -44,7 +48,7 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to initialize audio DAC device");
         goto cleanup;
     }
-#endif  /* CONFIG_ESP_BOARD_LYRAT_MINI_V1_1 */
+#endif /* CONFIG_ESP_BOARD_LYRAT_MINI_V1_1 */
     ret = esp_board_manager_init_device_by_name(ESP_BOARD_DEVICE_NAME_AUDIO_ADC);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize audio ADC device");
@@ -70,6 +74,13 @@ void app_main(void)
     if (fp == NULL) {
         ESP_LOGE(TAG, "Failed to open file %s", DEFAULT_REC_URL);
         goto cleanup;
+    }
+    ret = sd_file_cache_attach(fp, &file_cache, SD_FILE_CACHE_DEFAULT_SIZE,
+        SD_FILE_CACHE_MIN_SIZE);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Using default stdio buffer: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "SD file cache enabled: %u bytes", (unsigned)file_cache.size);
     }
 
     // Configure codec device
@@ -97,19 +108,22 @@ void app_main(void)
         goto cleanup;
     }
     ESP_LOGI(TAG, "Record WAV file info: %" PRIu32 " Hz, %" PRIu16 " channels, %" PRIu16 " bits",
-             fs.sample_rate, fs.channel, fs.bits_per_sample);
+        fs.sample_rate, fs.channel, fs.bits_per_sample);
 
     // Start recording
     vTaskDelay(pdMS_TO_TICKS(100));
     ESP_LOGI(TAG, "Starting I2S recording...");
     uint32_t total_bytes = 0;
-    uint32_t record_duration_ms = DEFAULT_DURATION_SECONDS * 1000;
-    uint32_t start_time = esp_timer_get_time() / 1000;
-    while ((esp_timer_get_time() / 1000) - start_time < record_duration_ms) {
-        ret = esp_codec_dev_read(adc_handle->codec_dev, recording_buffer, buffer_size);
+    const uint32_t target_bytes = DEFAULT_SAMPLE_RATE * DEFAULT_CHANNELS * (DEFAULT_BITS_PER_SAMPLE / 8) * DEFAULT_DURATION_SECONDS;
+    while (total_bytes < target_bytes) {
+        size_t bytes_to_read = target_bytes - total_bytes;
+        if (bytes_to_read > buffer_size) {
+            bytes_to_read = buffer_size;
+        }
+        ret = esp_codec_dev_read(adc_handle->codec_dev, recording_buffer, bytes_to_read);
         if (ret == ESP_CODEC_DEV_OK) {
-            size_t bytes_written = fwrite(recording_buffer, 1, buffer_size, fp);
-            if (bytes_written != buffer_size) {
+            size_t bytes_written = fwrite(recording_buffer, 1, bytes_to_read, fp);
+            if (bytes_written != bytes_to_read) {
                 ESP_LOGE(TAG, "Failed to write audio data to file");
                 break;
             }
@@ -118,12 +132,16 @@ void app_main(void)
             ESP_LOGE(TAG, "Failed to read audio data from ADC");
             break;
         }
-        ESP_LOGI(TAG, "Recording... duration: %" PRIu64 " ms", (esp_timer_get_time() / 1000) - start_time);
     }
     ESP_LOGI(TAG, "I2S recording completed. Total bytes recorded: %" PRIu32, total_bytes);
     ESP_LOGI(TAG, "Record example finished.");
     free(recording_buffer);
-    fclose(fp);
+    recording_buffer = NULL;
+    ret = sd_file_cache_close(&fp, &file_cache);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to close recording file");
+        goto cleanup;
+    }
 
     // Deinitialize audio ADC device and SD card filesystem
 #if CONFIG_ESP_BOARD_LYRAT_MINI_V1_1
@@ -133,7 +151,7 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to deinitialize audio DAC device");
         goto cleanup;
     }
-#endif  /* CONFIG_ESP_BOARD_LYRAT_MINI_V1_1 */
+#endif /* CONFIG_ESP_BOARD_LYRAT_MINI_V1_1 */
     ret = esp_board_manager_deinit_device_by_name(ESP_BOARD_DEVICE_NAME_AUDIO_ADC);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to deinitialize audio ADC device");
@@ -150,6 +168,6 @@ cleanup:
         free(recording_buffer);
     }
     if (fp) {
-        fclose(fp);
+        sd_file_cache_close(&fp, &file_cache);
     }
 }
