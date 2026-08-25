@@ -40,4 +40,5 @@ BMGR 的优势：
    create-board/index
    references/index
    programming-guide/index
+   migration/index
    faq
