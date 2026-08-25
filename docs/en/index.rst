@@ -40,4 +40,5 @@ Supported ESP-IDF Versions
    create-board/index
    references/index
    programming-guide/index
+   migration/index
    faq
