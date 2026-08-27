@@ -9,7 +9,7 @@ dependencies:
     version: "*"
     override_path: ../../../m5stack_boards
   espressif/esp_lcd_touch: ^1.1.2
-  espressif/esp_lvgl_port: '*'
+  espressif/esp_lvgl_port: '~2.8.0'
   espressif/esp_new_jpeg: "*"
   espressif/esp_image_effects:
     version: "*"
