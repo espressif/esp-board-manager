@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+- Constrain esp_boards dependency version to prevent the 0.6.x release line from resolving incompatible esp_boards versions
+
 ## 0.6.1
 
 ### Features
