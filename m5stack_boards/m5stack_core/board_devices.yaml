@@ -1,0 +1,106 @@
+devices:
+  - name: ip5306_power_manager
+    type: power_ctrl
+    sub_type: custom
+    peripherals:
+      - name: i2c_master
+    config:
+      frequency: 100000
+      i2c_addr: 0x75
+
+  - name: display_lcd
+    chip: ili9341
+    type: display_lcd
+    sub_type: spi
+    version: default
+    power_ctrl_device: ip5306_power_manager
+    dependencies:
+      espressif/esp_lcd_ili9341: "^2.0.1"
+    config:
+      mirror_x: true
+      mirror_y: false
+      x_max: 320
+      y_max: 240
+      invert_color: false
+      io_spi_config:
+        cs_gpio_num: 14
+        dc_gpio_num: 27
+        pclk_hz: 40000000
+        spi_mode: 0
+      lcd_panel_config:
+        reset_gpio_num: 33
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_BGR
+        bits_per_pixel: 16
+    peripherals:
+      - spi_name: spi_lcd
+
+  - name: lcd_brightness
+    type: ledc_ctrl
+    version: default
+    power_ctrl_device: ip5306_power_manager
+    config:
+      default_percent: 100
+    peripherals:
+      - ledc_name: ledc_backlight
+
+  - name: speaker_enable
+    type: gpio_ctrl
+    version: default
+    power_ctrl_device: ip5306_power_manager
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_speaker
+
+  - name: button_prev
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+    peripherals:
+      - gpio_name: gpio_button_prev
+
+  - name: button_enter
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+    peripherals:
+      - gpio_name: gpio_button_enter
+
+  - name: button_next
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+    peripherals:
+      - gpio_name: gpio_button_next
+
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    power_ctrl_device: ip5306_power_manager
+    config:
+      sub_config:
+        cs_gpio_num: 4
+        frequency: SDMMC_FREQ_DEFAULT
+    peripherals:
+      - spi_name: spi_lcd
+
+  - name: fs_spiffs
+    type: fs_spiffs
+    version: default
+    config:
+      partition_label: NULL
+      format_if_mount_failed: false

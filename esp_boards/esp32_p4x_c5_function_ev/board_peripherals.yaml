@@ -1,0 +1,140 @@
+# Peripherals Configuration for ESP32-P4X-C5-Function-EV-Board
+#
+# Source: ESP32-P4X-C5-Function-EV-Board user guide (esp-dev-kits)
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4x-c5-function-ev-board/user_guide.html
+#
+# Same board family as the ESP32-P4X-Function-EV-Board: identical J1 header
+# map, the same 7-inch 1024x600 MIPI-DSI touch panel and MIPI-CSI camera on
+# adapter boards, the same ES8311 + NS4150B audio path, IP101GR Ethernet,
+# MicroSD slot and four USB ports. Two documented differences (user guide
+# "Header Block" footnotes):
+#   - the companion radio is an ESP32-C5-MINI-1 (dual-band 2.4/5 GHz Wi-Fi 6
+#     + BLE) instead of an ESP32-C6-MINI-1, and GPIO54 is the P4's C5 enable
+#     line (R76 -> R80 releases it to the header);
+#   - GPIO6 carries P4_WAKEUP_C5 (R30 -> R29 releases it to the header),
+#     where on the C6 board it is a free header pin.
+# GPIO53 (PA enable) and GPIO45 (SD card enable) are claimed on both boards.
+#
+# 16 MB SPI flash (80 MHz max, no auto-suspend by default) and 32 MB PSRAM.
+#
+# Per the user guide, RST_LCD is wired to GPIO27 and the backlight PWM to
+# GPIO26 of header J1 with DuPont wires; both are software-configurable and
+# default to those pins.
+#
+peripherals:
+  # I2C Configuration
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 7
+        scl: 8
+
+  # I2S configuration for full-duplex audio with ES8311
+  - name: i2s_audio_out
+    type: i2s
+    format: tdm-out
+    role: master
+    config: &i2s_config
+      port: 0
+      sample_rate_hz: 48000
+      clk_src: "I2S_CLK_SRC_DEFAULT"
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_mode: I2S_SLOT_MODE_STEREO
+      ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
+      pins:
+        mclk: 13
+        bclk: 12
+        ws: 10
+        dout: 9
+        din: 11
+
+    # I2S configuration for full-duplex audio with ES8311
+  - name: i2s_audio_in
+    type: i2s
+    format: tdm-in
+    role: master
+    config:
+      <<: *i2s_config
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
+
+  # PA CONTROL
+  - name: gpio_pa_control
+    type: gpio
+    role: io
+    config:
+      pin: 53
+      mode: GPIO_MODE_OUTPUT
+      pull_up: true
+      default_level: 0
+
+  # Boot button. Schematic net: ESP_BOOT / GPIO35_BOOTMODE.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 35
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # LDO Configuration for MIPI Power Supply, need to be initialized before MIPI.
+  - name: ldo_mipi
+    type: ldo
+    config:
+      chan_id: 3        # On the P4 function board, VO3_LDO is used to power mipi.
+      voltage_mv: 2500  # For MIPI, the operating voltage needs to be set to 2.5V.
+      adjustable: 1
+      owned_by_hw: 0
+
+  # DSI Configuration
+  - name: dsi_display
+    type: dsi
+    config:
+      bus_id: 0
+      data_lanes: 2
+      phy_clk_src: 0
+      lane_bit_rate_mbps: 1000
+
+  # Backlight Control — J1 GPIO26 -> PWM pin of the LCD adapter board
+  - name: ledc_backlight
+    type: ledc
+    version: default
+    config:
+      gpio_num: 26
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: 1
+      timer_sel: 1
+      duty: 0
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - ESP32-C5-MINI-1 dual-band Wi-Fi 6 / BLE co-processor: a second SoC
+  #   reached over SDIO by ESP-Hosted. Its pin map is set in Kconfig (see
+  #   sdkconfig.defaults.board), not declared as a peripheral. GPIO54 is the
+  #   P4's enable line for it and GPIO6 is P4_WAKEUP_C5. Both are user-guide
+  #   Header Block footnotes, verbatim:
+  #     "To enable GPIO54 on the connector, move R76 to R80 to disable the
+  #      ESP32-P4 control of the ESP32-C5 enable function."
+  #     "To enable GPIO6 on the connector, move R30 to R29 to disable the
+  #      P4_WAKEUP_C5 function."
+  #   GPIO6 is corroborated by esp-hosted-mcu Kconfig
+  #   (ESP_HOSTED_HOST_WAKEUP_GPIO defaults to 6 for this board over
+  #   SDIO / SPI-FD; it is GPIO4 instead under SPI-HD).
+  # - IP101GR Ethernet PHY on the P4 EMAC RMII interface + RJ45 10/100 port:
+  #   no bmgr device type for an EMAC/PHY pair.
+  # - SD card power gate SD_PWRn on GPIO45 (the pin reaches J1 only after
+  #   moving R231 to R100); the SDMMC slot-0 driver owns its own IO.
+  # - TPS2051C USB power switch for the USB 2.0 Type-A host port; the
+  #   Type-A and Type-C USB 2.0 ports cannot be used at the same time.
+  # - USB Serial/JTAG port, USB full-speed port, RESET key,
+  #   5 V power-on LED, power switch, buck converters, 5 V -> 3.3 V LDO.
+  # - LDO_VO3 / LDO_VO4 power on-board VDD domains and must be configured
+  #   in software; only VO3 (MIPI) is declared above, as ldo_mipi.
+  # ----------------------------------------------------------------------

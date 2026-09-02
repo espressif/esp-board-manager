@@ -3,12 +3,16 @@ LCD Display (display_lcd)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _display-lcd-intro:
+
 Overview
 --------
 
 The ``display_lcd`` device describes an LCD display and creates an ``esp_lcd_panel_handle_t`` along with an optional panel IO handle during initialization. Applications obtain a ``dev_display_lcd_handles_t`` via :cpp:func:`esp_board_manager_get_device_handle`, then access the screen using ESP-IDF ``esp_lcd_panel_ops`` or a higher-level graphics library.
 
-This type selects the display interface via ``sub_type``. The current device template covers ``dsi``, ``spi``, ``i80``, ``rgb``, ``rgb_3wire_spi``, and ``parlio``. Except for plain ``rgb``, every sub-type requires the board to provide an LCD panel factory function; declaring only the chip-driver component is insufficient to create the panel.
+This type selects the display interface via ``sub_type``. The current device template covers ``dsi``, ``spi``, ``i80``, ``rgb``, ``rgb_3wire_spi``, and ``parlio``. Every path except pure ``rgb`` must provide the matching LCD factory function in ``setup_device.c``.
+
+.. _display-lcd-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -22,92 +26,7 @@ Supported Usage Modes
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
-Frame Format
-------------
-
-``dev_display_lcd`` generates ``frame_format`` in the device configuration for application consumers that need to select a pixel buffer or conversion format. The value is one of ``RGB565_LE``, ``RGB565_BE``, ``BGR888``, or ``RGB888`` when the parser can determine the representation. Unsupported or insufficiently specified layouts use ``UNKNOWN``.
-
-Set ``config.frame_format`` to override the derived value:
-
-.. code-block:: yaml
-
-    config:
-      frame_format: RGB565_LE
-
-The override is validated during parsing. A warning is emitted when it differs from a format that BMGR can derive automatically. The generated value is consumed by application code; the LCD test applications use it to select LVGL byte swapping or image-conversion output.
-
-When ``config.frame_format`` is omitted, BMGR derives the value according to the following rules:
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``sub_type``
-     - Derivation source
-   * - ``dsi``
-     - ``dpi_config.pixel_format`` for ESP-IDF 5.x; ``dpi_config.in_color_format`` for ESP-IDF 6.x and later
-   * - ``rgb``, ``rgb_3wire_spi``
-     - ``bits_per_pixel`` for ESP-IDF 5.x; ``rgb_panel_config.in_color_format`` for ESP-IDF 6.x and later
-   * - ``spi``
-     - ``lcd_panel_config.data_endian``; defaults to ``RGB565_BE`` when omitted
-   * - ``i80``
-     - ``panel_config.data_endian``, adjusted by ``io_config.flags.swap_color_bytes``
-   * - ``parlio``
-     - Not automatically determined; an explicit ``frame_format`` is recommended
-
-.. note::
-
-   Before configuring ``data_endian``, verify whether the corresponding LCD chip implementation reads ``esp_lcd_panel_dev_config_t.data_endian``.
-
-   Even when the LCD chip implementation does not read ``data_endian``, SPI and I80 modes may use the field to derive the application-side ``frame_format``. Removing or changing ``data_endian`` may therefore change the derived ``frame_format``.
-
-The main mappings are:
-
-- RGB565 color formats map to ``RGB565_LE``.
-- RGB888 color formats map to ``BGR888``.
-- A 16-bit RGB configuration maps to ``RGB565_LE``.
-- ``LCD_RGB_DATA_ENDIAN_BIG`` maps to ``RGB565_BE``.
-- ``LCD_RGB_DATA_ENDIAN_LITTLE`` maps to ``RGB565_LE``.
-
-When the configuration is insufficient or unsupported, the derived value is ``UNKNOWN`` and a warning is emitted.
-
-Board-Level Panel Factory Functions
------------------------------------
-
-BMGR creates the display bus and panel IO. The board calls the actual LCD controller constructor and returns the ``esp_lcd_panel_handle_t``.
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``sub_type``
-     - Board-level function required
-     - Required symbol
-   * - ``dsi``
-     - Yes
-     - ``lcd_dsi_panel_factory_entry_t``
-   * - ``spi``, ``i80``, ``parlio``, ``rgb_3wire_spi``
-     - Yes
-     - ``lcd_panel_factory_entry_t``
-   * - ``rgb``
-     - No
-     - BMGR calls ``esp_lcd_new_rgb_panel`` directly
-
-A DSI factory function must use the following signature. It creates the controller-specific panel from ``lcd_cfg`` and writes it to ``lcd_handles->panel_handle``:
-
-.. code-block:: c
-
-    esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
-                                            dev_display_lcd_config_t *lcd_cfg,
-                                            dev_display_lcd_handles_t *lcd_handles);
-
-SPI, I80, PARLIO, and RGB + 3-wire SPI share the following signature. The function must call the ``esp_lcd_new_panel_*`` API that matches the LCD controller:
-
-.. code-block:: c
-
-    esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
-                                         const esp_lcd_panel_dev_config_t *panel_dev_config,
-                                         esp_lcd_panel_handle_t *ret_panel);
-
-For a base board, declare the implementation ``__attribute__((weak))`` so an amend can replace the default panel initialization with a strong symbol of the same name. The chip-driver headers and APIs used by the factory function must match the device's ``chip`` and ``dependencies``. See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
+.. _display-lcd-min-config:
 
 Minimal Configuration
 ---------------------
@@ -117,7 +36,9 @@ Minimal Configuration
 DSI (``sub_type: dsi``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``dsi`` mode is for MIPI DSI displays. The device must reference both the ``dsi`` and ``ldo`` peripherals; at runtime it obtains the LDO handle before creating the DSI panel IO. This mode must implement ``lcd_dsi_panel_factory_entry_t``.
+See complete fields: :ref:`display-lcd-dsi-full`.
+
+The ``dsi`` mode is for MIPI DSI displays. The current form binds both a ``dsi`` peripheral through ``dsi_name`` and an ``ldo`` peripheral through ``ldo_name``. For compatibility, the parser can fall back to the first global ``dsi``/``ldo`` peripheral when these bindings are omitted, and emits a migration warning; new configurations should use the explicit bindings.
 
 ``board_peripherals.yaml``:
 
@@ -177,7 +98,9 @@ The ``dsi`` mode is for MIPI DSI displays. The device must reference both the ``
 SPI (``sub_type: spi``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``spi`` mode is for displays that send commands and pixel data via SPI panel IO. The device depends on the ``spi`` peripheral. This mode must implement ``lcd_panel_factory_entry_t``.
+See complete fields: :ref:`display-lcd-spi-full`.
+
+The ``spi`` mode is for displays that send commands and pixel data via SPI panel IO. The device depends on the ``spi`` peripheral.
 
 ``board_peripherals.yaml``:
 
@@ -225,7 +148,9 @@ The ``spi`` mode is for displays that send commands and pixel data via SPI panel
 I80 (``sub_type: i80``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``i80`` mode uses ``esp_lcd_new_i80_bus`` and ``esp_lcd_new_panel_io_i80`` to create the panel IO, and does not depend on the ``spi`` peripheral. The I80 bus is created internally by the device based on ``bus_config``; no new ``board_peripherals.yaml`` entry is required. This mode must implement ``lcd_panel_factory_entry_t``.
+See complete fields: :ref:`display-lcd-i80-full`.
+
+The ``i80`` mode uses ``esp_lcd_new_i80_bus`` and ``esp_lcd_new_panel_io_i80`` to create the panel IO, and does not depend on the ``spi`` peripheral. The I80 bus is created internally by the device based on ``bus_config``; no new ``board_peripherals.yaml`` entry is required.
 
 ``board_devices.yaml``:
 
@@ -259,6 +184,8 @@ The ``i80`` mode uses ``esp_lcd_new_i80_bus`` and ``esp_lcd_new_panel_io_i80`` t
 RGB (``sub_type: rgb``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`display-lcd-rgb-full`.
+
 The ``rgb`` mode uses the RGB LCD peripheral to output pixel data directly without invoking the generic ``lcd_panel_factory_entry_t``. RGB bus GPIOs are configured in the device's ``rgb_panel_config``; no new ``board_peripherals.yaml`` entry is required.
 
 ``board_devices.yaml``:
@@ -289,7 +216,9 @@ The ``rgb`` mode uses the RGB LCD peripheral to output pixel data directly witho
 RGB + 3-wire SPI (``sub_type: rgb_3wire_spi``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB pixel bus, and does not require the ``spi`` peripheral. The 3-wire SPI initialization lines can use SoC GPIOs directly, or be provided by a ``gpio_expander`` device. This mode must implement ``lcd_panel_factory_entry_t`` to perform controller command initialization.
+See complete fields: :ref:`display-lcd-rgb-3wire-spi-full`.
+
+The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB pixel bus, and does not require the ``spi`` peripheral. The 3-wire SPI initialization lines can use SoC GPIOs directly, or be provided by a ``gpio_expander`` device.
 
 ``board_devices.yaml``:
 
@@ -327,8 +256,12 @@ The ``rgb_3wire_spi`` mode adds a 3-wire SPI initialization IO alongside the RGB
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 18            # [TO_BE_CONFIRMED]
 
+.. _display-lcd-rgb-user-fbs:
+
 RGB User Frame Buffers
 ^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`display-lcd-rgb-full`.
 
 The ``rgb`` and ``rgb_3wire_spi`` modes support the ``user_fbs_func`` field on ESP-IDF v6.0 and later. This field is not a function pointer. It is the name of a board-level callback registered with ``DEVICE_EXTRA_FUNC_REGISTER`` and is used to provide frame buffers managed by the application or board-level code to the RGB LCD driver.
 
@@ -380,7 +313,9 @@ When this field is used, the number, size, alignment, and memory capabilities of
 PARLIO (``sub_type: parlio``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``parlio`` mode uses ``esp_lcd_new_panel_io_parl`` to create the panel IO, and does not require the ``spi`` peripheral. PARLIO data, clock, and control lines are all configured in the device's ``io_parl_config``; no new ``board_peripherals.yaml`` entry is required. This mode must implement ``lcd_panel_factory_entry_t``.
+See complete fields: :ref:`display-lcd-parlio-full`.
+
+The ``parlio`` mode uses ``esp_lcd_new_panel_io_parl`` to create the panel IO, and does not require the ``spi`` peripheral. PARLIO data, clock, and control lines are all configured in the device's ``io_parl_config``; no new ``board_peripherals.yaml`` entry is required.
 
 ``board_devices.yaml``:
 
@@ -408,8 +343,12 @@ The ``parlio`` mode uses ``esp_lcd_new_panel_io_parl`` to create the panel IO, a
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 16            # [TO_BE_CONFIRMED]
 
+.. _display-lcd-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _display-lcd-dsi-full:
 
 DSI Full Fields
 ^^^^^^^^^^^^^^^
@@ -435,12 +374,11 @@ DSI Full Fields
         # Valid values:
         # - LCD_RGB_ELEMENT_ORDER_RGB
         # - LCD_RGB_ELEMENT_ORDER_BGR
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Panel data endian passed to the DSI panel factory
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Does not derive DSI frame_format; use dpi_config.in_color_format
         # Valid values:
         # - LCD_RGB_DATA_ENDIAN_BIG
         # - LCD_RGB_DATA_ENDIAN_LITTLE
         bits_per_pixel: 24                        # [TO_BE_CONFIRMED] Bits per pixel (24bpp, RGB888)
-        frame_format: RGB565_LE                   # Application frame-buffer format; keep consistent with dpi_config pixel format
         reset_active_high: 0                      # Reset pin active level (0 = active low)
 
         # DBI interface configuration (command/parameter transfer)
@@ -487,6 +425,8 @@ DSI Full Fields
       peripherals:
         - ldo_name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
         - dsi_name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
+
+.. _display-lcd-spi-full:
 
 SPI Full Fields
 ^^^^^^^^^^^^^^^
@@ -538,7 +478,7 @@ SPI Full Fields
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 16-bit SPI frame_format: BIG=RGB565_BE, LITTLE=RGB565_LE
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -551,6 +491,8 @@ SPI Full Fields
 
       peripherals:
         - spi_name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
+
+.. _display-lcd-i80-full:
 
 I80 Full Fields
 ^^^^^^^^^^^^^^^
@@ -612,7 +554,7 @@ I80 Full Fields
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 16-bit I80 frame_format: BIG=RGB565_BE, LITTLE=RGB565_LE; swap_color_bytes reverses it
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -621,6 +563,8 @@ I80 Full Fields
             reset_active_high: false        # Reset pin active level (default: false)
           # Chip-specific configuration
           vendor_config: ""                 # Vendor-specific configuration (default: empty string)
+
+.. _display-lcd-rgb-full:
 
 RGB Full Fields
 ^^^^^^^^^^^^^^^
@@ -641,7 +585,7 @@ RGB Full Fields
         need_reset: true                    # Whether to call esp_lcd_panel_reset() during initialization
         bits_per_pixel: 16                  # Application-side frame buffer color depth; IDF v5.x emits this into rgb panel config
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # [TO_BE_CONFIRMED] RGB/BGR byte order expected by panel helper logic
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Endianness for color units larger than 1 byte
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Does not derive RGB frame_format; RGB config determines it
         # esp_lcd_rgb_panel_config_t fields
         rgb_panel_config:
           clk_src: LCD_CLK_SRC_DEFAULT      # RGB LCD peripheral clock source (lcd_clock_source_t)
@@ -686,6 +630,8 @@ RGB Full Fields
             no_fb: false                     # Driver does not allocate frame buffer; requires bounce buffer callback workflow
             bb_invalidate_cache: false       # In bounce-buffer mode, invalidate cache after DMA reads; can be unsafe with concurrent writers
 
+.. _display-lcd-rgb-3wire-spi-full:
+
 RGB + 3-wire SPI Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -709,7 +655,7 @@ RGB + 3-wire SPI Full Fields
         need_reset: true                    # Whether to call esp_lcd_panel_reset() during device initialization
         bits_per_pixel: 16                  # Application-side frame buffer color depth; IDF v5.x may emit this into RGB config
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # RGB/BGR byte order used by common panel helper logic
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Endianness for color units larger than 1 byte
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Does not derive RGB + 3-wire SPI frame_format; RGB config determines it
 
         # esp_lcd_panel_io_3wire_spi_config_t fields for the low-speed LCD command/init interface.
         io_3wire_spi_config:
@@ -779,12 +725,14 @@ RGB + 3-wire SPI Full Fields
         lcd_panel_config:
           reset_gpio_num: -1                # [IO] Reset GPIO pin; set -1 if reset is not connected to a SoC GPIO
           rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # RGB/BGR element order for LCD controller command setup
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Color data endian for units larger than 1 byte
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Does not determine the generated RGB + 3-wire SPI frame_format
           bits_per_pixel: 18                # [TO_BE_CONFIRMED] LCD controller pixel width, e.g., GC9503 often uses 18
           flags:
             reset_active_high: false        # Reset pin active level: false=active low, true=active high
           vendor_config: NULL               # NULL lets bmgr pass rgb_panel_config as vendor_config by default
           auto_del_panel_io: false          # If chip driver supports it, delete 3-wire panel IO after init; GPIO expander is not deleted
+
+.. _display-lcd-parlio-full:
 
 PARLIO Full Fields
 ^^^^^^^^^^^^^^^^^^
@@ -835,7 +783,7 @@ PARLIO Full Fields
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_LITTLE  # [TO_BE_CONFIRMED] Data endianness (default: LITTLE)
+          data_endian: LCD_RGB_DATA_ENDIAN_LITTLE  # Does not infer PARLIO frame_format; set config.frame_format when needed
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -844,12 +792,16 @@ PARLIO Full Fields
             reset_active_high: false             # Reset pin active level (default: false)
           vendor_config: ""
 
+.. _display-lcd-deps:
+
 Component Dependencies
 ----------------------
 
 A ``display_lcd`` device that uses a chip driver component must declare the LCD chip driver component in ``dependencies``. The template uses ``espressif/esp_lcd_generic``, ``espressif/esp_lcd_ili9341``, and ``espressif/esp_lcd_ek79007`` as placeholders or board-level examples. The actual component name and version must match the ``chip`` value and the factory function registered in the board's ``setup_device.c``.
 
 The ``rgb_3wire_spi`` sub-type additionally depends on ``espressif/esp_lcd_panel_io_additions`` to provide the 3-wire SPI panel IO. The pure ``rgb`` path creates the RGB panel directly and does not require an LCD chip factory component.
+
+.. _display-lcd-peripherals:
 
 Required Peripherals
 --------------------
@@ -878,6 +830,8 @@ Required Peripherals
      - Required for ``rgb_3wire_spi`` when using IO expander initialization lines
      - Provides CS, SCL, or SDA lines for 3-wire SPI
 
+.. _display-lcd-code:
+
 Code Reference
 --------------
 
@@ -890,6 +844,8 @@ Code Reference
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd_sub_rgb_3wire_spi.c``: RGB + 3-wire SPI sub-type initialization implementation.
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd_sub_parlio.c``: PARLIO sub-type initialization implementation.
 
+.. _display-lcd-boards:
+
 Board-level Reference
 ---------------------
 
@@ -901,6 +857,8 @@ Board-level Reference
 - ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``: ``rgb_3wire_spi`` display configuration.
 - ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``: ``rgb`` display amend configuration.
 
+.. _display-lcd-notes:
+
 Notes
 -----
 
@@ -909,8 +867,103 @@ Notes
 - When ``rgb_3wire_spi`` uses ``IO_TYPE_EXPANDER``, ``io_expander_name`` must reference an already-initialized ``gpio_expander`` device.
 - After modifying the LCD device, display peripheral, or factory function, re-run ``idf.py bmgr -b <board>``.
 
+.. _display-lcd-frame-format:
+
+Frame Format
+------------
+
+``config.frame_format`` optionally overrides the frame format recorded in the generated device configuration. Supported values are ``RGB565_LE``, ``RGB565_BE``, ``BGR888``, and ``RGB888``. When the override differs from the inferred value, BMGR keeps the explicit value and emits a warning.
+
+Without an override, BMGR derives the value as follows:
+
+- ``dsi``: from ``dpi_config.in_color_format``; when both are present, it overrides ``pixel_format``. ``RGB565`` becomes ``RGB565_LE``. ``RGB888`` becomes ``BGR888`` on ESP-IDF v6 and later, and ``RGB888`` on ESP-IDF v5. Other formats are unknown.
+- ``rgb`` and ``rgb_3wire_spi``: on ESP-IDF v6 and later, from ``rgb_panel_config.in_color_format`` using the same mapping. On ESP-IDF v5, 16-bit ``bits_per_pixel`` becomes ``RGB565_LE``; other values are unknown.
+- ``spi`` and ``i80``: 16-bit panels use ``lcd_panel_config.data_endian`` or ``panel_config.data_endian`` when explicitly set; big endian becomes ``RGB565_BE`` and little endian becomes ``RGB565_LE``. If it is omitted, BMGR assumes ``RGB565_BE``. In ``i80`` mode, ``swap_color_bytes`` reverses that result. ``lsb_first`` (SPI or I80) and I80 ``reverse_color_bits`` produce an unknown inferred format.
+- ``parlio`` has no automatic derivation, so set ``config.frame_format`` when the application requires a known format.
+
+``data_endian`` is therefore a frame-format input only for 16-bit SPI and I80 panels. It does not determine the DSI, RGB, RGB + 3-wire SPI, or PARLIO frame format.
+
+.. _display-lcd-factory:
+
+Factory Functions
+-----------------
+
+Every non-pure-RGB path must implement the matching factory in the board ``setup_device.c``. ``spi``, ``i80``, ``parlio``, and ``rgb_3wire_spi`` unconditionally call ``lcd_panel_factory_entry_t``. ``dsi`` unconditionally calls ``lcd_dsi_panel_factory_entry_t``. The pure ``rgb`` path creates the RGB panel directly and does not call either factory.
+
+The signature is:
+
+.. code-block:: c
+
+   esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                       const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                       esp_lcd_panel_handle_t *ret_panel)
+
+For DSI, the signature is:
+
+.. code-block:: c
+
+   esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
+                                           dev_display_lcd_config_t *lcd_cfg,
+                                           dev_display_lcd_handles_t *lcd_handles)
+
+Declare the applicable factory as a weak symbol. Place each optional chip-driver header and the factory that depends on it in the same ``__has_include`` / ``HAS_*`` conditional block. This keeps the board source buildable after a downstream ``gen_skip`` or an amend removes the component dependency. See :doc:`/programming-guide/board-directory` for the full convention.
+
+Minimal implementation:
+
+.. code-block:: c
+
+   #if __has_include(<esp_lcd_ili9341.h>)
+   #define HAS_ILI9341 1
+   #include "esp_lcd_ili9341.h"
+   #endif
+   #if defined(HAS_ILI9341)
+   __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                            const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                                            esp_lcd_panel_handle_t *ret_panel)
+   {
+       return esp_lcd_new_panel_ili9341(io, panel_dev_config, ret_panel);
+   }
+   #endif
+
+For DSI, the factory receives the DSI bus and the BMGR configuration and handles, for example:
+
+.. code-block:: c
+
+   #if __has_include(<esp_lcd_ek79007.h>)
+   #define HAS_EK79007 1
+   #include "esp_lcd_ek79007.h"
+   #endif
+   #if defined(HAS_EK79007)
+   __attribute__((weak)) esp_err_t lcd_dsi_panel_factory_entry_t(
+           esp_lcd_dsi_bus_handle_t dsi_handle, dev_display_lcd_config_t *lcd_cfg,
+           dev_display_lcd_handles_t *lcd_handles)
+   {
+       ek79007_vendor_config_t vendor_config = {
+           .mipi_config = {
+               .dsi_bus = dsi_handle,
+               .dpi_config = &lcd_cfg->sub_cfg.dsi.dpi_config,
+           },
+       };
+       esp_lcd_panel_dev_config_t panel_config = {
+           .reset_gpio_num = lcd_cfg->sub_cfg.dsi.reset_gpio_num,
+           .rgb_ele_order = lcd_cfg->rgb_ele_order,
+           .bits_per_pixel = lcd_cfg->bits_per_pixel,
+           .data_endian = lcd_cfg->data_endian,
+           .vendor_config = &vendor_config,
+       };
+       return esp_lcd_new_panel_ek79007(lcd_handles->io_handle, &panel_config,
+                                        &lcd_handles->panel_handle);
+   }
+   #endif
+
+``rgb`` and ``rgb_3wire_spi`` can supply user-managed frame buffers through ``user_fbs_func`` on ESP-IDF v6.0 and later. The field is not a function pointer; it is the name of a board callback registered with ``DEVICE_EXTRA_FUNC_REGISTER``. See :ref:`display-lcd-rgb-user-fbs` for the YAML and callback example.
+
+.. _display-lcd-debug:
+
 Debugging Tips
 --------------
+
+.. _display-lcd-api:
 
 API Reference
 -------------

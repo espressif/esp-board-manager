@@ -1,0 +1,116 @@
+# Devices Configuration for ESP32-S3-Korvo-1
+devices:
+  # Boot button. Schematic net: ESP0_Boot_IO0 / ESP_IO0.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
+  - name: audio_dac
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: true
+    peripherals:
+      - pa_name: gpio_power_amp
+        gain: 6
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
+        address: 0x30
+        frequency: 400000
+
+  - name: audio_adc
+    chip: es7210
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        label: [FL, FR, RE, NA]
+    peripherals:
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
+        address: 0x80
+        frequency: 400000
+
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: sdmmc
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        slot: SDMMC_HOST_SLOT_1
+        frequency: SDMMC_FREQ_HIGHSPEED
+        bus_width: 1
+        slot_flags: SDMMC_SLOT_FLAG_INTERNAL_PULLUP
+        pins:
+          clk: 18
+          cmd: 17
+          d0: 16
+          d1: -1
+          d2: -1
+          d3: -1
+          cd: -1
+          wp: -1
+
+  - name: adc_button_group
+    type: button
+    sub_type: adc_multi
+    version: default
+    config:
+      long_press_time: 2000
+      short_press_time: 100
+      events_cfg:
+        press_down: true
+        press_up: true
+        single_click: true
+        double_click: true
+        multi_click: false
+        long_press_start: true
+        long_press_up: true
+        long_press_hold: false
+        press_repeat: false
+        press_repeat_done: false
+        press_end: false
+      button_num: 6
+      max_voltage: 3000
+      voltage_range: [380, 820, 1100, 1660, 1980, 2410]
+      button_labels: ["VOLUME_UP", "VOLUME_DOWN", "SET", "PLAY", "MODE", "REC"]
+    peripherals:
+      - adc_name: adc_oneshot
+
+  - name: led_strip
+    type: led_strip
+    chip: ws2812
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 19
+      max_leds: 12
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false

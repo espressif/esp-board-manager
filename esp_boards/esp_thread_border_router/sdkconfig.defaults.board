@@ -1,0 +1,19 @@
+# ESP Thread Border Router Board — ESP32-S3-WROOM-1, 8 MB flash, 2 MB PSRAM
+# (early samples shipped with 4 MB flash)
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+# PSRAM is 2 MB QUAD. The docs' Ordering Information table gives the fitted
+# memory directly (8 MB flash, "4 MB in some early samples"; 2 MB PSRAM), which
+# is the ESP32-S3-WROOM-1-N8R2 — and N8R2 is quad. Corroborated by the
+# schematic: S3_GPIO35/36/37 are routed out to header J4, which is only
+# possible on a non-octal module. Setting octal here would not boot.
+# (The schematic's note "S3_GPIO35 and S3_GPIO36 are not available for
+# ESP32-S3-WROOM-1-N8R8 / -N16R8" is a warning about substituting an octal
+# module, NOT a statement of what is fitted.)
+# Espressif's own basic_thread_border_router example ships no CONFIG_SPIRAM key
+# at all; PSRAM is kept enabled here because the module has it.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_80M=y

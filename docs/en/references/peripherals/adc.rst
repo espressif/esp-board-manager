@@ -3,12 +3,16 @@ adc
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _adc-intro:
+
 Overview
 --------
 
 The ``adc`` peripheral describes an ESP-IDF ADC continuous or one-shot driver instance. BMGR converts ``adc`` entries in ``board_peripherals.yaml`` into ``periph_adc_config_t`` according to ``role``, and creates a continuous or one-shot handle.
 
 ``adc`` is commonly used for internal ADC audio input and ADC buttons. Continuous mode targets a persistent sampling data stream; one-shot mode targets on-demand reading of a single ADC channel.
+
+.. _adc-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -19,6 +23,8 @@ Supported Operating Modes
 - :ref:`Continuous: Single Unit Configuration <adc-continuous-single-unit>`
 - :ref:`oneshot <adc-oneshot>`
 
+.. _adc-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -26,6 +32,8 @@ Minimal Configuration
 
 Continuous: ``patterns`` Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`adc-continuous-patterns-full`.
 
 ``board_peripherals.yaml``:
 
@@ -48,6 +56,8 @@ Continuous: ``patterns`` Configuration
 Continuous: Single Unit Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`adc-continuous-single-unit-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -66,6 +76,8 @@ Continuous: Single Unit Configuration
 oneshot
 ^^^^^^^
 
+See complete fields: :ref:`adc-oneshot-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -78,6 +90,8 @@ oneshot
           unit_id: ADC_UNIT_1       # [TO_BE_CONFIRMED]
           channel_id: 4             # [TO_BE_CONFIRMED]
 
+.. _adc-mode-notes:
+
 Mode Notes
 ----------
 
@@ -87,8 +101,12 @@ Oneshot mode creates an ``adc_oneshot_unit_handle_t`` and configures a single ``
 
 The mapping of ADC channels to GPIOs depends on the target chip. The channel field in the template is marked as ``[TO_BE_CONFIRMED]``; board configurations should verify this using the chip datasheet or the ESP-IDF ADC mapping API.
 
+.. _adc-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _adc-continuous-patterns-full:
 
 Continuous: ``patterns`` Configuration Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,6 +186,8 @@ Continuous: ``patterns`` Configuration Full Fields
             atten: ADC_ATTEN_DB_12
             bit_width: ADC_BITWIDTH_DEFAULT
 
+.. _adc-continuous-single-unit-full:
+
 Continuous: Single Unit Configuration Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -191,6 +211,8 @@ Continuous: Single Unit Configuration Full Fields
         atten: ADC_ATTEN_DB_0
         # ADC raw output bit-width. Use an enum, SoC macro, or positive integer supported by the target ADC driver.
         bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
+
+.. _adc-oneshot-full:
 
 oneshot Full Fields
 ^^^^^^^^^^^^^^^^^^^
@@ -245,6 +267,8 @@ oneshot Full Fields
         # - ADC_ULP_MODE_RISCV
         # - ADC_ULP_MODE_LP_CORE
 
+.. _adc-devices:
+
 Applicable Devices
 ------------------
 
@@ -261,6 +285,8 @@ Applicable Devices
      - ``sub_type: adc_single`` or ``sub_type: adc_multi`` references an ADC peripheral with ``role: oneshot``
      - Voltage ranges, button count, and event configuration are written in the ``button`` device
 
+.. _adc-code:
+
 Reference Code
 --------------
 
@@ -269,6 +295,8 @@ Reference Code
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
 
+.. _adc-boards:
+
 Board Examples
 --------------
 
@@ -276,6 +304,8 @@ Board Examples
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: ADC button using a one-shot peripheral.
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: ADC button using a one-shot peripheral.
 - ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``: ADC button using a one-shot peripheral.
+
+.. _adc-notes:
 
 Notes
 -----
@@ -286,8 +316,12 @@ Notes
 - ``conv_mode`` must match the ADC unit combination. Use ``ADC_CONV_SINGLE_UNIT_1`` for a single ``ADC_UNIT_1``, ``ADC_CONV_SINGLE_UNIT_2`` for a single ``ADC_UNIT_2``; mixed units cannot use single-unit conversion mode.
 - The mapping of ADC channels to GPIOs depends on the target chip. After modifying ADC peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _adc-debug:
+
 Debugging Tips
 --------------
+
+.. _adc-api:
 
 API Reference
 -------------

@@ -35,7 +35,7 @@ check_docs_lang_sync:
     - cd $DOCS_DIR
     - pip install -r requirements.txt
     - build-docs --skip-reqs-check -bs $DOC_BUILDERS -l $DOCLANG build
-    - echo "ESP Board Manager documentation preview available at $CI_JOB_URL/artifacts/file/docs/_build/$DOCLANG/generic/html/index.html"
+    - 'echo "Sphinx logs at $CI_JOB_URL/artifacts/file/docs/_build/$DOCLANG/generic/sphinx-warning-log.txt"'
   parallel:
     matrix:
       - DOCLANG: ["en", "zh_CN"]
@@ -46,9 +46,11 @@ build_docs_html:
     - .rules:build:docs
   artifacts:
     when: always
+    # Built HTML includes docs/_static/boards (~200 MB of images) and exceeds
+    # the GitLab artifacts limit (413). Keep Sphinx logs here; deploy jobs
+    # rebuild HTML from source after this job has validated the RST.
     paths:
       - docs/_build/*/*/*.txt
-      - docs/_build/*/*/html/*
     expire_in: 4 days
   variables:
     DOC_BUILDERS: "html"
@@ -71,6 +73,10 @@ build_docs_html:
     - export GIT_VER=$(git describe --always)
     - pip install -r ${CI_PROJECT_DIR}/docs/requirements.txt
     - mkdir -p logs
+    - cd ${CI_PROJECT_DIR}/docs
+    - build-docs --skip-reqs-check -bs html -l en build
+    - build-docs --skip-reqs-check -bs html -l zh_CN build
+    - cd ${CI_PROJECT_DIR}
     - bash -o pipefail -c 'deploy-docs | tee logs/doc-url.txt'
 
 deploy_docs_preview:
@@ -78,6 +84,10 @@ deploy_docs_preview:
     - .deploy_docs_template
     - .rules:deploy:docs:preview
   needs:
+    # Keep artifacts: true so GitLab expands this parallel:matrix job.
+    # artifacts: false looks up the unexpanded name "build_docs_html" and
+    # fails pipeline creation. Only Sphinx logs are uploaded now, so the
+    # download is small; this job still rebuilds HTML below.
     - job: build_docs_html
       artifacts: true
   variables:

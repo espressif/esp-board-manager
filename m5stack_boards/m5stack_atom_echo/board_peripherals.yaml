@@ -1,0 +1,80 @@
+# Peripherals Configuration for M5Stack ATOM Echo
+#
+# Source: M5Stack ATOM Echo documentation
+# Reference: https://docs.m5stack.com/en/atom/atomecho
+#
+# Module: ESP32-PICO-D4 (in-package 4 MB flash, no PSRAM).
+# Audio: an NS4168 I2S class-D amplifier drives the speaker and an SPM1423
+# PDM microphone captures. Both hang off I2S port 0 and SHARE GPIO33 as
+# their clock line (LRCK for the amplifier, CLK for the microphone), so the
+# two directions are mutually exclusive at runtime — the port is
+# reconfigured when switching between playback and capture.
+#
+# GPIO19 / GPIO22 / GPIO23 / GPIO33 are reserved for the audio path and
+# must not be reused by an expansion module.
+#
+peripherals:
+  # NS4168 I2S class-D amplifier (playback). No MCLK: the NS4168 derives
+  # its clock from BCLK.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_LEFT
+      ws_width: 16
+      pins:
+        mclk: -1
+        bclk: 19
+        ws:   33      # M5Unified.cpp board_M5AtomVoice: spk_cfg.pin_ws = GPIO_NUM_33
+                      # (GPIO23 is the PDM mic's data line, mic_cfg.pin_data_in)
+        dout: 22
+        din:  -1
+
+  # SPM1423 PDM microphone (capture). Shares the GPIO33 clock line with the
+  # amplifier's LRCK above.
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 33
+        din: 23
+
+  # Front button (GPIO39, active-low).
+  # GPIO39 is input-only on ESP32 and has NO internal pull resistor;
+  # the board provides the external pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - NS4168 I2S class-D amplifier: control-less (no I2C register set, no
+  #   SoC-driven enable pin), so there is no audio_codec device for it —
+  #   the i2s_audio_out peripheral above IS the interface
+  # - SPM1423 PDM MEMS microphone: likewise control-less; the pdm-in
+  #   peripheral above is the interface
+  # - Grove HY2.0-4P port (GPIO26 / GPIO32 plus 5V and GND)
+  # - RESET button (EN pin, handled in hardware)
+  # - CH9102 USB-to-UART bridge on the USB Type-C port (console path)
+  # ----------------------------------------------------------------------

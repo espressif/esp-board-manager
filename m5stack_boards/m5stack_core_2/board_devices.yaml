@@ -1,0 +1,89 @@
+devices:
+  - name: pmu_power_manager
+    type: power_ctrl
+    sub_type: custom
+    peripherals:
+      - name: i2c_master
+    config:
+      # M5Stack Core2 v1.0; v1.1 uses AXP2101 and needs a separate selection.
+      pmu_model: axp192
+      frequency: 400000
+      i2c_addr: 0x34
+
+  - name: display_lcd
+    chip: ili9341
+    type: display_lcd
+    sub_type: spi
+    version: default
+    power_ctrl_device: pmu_power_manager
+    dependencies:
+      espressif/esp_lcd_ili9341: "^2.0.1"
+    config:
+      mirror_x: false
+      mirror_y: false
+      x_max: 320
+      y_max: 240
+      invert_color: true
+      io_spi_config:
+        cs_gpio_num: 5
+        dc_gpio_num: 15
+        pclk_hz: 40000000
+        spi_mode: 0
+      lcd_panel_config:
+        reset_gpio_num: -1
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_BGR
+        bits_per_pixel: 16
+    peripherals:
+      - spi_name: spi_lcd
+
+  - name: lcd_touch
+    chip: ft5x06
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    power_ctrl_device: pmu_power_manager
+    dependencies:
+      espressif/esp_lcd_touch_ft5x06: "^1"
+    config:
+      io_i2c_config:
+        lcd_cmd_bits: 8
+        scl_speed_hz: 400000
+      touch_config:
+        x_max: 320
+        y_max: 240
+        rst_gpio_num: -1
+        int_gpio_num: 39
+    peripherals:
+      - i2c_name: i2c_master
+        i2c_addr: [0x70]
+
+  - name: audio_dac
+    chip: internal
+    type: audio_codec
+    power_ctrl_device: pmu_power_manager
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: true
+    peripherals:
+      - i2s_name: i2s_audio_out
+
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    power_ctrl_device: pmu_power_manager
+    config:
+      sub_config:
+        cs_gpio_num: 4
+        frequency: SDMMC_FREQ_DEFAULT
+    peripherals:
+      - spi_name: spi_lcd
+
+  - name: fs_spiffs
+    type: fs_spiffs
+    version: default
+    config:
+      partition_label: NULL
+      format_if_mount_failed: false

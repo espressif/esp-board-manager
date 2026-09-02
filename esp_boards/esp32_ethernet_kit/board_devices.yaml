@@ -1,0 +1,24 @@
+# Devices Configuration for ESP32-Ethernet-Kit v1.2
+#
+# Source: ESP32-Ethernet-Kit v1.2 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-ethernet-kit/user_guide.html
+#
+# The Ethernet interface — the reason this board exists — has no
+# esp-board-manager device type; see the "Not modeled" section in
+# board_peripherals.yaml for the full IP101GRI pin record and why the omission
+# is harmless (every RMII signal is a fixed-function ESP32 pad).
+#
+devices:
+  # ---------- BOOT button (GPIO0, active-low, strapping) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button

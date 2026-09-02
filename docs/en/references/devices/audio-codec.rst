@@ -3,9 +3,16 @@ Audio Codec (audio_codec)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _audio-codec-intro:
+
+Introduction
+------------
+
 The ``audio_codec`` device describes audio playback, recording, and internal ADC audio input paths. When an external codec chip is used for playback or capture, the peripheral side requires at least one ``i2c`` control interface and one ``i2s`` data interface; a power amplifier GPIO is optional.
 
 A single logical ``audio_codec`` device must not enable both ``adc_enabled`` and ``dac_enabled`` at the same time. When one physical codec chip is required to operate in full-duplex, split it into two unidirectional devices in ``board_devices.yaml``, for example ``audio_dac`` and ``audio_adc``.
+
+.. _audio-codec-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -15,9 +22,11 @@ Supported Usage Modes
 - :ref:`Playback (DAC, dac_enabled: true) <audio-codec-dac>`
 - :ref:`Recording (ADC, adc_enabled: true) <audio-codec-adc>`
 - :ref:`Full-duplex (same physical codec chip) <audio-codec-full-duplex>`
-- :ref:`Recording and playback without external codec <audio-codec-internal>`
+- :ref:`Audio recording with the SoC internal ADC <audio-codec-internal>`
 - :ref:`PDM digital microphone <audio-codec-pdm>`
 - :ref:`PDM speaker <audio-codec-pdm-dac>`
+
+.. _audio-codec-min-config:
 
 Minimal Configuration
 ---------------------
@@ -26,6 +35,8 @@ Minimal Configuration
 
 Playback (DAC, ``dac_enabled: true``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`audio-codec-full-external`.
 
 Playback mode is for DAC output through an external codec. ``board_peripherals.yaml`` requires at least ``i2c`` and ``i2s`` output peripherals; when the board has a power amplifier control pin, an additional ``gpio`` peripheral is configured.
 
@@ -90,6 +101,8 @@ If the board has no PA control pin, do not configure ``gpio_pa_control`` and do 
 Recording (ADC, ``adc_enabled: true``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`audio-codec-full-external`.
+
 Recording mode is for ADC input through an external codec. ``board_peripherals.yaml`` may share the same ``i2c_master`` with playback; it is recommended to use a dedicated ``std-in`` peripheral name for I2S recording.
 
 ``board_peripherals.yaml``:
@@ -142,6 +155,8 @@ Recording mode is for ADC input through an external codec. ``board_peripherals.y
 Full-duplex (Same Physical Codec Chip)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`audio-codec-full-external`.
+
 Full-duplex mode is for a single physical codec chip that handles both playback and recording. In BMGR, two ``audio_codec`` logical devices are still configured, each enabling only DAC or ADC respectively; the I2C control interface may point to the same ``i2c_master``.
 
 ``board_devices.yaml``:
@@ -174,17 +189,14 @@ Full-duplex mode is for a single physical codec chip that handles both playback 
 
 .. _audio-codec-internal:
 
-Recording and Playback Without External Codec
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Audio Recording with the SoC Internal ADC
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When ``chip`` is set to ``internal``, ``audio_codec`` does not initialize an external codec chip via the ``esp_codec_dev`` driver. This applies to the following scenarios:
+See complete fields: :ref:`audio-codec-full-adc-reuse`.
+See complete fields: :ref:`audio-codec-full-adc-patterns`.
+See complete fields: :ref:`audio-codec-full-adc-single-unit`.
 
-- No external codec chip; audio signals go directly into the SoC's internal ADC or are transferred via the I2S interface.
-- A codec chip is present, but it works without I2C software configuration; audio data is read or written directly via the I2S interface.
-
-The key is to set ``chip`` to ``internal``, then configure the corresponding I2S or ADC peripheral according to the actual hardware interface.
-
-Internal ADC path: when the board already defines an ``adc`` peripheral, it can be referenced in the device's ``peripherals``; when the peripheral does not need to be reused, ``config.adc_local_cfg`` can let ``audio_codec`` create a device-local ADC continuous configuration.
+When ``chip`` is set to ``internal`` and ``adc_enabled`` is enabled, ``audio_codec`` does not initialize an external codec through ``esp_codec_dev``; it can use the SoC's internal ADC to capture audio. When the board already defines an ``adc`` peripheral, it can be referenced in the device's ``peripherals``; otherwise, ``config.adc_local_cfg`` can create a device-local ADC continuous configuration.
 
 Reusing an ``adc`` peripheral:
 
@@ -324,15 +336,21 @@ I2S PDM output can directly drive a PDM speaker or PDM amplifier without an exte
 
 If the speaker has a PA control pin, an additional ``gpio_pa_control`` peripheral (``type: gpio``) must be defined in ``board_peripherals.yaml``. Board references: ``boards/esp32_c3_lyra/board_peripherals.yaml``, ``boards/esp32_c3_lyra/board_devices.yaml``.
 
+.. _audio-codec-mode-notes:
+
 Mode Description
 ----------------
 
 Playback and recording are two mutually exclusive logical device directions. A playback device enables only ``dac_enabled``; a recording device enables only ``adc_enabled``. When a single physical codec requires full-duplex, configure two logical devices and reference the output and input I2S peripherals respectively.
 
-The external codec path uses I2S for audio data transfer and I2C for codec chip configuration. Setting ``chip`` to ``internal`` removes the dependency on the ``esp_codec_dev`` driver, which is suitable for boards with no external codec chip or where the codec requires no software configuration; audio data is read or written directly via the internal ADC or I2S peripheral, with the I2S ``format`` chosen according to the actual interface.
+The external codec path uses I2S for audio data transfer and I2C for codec chip configuration. Setting ``chip`` to ``internal`` skips external codec control-interface initialization, but still creates the data interface and ``esp_codec_dev`` handle. This is suitable for boards with no external codec chip or where the codec requires no software configuration; audio data uses the internal ADC or I2S peripheral, with the I2S ``format`` chosen according to the actual interface. Internal DAC paths use a dummy codec; when no PA GPIO is configured, ``esp_codec_dev`` ignores PA control operations.
+
+.. _audio-codec-full-fields:
 
 Full Field Reference
 --------------------
+
+.. _audio-codec-full-external:
 
 External Codec Chip
 ^^^^^^^^^^^^^^^^^^^
@@ -405,8 +423,10 @@ External Codec Chip
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
           frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
-Internal ADC Data Path: Reusing ADC Peripheral
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _audio-codec-full-adc-reuse:
+
+Reading Data with the SoC Internal ADC: Reusing ADC Peripheral
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml
 
@@ -432,8 +452,10 @@ Internal ADC Data Path: Reusing ADC Peripheral
         #   role: continuous
         - adc_name: adc_audio_in              # ADC peripheral name to be reused by dev_audio_codec
 
-Internal ADC Data Path: Local Single-Unit Configuration with Patterns
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _audio-codec-full-adc-patterns:
+
+Reading Data with the SoC Internal ADC: Local Pattern List (patterns) Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml
 
@@ -506,8 +528,10 @@ Internal ADC Data Path: Local Single-Unit Configuration with Patterns
               # - SOC_ADC_DIGI_MAX_BITWIDTH
               bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
 
-Internal ADC Data Path: Local Single-Unit Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _audio-codec-full-adc-single-unit:
+
+Reading Data with the SoC Internal ADC: Local Single-Unit Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml
 
@@ -536,10 +560,14 @@ Field sources:
 - YAML template: ``esp_board_manager/devices/dev_audio_codec/dev_audio_codec.yaml``.
 - Header file: ``esp_board_manager/devices/dev_audio_codec/dev_audio_codec.h``.
 
+.. _audio-codec-deps:
+
 Component Dependencies
 ----------------------
 
 ``audio_codec`` uses ``esp_codec_dev`` to provide the codec device abstraction. Only the chip model needs to be specified in the ``chip`` field of the board-level YAML.
+
+.. _audio-codec-peripherals:
 
 Required Peripherals
 --------------------
@@ -568,6 +596,8 @@ Required Peripherals
      - Used when internal ADC audio input is used and the peripheral is reused
      - Provides ADC continuous handle
 
+.. _audio-codec-code:
+
 Code Reference
 --------------
 
@@ -575,6 +605,8 @@ Code Reference
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
+
+.. _audio-codec-boards:
 
 Board-level Reference
 ---------------------
@@ -584,6 +616,8 @@ Board-level Reference
 - ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ES8311 playback and ES7210 recording configuration.
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: TDM I2S input/output configuration.
 
+.. _audio-codec-notes:
+
 Notes
 -----
 
@@ -592,8 +626,12 @@ Notes
 - When the board has no PA control pin, do not configure ``gpio_pa_control`` and do not include that peripheral in the device reference list.
 - After modifying the audio device or I2S peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _audio-codec-debug:
+
 Debugging Tips
 --------------
+
+.. _audio-codec-api:
 
 API Reference
 -------------

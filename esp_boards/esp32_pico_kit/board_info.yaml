@@ -1,0 +1,5 @@
+board: esp32_pico_kit
+chip: esp32
+version: 1.0.0
+description: "ESP32-PICO-KIT"
+manufacturer: "ESPRESSIF"

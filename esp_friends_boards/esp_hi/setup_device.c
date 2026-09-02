@@ -6,12 +6,18 @@
  */
 
 #include <string.h>
-#include "esp_lcd_ili9341.h"
+#include "esp_err.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
 
+#if __has_include(<esp_lcd_ili9341.h>)
+#define HAS_ILI9341  1
+#include "esp_lcd_ili9341.h"
+#endif  /* __has_include(<esp_lcd_ili9341.h>) */
+
 static const char *TAG = "ESP_HI_SKILL_SETUP";
 
+#if defined(HAS_ILI9341)
 static const ili9341_lcd_init_cmd_t s_vendor_init_cmds[] = {
     {0x11, NULL, 0, 120},
     {0xB1, (uint8_t[]) {0x05, 0x3A, 0x3A}, 3, 0},
@@ -32,15 +38,19 @@ static const ili9341_lcd_init_cmd_t s_vendor_init_cmds[] = {
     {0x29, NULL, 0, 0},
     {0x2C, NULL, 0, 0},
 };
+#endif  /* defined(HAS_ILI9341) */
 
+#if defined(HAS_ILI9341)
 static const ili9341_vendor_config_t s_vendor_config = {
     .init_cmds      = s_vendor_init_cmds,
     .init_cmds_size = sizeof(s_vendor_init_cmds) / sizeof(s_vendor_init_cmds[0]),
 };
+#endif  /* defined(HAS_ILI9341) */
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
-                                    const esp_lcd_panel_dev_config_t *panel_dev_config,
-                                    esp_lcd_panel_handle_t *ret_panel)
+#if defined(HAS_ILI9341)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                          const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                                          esp_lcd_panel_handle_t *ret_panel)
 {
     esp_lcd_panel_dev_config_t panel_dev_cfg = {0};
     memcpy(&panel_dev_cfg, panel_dev_config, sizeof(esp_lcd_panel_dev_config_t));
@@ -65,3 +75,4 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
 
     return ESP_OK;
 }
+#endif  /* defined(HAS_ILI9341) */

@@ -1,0 +1,184 @@
+# Devices Configuration for ESP32-Vaquita-DSPG v1.0
+#
+# Source: ESP32-Vaquita-DSPG v1.0 schematics
+#         (ESP32-VAQUITA-DSPG_V1.0_schematics.pdf) + ESP-VA-SDK
+#         components/audio_hal/audio_board/audio_board_vaquita_dspg
+# Reference: https://github.com/espressif/esp-va-sdk/blob/master/docs/en/hw-reference/esp32/user-guide-esp32-vaquita-dspg.md
+# Reference: https://dl.espressif.com/dl/schematics/ESP32-VAQUITA-DSPG_V1.0_schematics.pdf
+#
+# Only the ES8311 PLAYBACK half is modeled. The capture half of this board
+# belongs to the DBMD5P voice DSP, which owns the two PDM microphones and has
+# no esp-board-manager device type — its pins are recorded in the "Not
+# modeled" section of board_peripherals.yaml.
+#
+devices:
+  # Boot button. Schematic net: Boot_IO0 -> GPIO0 via R12.
+  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
+  # the I2S audio interface.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
+  # ---------- Audio: ES8311 DAC (speaker via HT8692 PA) ----------
+  - name: audio_dac
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: false
+    peripherals:
+      - pa_name: gpio_pa_control
+        gain: 21                 # dB. RESOLVED 2026-08-26 — WAS 6, which was
+                                 # wrong by ~15 dB. See derivation below.
+                                 #
+                                 # The HT8692 has NO gain pin. Its 16 pins are
+                                 # AGND/VBAT/MUCH/FB/LX/DGND/PVDD/OUT-/PGND/OUT+/
+                                 # IN+/IN-/ABD/CTRL; gain is set by the series
+                                 # input resistor. This board fits RIN = 100k 1%
+                                 # (R303/R304) with CIN 0.1uF (C273/C275) into a
+                                 # DIFFERENTIAL input (DAC_OUTP -> R303 -> PA_INL+,
+                                 # DAC_OUTN -> R304 -> PA_INL-), schematic p4.
+                                 #
+                                 # The 4-page abridged datasheet on heroic.com.cn
+                                 # (V1.2, 12/2015) genuinely has no Av spec — but a
+                                 # FULLER revision exists and was retrieved: the
+                                 # 18-page CN V1.0, 09/2014 (PDF title "Microsoft
+                                 # Word - HT8692_Datasheet_CN_V1.0.doc"), mirrored
+                                 # at szczkjgs.com/UploadFiles/fujian/3701/HT8692.pdf
+                                 # by distributor 深圳市永阜康科技. It carries the
+                                 # electrical-characteristics table AND the formula:
+                                 #   p14: "系统增益 Av ≈ 1200k/RIN （D 类模式）或
+                                 #         Av ≈ 600k/RIN （AB 类模式）"
+                                 #        (Av here is linear V/V, not dB)
+                                 #   p5:  "系统增益  Av0  RIN=56 kΩ   26   dB"  (Class D)
+                                 #   p6:  "系统增益  Av0  RIN=56 kΩ   20   dB"  (Class AB)
+                                 # The two agree: 1200k/56k = 21.4 V/V = 26.6 dB,
+                                 # spec'd 26; 600k/56k = 10.7 = 20.6 dB, spec'd 20.
+                                 #
+                                 # This board runs the part in CLASS D. Datasheet
+                                 # p16 表格 4: ABD 高电平 = "Class D, Boost ON",
+                                 # 低电平 = "Class AB, Boost OFF"; the schematic p4
+                                 # prints "ABD(Default High)" beside its own
+                                 # "Boost ON / Boost OFF" table and annotates the
+                                 # inductor path "Boost to 7V".
+                                 #
+                                 # So, at RIN = 100k, Class D, two ways:
+                                 #   spec-anchored: 26 dB + 20*log10(56/100)
+                                 #                = 26 - 5.04 = 21.0 dB
+                                 #   formula:       20*log10(1200k/100k) = 21.6 dB
+                                 # 21 is taken — anchored on the datasheet's own
+                                 # spec'd Av0 rather than on its "≈" formula, and
+                                 # the marginally safer of the two (see direction
+                                 # note below). The previously derived "~5 dB below
+                                 # the reference design" was correct as a RELATIVE
+                                 # figure; the error was composing it with 6, which
+                                 # is not an HT8692 number at all.
+                                 #
+                                 # Why 6 was wrong rather than merely unverified:
+                                 # 6 is the esp-board-manager house default — 10 of
+                                 # the 11 first-party board_devices.yaml files with
+                                 # a PA carry `gain: 6` across completely different
+                                 # amplifier parts. The one that does not is
+                                 # esp32_lyrat_mini_1_1, `gain: 20  # BOARD_PA_GAIN
+                                 # (dB)`, i.e. ESP-ADF's measured value for a real
+                                 # boosted speaker amp — the same order as 21, which
+                                 # is what a boost class-D actually has.
+                                 #
+                                 # What this field does, and which way an error
+                                 # hurts (verified in esp_codec_dev 1.6.2):
+                                 #   esp_codec_dev_vol.c:60
+                                 #     return 20 * log10(dac_voltage / pa_voltage)
+                                 #            + hw_gain->pa_gain;
+                                 #   device/es8311/es8311.c:359
+                                 #     db_value -= codec->hw_gain;
+                                 # so it is a volume-CALIBRATION offset: the codec
+                                 # attenuates by the PA's gain so a requested dB
+                                 # lands at the speaker. Too LOW is the dangerous
+                                 # direction — it under-attenuates and plays hotter
+                                 # than asked. At 6 the ES8311 was driven ~15.6 dB
+                                 # above where 21 puts it, i.e. this board was
+                                 # playing ~15 dB louder than the requested level
+                                 # and clipping early at the top of the range.
+                                 #
+                                 # Two caveats, neither affecting the value:
+                                 #  - Av0 is the un-attenuated gain. CTRL selects an
+                                 #    anti-clipping mode (ACF) that DYNAMICALLY cuts
+                                 #    gain by up to 16 dB on clipping (p16: "HT8692
+                                 #    的最大衰减增益为 16dB"). A static calibration
+                                 #    constant should be Av0 regardless, since ACF
+                                 #    only ever reduces gain below it.
+                                 #  - pa_voltage / codec_dac_voltage are NOT settable
+                                 #    from board YAML — dev_audio_codec.py:604 emits
+                                 #    only {'pa_gain': ...}, so esp_codec_dev's 5.0 V
+                                 #    / 3.3 V defaults apply even though PVDD here is
+                                 #    boosted to 7 V. That is a bmgr limitation, not
+                                 #    a board fact; it shifts the total by ~2.9 dB.
+                                 # Confirm on a bench when a unit is available.
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
+        address: 0x30            # ES8311 8-bit address with CE low (7-bit 0x18); 0x32 if CE is high
+        frequency: 100000
+
+  # ---------- HT8692 mute line ----------
+  # Schematic p4 labels U22 pin 3 MUCH(Default Low) and prints a truth table
+  # beside it giving H = Mute, L = AMP ON (paraphrase of the table, not one
+  # printed string). GPIO13 -> R314 0R -> net PA_MUTE -> R315 0R -> U22 pin 3 MUCH,
+  # with a 10k pull-down to AGND (so the part leaves reset UN-muted). Driving
+  # the pin HIGH therefore asserts mute, which is what this device does.
+  # NOTE esp-va-sdk never touches GPIO13 — it drives only the enable line — so
+  # the schematic is the sole, but direct, source.
+  - name: speaker_mute
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1            # HIGH = muted (schematic p4 truth table, MUCH)
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_pa_mute
+
+  # ---------- 5x WS2812 LED ring on the microphone sub-board ----------
+  - name: led_strip
+    chip: ws2812
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 27
+      max_leds: 5
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- Function buttons (resistor ladder on ADC1 CH3 / GPIO39) -------
+  # Nominal voltages are the reference firmware's button thresholds. Pressing
+  # both buttons together reads ~520 mV and is what that firmware treats as
+  # factory reset; it is a chord, not a third button, so it is not listed.
+  - name: adc_button_group
+    type: button
+    sub_type: adc_multi
+    config:
+      button_num: 2
+      voltage_range: [610, 1860]
+      button_labels: ["TAP_TO_TALK", "MIC_MUTE"]
+      max_voltage: 3000
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - adc_name: adc_button

@@ -1,0 +1,5 @@
+board: m5stack_atomu
+chip: esp32
+version: 1.0.0
+description: "ATOM U Development Kit (USB-A, PDM microphone)"
+manufacturer: "M5Stack"

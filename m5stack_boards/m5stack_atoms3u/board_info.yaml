@@ -1,0 +1,5 @@
+board: m5stack_atoms3u
+chip: esp32s3
+version: 1.0.0
+description: "AtomS3U Development Kit (USB-A, PDM microphone)"
+manufacturer: "M5Stack"

@@ -1,0 +1,141 @@
+# Peripherals Configuration for M5Stack Din Meter
+#
+# Source: M5Stack Din Meter official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/M5DinMeter
+#
+# Core: M5StampS3 module — ESP32-S3FN8, 8 MB in-package flash, no PSRAM.
+#
+# One internal I2C bus on GPIO11 (SDA) / GPIO12 (SCL) carries the BM8563 RTC
+# (7-bit 0x51).
+#
+# Power is latched by GPIO46: the firmware must drive it HIGH early or the
+# board switches itself off when the encoder button is released.
+#
+# The display and encoder wiring is the same family layout as the M5Dial.
+#
+peripherals:
+  # Internal I2C bus: BM8563 RTC
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 11
+        scl: 12
+
+  # ST7789V2 LCD bus. Write-only panel, so no MISO line is wired.
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 6
+        mosi_io_num: 5
+        miso_io_num: -1
+        max_transfer_sz: 6480   # 135 * 24 lines * 2 bytes
+
+  # LCD backlight (GPIO9, PWM dimmable)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 9
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # Passive buzzer (GPIO3). A passive buzzer is driven by a PWM tone, so the
+  # LEDC channel is the peripheral; there is no bmgr buzzer device type, and
+  # ledc_ctrl models a duty percentage rather than a frequency.
+  # The vendor pin table renders GPIO3 and GPIO42 in adjacent rows; M5Unified
+  # settles it: board_M5DinMeter sets spk_cfg.pin_data_out = GPIO_NUM_3 with
+  # spk_cfg.buzzer = true (M5Unified.cpp, _set_speaker branch), and reads the
+  # encoder button as !gpio_in(GPIO_NUM_42) (_update_button_state).
+  - name: ledc_buzzer
+    type: ledc
+    config:
+      gpio_num: 3
+      channel: LEDC_CHANNEL_1
+      timer_sel: LEDC_TIMER_1
+      freq_hz: 4000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # Rotary encoder, quadrature on GPIO41 (A) and GPIO40 (B).
+  # Both channels are counted so one detent is four counts and the direction
+  # is unambiguous. Each pin is therefore both an edge input on one channel
+  # and a level input on the other, which is the IDF rotary-decoder pattern —
+  # the generator's IO-conflict note about GPIO40/41 is expected here.
+  - name: pcnt_encoder
+    type: pcnt
+    config:
+      unit_config:
+        low_limit: -1000
+        high_limit: 1000
+        intr_priority: 0
+        flags:
+          accum_count: true
+          # No en_step_notify_up / en_step_notify_down here on purpose: those
+          # pcnt_unit_config_t fields exist only under SOC_PCNT_SUPPORT_STEP_NOTIFY,
+          # which the ESP32-S3 does not have, and bmgr's periph_pcnt generator emits
+          # the field whenever the key is PRESENT — even when false. Keeping them
+          # (both were false) breaks the build with
+          # "'struct <anonymous>' has no member named 'en_step_notify_up'".
+      filter_config:
+        max_glitch_ns: 1000
+      channel_count: 2
+      channel_list:
+        - channel: 0
+          channel_config:
+            edge_gpio_num: 41    # encoder A
+            level_gpio_num: 40   # encoder B
+          pos_act: PCNT_CHANNEL_EDGE_ACTION_DECREASE
+          neg_act: PCNT_CHANNEL_EDGE_ACTION_INCREASE
+          high_act: PCNT_CHANNEL_LEVEL_ACTION_KEEP
+          low_act: PCNT_CHANNEL_LEVEL_ACTION_INVERSE
+        - channel: 1
+          channel_config:
+            edge_gpio_num: 40    # encoder B
+            level_gpio_num: 41   # encoder A
+          pos_act: PCNT_CHANNEL_EDGE_ACTION_INCREASE
+          neg_act: PCNT_CHANNEL_EDGE_ACTION_DECREASE
+          high_act: PCNT_CHANNEL_LEVEL_ACTION_KEEP
+          low_act: PCNT_CHANNEL_LEVEL_ACTION_INVERSE
+      watch_point_count: 3
+      watch_point_list: [-1000, 0, 1000]
+
+  # Power latch (GPIO46). Must be driven HIGH to keep the board powered.
+  - name: gpio_power_hold
+    type: gpio
+    role: io
+    config:
+      pin: 46
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1
+
+  # Encoder push button, also the wake key (GPIO42, active-low)
+  - name: gpio_button_wake
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 42
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - BM8563 RTC (I2C 7-bit 0x51): no bmgr device type; the i2c_master
+  #   above is its bus
+  # - HY2.0-4P PORT.A (GPIO13 yellow / GPIO15 white) and PORT.B
+  #   (GPIO2 yellow / GPIO1 white), each with 5V and GND
+  # - 6-36 V DC screw terminal on the DIN-rail base, the on-board Li-Po
+  #   charger (100 mA) and the battery connector
+  # - RESET button (EN pin, handled in hardware)
+  # - USB Type-C is the ESP32-S3's native USB OTG / Serial-JTAG (console path)
+  # ----------------------------------------------------------------------

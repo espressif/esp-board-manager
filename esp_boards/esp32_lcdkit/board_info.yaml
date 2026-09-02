@@ -1,0 +1,5 @@
+board: esp32_lcdkit
+chip: esp32
+version: 1.0.0
+description: "ESP32-LCDKit (HMI carrier board, ESP32-DevKitC seated in the socket rows)"
+manufacturer: "ESPRESSIF"

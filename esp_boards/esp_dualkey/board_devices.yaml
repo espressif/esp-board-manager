@@ -1,0 +1,64 @@
+# Devices Configuration for ESP-DualKey
+#
+# Source: SCH-ESP-Dualkey-MainBoard-V1_2.pdf and the
+#         official ESP-DualKey BSP pin definitions
+# Reference: https://dl.espressif.com/AE/esp-dev-kits/SCH-ESP-Dualkey-MainBoard-V1_2.pdf
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp-dualkey/user_guide.html
+# Reference: https://github.com/espressif/esp-dev-kits/blob/master/examples/esp-dualkey/components/esp_dualkey/include/bsp/esp_dualkey.h
+#
+devices:
+  # ---------- WS2812 backlight power gate (GPIO40, active-low) ----------
+  - name: led_power
+    type: power_ctrl
+    sub_type: gpio
+    version: default
+    peripherals:
+      - gpio_name: gpio_power_ws2812
+        active_level: 0
+
+  # ---------- Two WS2812B-2020 key backlights (GPIO21, SPI backend) ----------
+  # The BSP drives the strip with led_strip_new_spi_device on SPI2_HOST.
+  - name: led_strip
+    chip: ws2812
+    type: led_strip
+    sub_type: spi
+    version: 1.0.0
+    power_ctrl_device: led_power
+    config:
+      strip_gpio_num: 21
+      max_leds: 2
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      spi:
+        clk_src: SPI_CLK_SRC_XTAL
+        spi_bus: SPI2_HOST
+        with_dma: true
+
+  # ---------- KEY 1 (GPIO0, active-low; also the Boot button) ----------
+  - name: key_1
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_key_1
+
+  # ---------- KEY 2 (GPIO17, active-low) ----------
+  - name: key_2
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_key_2

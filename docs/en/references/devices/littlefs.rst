@@ -3,6 +3,8 @@ LittleFS Filesystem (``littlefs``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _littlefs-intro:
+
 Overview
 --------
 
@@ -14,6 +16,8 @@ Overview
 - ``sdmmc``: initialize an SDMMC SD card and mount LittleFS on that card.
 - ``spi``: reuse a BMGR SPI master peripheral to initialize an SDSPI SD card and mount LittleFS on that card.
 
+.. _littlefs-usage-modes:
+
 Supported Usage Modes
 ---------------------
 
@@ -23,11 +27,17 @@ Supported Usage Modes
 - `SDMMC Card Mount`_
 - `SPI SD Card Mount`_
 
+.. _littlefs-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _littlefs-flash:
+
 Flash Partition Mount
 ^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`littlefs-flash-full`.
 
 The ``flash`` mode calls ``esp_vfs_littlefs_register`` to mount a flash partition; no new ``board_peripherals.yaml`` entry is required. The project partition table must provide a ``data`` type partition; ``partition_label`` must match the partition name in the partition table.
 
@@ -57,8 +67,12 @@ In this example, the first ``littlefs`` is the partition name, ``data`` is the p
             dont_mount: false
             grow_on_mount: false
 
+.. _littlefs-sdmmc:
+
 SDMMC Card Mount
 ^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`littlefs-sdmmc-full`.
 
 The ``sdmmc`` mode has BMGR initialize the SDMMC host and SD card handle, then passes the SD card handle to ``esp_vfs_littlefs_register``. This mode requires no new ``board_peripherals.yaml`` entry.
 
@@ -94,8 +108,12 @@ Both the SDMMC and SDSPI SD backends depend on the SD card support of the ``jolt
               cmd: -1
               d0: -1
 
+.. _littlefs-spi:
+
 SPI SD Card Mount
 ^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`littlefs-spi-full`.
 
 The ``spi`` mode reuses a SPI master peripheral already defined in ``board_peripherals.yaml`` and initializes an SDSPI SD card on that bus. The device-level ``peripherals`` must reference a ``spi`` peripheral whose ``role`` is ``master``.
 
@@ -127,8 +145,12 @@ Both the SDMMC and SDSPI SD backends depend on the SD card support of the ``jolt
         peripherals:
           - spi_name: spi_master
 
+.. _littlefs-full-fields:
+
 All Fields
 ----------
+
+.. _littlefs-flash-full:
 
 Flash Partition All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,6 +171,8 @@ Flash Partition All Fields
           read_only: false                    # Mount as read-only (default: false; cannot be used with format_if_mount_failed or grow_on_mount)
           dont_mount: false                   # Register the filesystem without mounting (default: false)
           grow_on_mount: false                # Grow filesystem to match partition size on mount (default: false; cannot be used with read_only)
+
+.. _littlefs-sdmmc-full:
 
 SDMMC Card All Fields
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -197,6 +221,8 @@ SDMMC Card All Fields
             wp: -1      # [IO] Write-protect pin (-1 if unused)
           ldo_chan_id: -1                     # On-chip LDO channel ID for SDMMC IO power (-1 when unused)
 
+.. _littlefs-spi-full:
+
 SPI SD Card All Fields
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -223,12 +249,16 @@ SPI SD Card All Fields
 
 In ``esp_vfs_littlefs_conf_t``, the ``partition``, ``sdcard``, and ``blockdev`` fields are runtime mount-source fields and cannot be written in YAML. BMGR sets the corresponding mount source during initialization according to ``sub_type``.
 
+.. _littlefs-deps:
+
 Component Dependencies
 ----------------------
 
 ``littlefs`` introduces ``joltwallet/littlefs`` (version ``7b72caff1de089598a9b5b0b15a7226b790f3c96``) via ``esp_board_manager/idf_component.yml`` when ``CONFIG_ESP_BOARD_DEV_LITTLEFS_SUPPORT`` is enabled. Board YAML does not need to re-declare ``dependencies`` for this common component.
 
 The SDMMC and SDSPI SD backends require ``CONFIG_LITTLEFS_SDMMC_SUPPORT`` to be enabled; otherwise the SD card support fields in ``esp_vfs_littlefs_conf_t`` and the related APIs are not compiled.
+
+.. _littlefs-peripherals:
 
 Required Peripherals
 --------------------
@@ -253,6 +283,8 @@ Required Peripherals
      - Required
      - Reuses the SPI master peripheral to initialize the SDSPI SD card
 
+.. _littlefs-code:
+
 Reference Code
 --------------
 
@@ -262,11 +294,15 @@ Reference Code
 - ``esp_board_manager/devices/dev_littlefs/dev_littlefs_sub_sdmmc.c``
 - ``esp_board_manager/devices/dev_littlefs/dev_littlefs_sub_spi.c``
 
+.. _littlefs-boards:
+
 Board Reference
 ---------------
 
 - ``esp_board_manager/test_apps/components/test_board_littlefs_flash/board_devices.yaml``: flash partition mount test configuration.
 - ``esp_board_manager/test_apps/partitions_test_app.csv``: the ``littlefs`` partition configuration in the test app.
+
+.. _littlefs-notes:
 
 Notes
 -----
@@ -278,12 +314,16 @@ Notes
 - ``format_if_mount_failed: true`` formats the target filesystem when mounting fails. In SD card modes, this operation erases the existing filesystem content on the card.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _littlefs-debug:
+
 Debugging Tips
 --------------
 
 - After SD card mode initialization succeeds, use ``sdmmc_card_print_info(stdout, handle->card)`` to print SD card information.
 - When the SD card first mounts existing FAT or unformatted media, a LittleFS mount failure is expected. With ``format_if_mount_failed`` enabled, the component formats the SD card.
 - In SDSPI mode, check the SPI master peripheral name, the CS GPIO, power control, and bus sharing with other SPI devices.
+
+.. _littlefs-api:
 
 API Reference
 -------------

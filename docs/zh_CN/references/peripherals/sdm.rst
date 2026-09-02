@@ -3,12 +3,16 @@ sdm
 
 :link_to_translation:`en:[English]`
 
+.. _sdm-intro:
+
 简介
 ------
 
 ``sdm`` 外设类型用于描述片上 Sigma Delta Modulation 输出通道。BMGR 据此生成 ``sdm_config_t``，并调用 ESP-IDF ``driver/sdm.h`` 创建 SDM channel。
 
 BMGR 仅负责创建并保存 SDM 通道句柄。应用获取 ``periph_sdm_handle_t`` 后，可调用 ESP-IDF SDM API 启用通道、设置 pulse density，并在结束时关闭通道。
+
+.. _sdm-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ BMGR 仅负责创建并保存 SDM 通道句柄。应用获取 ``periph_sdm_handl
 
 - `SDM 输出通道`_
 
+.. _sdm-min-config:
+
 最小配置
 ------------
 
+.. _sdm-channel:
+
 SDM 输出通道
 ^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`sdm-channel-full`。
 
 ``board_peripherals.yaml``：
 
@@ -37,6 +47,8 @@ SDM 输出通道
           invert_out: false
           io_loop_back: false
 
+.. _sdm-mode-notes:
+
 模式说明
 ------------
 
@@ -44,8 +56,12 @@ SDM 输出通道
 
 ``io_loop_back`` 和 ``allow_pd`` 是随 ESP-IDF 版本变化的 flags：IDF v5.x 生成 ``io_loop_back``，IDF v6.x 及之后生成 ``allow_pd``。在不支持的 ESP-IDF 版本中配置对应字段时，parser 会忽略该字段并打印 warning。
 
+.. _sdm-full-fields:
+
 完整字段
 ------------
+
+.. _sdm-channel-full:
 
 SDM 输出通道完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,6 +96,8 @@ SDM 输出通道完整字段
 - YAML 模板：``esp_board_manager/peripherals/periph_sdm/periph_sdm.yml``。
 - 头文件：``esp_board_manager/peripherals/periph_sdm/periph_sdm.h``。
 
+.. _sdm-devices:
+
 适用设备
 ------------
 
@@ -93,15 +111,21 @@ SDM 输出通道完整字段
      - 应用通过 ``esp_board_manager_get_periph_handle`` 获取 SDM 外设句柄
      - 当前仓库未提供引用 ``sdm`` 外设的 device 类型；pulse density 设置由应用或测试代码完成
 
+.. _sdm-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_sdm.c``
 
+.. _sdm-boards:
+
 板级参考
 ------------
 
 - ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``：``sdm`` 输出通道配置。
+
+.. _sdm-notes:
 
 注意事项
 ------------
@@ -112,8 +136,12 @@ SDM 输出通道完整字段
 - IDF v5.x 下 ``allow_pd`` 不会写入生成配置；IDF v6.x 及之后 ``io_loop_back`` 不会写入生成配置。
 - 修改 SDM 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _sdm-debug:
+
 调试技巧
 ------------
+
+.. _sdm-api:
 
 API 参考
 ----------

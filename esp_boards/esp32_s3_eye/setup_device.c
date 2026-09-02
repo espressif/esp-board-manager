@@ -1,0 +1,23 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "esp_err.h"
+#include "esp_lcd_panel_io.h"
+#include "esp_lcd_panel_ops.h"
+
+#if __has_include(<esp_lcd_panel_vendor.h>)
+#define HAS_ST7789  1
+#include "esp_lcd_panel_vendor.h"
+#endif  /* __has_include(<esp_lcd_panel_vendor.h>) */
+
+#if defined(HAS_ST7789)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                          const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                                          esp_lcd_panel_handle_t *ret_panel)
+{
+    return esp_lcd_new_panel_st7789(io, panel_dev_config, ret_panel);
+}
+#endif  /* defined(HAS_ST7789) */

@@ -46,6 +46,18 @@ peripherals:
       total_slot: 4
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2  # Override specific slot mask
 
+  # Boot button. Schematic net: ESP0_Boot_IO0 / ESP_IO0.
+  # GPIO0 is also the LCD SPI MOSI pin (spi_display.mosi_io_num). Do not use
+  # this button together with the LCD SPI interface.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
   # Power amplifier control
   - name: gpio_power_amp
     type: gpio

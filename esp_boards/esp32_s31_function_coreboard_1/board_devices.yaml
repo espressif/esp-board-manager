@@ -9,6 +9,20 @@
 # same I2C address (0x18 7-bit / 0x30 8-bit) and the same I2S port.
 #
 devices:
+  # ---------- BOOT button (GPIO61, active-low) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   # ---------- Audio: ES8311 DAC (loud-speaker out via NS4150B PA) ----------
   - name: audio_dac
     chip: es8311

@@ -1,0 +1,5 @@
+board: esp32_h2_devkitm_1
+chip: esp32h2
+version: 1.0.0
+description: "ESP32-H2-DevKitM-1"
+manufacturer: "ESPRESSIF"

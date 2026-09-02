@@ -1,0 +1,363 @@
+==========================
+ESP-SensairShuttle v1.0
+==========================
+
+:link_to_translation:`zh_CN:[中文]`
+
+.. note::
+
+  Please check the silkscreen version number on the mainboard (in the white circle at the top right corner of the front or back of the mainboard) to confirm your development board version. For v1.0 development boards, please refer to this user guide.
+
+This guide will help you get started with ESP-SensairShuttle quickly and provide detailed information about this development board.
+
+**ESP-SensairShuttle** is a development board jointly launched by Espressif and **Bosch Sensortec** for **motion sensing** and **large language model human-computer interaction** scenarios, dedicated to promoting the deep integration of multimodal sensing and intelligent interaction technologies. The platform covers typical application scenarios such as **AI toys, smart homes, sports health, and smart offices**, supporting a complete technical chain from environmental sensing, behavior understanding to intelligent feedback, providing a more natural, real-time, and intelligent interaction experience for next-generation intelligent terminals.
+
+ESP-SensairShuttle uses Espressif's **ESP32-C5-WROOM-1-N16R8** module as the main controller, featuring dual-band Wi-Fi 6 (802.11ax) at 2.4 & 5 GHz, Bluetooth® 5 (LE), Zigbee, and Thread (802.15.4) wireless communication capabilities. In addition, the mainboard provides rich peripheral interfaces, including `Bosch Sensortec Shuttle Board <https://www.digikey.sg/en/products/filter/evaluation-boards/expansion-boards-daughter-cards/797?s=N4IgjCBcoLQdIDGUBmBDANgZwKYBoQB7KAbRAA4AmckAXQF96DLSQsALAVwBduMcABACNCaAE4ATAQGYAdAAY6BAKxRQAByhgC6zZErLGQA>`_ (only supports shuttle board 3.0 version) interface, **microphone and speaker interfaces**, and **battery power interface**. Users can flexibly achieve multi-dimensional sensing such as **air quality, gesture actions, attitude direction, and magnetic field information** by replacing different Shuttle sensor daughterboards (Espressif officially supports **BME690** and **BMI270 & BMM350** daughterboards), suitable for teaching demonstrations, algorithm verification, and multi-scenario prototype development.
+
+In terms of audio, ESP-SensairShuttle supports external microphones and speakers, which can seamlessly connect to various **large language models** to achieve natural and smooth AI voice interaction capabilities, suitable for voice interaction products that require large model empowerment such as **AI toys, smart speakers, and smart control panels**.
+
+This guide includes the following content:
+
+- `Getting Started`_: Briefly introduces the development board and hardware and software setup guides.
+- `Hardware Reference`_: Details the hardware of the development board.
+- `Hardware Revision History`_: Introduces hardware revision history and known issues (if any).
+- `Related Documents`_: Lists links to related documents.
+- `Disclaimer and Copyright Notice`_: Link to the disclaimer and copyright notice.
+
+.. note::
+
+  For instructions on using the factory firmware, please refer to `ESP-SensairShuttle User Guide <https://espressif.craft.me/JUsLZQOVMBoNdU>`_.
+
+
+.. _Getting-started_esp-sensairshuttle:
+
+Getting Started
+===============
+
+This section will briefly introduce ESP-SensairShuttle and explain how to flash firmware on ESP-SensairShuttle and related preparation work.
+
+Component Overview
+------------------
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-front.png
+   :alt: SensairShuttle-Mainboard PCB Front View (Click to enlarge)
+   :scale: 70%
+   :figclass: align-center
+
+   SensairShuttle-Mainboard PCB Front View (Click to enlarge)
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-bme690-front.png
+   :alt: ShuttleBoard-BME690 PCB Front View (Click to enlarge)
+   :scale: 60%
+   :figclass: align-center
+
+   ShuttleBoard-BME690 PCB Front View (Click to enlarge)
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-bmi270&bmm350-front.png
+   :alt: ShuttleBoard-BMI270&BMM350 PCB Front View (Click to enlarge)
+   :scale: 60%
+   :figclass: align-center
+
+   ShuttleBoard-BMI270&BMM350 PCB Front View (Click to enlarge)
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-lcd.png
+   :alt: ESP-SensairShuttle LCD Screen Photo (Click to enlarge)
+   :scale: 60%
+   :figclass: align-center
+
+   ESP-SensairShuttle LCD Screen Photo (Click to enlarge)
+
+The main components on the front PCB are introduced in clockwise order below.
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Main Component
+     - Description
+   * - :strong:`MainBoard`
+     -
+   * - External Pin Interface
+     - 4-pin external pin interface, from top to bottom: GPIO5, GPIO4, VDD, GND. Note: GPIO5 is not available by default. To use it, please install the R14 resistor.
+   * - I2C Interface (External I2C Interface)
+     - 4-pin external I2C interface that can connect to devices supporting I2C protocol communication.
+   * - RGB Interface (External RGB Strip Interface)
+     - 3-pin external RGB strip interface that can connect to WS2812 and other RGB strips.
+   * - ESP32-C5-WROOM-1-N16R8
+     - Main control module, integrated with 16 MB Flash and 8 MB PSRAM, featuring dual-band Wi-Fi 6 (802.11ax) at 2.4 & 5 GHz, Bluetooth® 5 (LE), Zigbee, and Thread (802.15.4) wireless communication capabilities.
+   * - LCD Connector
+     - Used to connect LCD screen with a resolution of 240(H) x 284(V).
+   * - Boot Button
+     - Used to manually enter download mode, can also be used as a regular function button.
+   * - Power Indicator LED
+     - Used to indicate device power status. For indicator status details, please refer to the `Power Options`_ section.
+   * - Power Switch
+     - Used to control device power on/off. Click the power switch to toggle the power state.
+   * - :strong:`ShuttleBoard-BME690`
+     -
+   * - BME690 Sensor
+     - Bosch BME690 gas sensor that can detect air quality, including temperature, humidity, pressure, and gas resistance, supporting I2C and SPI protocol communication.
+   * - :strong:`ShuttleBoard-BMI270&BMM350`
+     -
+   * - BMI270 Sensor
+     - Bosch BMI270 inertial measurement unit that can detect three-axis acceleration and three-axis angular velocity, supporting I2C and SPI protocol communication.
+   * - BMM350 Sensor
+     - Bosch BMM350 magnetometer that can detect three-axis magnetic field strength, supporting I2C protocol communication.
+   * - LCD Screen
+     - Matching LCD screen, model ST7789P3, size 1.83 inches, resolution 240(H) x 284(V), using 4-line SPI interface communication. The screen is connected to the mainboard through the LCD connector, and supports power control via GPIO5 (PWR_CTRL).
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-back.png
+   :alt: SensairShuttle-Mainboard PCB Back View (Click to enlarge)
+   :scale: 70%
+   :figclass: align-center
+
+   SensairShuttle-Mainboard PCB Back View (Click to enlarge)
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-bme690-back.png
+   :alt: ShuttleBoard-BME690 PCB Back View (Click to enlarge)
+   :scale: 70%
+   :figclass: align-center
+
+   ShuttleBoard-BME690 PCB Back View (Click to enlarge)
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-bmi270&bmm350-back.png
+   :alt: ShuttleBoard-BMI270&BMM350 PCB Back View (Click to enlarge)
+   :scale: 70%
+   :figclass: align-center
+
+   ShuttleBoard-BMI270&BMM350 PCB Back View (Click to enlarge)
+
+The main components on the back PCB are introduced in clockwise order below.
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Main Component
+     - Description
+   * - :strong:`MainBoard`
+     -
+   * - Battery Connector
+     - Battery connector that can connect to an external 3.7V lithium battery, using HC-1.25-2P wire-to-board connector.
+   * - Mic Connector
+     - 2-wire microphone connector that can connect to an external analog microphone, using HC-1.25-2P wire-to-board connector.
+   * - Shuttle Board Connector
+     - 9+7 pin 1.27mm female header connector that can connect to ShuttleBoard-BME690, ShuttleBoard-BMI270&BMM350 and other sensor daughterboards.
+   * - Speaker Connector
+     - 2-wire speaker connector that can connect to an external speaker, using HC-1.25-2P wire-to-board connector.
+   * - Type-C Port (USB-C Interface)
+     - USB-C interface for power supply, program flashing, and debugging, supporting lithium battery charging.
+   * - :strong:`ShuttleBoard-BME690`
+     - Pin definitions for the sensor daughterboard are marked in the figure.
+   * - :strong:`ShuttleBoard-BMI270&BMM350`
+     - Pin definitions for the sensor daughterboard are marked in the figure.
+
+Application Examples
+--------------------
+
+The following are application examples for the development board:
+
+- `ESP-SensairShuttle Factory Demo <https://github.com/espressif/esp-dev-kits/tree/master/examples/esp-sensairshuttle/examples/factory_demo>`__ - A full-featured demo system based on the ESP-Brookesia framework, showcasing an app-based UI management system and multiple demo applications (e.g., compass, temperature & air quality monitoring, gesture recognition).
+
+For more examples and the latest updates, please refer to the `examples <https://github.com/espressif/esp-dev-kits/tree/master/examples/esp-sensairshuttle>`__ folder.
+
+To try the examples or develop custom applications, please follow the steps in the `Start Development`_ section.
+
+Start Development
+-----------------
+
+Before powering on, please ensure that ESP-SensairShuttle is intact.
+
+Required Hardware
+~~~~~~~~~~~~~~~~~
+
+- ESP-SensairShuttle mainboard, ShuttleBoard-BME690 daughterboard, ShuttleBoard-BMI270&BMM350 daughterboard, LCD screen
+- USB cable
+- Computer (Windows, Linux, or macOS)
+
+.. note::
+
+  Please ensure you use an appropriate USB cable. Some cables can only be used for charging and cannot be used for data transmission and programming.
+
+Hardware Setup
+~~~~~~~~~~~~~~
+
+LCD Screen Cable Installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Before starting to use the development board, please follow the steps below to install the LCD screen cable:
+
+1. **Confirm Cable Orientation**: Place the LCD screen cable with the gold fingers facing up, ensuring the cable orientation is correct (the pin number [18] on the screen cable should correspond to the pin number [18] on the PCB).
+
+2. **Insert Cable**: First, release the black lock of the LCD connector, then insert the screen cable into the LCD connector on the mainboard. When inserting, ensure the screen cable is aligned with the connector. You can use **tweezers** to assist if it is inconvenient to install by hand.
+
+3. **Lock Connector**: Lock the black lock of the LCD connector to ensure the screen cable is securely connected.
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-lcd-cable-installation.png
+   :alt: LCD Screen Cable Installation Diagram (Click to enlarge)
+   :scale: 60%
+   :figclass: align-center
+
+   LCD Screen Cable Installation Diagram (Click to enlarge)
+
+.. warning::
+
+   - Do not use excessive force when installing the cable to avoid damaging the cable or connector.
+   - Ensure the cable orientation is correct. An incorrect orientation will cause the screen not to light up.
+   - If you need to remove the cable, first unlock the connector, then gently pull it out. Avoid directly pulling the cable.
+
+USB Connection
+^^^^^^^^^^^^^^
+
+Connect ESP-SensairShuttle to your computer using a USB cable, and flash firmware, debug, and power supply through the ``Type-C (USB-C Interface)``.
+
+Software Setup
+~~~~~~~~~~~~~~
+
+Please visit the `ESP-IDF Getting Started <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c5/get-started/index.html>`__ section to learn how to quickly set up the development environment and flash applications to your development board.
+
+.. note::
+
+  The development board uses a USB port to communicate with the computer. Most operating systems (Windows, Linux, macOS) have the required drivers pre-installed, and the development board can be automatically recognized after insertion. If the device cannot be recognized or a serial connection cannot be established, please refer to `Establish Serial Connection <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c5/get-started/establish-serial-connection.html>`__ for detailed steps on installing drivers.
+
+Hardware Reference
+==================
+
+Function Block Diagram
+----------------------
+
+The main components and connection methods of ESP-SensairShuttle are shown in the figure below.
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-sch-function-block_v1_0.png
+   :alt: ESP-SensairShuttle Function Block Diagram (Click to enlarge)
+   :scale: 32%
+   :figclass: align-center
+
+   ESP-SensairShuttle Function Block Diagram (Click to enlarge)
+
+Power Options
+-------------
+
+The development board can be powered by the following methods:
+
+1. Power via ``Type-C (USB-C Interface)``
+
+   When using this method, connect the Type-C interface on the device using a USB Type-C cable.
+   If no lithium battery is installed, the power indicator LED will be green. If a lithium battery is installed, press the ``POWER`` button to turn on the device. At this time, the power indicator LED will be yellow (battery is charging) or green (battery is fully charged).
+
+2. Power via ``Battery``
+
+   The device can connect to an external 3.7V lithium battery. Press the ``POWER`` button to power the device. The power indicator LED will be green when the device is on, and off when the device is off.
+
+Type-C Interface
+-----------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-type-c-v1_0.png
+   :alt: Type-C Interface Circuit Diagram (Click to enlarge)
+   :scale: 50%
+   :figclass: align-center
+
+   Type-C Interface Circuit Diagram (Click to enlarge)
+
+LCD Interface
+-------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-lcd-v1_0.png
+   :alt: LCD Interface Circuit Diagram (Click to enlarge)
+   :scale: 50%
+   :figclass: align-center
+
+   LCD Interface Circuit Diagram (Click to enlarge)
+
+The X1 interface is the LCD screen interface in use. The matching LCD screen specifications for this development board are as follows:
+
+- **Screen Size**: 1.83 inches
+- **Resolution**: 240(H) x 284(V)
+- **Driver Chip**: ST7789P3
+- **Communication Interface**: 4-line SPI Interface
+- **Power Control**: Supports controlling screen power on/off via ``PWR_CTRL`` (GPIO5)
+
+For more detailed information, please refer to the `Display Specification <esp_sensairshuttle-Display Specification>`_.
+
+Power Switch Circuit
+-------------------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-powerswitch-v1_0.png
+   :alt: Power Switch Circuit Diagram (Click to enlarge)
+   :scale: 40%
+   :figclass: align-center
+
+   Power Switch Circuit Diagram (Click to enlarge)
+
+Battery Charging Circuit
+-----------------------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-battery-charge-v1_0.png
+   :alt: Battery Charging Circuit Diagram (Click to enlarge)
+   :scale: 50%
+   :figclass: align-center
+
+   Battery Charging Circuit Diagram (Click to enlarge)
+
+Shuttle Board Interface Circuit
+-------------------------------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-shuttle-board-connector-v1_0.png
+   :alt: Shuttle Board Interface Circuit Diagram (Click to enlarge)
+   :scale: 50%
+   :figclass: align-center
+
+   Shuttle Board Interface Circuit Diagram (Click to enlarge)
+
+I2C/RGB/External Pin Interface
+-----------------------------------
+
+.. figure:: ../../../_static/boards/esp_sensairshuttle/esp-sensairshuttle-mainboard-sch-external-interface-v1_0.png
+   :alt: I2C/RGB/External Pin Interface Circuit Diagram (Click to enlarge)
+   :scale: 45%
+   :figclass: align-center
+
+   I2C/RGB/External Pin Interface Circuit Diagram (Click to enlarge)
+
+Hardware Revision History
+==============================
+
+No revision history.
+
+.. _Related-documents_esp-sensairshuttle:
+
+Related Documents
+=====================
+
+-  `ESP32-C5 Datasheet <esp_sensairshuttle-ESP32-C5 Datasheet>`_ (PDF)
+-  `ESP32-C5-WROOM-1 & ESP32-C5-WROOM-1U Datasheet <esp_sensairshuttle-ESP32-C5-WROOM-1 & ESP32-C5-WROOM-1U Datasheet>`_ (PDF)
+-  `Espressif Product Selector`_
+-  `ESP-SensairShuttle-Mainboard V1.0 Schematic`_ (PDF)
+-  `ESP-SensairShuttle-Mainboard V1.0 PCB Layout`_ (PDF)
+-  `ESP-SensairShuttle-ShuttleBoard-BME690 V1.0 Schematic`_ (PDF)
+-  `ESP-SensairShuttle-ShuttleBoard-BME690 V1.0 PCB Layout`_ (PDF)
+-  `ESP-SensairShuttle-ShuttleBoard-BMI270&BMM350 V1.0 Schematic`_ (PDF)
+-  `ESP-SensairShuttle-ShuttleBoard-BMI270&BMM350 V1.0 PCB Layout`_ (PDF)
+-  `Display Specification <esp_sensairshuttle-Display Specification>`_ (PDF)
+-  `Gas Sensor BME690 Official Data Sheet`_
+-  `Inertial Measurement Unit BMI270 Official Data Sheet`_
+-  `Magnetometer BMM350 Official Data Sheet`_
+
+.. _esp_sensairshuttle-ESP32-C5 Datasheet: https://documentation.espressif.com/esp32-c5_datasheet_en.pdf
+.. _esp_sensairshuttle-ESP32-C5-WROOM-1 & ESP32-C5-WROOM-1U Datasheet: https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html
+.. _Espressif Product Selector: https://products.espressif.com/#/product-selector?names=
+.. _ESP-SensairShuttle-Mainboard V1.0 Schematic: https://dl.espressif.com/AE/esp-dev-kits/SCH_SCH-ESP-SensairShuttle-MainBoard-V1_0_2025-12-16.pdf
+.. _ESP-SensairShuttle-Mainboard V1.0 PCB Layout: https://dl.espressif.com/AE/esp-dev-kits/PCB_PCB-ESP-SensairShuttle-MainBoard-V1_0_2025-12-16.pdf
+.. _ESP-SensairShuttle-ShuttleBoard-BME690 V1.0 Schematic: https://dl.espressif.com/AE/esp-dev-kits/SCH_SCH-ShuttleBoard-BME690-V1_0_2025-12-16.pdf
+.. _ESP-SensairShuttle-ShuttleBoard-BME690 V1.0 PCB Layout: https://dl.espressif.com/AE/esp-dev-kits/PCB_PCB-ShuttleBoard-BME690-V1_0_2025-12-16.pdf
+.. _ESP-SensairShuttle-ShuttleBoard-BMI270&BMM350 V1.0 Schematic: https://dl.espressif.com/AE/esp-dev-kits/SCH_SCH-ShuttleBoard-BMI270&BMM350-V1_1_2025-12-16.pdf
+.. _ESP-SensairShuttle-ShuttleBoard-BMI270&BMM350 V1.0 PCB Layout: https://dl.espressif.com/AE/esp-dev-kits/PCB_PCB-ShuttleBoard-BMI270&BMM350-V1_1_2025-12-16.pdf
+.. _esp_sensairshuttle-Display Specification: https://dl.espressif.com/AE/esp-dev-kits/1.83-inch-LCD-P183B001-V4-CTP.pdf
+.. _Gas Sensor BME690 Official Data Sheet: https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme690/
+.. _Inertial Measurement Unit BMI270 Official Data Sheet: https://www.bosch-sensortec.com/products/motion-sensors/imus/bmi270/
+.. _Magnetometer BMM350 Official Data Sheet: https://www.bosch-sensortec.com/products/motion-sensors/magnetometers/bmm350/
+
+Disclaimer and Copyright Notice
+===============================
+
+See `Disclaimer and Copyright Notice <https://docs.espressif.com/projects/esp-adf/en/latest/disclaimer-and-copyright.html>`__.
+

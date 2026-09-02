@@ -66,6 +66,13 @@ function(get_device_sources sources includes)
         bmgr_append_component_file(srcs incs "${devices_dir}" "dev_ledc_ctrl" "dev_ledc_ctrl.c")
     endif()
 
+    if(CONFIG_ESP_BOARD_DEV_KNOB_SUPPORT)
+        bmgr_append_component_file(srcs incs "${devices_dir}" "dev_knob" "dev_knob.c")
+        if(CONFIG_ESP_BOARD_DEV_KNOB_SUB_GPIO_SUPPORT)
+            bmgr_append_component_file(srcs incs "${devices_dir}" "dev_knob" "dev_knob_sub_gpio.c")
+        endif()
+    endif()
+
     if(CONFIG_ESP_BOARD_DEV_LED_STRIP_SUPPORT)
         bmgr_append_component_file(srcs incs "${devices_dir}" "dev_led_strip" "dev_led_strip.c")
         if(CONFIG_ESP_BOARD_DEV_LED_STRIP_SUB_RMT_SUPPORT)

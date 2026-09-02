@@ -1,0 +1,39 @@
+# Devices Configuration for M5Stamp C3
+#
+# Source: M5Stamp C3 documentation
+# Reference: https://docs.m5stack.com/en/core/stamp_c3
+#
+devices:
+  # ---------- On-board SK6812 addressable RGB LED ----------
+  # GPIO2 is also an ESP32-C3 strapping pin; it is sampled at reset only,
+  # so driving the LED after boot is safe.
+  - name: led_strip
+    chip: sk6812
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 2
+      max_leds: 1
+      led_model: LED_MODEL_SK6812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- User button (GPIO3, active-low) ----------
+  - name: user_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_user_button

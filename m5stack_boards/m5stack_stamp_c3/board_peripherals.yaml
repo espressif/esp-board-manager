@@ -1,0 +1,35 @@
+# Peripherals Configuration for M5Stamp C3
+#
+# Source: M5Stamp C3 documentation
+# Reference: https://docs.m5stack.com/en/core/stamp_c3
+#
+# Module: chip-down ESP32-C3 with 4 MB SPI flash, no PSRAM.
+# On-board hardware is minimal: an SK6812 RGB LED on GPIO2 (owned by the
+# led_strip device, so not declared here) and the user button on GPIO3.
+#
+# The USB Type-C port goes to a CH9102 USB-to-UART bridge on UART0, NOT to
+# the C3's native USB Serial/JTAG (that is the difference from the C3U);
+# GPIO18 / GPIO19 are therefore free as ordinary IO on this variant.
+#
+peripherals:
+  # User button (GPIO3, active-low). GPIO3 has a usable internal pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 3
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - CH9102 USB-to-UART bridge on UART0 (GPIO20 RX / GPIO21 TX): console
+  #   path, not an application device
+  # - Grove HY2.0-4P port (GPIO1 / GPIO0 plus 5V and GND)
+  # - Castellated pads GPIO4 / GPIO5 / GPIO6 / GPIO7 / GPIO8 / GPIO9 /
+  #   GPIO10 / GPIO18 / GPIO19
+  # - GPIO2, GPIO8 and GPIO9 are strapping pins on the ESP32-C3
+  # - RESET button (EN pin, handled in hardware)
+  # ----------------------------------------------------------------------

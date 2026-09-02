@@ -276,6 +276,20 @@ config ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT
         This option enables the gpio_expander device driver.
         The driver is located at: devices/dev_gpio_expander
 
+config ESP_BOARD_DEV_KNOB_SUPPORT
+    bool "Device 'knob' support"
+    help
+        Enable knob device support.
+        This option enables the knob device driver.
+        The driver is located at: devices/dev_knob
+
+config ESP_BOARD_DEV_KNOB_SUB_GPIO_SUPPORT
+    bool "Device 'knob' gpio sub-type support"
+    depends on ESP_BOARD_DEV_KNOB_SUPPORT
+    help
+        Enable knob gpio sub-type support.
+        This option enables the knob gpio sub-type driver.
+
 config ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
     bool "Device 'lcd_touch' support"
     help

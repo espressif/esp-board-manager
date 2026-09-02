@@ -1,0 +1,22 @@
+# ESP32-Ethernet-Kit v1.2 — ESP32-WROVER-E module:
+# 4 MB SPI flash, 8 MB (64 Mbit) in-package PSRAM
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
+# 4 MB flash + 8 MB PSRAM = ESP32-WROVER-E-N4R8. The pair is published on the
+# product page (https://www.espressif.com/en/dev-board/esp32-ethernet-kit-en:
+# "4 MB Flash", "8 MB PSRAM") and the user guide states the PSRAM directly
+# ("This ESP32 module features 64-Mbit PSRAM"). NOT in the user guide's text
+# and NOT in the schematic, which labels U4 only "ESP32-WROVER-E" with no SKU
+# suffix (SCH_ESP32-Ethernet-Kit_A_V1.2_20200528.pdf).
+# ESP32-WROVER-E/IE Datasheet v2.4, Table 1: "ESP32-WROVER-E-N4R8 | 4 MB
+# (Quad SPI) | 8 MB (Quad SPI)" — that row is the only 4 MB / 8 MB SKU, and it
+# is what CONFIG_SPIRAM_MODE_QUAD below rests on (only R8 is quad here; every
+# 2 MB WROVER-E variant is EOL).
+# https://documentation.espressif.com/esp32-wrover-e_esp32-wrover-ie_datasheet_en.pdf
+# 40 MHz is a conservative choice, not a limit: the datasheet's only figure is
+# FC max 80 MHz (Tables 17/18). QIO/DIO is an ESP-IDF setting, never stated.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_40M=y

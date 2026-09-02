@@ -1,0 +1,39 @@
+# Devices Configuration for the ESP32-Sense-Kit mainboard
+#
+# Source: ESP32-Sense-Kit mainboard schematic
+#         (SCH_ESP32-Sense-Series-MainBoard.pdf) + ESP-IoT-Solution
+#         examples/touch_pad_evb
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-sense-kit/user_guide.html
+#
+# The kit's touch pads, its CH455G segment display and the daughterboard-ID
+# divider all lack an esp-board-manager device type; see the "Not modeled"
+# section in board_peripherals.yaml, which carries the T0-T9 channel map and
+# the CH455G command/address scheme. What remains modelable is the RGB
+# indicator LED, dimmed on three LEDC channels the way the kit's own firmware
+# drives it.
+#
+devices:
+  # ---------- RGB indicator LED: one ledc_ctrl per colour ----------
+  - name: led_red
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_led_red
+
+  - name: led_green
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_led_green
+
+  - name: led_blue
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_led_blue

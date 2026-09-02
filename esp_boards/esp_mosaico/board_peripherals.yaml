@@ -1,0 +1,141 @@
+# Peripherals Configuration for ESP-Mosaico
+#
+# Source: ESP-Mosaico user guide (esp-dev-kits)
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s31/esp-mosaico/user_guide.html
+# Reference: https://dl.espressif.com/AE/SCH_SCH_ESP-Mosaico_CoreBoard_V1_0_2026-08-18.pdf
+#
+# Module: ESP32-S31NRV16 (16 MB in-package PSRAM), 16 MB SPI NOR flash
+# plus 1 Gbit SPI NAND on board.
+#
+# Shared I2C0 bus on GPIO0 (SDA) / GPIO1 (SCL) carries: CST9220 touch (0x5A),
+# ES8311 codec (0x19), BMI270 IMU (0x69), 2x BMM150 magnetometer (0x11/0x12),
+# BQ27220 fuel gauge (0x55), and the module-slot EEPROMs
+# (address-select GPIO14 on slot H2, GPIO39 on slot H1).
+#
+# Right module-slot pins GPIO37/40/49/52/54 are muxed with the on-board I2S
+# codec — free for modules only when codec audio is unused.
+#
+peripherals:
+  # Shared control bus (touch, codec, IMU, magnetometers, fuel gauge)
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 0
+        scl: 1
+
+  # CO5300 AMOLED panel, QSPI (4 data lines) on SPI2
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 44
+        mosi_io_num: 36      # QSPI D0
+        miso_io_num: 51      # QSPI D1
+        quadwp_io_num: 35    # QSPI D2
+        quadhd_io_num: 9     # QSPI D3
+        max_transfer_sz: 9600   # width * 2 * 10
+
+  # ES8311 audio I2S (full-duplex on a single I2S port)
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: tdm-out
+    config: &i2s_config
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_STEREO
+      ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
+      pins:
+        mclk: 54
+        bclk: 37
+        ws:   49
+        dout: 40
+        din:  52
+
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: tdm-in
+    config:
+      <<: *i2s_config
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
+
+  # NS4150B PA enable (active-high)
+  - name: gpio_pa_control
+    type: gpio
+    role: io
+    config:
+      pin: 45
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0      # mute by default; raised by codec PA path
+
+  # ES8311 codec 3V3 power gate
+  - name: gpio_power_audio
+    type: gpio
+    role: io
+    config:
+      pin: 56
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Orange status LED (active-low)
+  - name: gpio_status_led
+    type: gpio
+    role: io
+    config:
+      pin: 3
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1      # off (active-low)
+
+  # Vibration motor driver
+  - name: gpio_vibration_motor
+    type: gpio
+    role: io
+    config:
+      pin: 8
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # AI button (front, active-low)
+  - name: gpio_ai_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 7
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Boot button. Schematic net: BOOT GPIO_61.
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 61
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - BMI270 IMU, 2x BMM150 magnetometer, BQ27220 fuel gauge: I2C devices
+  #   with no bmgr device type; the shared i2c_master above is their bus
+  # - 1 Gbit SPI NAND (secondary storage)
+  # - Magnetic module slots H1/H2 (2x10 pads each) and their EEPROMs
+  # - POWER switch (GPIO57, power-management path, not a plain application GPIO)
+  # - USB Type-C (USB Serial/JTAG / OTG), Li-ion charger
+  # - Strapping GPIO60 is not exposed on the slots
+  # ----------------------------------------------------------------------

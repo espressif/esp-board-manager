@@ -1,0 +1,5 @@
+board: m5stack_atoms3_lite
+chip: esp32s3
+version: 1.0.0
+description: "AtomS3-Lite Development Kit"
+manufacturer: "M5Stack"

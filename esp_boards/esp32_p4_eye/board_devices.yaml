@@ -8,6 +8,7 @@ devices:
       - gpio_name: gpio_sd_power
         active_level: 0
 
+  # GPIO12 is the shared LCD_EN/CAMERA_EN rail on P4-EYE.
   - name: mic_power_ctrl
     type: power_ctrl
     sub_type: gpio
@@ -58,6 +59,7 @@ devices:
     type: display_lcd
     sub_type: spi
     version: default
+    power_ctrl_device: mic_power_ctrl
     config:
       mirror_x: false
       mirror_y: false
@@ -141,6 +143,43 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_button_3
+
+  # Boot button. Schematic net: GPIO35_BOOT.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
+  - name: knob
+    type: knob
+    sub_type: gpio
+    config:
+      gpio_encoder_a: 48
+      gpio_encoder_b: 47
+      default_direction: 0
+      enable_power_save: false
+      use_rtc: false
+
+  - name: knob_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_encoder_press
 
   - name: flashlight
     chip: gpio_led

@@ -32,12 +32,13 @@ BMGR 的优势：
 - ESP-IDF ``master``。
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :hidden:
 
    overview/index
    tools/index
    create-board/index
+   references/boards/index
    references/index
    programming-guide/index
    migration/index

@@ -3,12 +3,16 @@ dsi
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _dsi-intro:
+
 Overview
 --------
 
 The ``dsi`` peripheral type describes MIPI DSI bus resources. BMGR uses this configuration to create an ``esp_lcd_dsi_bus_handle_t``, which is referenced by the ``dsi`` sub-type of a ``display_lcd`` device.
 
 This peripheral describes only the DSI bus itself, such as bus ID, number of data lanes, PHY clock source, and per-lane bit rate. Panel reset, DBI and DPI parameters, pixel format, resolution, and timing belong to the ``display_lcd`` device configuration and must not be written into the ``dsi`` peripheral ``config``.
+
+.. _dsi-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -17,11 +21,17 @@ Supported Operating Modes
 
 - `DSI Bus`_
 
+.. _dsi-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _dsi-bus:
+
 DSI Bus
 ^^^^^^^
+
+See complete fields: :ref:`dsi-bus-full`.
 
 ``board_peripherals.yaml``:
 
@@ -36,13 +46,19 @@ DSI Bus
           phy_clk_src: 0
           lane_bit_rate_mbps: 1000
 
+.. _dsi-mode-notes:
+
 Mode Description
 ----------------
 
 The ``dsi`` peripheral creates a DSI bus handle. When using a DSI display, set the ``display_lcd`` device's ``sub_type`` to ``dsi`` and reference this peripheral name in the device-side ``peripherals``. If the board configuration also requires MIPI power control, define an ``ldo`` or other power peripheral separately and reference it by name on the device side.
 
+.. _dsi-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _dsi-bus-full:
 
 DSI Bus — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -77,6 +93,8 @@ DSI Bus — Full Fields
         # Common values between 80 to 1500 Mbps depending on display capabilities
         lane_bit_rate_mbps: 1000          # [TO_BE_CONFIRMED] Bit rate per data lane in Mbps
 
+.. _dsi-devices:
+
 Applicable Devices
 ------------------
 
@@ -90,11 +108,15 @@ Applicable Devices
      - When ``sub_type`` is ``dsi``, reference the ``dsi`` peripheral in the device-side ``peripherals``
      - DBI/DPI configuration, color format, panel timing, and LCD component dependencies are written in the device configuration
 
+.. _dsi-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/peripherals/periph_dsi/periph_dsi.c``
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd.c``
+
+.. _dsi-boards:
 
 Board-Level Reference
 ---------------------
@@ -104,6 +126,8 @@ Board-Level Reference
 - ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``: defines ``dsi_display`` and LCD backlight LEDC peripheral.
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``: ``display_lcd`` references ``dsi_display`` with ``sub_type: dsi``.
 
+.. _dsi-notes:
+
 Notes
 -----
 
@@ -112,8 +136,12 @@ Notes
 - ``lane_bit_rate_mbps`` must match the display, number of lanes, and pixel clock budget; ``[TO_BE_CONFIRMED]`` is retained in the template.
 - After modifying the DSI peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _dsi-debug:
+
 Debugging Tips
 --------------
+
+.. _dsi-api:
 
 API Reference
 -------------

@@ -1,0 +1,42 @@
+peripherals:
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  - name: spi_lcd
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        mosi_io_num: 23
+        miso_io_num: 38
+        sclk_io_num: 18
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 38400
+
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 44100
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_BOTH
+      ws_width: 16
+      pins:
+        mclk: -1
+        bclk: 12
+        ws: 0
+        dout: 2
+        din: -1

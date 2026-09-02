@@ -1,0 +1,120 @@
+# Peripherals Configuration for M5Paper v1.1
+#
+# Source: M5Paper v1.1 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/m5paper_v1.1
+#
+# Module: ESP32-D0WDQ6-V3, 16 MB SPI flash, 8 MB quad PSRAM.
+#
+# The 4.7" 960x540 panel is driven by an IT8951E e-paper timing
+# controller over SPI. E-ink has no bmgr device type, so the spi_master
+# bus below is declared with the real pins and the panel is described in
+# the Not-modeled section; the microSD card shares that same bus and IS
+# modeled (fs_fat, CS GPIO4).
+#
+# Note that this bus is HSPI / SPI2_HOST on its IOMUX pins
+# (GPIO14/12/13). GPIO12 is the MTDI strapping pin on ESP32 and must read
+# LOW at reset — the board's series resistor handles that, but the pin
+# must not be pulled high externally.
+#
+# I2C0 on GPIO21 (SDA) / GPIO22 (SCL) carries: GT911 touch (7-bit 0x14),
+# SHT30 temperature/humidity sensor (0x44), BM8563 RTC (0x51) and the
+# FM24C02 EEPROM (0x50).
+#
+# Three separate power gates: GPIO2 latches main power on, GPIO23 enables
+# the e-paper rail and GPIO5 enables the external (port) 5 V rail.
+#
+peripherals:
+  # Shared I2C bus: GT911 touch, SHT30, BM8563 RTC, FM24C02 EEPROM
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # Shared SPI bus: IT8951E e-paper controller (CS GPIO15) + microSD (CS GPIO4)
+  - name: spi_master
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST     # HSPI: GPIO14/12/13 are its IOMUX pins
+        sclk_io_num: 14
+        mosi_io_num: 12
+        miso_io_num: 13
+        max_transfer_sz: 4096
+
+  # Main power latch: drive HIGH at boot to keep the board powered.
+  - name: gpio_power_main
+    type: gpio
+    role: io
+    config:
+      pin: 2
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1
+
+  # E-paper rail enable.
+  - name: gpio_power_epd
+    type: gpio
+    role: io
+    config:
+      pin: 23
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # External / HY2.0 port 5 V rail enable.
+  - name: gpio_power_ext
+    type: gpio
+    role: io
+    config:
+      pin: 5
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Side wheel, UP position (active-low). GPIO37 is input-only on ESP32 and
+  # has no internal pull resistor; the board provides the pull-up.
+  - name: gpio_wheel_up
+    type: gpio
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Side wheel, PRESS/middle position (active-low). GPIO38 is input-only.
+  - name: gpio_wheel_press
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Side wheel, DOWN position (active-low). GPIO39 is input-only.
+  - name: gpio_wheel_down
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - IT8951E-driven 4.7" 960x540 16-grey e-paper panel: there is no e-ink
+  #   device type in bmgr and no esp_lcd driver component for the IT8951E.
+  #   Its wiring is the spi_master bus above plus CS GPIO15 and BUSY
+  #   GPIO27; the panel rail is gated by GPIO23 (gpio_power_epd)
+  # - SHT30 temperature/humidity sensor (I2C 7-bit 0x44 on i2c_master):
+  #   no bmgr device type; the shared bus above is its interface
+  # - BM8563 RTC (I2C 7-bit 0x51) and FM24C02 EEPROM (0x50): likewise
+  # - Battery voltage divider on the ADC and the on-board Li-ion charger
+  # - PORT A (GPIO25/32), PORT B (GPIO26/33) and PORT C (GPIO18/19)
+  #   HY2.0-4P connectors — their 5 V rail is gated by GPIO5
+  # - USB-to-UART bridge (CP2104) on GPIO1/GPIO3
+  # ----------------------------------------------------------------------

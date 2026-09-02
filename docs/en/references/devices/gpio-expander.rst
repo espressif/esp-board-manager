@@ -3,12 +3,16 @@ GPIO Expander (``gpio_expander``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _gpio-expander-intro:
+
 Overview
 --------
 
 The ``gpio_expander`` device describes an I2C-connected IO expander chip. After initialization it returns an ``esp_io_expander_handle_t`` handle. Board code or other devices can retrieve this handle via :cpp:func:`esp_board_manager_get_device_handle` and then set the direction, level, or pull capability of the expanded IOs.
 
 This type is suitable for boards where the native GPIO count is insufficient, or where LCD initialization signals, buttons, or power control pins are connected to an IO expander chip.
+
+.. _gpio-expander-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -17,6 +21,8 @@ Supported Usage Modes
 
 - :ref:`gpio-expander-i2c`
 
+.. _gpio-expander-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -24,6 +30,8 @@ Minimal Configuration
 
 I2C IO Expansion
 ^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`gpio-expander-i2c-full`.
 
 ``board_peripherals.yaml`` requires at least one ``i2c`` master peripheral.
 
@@ -48,37 +56,12 @@ I2C IO Expansion
 
 During initialization, ``gpio_expander`` references the ``i2c`` peripheral handle and probes the addresses in the ``i2c_addr`` list for a responding device. After the driver is created successfully, the device sets the output pins, input pins, default output levels, optional output modes, and optional pull configurations according to the config. After initialization, BMGR records the detected valid I2C address for use by other logic on the same I2C bus.
 
-Board-Level IO Expander Factory Function
-----------------------------------------
-
-``gpio_expander`` has no built-in chip constructor. Every board that uses this device type must provide ``io_expander_factory_entry_t`` in a board source file. BMGR calls it with the detected I2C address to create the ``esp_io_expander_handle_t``.
-
-The function signature is:
-
-.. code-block:: c
-
-    esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_bus,
-                                          const uint16_t dev_addr,
-                                          esp_io_expander_handle_t *handle_ret);
-
-For example, TCA9554 uses the constructor provided by its component:
-
-.. code-block:: c
-
-    #include "esp_io_expander_tca9554.h"
-
-    __attribute__((weak)) esp_err_t io_expander_factory_entry_t(
-            i2c_master_bus_handle_t i2c_bus,
-            const uint16_t dev_addr,
-            esp_io_expander_handle_t *handle_ret)
-    {
-        return esp_io_expander_new_i2c_tca9554(i2c_bus, dev_addr, handle_ret);
-    }
-
-The component in ``dependencies`` must provide the constructor called by the factory function and match the YAML ``chip`` field. If a board configures multiple ``gpio_expander`` devices with different chips, the factory function must select the appropriate chip constructor by ``dev_addr``. See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
+.. _gpio-expander-full-fields:
 
 All Fields
 ----------
+
+.. _gpio-expander-i2c-full:
 
 I2C IO Expansion All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,10 +92,14 @@ I2C IO Expansion All Fields
         - i2c_name: i2c_master             # I2C peripheral used by the IO expander
           i2c_addr: [0x70, 0x7A]          # [TO_BE_CONFIRMED] I2C address of the IO expander
 
+.. _gpio-expander-deps:
+
 Component Dependencies
 ----------------------
 
 ``gpio_expander`` requires the IO expander chip driver component to be declared in ``dependencies``. The template uses ``espressif/esp_io_expander_generic`` as a placeholder; board configurations should replace it with the component matching the ``chip`` and ``io_expander_factory_entry_t``.
+
+.. _gpio-expander-peripherals:
 
 Required Peripherals
 --------------------
@@ -129,11 +116,15 @@ Required Peripherals
      - Required
      - IO expander chip communication
 
+.. _gpio-expander-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/test_dev_gpio_expander.c``: retrieves the ``gpio_expander`` config and handle, and prints the IO expander state.
 - ``esp_board_manager/devices/dev_gpio_expander/dev_gpio_expander.c``: I2C address probing, IO direction, and level initialization implementation.
+
+.. _gpio-expander-boards:
 
 Board Reference
 ---------------
@@ -145,17 +136,52 @@ Board Reference
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``: two ``gpio_expander`` device configurations.
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml``: ``gpio_expander`` configuration.
 
+.. _gpio-expander-notes:
+
 Notes
 -----
 
 - The template uses an address list for ``i2c_addr``; initialization probes each address in the list and selects the responding one.
 - ``output_io_mask``, ``output_io_level_mask``, ``output_io_mode_mask``, ``io_pullup_list``, and ``io_pulldown_list`` must match the specific chip's capabilities; unsupported capabilities must not be written into the board configuration.
 - Expanded IOs referenced by other devices must be available before those devices are initialized.
-- Without ``io_expander_factory_entry_t``, ``gpio_expander`` cannot complete initialization; adding only the chip component dependency does not replace this function.
 - After modifying the IO expander device or I2C peripheral configuration, re-run ``idf.py bmgr -b <board>``.
+
+.. _gpio-expander-factory:
+
+Factory Functions
+-----------------
+
+The project must provide ``io_expander_factory_entry_t``. BMGR calls it when creating the IO expander device so the chip component can build an ``esp_io_expander_handle_t``. The component in ``dependencies`` must match ``chip`` and this factory function. The signature is:
+
+.. code-block:: c
+
+   esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
+                                         const uint16_t dev_addr,
+                                         esp_io_expander_handle_t *handle_ret)
+
+The board implementation must declare this function as a weak symbol with ``__attribute__((weak))`` and wrap the chip-driver header and function body with ``__has_include``. The board source then still compiles after a downstream ``gen_skip`` of this device or an amend that replaces the factory. See :doc:`/programming-guide/board-directory` for the full convention.
+
+Minimal implementation:
+
+.. code-block:: c
+
+   #if __has_include(<esp_io_expander_tca9554.h>)
+   #include "esp_io_expander_tca9554.h"
+
+   __attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
+                                                              const uint16_t dev_addr,
+                                                              esp_io_expander_handle_t *handle_ret)
+   {
+       return esp_io_expander_new_i2c_tca9554(i2c_handle, dev_addr, handle_ret);
+   }
+   #endif  /* __has_include(<esp_io_expander_tca9554.h>) */
+
+.. _gpio-expander-debug:
 
 Debugging Tips
 --------------
+
+.. _gpio-expander-api:
 
 API Reference
 -------------

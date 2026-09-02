@@ -1,0 +1,67 @@
+# Peripherals Configuration for ESP32-Ethernet-Kit v1.2
+#
+# Source: ESP32-Ethernet-Kit v1.2 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-ethernet-kit/user_guide.html
+#
+# The kit is two stacked boards: Ethernet board (A) carrying the ESP32-WROVER-E
+# module, the FT2232H bridge and the IP101GRI PHY, plus the optional PoE board
+# (B). Board A has no user-controllable LEDs, no on-board sensors and no
+# expansion devices — the only application-visible on-board input is the BOOT
+# button, so that is all that is modeled here.
+#
+peripherals:
+  # BOOT button (GPIO0, active-low, strapping pin).
+  # NOTE: GPIO0 is ALSO the RMII 50 MHz REF_CLK output to the IP101GRI PHY.
+  # While Ethernet is running the pin is driven by the EMAC clock and cannot be
+  # read as a button; the two uses are mutually exclusive by design (the board
+  # holds the PHY in reset until GPIO0 has been sampled at power-up).
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled: on-board Ethernet (IP101GRI RMII PHY + RJ45)
+  #
+  # esp-board-manager has NO ethernet device type and no RMII/EMAC peripheral
+  # type, so the interface cannot be declared here. It is also the one
+  # subsystem where that costs nothing: every RMII signal on the ESP32 is a
+  # FIXED-FUNCTION pad chosen by the SoC, not a routable GPIO, so there is no
+  # board-specific pin choice for a board definition to carry. An application
+  # configures it through esp_eth (`eth_esp32_emac_config_t` +
+  # `eth_phy_new_ip101`), which knows the same fixed pins.
+  #
+  # Recorded here for reference (ESP32-Ethernet-Kit v1.2, board A):
+  #   PHY:      IC IP101GRI, 10/100 Mbps, RMII, PHY address 1
+  #   TX_EN     GPIO21   (fixed-function EMAC pad)
+  #   TXD[0]    GPIO19   (fixed-function EMAC pad)
+  #   TXD[1]    GPIO22   (fixed-function EMAC pad)
+  #   RXD[0]    GPIO25   (fixed-function EMAC pad)
+  #   RXD[1]    GPIO26   (fixed-function EMAC pad)
+  #   CRS_DV    GPIO27   (fixed-function EMAC pad)
+  #   REF_CLK   GPIO0    50 MHz clock OUT from the ESP32 to the PHY
+  #                      (board default; the 0R/NC option resistors R56/R57
+  #                      allow feeding the clock the other way instead)
+  #   MDC       GPIO23   (routable via the GPIO matrix, but board-fixed here)
+  #   MDIO      GPIO18   (routable via the GPIO matrix, but board-fixed here)
+  #   PHY Reset_N GPIO5  active-low, also an ESP32 strapping pin — the PHY is
+  #                      held in reset during boot so it cannot drive REF_CLK
+  #                      into GPIO0 while the bootloader samples the strap
+  #   Link/Activity LEDs are driven by the PHY itself, not by the ESP32
+  #
+  # Also not modeled:
+  # - FT2232H dual-channel bridge (USB-to-UART on channel B, USB-to-JTAG on
+  #   channel A); handled by ROM/console and OpenOCD, not an application device
+  # - 4-bit function DIP switch, which routes the JTAG signals between the
+  #   FT2232H and the module: SW1->GPIO13 (TCK), SW2->GPIO12 (TDI),
+  #   SW3->GPIO15 (TDO), SW4->GPIO14 (TMS). GPIO12 and GPIO15 are strapping
+  #   pins; leave the switch OFF when those pins are used by an application
+  # - EN (reset) button, 5V power-on LED, Tx/Rx bridge LEDs — hardware only
+  # - PoE board (B): IEEE 802.3at powered-device front end, 5 V / 1.4 A out;
+  #   no signal path to the ESP32
+  # ----------------------------------------------------------------------

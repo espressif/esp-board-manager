@@ -3,12 +3,16 @@ pcnt
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _pcnt-intro:
+
 Overview
 --------
 
 The ``pcnt`` peripheral type describes an ESP-IDF pulse counter unit, glitch filter, channels, and watch points. BMGR uses this configuration to create a PCNT unit and channels, and returns a ``periph_pcnt_handle_t``.
 
 This peripheral is suited for counting, encoder, or testing scenarios that require direct access to the PCNT handle. Counter value reading, event callbacks, and application logic are handled by the device or application code that uses the handle.
+
+.. _pcnt-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -17,11 +21,17 @@ Supported Operating Modes
 
 - `PCNT Counter Unit`_
 
+.. _pcnt-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _pcnt-unit:
+
 PCNT Counter Unit
 ^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`pcnt-unit-full`.
 
 ``board_peripherals.yaml``:
 
@@ -58,13 +68,19 @@ PCNT Counter Unit
           watch_point_count: 3
           watch_point_list: [-100, 0, 100]
 
+.. _pcnt-mode-notes:
+
 Mode Description
 ----------------
 
 The ``pcnt`` peripheral first creates the unit, then configures the glitch filter, then creates channels according to ``channel_count`` and sets edge/level actions. ``watch_point_list`` adds watch points to the unit; event callbacks are not registered during peripheral initialization.
 
+.. _pcnt-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _pcnt-unit-full:
 
 PCNT Counter Unit — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,6 +168,8 @@ PCNT Counter Unit — Full Fields
                               # users can also customize SOC_PCNT_THRES_POINT_PER_UNIT watch points
         watch_point_list: [-100, -50, 0, 50, 100]
 
+.. _pcnt-devices:
+
 Applicable Devices
 ------------------
 
@@ -165,16 +183,22 @@ Applicable Devices
      - Device side can reference a defined ``pcnt`` peripheral
      - Counter reading, watch point callbacks, and application semantics are handled by the custom device or application code
 
+.. _pcnt-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/peripherals/periph_pcnt/periph_pcnt.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_pcnt.c``
 
+.. _pcnt-boards:
+
 Board-Level Reference
 ---------------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``: defines the ``pcnt_unit`` test peripheral.
+
+.. _pcnt-notes:
 
 Notes
 -----
@@ -184,8 +208,12 @@ Notes
 - When ``edge_gpio_num`` or ``level_gpio_num`` is set to ``-1``, the corresponding virtual IO level field is meaningful.
 - After modifying the PCNT peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _pcnt-debug:
+
 Debugging Tips
 --------------
+
+.. _pcnt-api:
 
 API Reference
 -------------

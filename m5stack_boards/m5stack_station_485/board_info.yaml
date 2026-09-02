@@ -1,0 +1,5 @@
+board: m5stack_station_485
+chip: esp32
+version: 1.0.0
+description: "M5Station-485 industrial controller (1.14 inch 240x135 ST7789V2 LCD, RS-485, 7x SK6812)"
+manufacturer: "M5Stack"

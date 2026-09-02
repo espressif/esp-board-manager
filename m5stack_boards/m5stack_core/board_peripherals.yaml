@@ -1,0 +1,71 @@
+peripherals:
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  - name: spi_lcd
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        mosi_io_num: 23
+        miso_io_num: 19
+        sclk_io_num: 18
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 38400
+
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 32
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_1
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+
+  - name: gpio_speaker
+    type: gpio
+    role: io
+    config:
+      pin: 25
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  - name: gpio_button_prev
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
+  - name: gpio_button_enter
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
+  - name: gpio_button_next
+    type: gpio
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE

@@ -1,0 +1,20 @@
+# ESP32-Sense-Kit mainboard — ESP32-WROOM-32 module, no PSRAM.
+#
+# Module CONFIRMED from the schematic (SCH_ESP32-Sense-Series-MainBoard.pdf,
+# sheet 1): the ESP32 MODULE block is designator U8, value ESP-WROOM-32, on the
+# 39-pin footprint. Corroborated by how the board uses it — sheet 2's IO
+# Configure Table routes IO16 to HEADER12 and IO17 to HEADER11, and GPIO16/17
+# are consumed internally by the PSRAM on every WROVER, so a WROVER cannot be
+# fitted. Hence no CONFIG_SPIRAM.
+#
+# Flash size 4 MB CONFIRMED. The usual "a schematic names the module, not its
+# SKU suffix" caveat does not bite here: the value on U8 is the bare part
+# number ESP-WROOM-32, and the ESP32-WROOM-32 datasheet (v3.7) §1.2 Ordering
+# Information is a ONE-ROW table — part number ESP32-WROOM-32, flash 4 MB — with
+# §1 stating flatly "The module features a 4 MB external SPI flash". The
+# multi-size options (4 / 8 / 16 MB) belong to -32D / -32U / -32E, which are
+# different part numbers and are not what this sheet fits.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

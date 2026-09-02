@@ -313,7 +313,7 @@ int dev_audio_codec_init(void *cfg, int cfg_size, void **device_handle)
         if (codec_cfg->dac_enabled) {
             codec_name = "dummy";
             use_dummy_codec = true;
-            ESP_LOGI(TAG, "Using internal chip with dummy codec for PA control");
+            ESP_LOGI(TAG, "Using internal chip with dummy codec");
         } else {
             use_codec_if = false;
             ESP_LOGI(TAG, "Using internal chip input-only, codec_if is NULL");

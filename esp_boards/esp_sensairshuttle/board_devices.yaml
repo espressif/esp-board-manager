@@ -1,0 +1,157 @@
+devices:
+  - name: lcd_power_ctrl
+    type: power_ctrl
+    sub_type: gpio
+    version: default
+    peripherals:
+      - gpio_name: gpio_lcd_power
+        active_level: 0
+
+  - name: speaker_power_ctrl
+    type: power_ctrl
+    sub_type: gpio
+    version: default
+    peripherals:
+      - gpio_name: gpio_speaker_enable
+        active_level: 1
+
+  - name: audio_dac
+    chip: internal
+    type: audio_codec
+    power_ctrl_device: speaker_power_ctrl
+    config:
+      adc_enabled: false
+      dac_enabled: true
+    peripherals:
+      # GPIO1 is the speaker amplifier enable. The dummy internal codec owns
+      # this line while the stream is open.
+      - pa_name: gpio_speaker_enable
+        active_level: 1
+      # The speaker needs complementary PDM data: GPIO7 is the normal data
+      # output and GPIO8 is the same I2S output signal with inverted polarity.
+      - i2s_name: i2s_audio_out
+        tx_aux_out_io: 8
+        tx_aux_out_invert: true
+
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      adc_local_cfg:
+        channel_list: [5]
+        sample_rate_hz: 16000
+        max_store_buf_size: 1024
+        conv_frame_size: 256
+        unit_id: ADC_UNIT_1
+        atten: ADC_ATTEN_DB_12
+        bit_width: ADC_BITWIDTH_12
+    peripherals:
+      - adc_name: adc_audio_in
+
+  - name: display_lcd
+    chip: st7789
+    type: display_lcd
+    sub_type: spi
+    version: default
+    power_ctrl_device: lcd_power_ctrl
+    config:
+      invert_color: true
+      need_reset: false
+      swap_xy: false
+      mirror_x: false
+      mirror_y: false
+      x_max: 240
+      y_max: 284
+      io_spi_config:
+        cs_gpio_num: 25
+        dc_gpio_num: 26
+        spi_mode: 0
+        pclk_hz: 17000000
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+      lcd_panel_config:
+        reset_gpio_num: -1
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG
+        bits_per_pixel: 16
+    peripherals:
+      - spi_name: spi_display
+
+  - name: lcd_touch
+    chip: cst816s
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      espressif/esp_lcd_touch_cst816s: "*"
+    config:
+      io_i2c_config:
+        control_phase_bytes: 1
+        dc_bit_offset: 0
+        lcd_cmd_bits: 8
+        lcd_param_bits: 0
+        scl_speed_hz: 100000
+        flags:
+          dc_low_on_data: false
+          disable_control_phase: true
+      touch_config:
+        x_max: 240
+        y_max: 284
+        rst_gpio_num: -1
+        int_gpio_num: -1
+        levels:
+          reset: 0
+          interrupt: 0
+        flags:
+          swap_xy: false
+          mirror_x: false
+          mirror_y: true
+    peripherals:
+      - i2c_name: i2c_master
+        i2c_addr: [0x2A]
+
+  # Boot button. Schematic net: ESP Button GPIO28 / ESP_BOOT / BOOT Button.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+  - name: led_strip
+    chip: ws2812
+    type: led_strip
+    sub_type: rmt
+    version: default
+    config:
+      strip_gpio_num: 27
+      max_leds: 1
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 64
+        with_dma: false
+
+  - name: bmi270_sensor
+    chip: bmi270_sensor
+    type: custom
+    version: 1.0.0
+    dependencies:
+      espressif/bmi270_sensor: "^0.1.2"
+    config:
+      # GPIO9 selects BMI270 I2C address 0x68 when driven low.
+      i2c_addr: 0x68
+      sdo_gpio_num: 9
+    peripherals:
+      - name: i2c_master

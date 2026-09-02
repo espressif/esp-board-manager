@@ -67,6 +67,21 @@ devices:
           d7: 0
         ldo_chan_id: 4  # Use LDO_VO4 to power SDMMC IO
 
+  # GPIO35 is also the EMAC RMII_TXD1 pin. Do not use this button together
+  # with the board Ethernet interface.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   # DSI Display Device
   - name: display_lcd
     chip: ek79007

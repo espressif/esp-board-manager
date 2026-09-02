@@ -1,0 +1,4 @@
+version: "0.1.0"
+description: LP5562 PWM controller driver for the M5Stack AtomS3R backlight
+dependencies:
+  idf: ">=5.4"

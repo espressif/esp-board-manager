@@ -3,12 +3,16 @@ ldo
 
 :link_to_translation:`en:[English]`
 
+.. _ldo-intro:
+
 简介
 ------
 
 ``ldo`` 外设类型用于描述片上通用 LDO 通道。BMGR 据此生成 ``esp_ldo_channel_config_t``，并调用 ESP-IDF ``esp_ldo_regulator.h`` 申请 LDO channel。该类型用于需由 SoC 片上 LDO 供电的板级资源，例如 MIPI DSI 或 CSI 相关电源。
 
 在 ``board_peripherals.yaml`` 中配置 ``ldo`` 后，支持的 device 可在设备侧 ``peripherals`` 列表中引用该外设。BMGR 初始化设备时通过外设引用获取 LDO 句柄，设备释放时取消引用。
+
+.. _ldo-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ ldo
 
 - `LDO channel`_
 
+.. _ldo-min-config:
+
 最小配置
 ------------
 
+.. _ldo-channel:
+
 LDO channel
 ^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`ldo-channel-full`。
 
 ``board_peripherals.yaml``：
 
@@ -36,6 +46,8 @@ LDO channel
           adjustable: 1
           owned_by_hw: 0
 
+.. _ldo-mode-notes:
+
 模式说明
 ------------
 
@@ -43,8 +55,12 @@ LDO channel
 
 使用该外设时，LDO channel 和输出电压必须来自目标 SoC 数据手册和板级原理图。设备侧只引用 LDO 外设名称，不把 LDO channel、电压或 ownership 配置写进设备侧引用条目。
 
+.. _ldo-full-fields:
+
 完整字段
 ------------
+
+.. _ldo-channel-full:
 
 LDO channel 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,6 +96,8 @@ LDO channel 完整字段
 - YAML 模板：``esp_board_manager/peripherals/periph_ldo/periph_ldo.yml``。
 - 头文件：``esp_board_manager/peripherals/periph_ldo/periph_ldo.h``。
 
+.. _ldo-devices:
+
 适用设备
 ------------
 
@@ -96,11 +114,15 @@ LDO channel 完整字段
      - ``csi`` 子类型在设备侧 ``peripherals`` 中引用 ``ldo_mipi``
      - CSI 摄像头设备可通过 ``dont_init_ldo`` 与 LDO 外设配合，避免设备内部重复初始化 LDO
 
+.. _ldo-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd_sub_dsi.c``
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_csi.c``
+
+.. _ldo-boards:
 
 板级参考
 ------------
@@ -109,6 +131,8 @@ LDO channel 完整字段
 - ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
 - ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：``ldo_mipi`` 配置。
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 和 ``camera`` 引用 ``ldo_mipi``。
+
+.. _ldo-notes:
 
 注意事项
 ------------
@@ -119,8 +143,12 @@ LDO channel 完整字段
 - 同一 LDO 供多个设备引用时，设备侧只写同一个外设名称，由 BMGR 引用计数管理句柄。
 - 修改 LDO 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _ldo-debug:
+
 调试技巧
 ------------
+
+.. _ldo-api:
 
 API 参考
 ----------

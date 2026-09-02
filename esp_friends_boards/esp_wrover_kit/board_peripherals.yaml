@@ -1,0 +1,51 @@
+peripherals:
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        mosi_io_num: 23
+        miso_io_num: 25
+        sclk_io_num: 19
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 38400
+  - name: spi_sd
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        mosi_io_num: 15
+        miso_io_num: 2
+        sclk_io_num: 14
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 5
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      output_invert: true
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+  - name: gpio_led_blue
+    type: gpio
+    role: io
+    config:
+      pin: 4
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0

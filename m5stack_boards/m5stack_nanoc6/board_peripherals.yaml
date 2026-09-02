@@ -1,0 +1,61 @@
+# Peripherals Configuration for M5NanoC6
+#
+# Source: M5NanoC6 documentation
+# Reference: https://docs.m5stack.com/en/core/M5NanoC6
+#
+# Module: ESP32-C6FH4 (4 MB in-package flash, no PSRAM), ceramic antenna.
+# On-board hardware: a WS2812 RGB LED on GPIO20 (owned by the led_strip
+# device, so not declared here) behind a supply switch on GPIO19, a blue
+# indicator LED on GPIO7, an IR transmit LED on GPIO3 and the user button
+# on GPIO9.
+#
+peripherals:
+  # RGB LED supply switch — GPIO19 must be HIGH before the WS2812 will
+  # light. Driven through the led_power power_ctrl device.
+  - name: gpio_power_led
+    type: gpio
+    role: io
+    config:
+      pin: 19
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Blue indicator LED (GPIO7, active-high)
+  - name: gpio_blue_led
+    type: gpio
+    role: io
+    config:
+      pin: 7
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Infrared transmit LED (GPIO3, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 3
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # User button (GPIO9, active-low, boot strapping pin — holding it at
+  # reset enters download mode). GPIO9 has a usable internal pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND): a user-wired
+  #   expansion port, also usable as the external I2C bus
+  # - Native USB Serial/JTAG on the USB Type-C port (console path)
+  # - RESET button (EN pin, handled in hardware)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

@@ -3,12 +3,16 @@ LEDC Control (``ledc_ctrl``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _ledc-ctrl-intro:
+
 Overview
 --------
 
 ``ledc_ctrl`` is a PWM control device based on the ``ledc`` peripheral. It wraps a single LEDC channel as a device handle that can be retrieved by name. This device is suitable for describing board-level signals that require duty-cycle control, such as LCD backlight brightness and single-channel PWM output.
 
 When BMGR initializes ``ledc_ctrl``, it references the already-initialized ``ledc`` peripheral, calculates the initial duty from ``default_percent`` and the peripheral's ``duty_resolution``, and writes it to the channel by calling the LEDC driver. The application retrieves ``periph_ledc_handle_t`` via :cpp:func:`esp_board_manager_get_device_handle` and adjusts the duty cycle directly through the LEDC driver.
+
+.. _ledc-ctrl-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -17,11 +21,17 @@ Supported Usage Modes
 
 - `LEDC PWM Control`_
 
+.. _ledc-ctrl-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _ledc-ctrl-pwm:
+
 LEDC PWM Control
 ^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`ledc-ctrl-pwm-full`.
 
 ``board_peripherals.yaml``:
 
@@ -55,8 +65,12 @@ LEDC PWM Control
 
 ``default_percent`` is the percentage written during initialization. The driver calculates the initial duty as ``duty = default_percent * (2^duty_resolution - 1) / 100`` and applies it by calling ``ledc_set_duty`` and ``ledc_update_duty``. Subsequent brightness or PWM changes are made by the application directly using the LEDC driver.
 
+.. _ledc-ctrl-full-fields:
+
 All Fields
 ----------
+
+.. _ledc-ctrl-pwm-full:
 
 LEDC PWM Control All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,10 +89,14 @@ LEDC PWM Control All Fields
       peripherals:
         - ledc_name: ledc_backlight  # LEDC peripheral name (must reference an LEDC peripheral)
 
+.. _ledc-ctrl-deps:
+
 Component Dependencies
 ----------------------
 
 ``ledc_ctrl`` does not require additional component declarations in ``dependencies``. It uses the ESP-IDF LEDC driver and the BMGR ``ledc`` peripheral.
+
+.. _ledc-ctrl-peripherals:
 
 Required Peripherals
 --------------------
@@ -95,11 +113,15 @@ Required Peripherals
      - Required
      - Provides the LEDC channel, timer, resolution, and output GPIO
 
+.. _ledc-ctrl-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/test_dev_ledc.c``
 - ``esp_board_manager/devices/dev_ledc_ctrl/dev_ledc_ctrl.c``
+
+.. _ledc-ctrl-boards:
 
 Board Reference
 ---------------
@@ -109,16 +131,22 @@ Board Reference
 - ``esp_boards/esp32_s3_box_3/board_devices.yaml``: configures a ``ledc_ctrl`` backlight device.
 - ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``: configures the ``ledc`` peripheral referenced by the backlight device.
 
+.. _ledc-ctrl-notes:
+
 Notes
 -----
 
-- The device uses ``ledc_name`` to select the ``ledc`` peripheral instance.
+- The ``ledc`` peripheral name referenced by the device must match the instance name in ``board_peripherals.yaml`` and must start with ``ledc`` or ``ledc_``.
 - ``default_percent`` is used only for setting the initial duty during initialization; changing brightness at runtime requires the application to call the LEDC driver again to set the duty and update the channel.
 - During ``ledc_ctrl`` deinitialization, ``ledc_stop`` is called with an idle level of ``0``.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _ledc-ctrl-debug:
+
 Debugging Tips
 --------------
+
+.. _ledc-ctrl-api:
 
 API Reference
 -------------

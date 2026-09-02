@@ -7,6 +7,7 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_lcd_touch.h"
 #if __has_include(<esp_lcd_touch_gt1151.h>)
 #define HAS_GT1151  1
 #include "esp_lcd_touch_gt1151.h"

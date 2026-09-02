@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
@@ -7,16 +7,28 @@
 
 #include <string.h>
 #include "esp_board_device.h"
-#include "esp_codec_dev.h"
+#include "esp_lcd_panel_io.h"
+#include "esp_lcd_panel_ops.h"
+#include "esp_lcd_touch.h"
+#if __has_include(<esp_lcd_ili9341.h>)
+#define HAS_ILI9341  1
 #include "esp_lcd_ili9341.h"
+#endif  /* __has_include(<esp_lcd_ili9341.h>) */
+#if __has_include(<esp_lcd_touch_gt911.h>)
+#define HAS_GT911  1
 #include "esp_lcd_touch_gt911.h"
+#endif  /* __has_include(<esp_lcd_touch_gt911.h>) */
+#if __has_include(<esp_lcd_touch_tt21100.h>)
+#define HAS_TT21100  1
 #include "esp_lcd_touch_tt21100.h"
+#endif  /* __has_include(<esp_lcd_touch_tt21100.h>) */
 #include "esp_log.h"
 
 #define TOUCH_ADDR_GT911_0  0xBA
 #define TOUCH_ADDR_GT911_1  0x28
 #define TOUCH_ADDR_TT21100  0x48
 
+#if defined(HAS_ILI9341)
 static const ili9341_lcd_init_cmd_t vendor_specific_init[] = {
     {0xC8, (uint8_t[]) {0xFF, 0x93, 0x42}, 3, 0},
     {0xC0, (uint8_t[]) {0x0E, 0x0E}, 2, 0},
@@ -42,8 +54,10 @@ static const ili9341_vendor_config_t vendor_config = {
     .init_cmds      = vendor_specific_init,
     .init_cmds_size = sizeof(vendor_specific_init) / sizeof(vendor_specific_init[0]),
 };
+#endif  /* defined(HAS_ILI9341) */
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
+#if defined(HAS_ILI9341)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
 {
     esp_lcd_panel_dev_config_t panel_dev_cfg = {0};
     memcpy(&panel_dev_cfg, panel_dev_config, sizeof(esp_lcd_panel_dev_config_t));
@@ -56,8 +70,9 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_ILI9341) */
 
-esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
+__attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
 {
     esp_lcd_touch_config_t touch_cfg = {0};
     memcpy(&touch_cfg, touch_dev_config, sizeof(esp_lcd_touch_config_t));
@@ -74,6 +89,7 @@ esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
 
     if (touch_addr == TOUCH_ADDR_TT21100) {
+#if defined(HAS_TT21100)
         ret = esp_lcd_touch_new_i2c_tt21100(io, &touch_cfg, ret_touch);
         if (ret != ESP_OK) {
             ESP_LOGE("lcd_touch_factory_entry_t", "Failed to create TT21100 touch driver: %s", esp_err_to_name(ret));
@@ -81,9 +97,11 @@ esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
         }
         ESP_LOGI("lcd_touch_factory_entry_t", "Created TT21100 touch driver, addr: 0x%02x", touch_addr);
         return ESP_OK;
+#endif  /* defined(HAS_TT21100) */
     }
 
     if (touch_addr == TOUCH_ADDR_GT911_0 || touch_addr == TOUCH_ADDR_GT911_1) {
+#if defined(HAS_GT911)
         ret = esp_lcd_touch_new_i2c_gt911(io, &touch_cfg, ret_touch);
         if (ret != ESP_OK) {
             ESP_LOGE("lcd_touch_factory_entry_t", "Failed to create GT911 touch driver: %s", esp_err_to_name(ret));
@@ -91,6 +109,7 @@ esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
         }
         ESP_LOGI("lcd_touch_factory_entry_t", "Created GT911 touch driver, addr: 0x%02x", touch_addr);
         return ESP_OK;
+#endif  /* defined(HAS_GT911) */
     }
 
     ESP_LOGE("lcd_touch_factory_entry_t", "Unsupported LCD touch I2C address: 0x%02x", touch_addr);

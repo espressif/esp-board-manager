@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: CC0-1.0
  */
@@ -25,54 +25,105 @@ typedef enum {
     CORES3_POWER_CTRL_FEATURE_CAMERA,
 } cores3_power_ctrl_feature_t;
 
+static esp_err_t cores3_axp2101_set_voltage(i2c_master_dev_handle_t pm_handle, uint8_t reg,
+                                            uint8_t voltage, uint8_t enable_mask)
+{
+    uint8_t data[2] = {reg, voltage};
+    esp_err_t err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    uint8_t enable_reg = 0x90;
+    uint8_t enable_value = 0;
+    err = i2c_master_transmit_receive(pm_handle, &enable_reg, sizeof(enable_reg),
+                                      &enable_value, sizeof(enable_value), 1000);
+    if (err != ESP_OK || (enable_value & enable_mask) == enable_mask) {
+        return err;
+    }
+
+    data[0] = enable_reg;
+    data[1] = enable_value | enable_mask;
+    return i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+}
+
 static esp_err_t cores3_power_ctrl_enable(i2c_master_dev_handle_t pm_handle, cores3_power_ctrl_feature_t feature)
 {
     esp_err_t err = ESP_OK;
     uint8_t data[2];
     esp_io_expander_handle_t *gpio_exp_aw9523 = NULL;
     err = esp_board_device_get_handle("gpio_expander", (void **)&gpio_exp_aw9523);
+    if (err != ESP_OK || gpio_exp_aw9523 == NULL || *gpio_exp_aw9523 == NULL) {
+        return err != ESP_OK ? err : ESP_ERR_INVALID_STATE;
+    }
     switch (feature) {
         case CORES3_POWER_CTRL_FEATURE_LCD:
             /* Enable LCD */
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 9), 1);
+            err = esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 9), 1);
+            if (err != ESP_OK) {
+                return err;
+            }
             /* AXP DLDO1 Enable / LCD backlight (moved out of AXP init into LCD power path) */
             data[0] = 0x90;
             data[1] = 0xBF;
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
             /* AXP DLDO1 voltage / LCD backlight */
             data[0] = 0x99;
             data[1] = 0b00011000;
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
             break;
         case CORES3_POWER_CTRL_FEATURE_TOUCH:
             /* Enable Touch */
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 0), 1);
+            err = esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 0), 1);
             break;
         case CORES3_POWER_CTRL_FEATURE_SPEAKER:
             /* AXP ALDO1 voltage / PA PVDD / 1V8 */
             data[0] = 0x92;
             data[1] = 0b00001101;  // 1V8
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
             /* AXP ALDO2 voltage / Codec / 3V3 */
             data[0] = 0x93;
             data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
             /* AXP ALDO3 voltage / Codec+Mic / 3V3 */
             data[0] = 0x94;
             data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 2), 1);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
+            err = esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 2), 1);
             break;
         case CORES3_POWER_CTRL_FEATURE_SD:
             /* AXP ALDO4 voltage / SD Card / 3V3 */
             data[0] = 0x95;
             data[1] = 0b00011100;  // 3V3
-            err |= i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            err = i2c_master_transmit(pm_handle, data, sizeof(data), 1000);
+            if (err != ESP_OK) {
+                return err;
+            }
             /* Enable SD */
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 4), 1);
+            err = esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 4), 1);
             break;
         case CORES3_POWER_CTRL_FEATURE_CAMERA:
-            err |= esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 8), 1);
+            err = esp_io_expander_set_level(*gpio_exp_aw9523, (1 << 8), 1);
+            if (err != ESP_OK) {
+                return err;
+            }
+            /* AXP ALDO3 voltage / camera rails / 3V3. */
+            err = cores3_axp2101_set_voltage(pm_handle, 0x94, 0b00011100, 0b00110100);
             break;
         default:
             ESP_LOGE(TAG, "Unsupported feature");

@@ -7,11 +7,19 @@
 
 #include "esp_log.h"
 #include <string.h>
+#include "soc/soc_caps.h"
 #include "esp_board_manager_defs.h"
 #include "esp_board_periph.h"
 #include "periph_adc.h"
 
 static const char *TAG = "PERIPH_ADC";
+
+#ifdef SOC_ADC_CHANNEL_NUM
+#define BMGR_ADC_CHANNEL_NUM(adc_unit)  SOC_ADC_CHANNEL_NUM(adc_unit)
+#else
+#include "hal/adc_ll.h"
+#define BMGR_ADC_CHANNEL_NUM(adc_unit)  ADC_LL_CHANNEL_NUM(adc_unit)
+#endif  /* SOC_ADC_CHANNEL_NUM */
 
 static inline bool adc_unit_supported(adc_unit_t unit)
 {
@@ -68,7 +76,7 @@ static inline esp_err_t continuous_adc_init(periph_adc_config_t *adc_cfg, periph
             adc_continuous_deinit(continuous_handle);
             return ESP_ERR_NOT_SUPPORTED;
         }
-        if (adc_pattern[i].channel >= SOC_ADC_CHANNEL_NUM((adc_unit_t)adc_pattern[i].unit)) {
+        if (adc_pattern[i].channel >= BMGR_ADC_CHANNEL_NUM((adc_unit_t)adc_pattern[i].unit)) {
             ESP_LOGE(TAG, "Invalid ADC channel %u for unit %u", adc_pattern[i].channel, adc_pattern[i].unit);
             adc_continuous_deinit(continuous_handle);
             return ESP_ERR_INVALID_ARG;

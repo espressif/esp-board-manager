@@ -278,10 +278,10 @@ YAML 描述总线、引脚、时序参数和组件依赖，但不会替代芯片
 ``setup_device.c`` 是板级扩展函数的推荐文件名。BMGR 会递归扫描开发板目录中的 C、C++ 和汇编源文件，并将其加入生成组件；因此扩展函数也可以放在其他参与扫描的板级源文件中。
 
 
-为便于下游工程通过 ``-a/--amend`` 替换开发板的默认行为，建议遵循以下两条写法：
+为便于下游工程通过 ``-a/--amend`` 替换开发板的默认行为，或通过 ``gen_skip`` 关闭某个设备，板级源码应遵循以下写法：
 
 - 将对外暴露的工厂或钩子函数（例如 ``lcd_panel_factory_entry_t``、``lcd_touch_factory_entry_t``、``io_expander_factory_entry_t``）声明为弱符号 ``__attribute__((weak))``。amend 目录中提供同名强符号实现，即可在链接阶段替换开发板默认实现，无需修改原开发板源码。覆盖机制见 :doc:`/create-board/amend`。
-- 将对芯片驱动头文件的 ``#include`` 用 ``__has_include`` 包裹，并在弱符号函数实现的外层做同样的判断。这样 amend 不仅可以替换函数本身，还可以通过移除对应组件依赖（或替换为其他芯片组件）让开发板默认实现自动消失，避免出现 amend 已接管某条工厂入口、而开发板内的旧实现因找不到头文件而编译报错的情况。
+- 将对芯片驱动头文件的 ``#include`` 用 ``__has_include`` 包裹，并在相关函数实现的外层做同样的判断。这样 amend 不仅可以替换函数本身，还可以通过移除对应组件依赖（或替换为其他芯片组件）让开发板默认实现自动消失。``gen_skip`` 同样会从 ``idf_component.yml`` 去掉该设备的 ``dependencies:``，但板目录源文件仍会编译进 ``gen_bmgr_codes``；没有 ``__has_include`` 时会因缺少头文件而编译失败。
 
 .. code-block:: c
 
@@ -297,12 +297,16 @@ YAML 描述总线、引脚、时序参数和组件依赖，但不会替代芯片
    }
    #endif  /* __has_include(<esp_lcd_ili9341.h>) */
 
-``custom`` 类型设备适合 BMGR 尚未内置支持的硬件，例如特定电源管理芯片或传感器。在 ``board_devices.yaml`` 中将 ``type`` 设为 ``custom``，BMGR 生成阶段会将 ``config:`` 下的字段展开为专属配置结构体，写入 ``components/gen_bmgr_codes/gen_board_device_custom.h``。若需要自定义初始化逻辑，在板目录下提供初始化/反初始化函数实现并用 ``CUSTOM_DEVICE_IMPLEMENT`` 宏注册，例如：
+``custom`` 类型设备适合 BMGR 尚未内置支持的硬件，例如特定电源管理芯片或传感器。在 ``board_devices.yaml`` 中将 ``type`` 设为 ``custom``，BMGR 生成阶段会将 ``config:`` 下的字段展开为专属配置结构体，写入 ``components/gen_bmgr_codes/gen_board_device_custom.h``。若需要自定义初始化逻辑，在板目录下提供初始化/反初始化函数实现并用 ``CUSTOM_DEVICE_IMPLEMENT`` 宏注册。实现若依赖第三方芯片驱动，须将驱动头文件、生成结构体、init/deinit 与注册宏放在同一 ``#if __has_include`` 中，例如：
 
 .. code-block:: c
+
+   #if __has_include("axp2101.h")
+   #include "axp2101.h"
 
    CUSTOM_DEVICE_IMPLEMENT(axp2101_power_manager,
                              cores3_power_manager_init,
                              cores3_power_manager_deinit);
+   #endif  /* __has_include("axp2101.h") */
 
 配置结构体命名规则、类型推断表、注册宏用法及应用侧访问方式详见 :doc:`/references/devices/custom`；板级完整示例参考 ``boards/m5stack_cores3/power_manager.c``。

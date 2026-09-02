@@ -1,0 +1,126 @@
+# Peripherals Configuration for M5Stack CoreInk
+#
+# Source: M5Stack CoreInk (K048) official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/coreink
+#
+# Module: ESP32-PICO-D4 (in-package 4 MB flash), no PSRAM.
+#
+# The 1.54" GDEW0154M09 e-paper panel is an SPI device, but e-ink panels
+# have no bmgr device type — the spi_eink bus below is declared with the
+# real pins and the panel itself is described in the Not-modeled section.
+#
+# I2C0 on GPIO21/22 carries the BM8563 RTC (7-bit 0x51), which is what
+# wakes the board from the deep-sleep-with-power-off state the HOLD pin
+# implements.
+#
+peripherals:
+  # BM8563 RTC bus
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # GDEW0154M09 e-paper panel bus (write-only: the panel has no MISO;
+  # its status is read through the BUSY line instead)
+  - name: spi_eink
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST     # VSPI: GPIO18/23 are its IOMUX pins
+        sclk_io_num: 18
+        mosi_io_num: 23
+        miso_io_num: -1
+        max_transfer_sz: 5000   # 200 * 200 / 8 bytes of 1bpp framebuffer
+
+  # Power HOLD (GPIO12): drive HIGH at boot to keep the latching power
+  # circuit on; releasing it powers the board down. GPIO12 is the MTDI
+  # strapping pin on ESP32 — it must read LOW at reset, which the on-board
+  # circuit guarantees, so it may only be driven after boot.
+  - name: gpio_power_hold
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1        # keep the board powered
+
+  # External LED (GPIO10). coreink_sch.pdf shows GPIO10 leaving the main
+  # board on J1 (CON10, "FPC TO HAT") pin 1, net-labelled LED — the LED
+  # itself is on the front sub-board and its circuit is not on that sheet,
+  # so the schematic cannot give the active level. M5Stack's own
+  # M5-CoreInk library does: FactoryTest.ino
+  #   void set_led(bool status) { digitalWrite(LED_EXT_PIN, !status); }
+  # with LED_EXT_PIN = 10 (src/utility/config.h), i.e. LOW lights it, and
+  # every example writes LOW before M5.shutdown(). Active-LOW.
+  # (LED1 in the schematic's CHARGER block is a different part: the TP40P57
+  # charger's own status LED, not on any GPIO.)
+  - name: gpio_status_led
+    type: gpio
+    role: io
+    config:
+      pin: 10
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1        # off (active-low, see above)
+
+  # User button (side, active-low)
+  - name: gpio_user_button
+    type: gpio
+    role: io
+    config:
+      pin: 5
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Dial switch, UP position (active-low). GPIO37 is input-only on ESP32
+  # and has no internal pull resistor; the board provides the pull-up.
+  - name: gpio_dial_up
+    type: gpio
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Dial switch, PRESS/middle position (active-low). GPIO38 is input-only.
+  - name: gpio_dial_press
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Dial switch, DOWN position (active-low). GPIO39 is input-only.
+  - name: gpio_dial_down
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - GDEW0154M09 1.54" 200x200 e-paper panel: there is no e-ink device
+  #   type in bmgr and no esp_lcd driver component for this controller.
+  #   Its wiring is the spi_eink bus above plus CS GPIO9, D/C GPIO15,
+  #   RST GPIO0 (also the BOOT strapping pin) and BUSY GPIO4
+  # - BM8563 RTC (I2C 7-bit 0x51 on i2c_master): no bmgr device type; the
+  #   shared bus above is its interface
+  # - Passive buzzer on GPIO2: needs a PWM tone driver and has no bmgr
+  #   device type (ledc_ctrl models brightness, not a sounder)
+  # - Battery voltage divider on the ADC and the on-board Li-ion charger
+  # - HY2.0-4P Grove port (GPIO32 yellow / GPIO33 white) plus 5 V and GND,
+  #   the M5-BUS stacking header and the HAT expansion header
+  # - USB-to-UART bridge (CP2104 or CH9102 depending on batch) on
+  #   GPIO1/GPIO3
+  # ----------------------------------------------------------------------

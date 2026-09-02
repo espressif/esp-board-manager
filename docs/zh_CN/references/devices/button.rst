@@ -3,12 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _button-intro:
+
 简介
 ------
 
 ``button`` 设备用于将 GPIO 按键或 ADC 按键接入 ESP Board Manager 的 device 管理流程。初始化后，应用可通过 ``esp_board_manager_get_device_handle()`` 获取 ``dev_button_handles_t``，也可通过 ``esp_board_device_callback_register()`` 注册 YAML 中已启用的按键事件回调。
 
 该设备基于 ``espressif/button`` 组件。GPIO 按键适用于独立按键引脚；ADC 按键适用于同一 ADC 通道上的电阻分压按键网络；自定义按键适用于矩阵键盘、触摸键、I2C 或 SPI 按键控制器等需要应用层提供 ``button_driver_t`` 的场景。
+
+.. _button-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -20,11 +24,17 @@
 - `ADC 多按键`_
 - `自定义按键`_
 
+.. _button-min-config:
+
 最小配置
 ------------
 
+.. _button-gpio:
+
 GPIO 按键
 ^^^^^^^^^^^
+
+完整字段见 :ref:`button-gpio-full`。
 
 ``gpio`` 模式通过 ``gpio`` 外设创建单个按键句柄。
 
@@ -53,8 +63,12 @@ GPIO 按键
         peripherals:
           - gpio_name: gpio_button_io_0
 
+.. _button-adc-single:
+
 ADC 单按键
 ^^^^^^^^^^^^^
+
+完整字段见 :ref:`button-adc-single-full`。
 
 ``adc_single`` 模式通过 ``adc`` 外设的 ``oneshot`` 角色创建单个 ADC 按键。
 
@@ -85,8 +99,12 @@ ADC 单按键
         peripherals:
           - adc_name: adc_oneshot
 
+.. _button-adc-multi:
+
 ADC 多按键
 ^^^^^^^^^^^^^
+
+完整字段见 :ref:`button-adc-multi-full`。
 
 ``adc_multi`` 模式在同一 ADC 通道上创建多个按键句柄，``button_num`` 不能超过 ``CONFIG_ADC_BUTTON_MAX_BUTTON_PER_CHANNEL``。回调注册时默认使用 ``button_labels`` 中对应标签作为 ``user_data``；未配置标签时回调仍会注册，但无法通过默认 ``user_data`` 区分具体按键。
 
@@ -118,8 +136,12 @@ ADC 多按键
         peripherals:
           - adc_name: adc_oneshot
 
+.. _button-custom:
+
 自定义按键
 ^^^^^^^^^^^^
+
+完整字段见 :ref:`button-custom-full`。
 
 ``custom`` 不依赖 ``board_peripherals.yaml`` 中的条目；总线和 GPIO 由应用侧实现的驱动自行管理。
 
@@ -147,10 +169,14 @@ ADC 多按键
     }
     DEVICE_EXTRA_FUNC_REGISTER(custom_button_0, custom_button_0);
 
-注册函数名必须与 ``board_devices.yaml`` 中的 ``name`` 完全一致。BMGR 初始化时通过设备名查找该函数，并将返回的 ``button_driver_t`` 交给 ``iot_button_create()``。``custom`` 模式的 ``peripherals`` 列表必须为空；``events_cfg`` 与计时字段的配置方式与其他子类型一致。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`。
+注册函数名必须与 ``board_devices.yaml`` 中的 ``name`` 完全一致。BMGR 初始化时通过设备名查找该函数，并将返回的 ``button_driver_t`` 交给 ``iot_button_create()``。``custom`` 模式的 ``peripherals`` 列表必须为空；``events_cfg`` 与计时字段的配置方式与其他子类型一致。
+
+.. _button-full-fields:
 
 完整字段
 ------------
+
+.. _button-gpio-full:
 
 GPIO 按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,6 +219,8 @@ GPIO 按键完整字段
       peripherals:
         - gpio_name: gpio            # [TO_BE_CONFIRMED] GPIO peripheral name
 
+.. _button-adc-single-full:
+
 ADC 单按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -233,6 +261,8 @@ ADC 单按键完整字段
 
       peripherals:
         - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
+
+.. _button-adc-multi-full:
 
 ADC 多按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,6 +311,8 @@ ADC 多按键完整字段
       peripherals:
         - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
 
+.. _button-custom-full:
+
 自定义按键完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -316,10 +348,14 @@ ADC 多按键完整字段
           press_repeat_done: false   # Enable press repeat done event (default: false)
           press_end: false           # Enable press end event (default: false)
 
+.. _button-deps:
+
 组件依赖
 ------------
 
 启用 ``button`` 设备时，组件清单会按 ``CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT`` 引入 ``espressif/button``，版本约束为 ``^4.1.4``。GPIO 与 ADC 子模式使用该组件提供的 ``button_gpio`` 和 ``button_adc`` 接口。
+
+.. _button-peripherals:
 
 依赖外设
 ------------
@@ -344,6 +380,8 @@ ADC 多按键完整字段
      - ``sub_type: custom`` 不引用任何 ``board_peripherals.yaml`` 条目
      - 总线和 GPIO 由应用侧 ``button_driver_t`` 实现自行管理
 
+.. _button-code:
+
 参考代码
 ------------
 
@@ -354,6 +392,8 @@ ADC 多按键完整字段
 - ``esp_board_manager/devices/dev_button/dev_button_sub_adc_multi.c``
 - ``esp_board_manager/devices/dev_button/dev_button_sub_custom.c``
 
+.. _button-boards:
+
 板级参考
 ------------
 
@@ -362,6 +402,8 @@ ADC 多按键完整字段
 - ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
 - ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``
+
+.. _button-notes:
 
 注意事项
 ------------
@@ -372,8 +414,19 @@ ADC 多按键完整字段
 - ``custom`` 子类型注册的 driver 创建函数名必须与设备 ``name`` 一致；``board_devices.yaml`` 不允许为该子类型添加 ``peripherals``。
 - 修改 YAML 后需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _button-factory:
+
+工厂函数
+------------
+
+``sub_type: custom`` 需要用 ``DEVICE_EXTRA_FUNC_REGISTER`` 注册与设备 ``name`` 同名的 ``button_driver_t`` 创建函数。注册函数名必须等于 ``board_devices.yaml`` 中的设备 ``name``。说明与示例见 :ref:`button-custom`。
+
+.. _button-debug:
+
 调试技巧
 ------------
+
+.. _button-api:
 
 API 参考
 ----------

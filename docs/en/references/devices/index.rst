@@ -15,6 +15,7 @@ The device reference pages are used to look up the configuration method for a sp
    display-lcd
    lcd-touch
    button
+   knob
    led-strip
    ledc-ctrl
    gpio-ctrl
@@ -44,4 +45,4 @@ Notes
 - After modifying device YAML, re-run ``idf.py bmgr -b <board>`` and rebuild the project.
 - ``[IO]`` indicates a pin or hardware resource that must be replaced according to the schematic; ``[TO_BE_CONFIRMED]`` indicates a value that board maintainers must confirm.
 - The peripheral ``name`` referenced by a device must match the instance name in ``board_peripherals.yaml``.
-- When custom initialization, panel factory functions, or runtime registration logic is needed, first check the corresponding device page to see whether ``setup_device.c`` or a ``custom`` device is required.
+- When custom initialization, panel factory functions, or runtime registration logic is needed, first check the corresponding device page to see whether ``setup_device.c`` or a ``custom`` device is required. Board-level C that includes chip-driver headers must be wrapped with ``__has_include``, and factory entries must be weak symbols, so ``gen_skip`` and amend still compile. See :doc:`/programming-guide/board-directory`.

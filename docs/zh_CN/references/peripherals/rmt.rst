@@ -3,12 +3,16 @@ rmt
 
 :link_to_translation:`en:[English]`
 
+.. _rmt-intro:
+
 简介
 ------
 
 ``rmt`` 外设类型用于描述 ESP-IDF RMT 通道。BMGR 根据 ``role`` 创建 TX 或 RX channel，并返回 ``periph_rmt_handle_t``。
 
 该外设适用于需要直接暴露 RMT 通道句柄的板级配置。LED 灯带设备也可使用 RMT，但 ``led_strip`` 的 ``rmt`` 参数写在设备侧配置中；只有当设备显式引用已定义的 ``rmt`` 外设时，才需在 ``board_peripherals.yaml`` 中创建 ``rmt`` 外设。
+
+.. _rmt-working-modes:
 
 支持的工作模式
 ---------------------
@@ -18,11 +22,18 @@ rmt
 - `TX 通道`_
 - `RX 通道`_
 
+.. _rmt-min-config:
+
 最小配置
 ------------
 
+.. _rmt-tx:
+
 TX 通道
 ^^^^^^^^^
+
+完整字段见 :ref:`rmt-tx-idf5`。
+完整字段见 :ref:`rmt-tx-idf6`。
 
 ``board_peripherals.yaml``：
 
@@ -46,8 +57,13 @@ TX 通道
             allow_pd: false
             init_level: 0
 
+.. _rmt-rx:
+
 RX 通道
 ^^^^^^^^^
+
+完整字段见 :ref:`rmt-rx-idf5`。
+完整字段见 :ref:`rmt-rx-idf6`。
 
 ``board_peripherals.yaml``：
 
@@ -68,6 +84,8 @@ RX 通道
             with_dma: false
             allow_pd: false
 
+.. _rmt-mode-notes:
+
 模式说明
 ------------
 
@@ -75,8 +93,12 @@ RX 通道
 
 IDF 5 与 IDF 6 的 RMT YAML 模板基本一致，差异在 flags：IDF 5 模板包含 ``io_loop_back``，IDF 6 模板将开漏相关配置放入 BMGR extra flags，并且模板中不再列出 ``io_loop_back``。
 
+.. _rmt-full-fields:
+
 完整字段
 ------------
+
+.. _rmt-tx-idf5:
 
 IDF 5 TX 通道完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,6 +139,8 @@ IDF 5 TX 通道完整字段
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
           init_level: 0                  # Set initial level of RMT channel signal (0=low, 1=high)
 
+.. _rmt-rx-idf5:
+
 IDF 5 RX 通道完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -147,6 +171,8 @@ IDF 5 RX 通道完整字段
                                           # to determine whether the chip supports
           io_loop_back: false            # For debug: signal output from GPIO fed back to input path
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
+
+.. _rmt-tx-idf6:
 
 IDF 6 TX 通道完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -186,6 +212,8 @@ IDF 6 TX 通道完整字段
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
           init_level: 0                  # Set initial level of RMT channel signal (0=low, 1=high)
 
+.. _rmt-rx-idf6:
+
 IDF 6 RX 通道完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -216,6 +244,8 @@ IDF 6 RX 通道完整字段
                                           # to determine whether the chip supports
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
 
+.. _rmt-devices:
+
 适用设备
 ------------
 
@@ -232,6 +262,8 @@ IDF 6 RX 通道完整字段
      - 设备侧可引用已定义的 ``rmt`` 外设
      - 编码器、发送队列使用方式和接收缓冲由自定义设备或应用代码决定
 
+.. _rmt-code:
+
 参考代码
 ------------
 
@@ -239,12 +271,16 @@ IDF 6 RX 通道完整字段
 - ``esp_board_manager/peripherals/periph_rmt/idf6/periph_rmt.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_rmt.c``
 
+.. _rmt-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``：定义 ``rmt_tx`` 测试外设。
 - ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：``led_strip`` 使用 ``sub_type: rmt``。
 - ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``：``led_strip`` 使用 ``sub_type: rmt``。
+
+.. _rmt-notes:
 
 注意事项
 ------------
@@ -254,8 +290,12 @@ IDF 6 RX 通道完整字段
 - ``role`` 决定解析 TX 还是 RX 配置。TX 专用字段不要写入 RX 外设，RX 专用字段不要写入 TX 外设。
 - 修改 RMT 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _rmt-debug:
+
 调试技巧
 ------------
+
+.. _rmt-api:
 
 API 参考
 ----------

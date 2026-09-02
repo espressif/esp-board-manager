@@ -3,12 +3,16 @@ uart
 
 :link_to_translation:`en:[English]`
 
+.. _uart-intro:
+
 简介
 ------
 
 ``uart`` 外设描述 ESP-IDF UART 驱动实例。BMGR 将 ``board_peripherals.yaml`` 中的 ``uart`` 条目转换为 ``periph_uart_config_t``，初始化时安装 UART driver、配置串口参数、设置 TX/RX/RTS/CTS 管脚，并按需设置 UART 工作模式。
 
 ``uart`` 适用于需由板级配置统一声明的串口资源。当前仓库未发现已有 board 配置引用 ``uart`` 外设的设备示例，因此本页仅列出外设自身的可配置工作模式与源码入口。
+
+.. _uart-working-modes:
 
 支持的工作模式
 ---------------------
@@ -19,6 +23,8 @@ uart
 - :ref:`RS485 / IrDA 等 UART mode <uart-alt-mode>`
 - :ref:`启用事件队列 <uart-queue>`
 
+.. _uart-min-config:
+
 最小配置
 ------------
 
@@ -26,6 +32,8 @@ uart
 
 UART 基本模式
 ^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`uart-full`。
 
 ``board_peripherals.yaml``：
 
@@ -45,6 +53,8 @@ UART 基本模式
 
 RS485 / IrDA 等 UART mode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`uart-full`。
 
 ``board_peripherals.yaml``：
 
@@ -67,6 +77,8 @@ RS485 / IrDA 等 UART mode
 启用事件队列
 ^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`uart-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -83,6 +95,8 @@ RS485 / IrDA 等 UART mode
           uart_config:
             baud_rate: 115200
 
+.. _uart-mode-notes:
+
 模式说明
 ------------
 
@@ -92,8 +106,12 @@ RS485 / IrDA 等 UART mode
 
 ``source_clk`` 和 ``lp_source_clk`` 是 union 关系，不能同时配置。使用 LP UART 时，端口和 GPIO 选择需要符合目标芯片 LP UART 能力。
 
+.. _uart-full-fields:
+
 完整字段
 ------------
+
+.. _uart-full:
 
 UART 基本模式 / 扩展 mode / 事件队列完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,6 +227,8 @@ UART 基本模式 / 扩展 mode / 事件队列完整字段
             # @deprecated, same meaning as allow_pd
             backup_before_sleep: 0
 
+.. _uart-devices:
+
 适用设备
 ------------
 
@@ -224,14 +244,20 @@ UART 基本模式 / 扩展 mode / 事件队列完整字段
      - 设备可在自定义初始化代码中获取 ``uart`` 外设句柄
      - UART 端口、管脚和串口参数写在 ``uart`` 外设 ``config`` 中
 
+.. _uart-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/peripherals/periph_uart/periph_uart.c``
 - ``esp_board_manager/peripherals/periph_uart/periph_uart.h``
 
+.. _uart-boards:
+
 板级参考
 ------------
+
+.. _uart-notes:
 
 注意事项
 ------------
@@ -242,8 +268,12 @@ UART 基本模式 / 扩展 mode / 事件队列完整字段
 - RTS/CTS 管脚为 ``-1`` 时表示不使用对应硬件流控管脚；若开启硬件流控，需要同步配置 ``flow_ctrl``。
 - 修改 UART 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _uart-debug:
+
 调试技巧
 ------------
+
+.. _uart-api:
 
 API 参考
 ----------

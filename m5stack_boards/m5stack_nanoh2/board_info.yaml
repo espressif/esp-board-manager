@@ -1,0 +1,5 @@
+board: m5stack_nanoh2
+chip: esp32h2
+version: 1.0.0
+description: "M5NanoH2 Development Board (Thread / Zigbee / BLE)"
+manufacturer: "M5Stack"

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
@@ -7,11 +7,20 @@
 
 #include <string.h>
 #include "esp_board_device.h"
-#include "esp_codec_dev.h"
+#include "esp_lcd_panel_io.h"
+#include "esp_lcd_panel_ops.h"
+#include "esp_lcd_touch.h"
+#if __has_include(<esp_lcd_st77916.h>)
+#define HAS_ST77916  1
 #include "esp_lcd_st77916.h"
+#endif  /* __has_include(<esp_lcd_st77916.h>) */
+#if __has_include(<esp_lcd_touch_cst816s.h>)
+#define HAS_CST816S  1
 #include "esp_lcd_touch_cst816s.h"
+#endif  /* __has_include(<esp_lcd_touch_cst816s.h>) */
 #include "esp_log.h"
 
+#if defined(HAS_ST77916)
 static const st77916_lcd_init_cmd_t vendor_specific_init_default[] = {
     {0xF0, (uint8_t[]) {0x28}, 1, 0},
     {0xF2, (uint8_t[]) {0x28}, 1, 0},
@@ -206,8 +215,10 @@ static const st77916_vendor_config_t vendor_config = {
     .flags          = {
         .use_qspi_interface = 1,  // QSPI
     }};
+#endif  /* defined(HAS_ST77916) */
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
+#if defined(HAS_ST77916)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
 {
     esp_lcd_panel_dev_config_t panel_dev_cfg = {0};
     memcpy(&panel_dev_cfg, panel_dev_config, sizeof(esp_lcd_panel_dev_config_t));
@@ -220,8 +231,10 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_ST77916) */
 
-esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
+#if defined(HAS_CST816S)
+__attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
 {
     esp_lcd_touch_config_t touch_cfg = {0};
     memcpy(&touch_cfg, touch_dev_config, sizeof(esp_lcd_touch_config_t));
@@ -232,3 +245,4 @@ esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_CST816S) */

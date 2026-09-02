@@ -3,12 +3,16 @@ adc
 
 :link_to_translation:`en:[English]`
 
+.. _adc-intro:
+
 简介
 ------
 
 ``adc`` 外设描述 ESP-IDF ADC continuous 或 one-shot 驱动实例。BMGR 按 ``role`` 将 ``board_peripherals.yaml`` 中的 ``adc`` 条目转换为 ``periph_adc_config_t``，并创建 continuous 或 one-shot 句柄。
 
 ``adc`` 常用于内部 ADC 音频输入与 ADC 按键。continuous 模式面向持续采样数据流；one-shot 模式面向按需读取单个 ADC channel 的场景。
+
+.. _adc-working-modes:
 
 支持的工作模式
 ---------------------
@@ -19,6 +23,8 @@ adc
 - :ref:`continuous：single unit 配置 <adc-continuous-single-unit>`
 - :ref:`oneshot <adc-oneshot>`
 
+.. _adc-min-config:
+
 最小配置
 ------------
 
@@ -26,6 +32,8 @@ adc
 
 continuous：``patterns`` 配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`adc-continuous-patterns-full`。
 
 ``board_peripherals.yaml``：
 
@@ -48,6 +56,8 @@ continuous：``patterns`` 配置
 continuous：single unit 配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`adc-continuous-single-unit-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -66,6 +76,8 @@ continuous：single unit 配置
 oneshot
 ^^^^^^^^^^^
 
+完整字段见 :ref:`adc-oneshot-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -78,6 +90,8 @@ oneshot
           unit_id: ADC_UNIT_1       # [TO_BE_CONFIRMED]
           channel_id: 4             # [TO_BE_CONFIRMED]
 
+.. _adc-mode-notes:
+
 模式说明
 ------------
 
@@ -87,8 +101,12 @@ oneshot 模式创建 ``adc_oneshot_unit_handle_t``，并配置一个 ``channel_i
 
 ADC channel 和 GPIO 的映射依赖目标芯片。模板中 channel 字段保留 ``[TO_BE_CONFIRMED]``，板级配置应按芯片手册或 ESP-IDF ADC 映射 API 确认。
 
+.. _adc-full-fields:
+
 完整字段
 ------------
+
+.. _adc-continuous-patterns-full:
 
 continuous：``patterns`` 配置完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,6 +186,8 @@ continuous：``patterns`` 配置完整字段
             atten: ADC_ATTEN_DB_12
             bit_width: ADC_BITWIDTH_DEFAULT
 
+.. _adc-continuous-single-unit-full:
+
 continuous：single unit 配置完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -191,6 +211,8 @@ continuous：single unit 配置完整字段
         atten: ADC_ATTEN_DB_0
         # ADC raw output bit-width. Use an enum, SoC macro, or positive integer supported by the target ADC driver.
         bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
+
+.. _adc-oneshot-full:
 
 oneshot 完整字段
 ^^^^^^^^^^^^^^^^^^^^
@@ -245,6 +267,8 @@ oneshot 完整字段
         # - ADC_ULP_MODE_RISCV
         # - ADC_ULP_MODE_LP_CORE
 
+.. _adc-devices:
+
 适用设备
 ------------
 
@@ -261,6 +285,8 @@ oneshot 完整字段
      - ``sub_type: adc_single`` 或 ``sub_type: adc_multi`` 引用 ``role: oneshot`` 的 ADC 外设
      - 按键电压范围、按钮数量和事件配置写在 ``button`` 设备中
 
+.. _adc-code:
+
 参考代码
 ------------
 
@@ -269,6 +295,8 @@ oneshot 完整字段
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
 
+.. _adc-boards:
+
 板级参考
 ------------
 
@@ -276,6 +304,8 @@ oneshot 完整字段
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
 - ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``：ADC button 使用 one-shot 外设。
+
+.. _adc-notes:
 
 注意事项
 ------------
@@ -286,8 +316,12 @@ oneshot 完整字段
 - ``conv_mode`` 需要和 ADC unit 组合匹配。单一 ``ADC_UNIT_1`` 使用 ``ADC_CONV_SINGLE_UNIT_1``，单一 ``ADC_UNIT_2`` 使用 ``ADC_CONV_SINGLE_UNIT_2``，混合 unit 不能使用 single-unit conversion mode。
 - ADC channel 到 GPIO 的映射按目标芯片确定；修改 ADC 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _adc-debug:
+
 调试技巧
 ------------
+
+.. _adc-api:
 
 API 参考
 ----------

@@ -1,0 +1,5 @@
+board: esp_Ditto
+chip: esp32c5
+version: 1.0.0
+description: ESP-Ditto Development Board
+manufacturer: Espressif

@@ -1,0 +1,5 @@
+board: m5stack_capsule
+chip: esp32s3
+version: 1.0.0
+description: "M5Capsule (StampS3 core, microSD, PDM mic, buzzer, IR, RGB LED, no display)"
+manufacturer: "M5Stack"

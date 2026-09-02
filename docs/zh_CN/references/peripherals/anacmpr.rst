@@ -3,12 +3,16 @@ anacmpr
 
 :link_to_translation:`en:[English]`
 
+.. _anacmpr-intro:
+
 简介
 ------
 
 ``anacmpr`` 外设类型用于描述片上模拟比较器单元。BMGR 据此生成 ``ana_cmpr_config_t``，并调用 ESP-IDF ``driver/ana_cmpr.h`` 创建 analog comparator unit。
 
 BMGR 初始化后，应用通过 :cpp:func:`esp_board_manager_get_periph_handle` 获取 ``periph_anacmpr_handle_t``，再使用 ESP-IDF analog comparator API 配置内部参考、电平交叉回调、去抖与启停动作。
+
+.. _anacmpr-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ BMGR 初始化后，应用通过 :cpp:func:`esp_board_manager_get_periph_handle`
 
 - `analog comparator unit`_
 
+.. _anacmpr-min-config:
+
 最小配置
 ------------
 
+.. _anacmpr-unit:
+
 analog comparator unit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`anacmpr-unit-full`。
 
 ``board_peripherals.yaml``：
 
@@ -37,6 +47,8 @@ analog comparator unit
           clk_src: ANA_CMPR_CLK_SRC_DEFAULT
           intr_priority: 0
 
+.. _anacmpr-mode-notes:
+
 模式说明
 ------------
 
@@ -44,8 +56,12 @@ analog comparator unit
 
 当前 BMGR parser 只接受 ``unit: 0``。内部参考电压、去抖和事件回调不在外设 YAML 中配置，由应用在获取句柄后通过 ESP-IDF analog comparator API 设置。
 
+.. _anacmpr-full-fields:
+
 完整字段
 ------------
+
+.. _anacmpr-unit-full:
 
 analog comparator unit 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,6 +102,8 @@ analog comparator unit 完整字段
 - YAML 模板：``esp_board_manager/peripherals/periph_anacmpr/periph_anacmpr.yml``。
 - 头文件：``esp_board_manager/peripherals/periph_anacmpr/periph_anacmpr.h``。
 
+.. _anacmpr-devices:
+
 适用设备
 ------------
 
@@ -99,15 +117,21 @@ analog comparator unit 完整字段
      - 应用通过 ``esp_board_manager_get_periph_handle`` 获取 analog comparator 外设句柄
      - 当前仓库未提供引用 ``anacmpr`` 外设的 device 类型；参考电压、去抖、回调和启停由应用或测试代码完成
 
+.. _anacmpr-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_anacmpr.c``
 
+.. _anacmpr-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_p4_core/board_peripherals.yaml``：``anacmpr_unit_0`` 配置，并配置 ``gpio_monitor`` 用于测试中观察交叉事件。
+
+.. _anacmpr-notes:
 
 注意事项
 ------------
@@ -119,8 +143,12 @@ analog comparator unit 完整字段
 - 内部参考电压、去抖和事件回调需要在应用代码中配置，不写入 ``anacmpr`` 外设 ``config``。
 - 修改 analog comparator 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _anacmpr-debug:
+
 调试技巧
 ------------
+
+.. _anacmpr-api:
 
 API 参考
 ----------

@@ -15,6 +15,7 @@
    display-lcd
    lcd-touch
    button
+   knob
    led-strip
    ledc-ctrl
    gpio-ctrl
@@ -44,4 +45,4 @@ BMGR 设备实现通常基于 IDF 驱动或组件。在设计设备时，BMGR �
 - 修改设备 YAML 后需重新执行 ``idf.py bmgr -b <board>``，并重新构建工程。
 - ``[IO]`` 表示需按原理图替换的管脚或硬件资源；``[TO_BE_CONFIRMED]`` 表示需要板级维护者确认的取值。
 - 设备引用的外设 ``name`` 必须与 ``board_peripherals.yaml`` 中的实例名一致。
-- 需要自定义初始化、面板工厂函数或运行时注册逻辑时，优先查看对应设备页是否要求配合 ``setup_device.c`` 或 ``custom`` 设备。
+- 需要自定义初始化、面板工厂函数或运行时注册逻辑时，优先查看对应设备页是否要求配合 ``setup_device.c`` 或 ``custom`` 设备。板级 C 中依赖芯片驱动组件的实现须用 ``__has_include`` 包裹，工厂入口还须声明为弱符号，以便 ``gen_skip`` 与 amend。详见 :doc:`/programming-guide/board-directory`。

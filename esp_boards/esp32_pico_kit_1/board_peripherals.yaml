@@ -1,0 +1,27 @@
+# Peripherals Configuration for ESP32-PICO-KIT-1
+#
+# Source: ESP32-PICO-KIT-1 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-pico-kit-1/user_guide.html
+#
+# SiP: ESP32-PICO-V3, 4 MB in-package flash, no PSRAM. On-board hardware is
+# minimal: BOOT and EN buttons, a CP2102N USB-to-UART bridge (3 Mbps) and a
+# red power indicator LED. Electrically the same layout as ESP32-PICO-KIT,
+# rebuilt around the PICO-V3 SiP.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - EN button (chip reset, hardware path — not a GPIO)
+# - Red power-on LED: wired to the 3.3 V rail, NOT GPIO controlled
+# - CP2102N USB-to-UART bridge on UART0 (console, handled by ROM/IDF)
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO0, active-low, strapping pin — input only at runtime)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

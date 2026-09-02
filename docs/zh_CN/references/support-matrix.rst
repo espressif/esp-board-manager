@@ -3,7 +3,7 @@
 
 :link_to_translation:`en:[English]`
 
-支持矩阵用于快速判断 BMGR 当前内置的 device type 与 peripheral type。具体配置方法见"设备参考"与"外设参考"，单块开发板的详情见"开发板参考"。
+支持矩阵用于快速判断 BMGR 当前内置的 device type 与 peripheral type。具体配置方法见"设备参考"与"外设参考"，单块开发板的详情见 :doc:`板卡目录 </references/boards/index>`。
 
 支持的 device type
 ------------------------

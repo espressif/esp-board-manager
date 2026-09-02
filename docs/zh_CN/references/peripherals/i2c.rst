@@ -3,12 +3,16 @@ i2c
 
 :link_to_translation:`en:[English]`
 
+.. _i2c-intro:
+
 简介
 ------
 
 ``i2c`` 外设描述 ESP-IDF I2C master bus。BMGR 将 ``board_peripherals.yaml`` 中的 ``i2c`` 条目转换为 ``i2c_master_bus_config_t``，并在初始化时创建 I2C master bus 句柄。
 
 ``i2c`` 常用于外接音频 codec 控制、LCD touch、IO expander、摄像头 SCCB 控制等设备。设备侧通过外设实例名引用同一条 I2C 总线，并在设备 ``peripherals`` 引用条目中填写器件地址等设备私有参数。
+
+.. _i2c-working-modes:
 
 支持的工作模式
 ---------------------
@@ -18,6 +22,8 @@ i2c
 - :ref:`HP I2C master <i2c-hp-master>`
 - :ref:`LP I2C master <i2c-lp-master>`
 
+.. _i2c-min-config:
+
 最小配置
 ------------
 
@@ -25,6 +31,8 @@ i2c
 
 HP I2C master
 ^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`i2c-full`。
 
 ``board_peripherals.yaml``：
 
@@ -44,6 +52,8 @@ HP I2C master
 LP I2C master
 ^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`i2c-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -58,6 +68,8 @@ LP I2C master
             sda: 6      # [IO]
             scl: 7      # [IO]
 
+.. _i2c-mode-notes:
+
 模式说明
 ------------
 
@@ -67,8 +79,12 @@ LP I2C 需显式使用 ``LP_I2C_NUM_0`` 一类端口宏，并使用 ``LP_I2C_SCL
 
 I2C 器件地址不写入外设 ``config``：音频 codec 使用 ``address``，LCD touch 与 IO expander 使用 ``i2c_addr``，这些字段属于设备侧引用条目。
 
+.. _i2c-full-fields:
+
 完整字段
 ------------
+
+.. _i2c-full:
 
 HP I2C master 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,6 +131,8 @@ HP I2C master 完整字段
         # Interrupt priority (default: 1)
         intr_priority: 1
 
+.. _i2c-devices:
+
 适用设备
 ------------
 
@@ -137,6 +155,8 @@ HP I2C master 完整字段
      - DVP / SPI 摄像头可引用 ``i2c`` 作为 SCCB 控制总线
      - 摄像头数据总线或 SPI 数据线不写进 ``i2c`` 外设
 
+.. _i2c-code:
+
 参考代码
 ------------
 
@@ -145,12 +165,16 @@ HP I2C master 完整字段
 - ``esp_board_manager/examples/play_embed_music/main/play_embed_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 
+.. _i2c-boards:
+
 板级参考
 ------------
 
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：音频 codec 使用的 I2C 控制总线。
 - ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：音频、触摸和 IO expander 共用 I2C 总线。
 - ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：音频、触摸和多个 IO expander 使用 I2C 总线。
+
+.. _i2c-notes:
 
 注意事项
 ------------
@@ -160,8 +184,12 @@ HP I2C master 完整字段
 - 设备地址、I2C 传输频率、触摸控制参数、codec 控制参数属于设备侧配置，不写入 ``i2c`` 外设的 ``config``。
 - 修改 I2C 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _i2c-debug:
+
 调试技巧
 ------------
+
+.. _i2c-api:
 
 API 参考
 ----------

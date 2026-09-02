@@ -3,12 +3,16 @@ FAT Filesystem (``fs_fat``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _fs-fat-intro:
+
 Overview
 --------
 
 The ``fs_fat`` device mounts an SD card as a FAT filesystem. During initialization it calls the ESP-IDF FATFS mount interface and returns a ``dev_fs_fat_handle_t``; the application accesses files under ``mount_point`` through the standard C file API.
 
 This device supports two access modes: SDMMC and SDSPI. SDMMC configures the SDMMC host, slot, and pins directly; SDSPI reuses a board-level ``spi`` peripheral and configures the SD card chip-select pin on the device side.
+
+.. _fs-fat-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -18,11 +22,17 @@ Supported Usage Modes
 - `SDMMC`_
 - `SPI`_
 
+.. _fs-fat-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _fs-fat-sdmmc:
+
 SDMMC
 ^^^^^
+
+See complete fields: :ref:`fs-fat-sdmmc-full`.
 
 ``sdmmc`` mode uses ``SDMMC_HOST_DEFAULT()`` and ``esp_vfs_fat_sdmmc_mount()``. It is suitable for SD cards connected directly to the SDMMC host and does not require a new ``board_peripherals.yaml`` entry. ``ldo_chan_id`` is used for on-chip LDO power control only when the target SoC supports ``SOC_GP_LDO_SUPPORTED``; whether it needs to be configured depends on the board's SDMMC power circuit.
 
@@ -45,8 +55,12 @@ SDMMC
               cmd: -1
               d0: -1
 
+.. _fs-fat-spi:
+
 SPI
 ^^^
+
+See complete fields: :ref:`fs-fat-spi-full`.
 
 ``spi`` mode uses ``SDSPI_HOST_DEFAULT()`` and ``esp_vfs_fat_sdspi_mount()``. A ``spi`` peripheral must be referenced; at runtime the SPI host port is obtained from that peripheral.
 
@@ -82,8 +96,12 @@ SPI
         peripherals:
           - spi_name: spi_master
 
+.. _fs-fat-full-fields:
+
 All Fields
 ----------
+
+.. _fs-fat-sdmmc-full:
 
 SDMMC All Fields
 ^^^^^^^^^^^^^^^^
@@ -141,6 +159,8 @@ SDMMC All Fields
           # e.g., In ESP32-P4 Function-EV Board, VO4_LDO is connected to power the SDMMC IO. set it to 4 for VO4_LDO.
           ldo_chan_id: -1
 
+.. _fs-fat-spi-full:
+
 SPI All Fields
 ^^^^^^^^^^^^^^
 
@@ -167,10 +187,14 @@ SPI All Fields
       peripherals:
         - spi_name: spi_master  # [TO_BE_CONFIRMED] SPI bus name (can be any name, e.g., spi_0, spi_sdcard, etc.)
 
+.. _fs-fat-deps:
+
 Component Dependencies
 ----------------------
 
 ``fs_fat`` uses the ESP-IDF built-in ``fatfs``, ``sdmmc``, ``driver``, and ``esp_vfs_fat`` interfaces. The current device template does not require additional ``dependencies`` declarations in ``board_devices.yaml``.
+
+.. _fs-fat-peripherals:
 
 Required Peripherals
 --------------------
@@ -191,6 +215,8 @@ Required Peripherals
      - Not required for ``sub_type: sdmmc``
      - SDMMC host and slot are initialized directly from device configuration
 
+.. _fs-fat-code:
+
 Reference Code
 --------------
 
@@ -200,6 +226,8 @@ Reference Code
 - ``esp_board_manager/devices/dev_fs_fat/dev_fs_fat_sub_spi.c``
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
+
+.. _fs-fat-boards:
 
 Board Reference
 ---------------
@@ -211,6 +239,8 @@ Board Reference
 - ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``
 
+.. _fs-fat-notes:
+
 Notes
 -----
 
@@ -220,8 +250,12 @@ Notes
 - ``format_if_mount_failed: true`` formats the filesystem when mounting fails; set this according to your data retention requirements.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _fs-fat-debug:
+
 Debugging Tips
 --------------
+
+.. _fs-fat-api:
 
 API Reference
 -------------

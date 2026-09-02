@@ -1,0 +1,96 @@
+# Peripherals Configuration for ESP32-S3-Korvo-1
+peripherals:
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 1
+        scl: 2
+      enable_internal_pullup: true
+
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 22050
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_BOTH
+      ws_width: 16
+      ws_pol: false
+      bit_shift: true
+      left_align: true
+      big_endian: false
+      bit_order_lsb: false
+      pins:
+        mclk: 42
+        bclk: 40
+        ws: 41
+        dout: 39
+      invert_flags:
+        mclk_inv: false
+        bclk_inv: false
+        ws_inv: false
+
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: tdm-in
+    config:
+      port: 1
+      sample_rate_hz: 16000
+      mclk_multiple: 256
+      bclk_div: 8
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_STEREO
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
+      ws_width: 16
+      ws_pol: false
+      bit_shift: true
+      left_align: false
+      big_endian: false
+      bit_order_lsb: false
+      total_slot: 2
+      pins:
+        mclk: 20
+        bclk: 10
+        ws: 9
+        din: 11
+      invert_flags:
+        mclk_inv: false
+        bclk_inv: false
+        ws_inv: false
+
+  # Boot button. Schematic net: ESP0_Boot_IO0 / ESP_IO0.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  - name: gpio_power_amp
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  - name: adc_oneshot
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 7
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12

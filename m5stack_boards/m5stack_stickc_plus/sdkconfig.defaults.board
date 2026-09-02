@@ -1,0 +1,14 @@
+# M5StickC PLUS — ESP32-PICO-D4, 4 MB in-package flash, no PSRAM
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+# In-package flash is QUAD-wired: ESP32-PICO Series Datasheet v1.3, Table 1
+# ("ESP32-PICO-D4 | 4 MB (Quad SPI)") and Table 3, which maps all six lines
+# inside the package (CLK=IO6, CS=IO16, SIO0=IO8, SIO1=IO17, SIO2=IO7,
+# SIO3=IO11). Note the D4 spends GPIO16/17 on flash, which is why Table 7
+# still lists GPIO9 and GPIO10 as "can be used freely".
+# https://documentation.espressif.com/esp32-pico-d4_datasheet_en.pdf
+# DIO is kept deliberately: no Espressif datasheet states QIO/DIO for any
+# module — that is an ESP-IDF setting, not a published module property. The
+# quad wiring permits QIO; raising it needs one real flash test, not a doc.
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

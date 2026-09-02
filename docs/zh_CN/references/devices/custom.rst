@@ -3,6 +3,8 @@
 
 :link_to_translation:`en:[English]`
 
+.. _custom-intro:
+
 简介
 ------
 
@@ -18,8 +20,12 @@
 - 自定义驱动的外围芯片（电源管理 IC、传感器、执行器等），板级代码提供初始化函数。
 - 仅需将板级配置参数（I2C 地址、GPIO 编号、默认值等）暴露给应用层，无需额外初始化逻辑。
 
+.. _custom-min:
+
 最小配置
 ------------
+
+完整字段见 :ref:`custom-full`。
 
 ``custom`` 不需要额外的 ``board_peripherals.yaml`` 条目；外设按需引用。
 
@@ -36,6 +42,8 @@
           i2c_addr: 0x34
         peripherals:
           - name: i2c_master
+
+.. _custom-codegen:
 
 代码生成结果
 --------------
@@ -171,19 +179,23 @@
 在 YAML 顶层 ``peripherals:`` 下声明外设时，结构体末尾追加外设相关字段：
 
 - \ **单个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_name``。
-- \ **多个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_names[4]``。
+- \ **多个外设**\ ：追加 ``uint8_t peripheral_count`` 和 ``const char *peripheral_names[DEV_CUSTOM_MAX_PERIPHERALS]``。
 
-外设数量上限固定为 4，超过该上限的设备定义会被解析器拒绝。
+解析器内部常量 ``DEV_CUSTOM_MAX_PERIPHERALS`` 固定为 4。``peripherals:`` 列表超过四项时，解析器会拒绝该配置。
 
-.. _custom-entry-impl:
+.. _custom-factory:
 
-注册初始化入口
---------------
+工厂函数
+------------
 
-若需要在 BMGR 初始化时自动调用板级驱动代码，需在板级源文件中实现初始化/反初始化函数，并使用 ``CUSTOM_DEVICE_IMPLEMENT`` 宏注册：
+若需要在 BMGR 初始化时自动调用板级驱动代码，需在板级源文件中实现初始化/反初始化函数，并使用 ``CUSTOM_DEVICE_IMPLEMENT`` 宏注册。
+
+实现若依赖第三方芯片驱动组件，须将驱动头文件、生成的配置结构体、init/deinit 与 ``CUSTOM_DEVICE_IMPLEMENT`` 放在同一 ``#if __has_include`` 中。下游用 ``gen_skip`` 去掉该设备后，对应组件不再写入 ``idf_component.yml``，但板级源码仍会编译。没有独立组件头文件时，``__has_include`` 无法防护生成结构体缺失。完整约定见 :doc:`/programming-guide/board-directory`。
 
 .. code-block:: c
 
+    #if __has_include("my_sensor.h")
+    #include "my_sensor.h"
     #include "dev_custom.h"
     #include "gen_board_device_custom.h"  /* 生成的配置结构体头文件 */
 
@@ -209,8 +221,9 @@
 
     /* 第一个参数必须与 board_devices.yaml 中该设备的 name 完全一致 */
     CUSTOM_DEVICE_IMPLEMENT(my_sensor, my_sensor_init, my_sensor_deinit);
+    #endif  /* __has_include("my_sensor.h") */
 
-``CUSTOM_DEVICE_IMPLEMENT`` 通过 GCC 属性将描述符放入特殊链接器段（``.esp_board_entries_desc``），运行时 BMGR 按设备名线性扫描该段查找初始化/反初始化函数。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`。
+``CUSTOM_DEVICE_IMPLEMENT`` 通过 GCC 属性将描述符放入特殊链接器段（``.esp_board_entries_desc``），运行时 BMGR 按设备名线性扫描该段查找初始化/反初始化函数。
 
 CMakeLists.txt 要求
 ^^^^^^^^^^^^^^^^^^^
@@ -228,6 +241,8 @@ CMakeLists.txt 要求
           INCLUDE_DIRS "."
           WHOLE_ARCHIVE
       )
+
+.. _custom-app-access:
 
 应用侧访问
 --------------
@@ -260,6 +275,8 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 
     未注册同名 entry 时，``esp_board_manager_get_device_handle`` 返回错误而非 ``NULL``，因为内部 handle 本身为 ``NULL``。\ **仅配置（config-only）用法**\ 应仅使用 :cpp:func:`esp_board_manager_get_device_config`，不应调用 :cpp:func:`esp_board_manager_get_device_handle`。
 
+.. _custom-full:
+
 完整字段
 ------------
 
@@ -286,10 +303,14 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
             require: public
             version: "^2.0.0"
 
+.. _custom-deps:
+
 组件依赖
 ------------
 
 ``custom`` 设备本身无固定依赖。需要驱动组件时在该设备的 ``dependencies`` 字段中声明，例如 ``esp_driver_i2c``、``esp_driver_gpio``、``esp_driver_ledc`` 或 ``esp_driver_adc``。
+
+.. _custom-peripherals:
 
 依赖外设
 ------------
@@ -310,6 +331,8 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
      - 可省略
      - 仅暴露配置参数，不需要外设句柄
 
+.. _custom-code:
+
 参考代码
 ------------
 
@@ -318,11 +341,15 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 - ``esp_board_manager/devices/dev_custom/dev_custom.c``
 - ``esp_board_manager/devices/dev_custom/dev_custom.h``
 
+.. _custom-boards:
+
 板级参考
 ------------
 
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``：``axp2101_power_manager``，注册了完整初始化/反初始化入口，通过 ``config->i2c_addr``、``config->peripheral_name`` 等字段驱动 AXP2101 电源管理芯片。
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``：含嵌套结构体、列表、字典列表的完整测试用例。
+
+.. _custom-notes:
 
 注意事项
 ------------
@@ -331,11 +358,15 @@ BMGR 初始化完成后，可通过以下方式访问\ ``custom`` 设备。
 - ``CUSTOM_DEVICE_IMPLEMENT`` 的第一个参数必须与设备 ``name`` 完全一致，区分大小写。
 - 包含 ``CUSTOM_DEVICE_IMPLEMENT`` 的组件须在 CMakeLists.txt 中设置 ``WHOLE_ARCHIVE``，否则链接器会优化丢弃描述符。
 - 未注册同名初始化入口时，初始化不会失败，但\ :cpp:func:`esp_board_manager_get_device_handle` 返回错误；:cpp:func:`esp_board_manager_get_device_config` 仍返回有效配置结构体。
-- ``peripherals:`` 列表上限为 4，声明超过该上限的配置会被解析器拒绝。
+- ``peripherals:`` 最多支持四项（``DEV_CUSTOM_MAX_PERIPHERALS = 4``），更大的列表会被解析器拒绝。
 - 修改 YAML 后需重新执行\ ``idf.py bmgr -b <board>``。
+
+.. _custom-debug:
 
 调试技巧
 ------------
+
+.. _custom-api:
 
 API 参考
 ----------

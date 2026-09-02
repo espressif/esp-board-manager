@@ -1,0 +1,5 @@
+board: m5stack_core_2
+chip: esp32
+version: 1.0.0
+description: M5Stack Core2 v1.0 with ILI9341 LCD, FT5x06 touch, speaker, and SPI microSD
+manufacturer: M5Stack

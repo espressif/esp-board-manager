@@ -105,6 +105,31 @@ peripherals:
       intr_type: GPIO_INTR_DISABLE
       default_level: 1
 
+  # Boot button. Schematic net: GPIO35_BOOT.
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 35
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 1
+
+  - name: gpio_encoder_press
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 2
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 1
+
   - name: gpio_flashlight
     type: gpio
     version: default

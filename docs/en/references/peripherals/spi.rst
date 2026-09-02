@@ -3,12 +3,16 @@ spi
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _spi-intro:
+
 Overview
 --------
 
 The ``spi`` peripheral describes an ESP-IDF SPI master bus. BMGR converts an ``spi`` entry in ``board_peripherals.yaml`` into a ``periph_spi_config_t`` and calls ``spi_bus_initialize`` to create the SPI bus during initialization.
 
 ``spi`` is commonly used for SPI LCDs, some SPI cameras, or other devices that share an SPI host. Chip-select, D/C, LCD pixel clock, device SPI mode, and other device-private parameters belong to the device-side configuration; the peripheral side only describes the SPI bus host, data lines, and transfer capability.
+
+.. _spi-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -18,6 +22,8 @@ Supported Operating Modes
 - :ref:`Standard SPI bus <spi-standard-bus>`
 - :ref:`Quad / Octal SPI bus <spi-wide-bus>`
 
+.. _spi-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -25,6 +31,8 @@ Minimal Configuration
 
 Standard SPI Bus
 ^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`spi-full`.
 
 ``board_peripherals.yaml``:
 
@@ -45,6 +53,8 @@ Standard SPI Bus
 Quad / Octal SPI Bus
 ^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`spi-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -61,6 +71,8 @@ Quad / Octal SPI Bus
             data2_io_num: 14    # [IO]
             data3_io_num: 15    # [IO]
 
+.. _spi-mode-notes:
+
 Mode Description
 ----------------
 
@@ -70,8 +82,12 @@ The Quad / Octal SPI bus uses the data-line fields of the ESP-IDF ``spi_bus_conf
 
 The SPI LCD's ``cs_gpio_num``, ``dc_gpio_num``, ``spi_mode``, ``pclk_hz``, and transaction queue depth belong to the ``display_lcd`` device-side ``io_spi_config`` and are not written into the ``spi`` peripheral ``config``.
 
+.. _spi-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _spi-full:
 
 Standard SPI Bus / Quad / Octal SPI Bus — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,6 +161,8 @@ Standard SPI Bus / Quad / Octal SPI Bus — Full Fields
           # Interrupt flags (default: 0)
           intr_flags: 0
 
+.. _spi-devices:
+
 Applicable Devices
 ------------------
 
@@ -161,11 +179,15 @@ Applicable Devices
      - SPI camera devices configure ``spi_config`` on the device side
      - In existing board configurations, SPI camera parameters are described directly on the device side without reusing an ``spi`` peripheral instance
 
+.. _spi-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/peripherals/periph_spi/periph_spi.c``
 - ``esp_board_manager/peripherals/periph_spi/periph_spi.h``
+
+.. _spi-boards:
 
 Board-Level Reference
 ---------------------
@@ -174,6 +196,8 @@ Board-Level Reference
 - ``esp_boards/esp_vocat_1_2/board_peripherals.yaml``: SPI LCD bus configuration.
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: SPI LCD bus configuration.
 - ``m5stack_boards/m5stack_cores3/board_peripherals.yaml``: SPI master bus configuration.
+
+.. _spi-notes:
 
 Notes
 -----
@@ -184,8 +208,12 @@ Notes
 - SPI peripheral initialization only creates the bus. The chip-select, command/data pin, and device clock of specific devices belong to the corresponding device configuration.
 - After modifying the SPI peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _spi-debug:
+
 Debugging Tips
 --------------
+
+.. _spi-api:
 
 API Reference
 -------------

@@ -3,12 +3,16 @@ sdm
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _sdm-intro:
+
 Overview
 --------
 
 The ``sdm`` peripheral type describes an on-chip Sigma Delta Modulation output channel. BMGR generates an ``sdm_config_t`` from this configuration and calls the ESP-IDF ``driver/sdm.h`` to create the SDM channel.
 
 BMGR is only responsible for creating and storing the SDM channel handle. After obtaining the ``periph_sdm_handle_t``, the application can call ESP-IDF SDM APIs to enable the channel, set the pulse density, and close the channel when finished.
+
+.. _sdm-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -17,11 +21,17 @@ Supported Operating Modes
 
 - `SDM Output Channel`_
 
+.. _sdm-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _sdm-channel:
+
 SDM Output Channel
 ^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`sdm-channel-full`.
 
 ``board_peripherals.yaml``:
 
@@ -37,6 +47,8 @@ SDM Output Channel
           invert_out: false
           io_loop_back: false
 
+.. _sdm-mode-notes:
+
 Mode Description
 ----------------
 
@@ -44,8 +56,12 @@ Mode Description
 
 ``io_loop_back`` and ``allow_pd`` are flags that vary with the ESP-IDF version: IDF v5.x generates ``io_loop_back``, while IDF v6.x and later generate ``allow_pd``. When the corresponding field is configured on an unsupported ESP-IDF version, the parser ignores that field and prints a warning.
 
+.. _sdm-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _sdm-channel-full:
 
 SDM Output Channel — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,6 +96,8 @@ Field sources:
 - YAML template: ``esp_board_manager/peripherals/periph_sdm/periph_sdm.yml``.
 - Header file: ``esp_board_manager/peripherals/periph_sdm/periph_sdm.h``.
 
+.. _sdm-devices:
+
 Applicable Devices
 ------------------
 
@@ -93,15 +111,21 @@ Applicable Devices
      - Application retrieves the SDM peripheral handle via ``esp_board_manager_get_periph_handle``
      - No device type in the current repository references the ``sdm`` peripheral; pulse density setting is handled by application or test code
 
+.. _sdm-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_sdm.c``
 
+.. _sdm-boards:
+
 Board-Level Reference
 ---------------------
 
 - ``esp_boards/esp32_c3_lyra/board_peripherals.yaml``: ``sdm`` output channel configuration.
+
+.. _sdm-notes:
 
 Notes
 -----
@@ -112,8 +136,12 @@ Notes
 - Under IDF v5.x, ``allow_pd`` is not written into the generated configuration. Under IDF v6.x and later, ``io_loop_back`` is not written into the generated configuration.
 - After modifying the SDM peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _sdm-debug:
+
 Debugging Tips
 --------------
+
+.. _sdm-api:
 
 API Reference
 -------------

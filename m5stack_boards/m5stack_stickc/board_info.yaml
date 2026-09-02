@@ -1,0 +1,5 @@
+board: m5stack_stickc
+chip: esp32
+version: 1.0.0
+description: "M5StickC (0.96 inch 80x160 ST7735S LCD, AXP192 PMU, IMU, PDM mic, IR)"
+manufacturer: "M5Stack"

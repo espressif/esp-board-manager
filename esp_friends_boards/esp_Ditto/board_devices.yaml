@@ -1,0 +1,121 @@
+version: 1.0.0
+
+devices:
+  - name: display_lcd
+    chip: ili9341
+    type: display_lcd
+    sub_type: parlio
+    version: default
+    dependencies:
+      espressif/esp_lcd_ili9341: "*"
+    config:
+      mirror_x: false
+      mirror_y: true
+      swap_xy: true
+      frame_format: RGB565_LE
+      x_max: 284
+      y_max: 240
+      need_reset: true
+      io_parl_config:
+        dc_gpio_num: 7
+        clk_gpio_num: 1
+        cs_gpio_num: 26
+        data_gpio_nums: [0, -1, -1, -1, -1, -1, -1, -1]
+        data_width: 1
+        pclk_hz: 40000000
+        clk_src: PARLIO_CLK_SRC_DEFAULT
+        max_transfer_bytes: 136320
+        dma_burst_size: 32
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+        dc_levels:
+          dc_cmd_level: 0
+          dc_data_level: 1
+        flags:
+          cs_active_high: false
+      lcd_panel_config:
+        reset_gpio_num: -1
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+        data_endian: LCD_RGB_DATA_ENDIAN_LITTLE
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: true
+        vendor_config: NULL
+
+  - name: lcd_touch
+    chip: cst816s
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      espressif/esp_lcd_touch_cst816s: "*"
+    config:
+      touch_config:
+        x_max: 240
+        y_max: 284
+        int_gpio_num: -1
+        rst_gpio_num: -1
+        flags:
+          swap_xy: true
+          mirror_x: false
+          mirror_y: true
+    peripherals:
+      - i2c_name: i2c_master
+        i2c_addr: [0x2A]
+
+  - name: camera
+    type: camera
+    sub_type: spi
+    version: default
+    config:
+      spi_config:
+        intf: ESP_CAM_CTLR_SPI_CAM_INTF_SPI
+        io_mode: ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT
+        spi_port: 1
+        spi_cs_pin: 27
+        spi_sclk_pin: 24
+        spi_data0_io_pin: 25
+        spi_data1_io_pin: -1
+        reset_pin: -1
+        pwdn_pin: -1
+        xclk_source: ESP_CAM_SENSOR_XCLK_LEDC
+        xclk_freq: 24000000
+        xclk_pin: 23
+        xclk_ledc_cfg:
+          timer: 0
+          clk_cfg: LEDC_AUTO_CLK
+          channel: 0
+    peripherals:
+      - i2c_name: i2c_master
+        frequency: 100000
+
+  - name: audio_dac
+    chip: internal
+    type: audio_codec
+    version: default
+    config:
+      adc_enabled: false
+      dac_enabled: true
+    peripherals:
+      - i2s_name: i2s_audio_out
+        tx_aux_out_io: 10
+        tx_aux_out_invert: true
+      - pa_name: gpio_pa_control
+        gain: 6
+        active_level: 1
+
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    version: default
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      adc_local_cfg:
+        channel_list: [5]
+        sample_rate_hz: 16000
+        max_store_buf_size: 1024
+        conv_frame_size: 256
+        unit_id: ADC_UNIT_1
+        atten: ADC_ATTEN_DB_0

@@ -1,0 +1,167 @@
+# Peripherals Configuration for ESP32-S3-USB-OTG
+#
+# Source: ESP32-S3-USB-OTG user guide (esp-dev-kits) and the board's official
+#         BSP pin map (espressif/esp-bsp, bsp/esp32_s3_usb_otg)
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-usb-otg/user_guide.html
+# Reference: https://github.com/espressif/esp-bsp/tree/master/bsp/esp32_s3_usb_otg
+#
+# Module: ESP32-S3-MINI-1-N8, 8 MB flash, no PSRAM.
+#
+# The board's distinguishing feature is a switchable USB path: GPIO18 selects
+# host (high) or device (low), and three separate enables gate the 5 V rails.
+# All of them are plain GPIOs, so they are modeled as power_ctrl / gpio_ctrl
+# devices rather than as any USB device type.
+#
+peripherals:
+  # 1.3-inch ST7789 panel, standard SPI on SPI3 (SPI2 is left free for the
+  # alternative SD-over-SPI wiring)
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        sclk_io_num: 6
+        mosi_io_num: 7
+        max_transfer_sz: 4800    # width * 2 * 10 (240 px)
+
+  # LCD backlight (GPIO9). Duty tracks brightness directly (not inverted).
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 9
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # USB path select: high = HOST (Type-A female), low = DEVICE (Type-A male).
+  # Pulled low on the board, so DEVICE is the power-on default.
+  - name: gpio_usb_mode_sel
+    type: gpio
+    role: io
+    config:
+      pin: 18
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # DEV_VBUS_EN — feeds 5 V out of the USB_DEV interface. Active-high,
+  # pulled low on the board.
+  - name: gpio_dev_vbus_en
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # BOOST_EN — 3.3 V to 5 V boost that powers a USB device from the battery.
+  # Active-high, pulled low on the board.
+  - name: gpio_boost_en
+    type: gpio
+    role: io
+    config:
+      pin: 13
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # LIMIT_EN — enables the USB host port's current limiter. Active-high,
+  # pulled low on the board.
+  - name: gpio_limit_en
+    type: gpio
+    role: io
+    config:
+      pin: 17
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # OVER_CURRENT — limiter fault flag, high when the host port is overloaded
+  - name: gpio_overcurrent
+    type: gpio
+    role: io
+    config:
+      pin: 21
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: true
+
+  # Green status LED (active-high)
+  - name: gpio_led_green
+    type: gpio
+    role: io
+    config:
+      pin: 15
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Yellow status LED (active-high)
+  - name: gpio_led_yellow
+    type: gpio
+    role: io
+    config:
+      pin: 16
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Four front keys, all active-low
+  - name: gpio_button_ok
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0                 # also the BOOT strapping pin
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  - name: gpio_button_up
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 10
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  - name: gpio_button_dw
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 11
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  - name: gpio_button_menu
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 14
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Battery voltage sense: GPIO2 is ADC1 channel 1, divider ratio 2
+  - name: adc_oneshot
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 1
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - USB host bus voltage sense on GPIO1 (ADC1 channel 0, divider 3.7). It
+  #   shares ADC unit 1 with the battery sense above; only one adc peripheral
+  #   is declared, so read channel 0 from the same unit for HOST_VOL.
+  # - USB data lines D- = GPIO19 / D+ = GPIO20: they belong to the SoC's USB
+  #   OTG controller, not to any board device type.
+  # - Li-ion charger and its red charge LED (no GPIO involved).
+  # - RST button (chip EN pin, handled in hardware).
+  # - USB-to-UART bridge port (console / flashing).
+  # ----------------------------------------------------------------------

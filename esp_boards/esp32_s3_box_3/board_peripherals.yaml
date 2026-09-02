@@ -1,5 +1,16 @@
 # Peripherals Configuration
 peripherals:
+  # BOOT button (GPIO0, active-low, strapping input).
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
   - name: i2c_master
     type: i2c
     role: master

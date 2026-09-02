@@ -3,12 +3,16 @@ uart
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _uart-intro:
+
 Overview
 --------
 
 The ``uart`` peripheral describes an ESP-IDF UART driver instance. BMGR converts ``uart`` entries in ``board_peripherals.yaml`` into ``periph_uart_config_t``, then during initialization installs the UART driver, configures serial parameters, sets TX/RX/RTS/CTS pins, and sets the UART operating mode as needed.
 
 ``uart`` is suitable for serial resources that need to be declared uniformly by the board configuration. No existing board configuration in the current repository references a ``uart`` peripheral device example; therefore this page only lists the configurable operating modes and source code entry points for the peripheral itself.
+
+.. _uart-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -19,6 +23,8 @@ Supported Operating Modes
 - :ref:`RS485 / IrDA and Other UART Modes <uart-alt-mode>`
 - :ref:`Enabling Event Queue <uart-queue>`
 
+.. _uart-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -26,6 +32,8 @@ Minimal Configuration
 
 Basic UART Mode
 ^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`uart-full`.
 
 ``board_peripherals.yaml``:
 
@@ -45,6 +53,8 @@ Basic UART Mode
 
 RS485 / IrDA and Other UART Modes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`uart-full`.
 
 ``board_peripherals.yaml``:
 
@@ -67,6 +77,8 @@ RS485 / IrDA and Other UART Modes
 Enabling Event Queue
 ^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`uart-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -83,6 +95,8 @@ Enabling Event Queue
           uart_config:
             baud_rate: 115200
 
+.. _uart-mode-notes:
+
 Mode Notes
 ----------
 
@@ -92,8 +106,12 @@ Basic mode uses ``UART_MODE_UART``. RS485, IrDA, and other UART modes are select
 
 ``source_clk`` and ``lp_source_clk`` are mutually exclusive (union), and cannot be configured simultaneously. When using LP UART, port and GPIO selection must comply with the LP UART capability of the target chip.
 
+.. _uart-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _uart-full:
 
 Basic Mode / Extended Mode / Event Queue Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,6 +227,8 @@ Basic Mode / Extended Mode / Event Queue Full Fields
             # @deprecated, same meaning as allow_pd
             backup_before_sleep: 0
 
+.. _uart-devices:
+
 Applicable Devices
 ------------------
 
@@ -224,14 +244,20 @@ No existing device YAML template in the current repository requires referencing 
      - The device can obtain the ``uart`` peripheral handle in custom initialization code
      - UART port, pins, and serial parameters are written in the ``uart`` peripheral ``config``
 
+.. _uart-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/peripherals/periph_uart/periph_uart.c``
 - ``esp_board_manager/peripherals/periph_uart/periph_uart.h``
 
+.. _uart-boards:
+
 Board Examples
 --------------
+
+.. _uart-notes:
 
 Notes
 -----
@@ -242,8 +268,12 @@ Notes
 - Setting an RTS/CTS pin to ``-1`` means that hardware flow control pin is not used; if hardware flow control is enabled, ``flow_ctrl`` must also be configured accordingly.
 - After modifying UART peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _uart-debug:
+
 Debugging Tips
 --------------
+
+.. _uart-api:
 
 API Reference
 -------------

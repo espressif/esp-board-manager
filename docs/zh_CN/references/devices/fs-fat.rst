@@ -3,12 +3,16 @@ FAT 文件系统 fs_fat
 
 :link_to_translation:`en:[English]`
 
+.. _fs-fat-intro:
+
 简介
 ------
 
 ``fs_fat`` 设备用于将 SD 卡挂载为 FAT 文件系统。初始化时调用 ESP-IDF FATFS 挂载接口，并返回 ``dev_fs_fat_handle_t``，应用通过标准 C 文件接口访问 ``mount_point`` 下的文件。
 
 该设备支持 SDMMC 与 SDSPI 两种接入方式。SDMMC 直接配置 SDMMC host、slot 与引脚；SDSPI 复用板级 ``spi`` 外设，并在设备侧配置 SD 卡片选引脚。
+
+.. _fs-fat-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -18,11 +22,17 @@ FAT 文件系统 fs_fat
 - `SDMMC`_
 - `SPI`_
 
+.. _fs-fat-min-config:
+
 最小配置
 ------------
 
+.. _fs-fat-sdmmc:
+
 SDMMC
 ^^^^^^^^^
+
+完整字段见 :ref:`fs-fat-sdmmc-full`。
 
 ``sdmmc`` 模式使用 ``SDMMC_HOST_DEFAULT()`` 与 ``esp_vfs_fat_sdmmc_mount()``，适合直接连接到 SDMMC host 的 SD 卡，无需新增 ``board_peripherals.yaml`` 条目。``ldo_chan_id`` 仅在目标芯片支持 ``SOC_GP_LDO_SUPPORTED`` 时用于片上 LDO 供电控制，是否需要配置取决于开发板 SDMMC 供电电路。
 
@@ -45,8 +55,12 @@ SDMMC
               cmd: -1
               d0: -1
 
+.. _fs-fat-spi:
+
 SPI
 ^^^^^^^
+
+完整字段见 :ref:`fs-fat-spi-full`。
 
 ``spi`` 模式使用 ``SDSPI_HOST_DEFAULT()`` 与 ``esp_vfs_fat_sdspi_mount()``，必须引用一个 ``spi`` 外设，运行时从该外设获取 SPI host 端口。
 
@@ -82,8 +96,12 @@ SPI
         peripherals:
           - spi_name: spi_master
 
+.. _fs-fat-full-fields:
+
 完整字段
 ------------
+
+.. _fs-fat-sdmmc-full:
 
 SDMMC 完整字段
 ^^^^^^^^^^^^^^^^^^
@@ -141,6 +159,8 @@ SDMMC 完整字段
           # e.g., In ESP32-P4 Function-EV Board, VO4_LDO is connected to power the SDMMC IO. set it to 4 for VO4_LDO.
           ldo_chan_id: -1
 
+.. _fs-fat-spi-full:
+
 SPI 完整字段
 ^^^^^^^^^^^^^^^^
 
@@ -167,10 +187,14 @@ SPI 完整字段
       peripherals:
         - spi_name: spi_master  # [TO_BE_CONFIRMED] SPI bus name (can be any name, e.g., spi_0, spi_sdcard, etc.)
 
+.. _fs-fat-deps:
+
 组件依赖
 ------------
 
 ``fs_fat`` 使用 ESP-IDF 内置 ``fatfs``、``sdmmc``、``driver`` 和 ``esp_vfs_fat`` 相关接口。当前设备模板未要求在 ``board_devices.yaml`` 中为该设备额外声明 ``dependencies``。
+
+.. _fs-fat-peripherals:
 
 依赖外设
 ------------
@@ -191,6 +215,8 @@ SPI 完整字段
      - ``sub_type: sdmmc`` 不需要板级外设引用
      - SDMMC host 和 slot 由设备配置直接初始化
 
+.. _fs-fat-code:
+
 参考代码
 ------------
 
@@ -200,6 +226,8 @@ SPI 完整字段
 - ``esp_board_manager/devices/dev_fs_fat/dev_fs_fat_sub_spi.c``
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
+
+.. _fs-fat-boards:
 
 板级参考
 ------------
@@ -211,6 +239,8 @@ SPI 完整字段
 - ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``
 
+.. _fs-fat-notes:
+
 注意事项
 ------------
 
@@ -220,8 +250,12 @@ SPI 完整字段
 - ``format_if_mount_failed: true`` 会在挂载失败时格式化文件系统，应结合数据保留需求设置。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _fs-fat-debug:
+
 调试技巧
 ------------
+
+.. _fs-fat-api:
 
 API 参考
 ----------

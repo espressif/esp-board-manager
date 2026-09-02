@@ -1,0 +1,141 @@
+# Peripherals Configuration for ESP32-MeshKit-Sense v1.1
+#
+# Source: ESP32-MeshKit-Sense v1.1 schematic (ESP32-MESHKIT-SENSE_V1_1-0917A.pdf)
+#         + the board's reference firmware in ESP-MDF
+#         (examples/development_kit/sense), which is where the pin numbers
+#         below are taken from verbatim.
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-meshkit-sensor/user_guide.html
+# Reference: https://docs.espressif.com/projects/esp-iot-solution/en/latest/hw-reference/ESP32-MeshKit-Sense_guide.html
+#
+# Module: ESP32-WROOM-32D, 4 MB SPI flash, no PSRAM.
+#
+# This is a deep-sleep sensor node. Both peripheral rails are GPIO-gated so
+# they can be cut in sleep: GPIO27 gates 3V3_PeriP_Sensor (the I2C sensors),
+# GPIO14 gates 3V3_PeriP_Screen (the e-paper connector). The sensor I2C pins
+# are deliberately on RTC-capable pads (GPIO32/33) so the ULP co-processor can
+# keep polling the sensors while the CPU sleeps.
+#
+peripherals:
+  # Sensor bus: HTS221 temp/humidity + BH1750FVI ambient light.
+  # Port 1, 100 kHz, both pins RTC-capable for ULP access.
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 1
+      pins:
+        sda: 33
+        scl: 32
+
+  # E-paper connector J12 — 4-wire SPI on HSPI.
+  # MISO is not brought out to the module (the reference firmware names
+  # GPIO37, which is not bonded on ESP32-WROOM-32D), so the bus is write-only.
+  - name: spi_epaper
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 22
+        mosi_io_num: 23
+        miso_io_num: -1
+        max_transfer_sz: 4092
+
+  # 3V3_PeriP_Sensor rail gate (HTS221 + BH1750FVI supply)
+  - name: gpio_power_sensor
+    type: gpio
+    role: io
+    config:
+      pin: 27
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1      # rail off at boot; power_ctrl turns it on
+
+  # 3V3_PeriP_Screen rail gate (e-paper connector supply)
+  - name: gpio_power_screen
+    type: gpio
+    role: io
+    config:
+      pin: 14
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1      # rail off at boot; power_ctrl turns it on
+
+  # Wake button. GPIO34 is INPUT-ONLY and has no internal pull resistors —
+  # the board provides the external pull-up, so the button device must run
+  # with disable_pull.
+  - name: gpio_wake_button
+    type: gpio
+    role: io
+    config:
+      pin: 34
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Boot button. Schematic net: BOOT / GPIO0.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Wi-Fi status LED (GPIO15, active-low: the firmware parks it high to go dark)
+  - name: gpio_led_wifi
+    type: gpio
+    role: io
+    config:
+      pin: 15
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1      # off
+
+  # Network/mesh status LED (GPIO4, active-high: parked low to go dark)
+  - name: gpio_led_network
+    type: gpio
+    role: io
+    config:
+      pin: 4
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0      # off
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  #
+  # - HTS221 temperature + relative-humidity sensor. I2C, 7-bit address 0x5F
+  #   (8-bit 0xBE). Its DRDY / interrupt line is on GPIO25 — CONFIRMED on the
+  #   schematic: GPIO25 -- R159 0R(5%) --> net HTS_DRDY, landing on U3 (HTS221)
+  #   pin 1 DRDY. The reference firmware polls the part and so never names the
+  #   pin; the sheet does. (The sheet's own note repeats the part's I2C address
+  #   0'b 101 1111 x and CTRL_REG3(22h) bit7 DRDY_H_L, i.e. the DRDY polarity is
+  #   software-selected, not a board fact.)
+  # - BH1750FVI ambient-light sensor. I2C, 7-bit address 0x23 (8-bit 0x46)
+  #   with ADDR tied low; 0x5C / 0xB8 if strapped high.
+  #   Both sit on the `i2c_master` bus declared above and are powered through
+  #   `sensor_power`. esp-board-manager has no sensor device type, so the bus
+  #   and the rail gate are all a board definition can legitimately carry;
+  #   the parts themselves are driven by an application-side driver.
+  #
+  # - E-paper display on connector J12. 176 x 264 mono panel in the kit's
+  #   reference firmware. Signals, beyond the SPI bus declared above:
+  #     CS    GPIO21
+  #     D/C   GPIO19
+  #     RST   GPIO18
+  #     BUSY  GPIO5   (input; also an ESP32 strapping pin)
+  #   The panel is an accessory, not fitted to every board, and bmgr's
+  #   `display_lcd` device type covers esp_lcd panel controllers — there is no
+  #   e-paper controller among them and no esp_lcd driver component for this
+  #   panel — so declaring one would invent a driver the board cannot use.
+  #   The bus, the reset/busy pins and the screen rail gate are declared; the
+  #   panel is left to an application-side e-paper driver.
+  #
+  # - AP5056 single-cell Li-ion charger and the 2-pin battery connector. There
+  #   is no fuel gauge and no GPIO in the charge path; the D5/D6 charge-status
+  #   LEDs are driven by the charger itself, not by the ESP32.
+  #
+  # - ULP co-processor sensor polling. The reference firmware re-binds
+  #   GPIO32/33 as RTC IOs before deep sleep so the ULP can drive the I2C bus;
+  #   that is a runtime mode switch, not a board-level peripheral.
+  #
+  # - EN (reset) button, the UART header (TX/RX pads, no on-board bridge).
+  # ----------------------------------------------------------------------

@@ -1,5 +1,19 @@
 # Devices Configuration for ESP-VoCat V1.2
 devices:
+  # Boot button (GPIO0, active-low). The schematic labels this net ESP_BOOT.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   # Audio Power Control after Audio init
   - name: audio_power
     type: power_ctrl

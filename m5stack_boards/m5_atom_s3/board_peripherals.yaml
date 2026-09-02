@@ -1,0 +1,34 @@
+peripherals:
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        mosi_io_num: 21
+        miso_io_num: -1
+        sclk_io_num: 17
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 32768
+
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 16
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+
+  - name: gpio_button
+    type: gpio
+    role: io
+    config:
+      pin: 41
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE

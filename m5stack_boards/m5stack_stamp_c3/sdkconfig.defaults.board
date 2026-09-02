@@ -1,0 +1,19 @@
+# M5Stamp C3 — chip-down ESP32-C3, 4 MB in-package flash, no PSRAM
+# Schematic: https://static-cdn.m5stack.com/resource/docs/products/core/stamp_c3/stamp_c3_sch_01.webp
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+# CORRECTION: the 4 MB is IN-PACKAGE, not an external SPI flash part. M5Stack
+# does publish a schematic for this board (as a WebP image on the docs page,
+# not a PDF) and it shows U1 as a bare chip-down QFN32 ESP32-C3 with all six
+# SPI flash pins (SPIHD/SPIWP/SPICS0/SPICLK/SPID/SPIQ, pins 19-24) marked
+# no-connect, and NO flash IC anywhere in the board's IC inventory. That makes
+# it an ESP32-C3Fx4 part, and ESP32-C3 Series Datasheet v2.4 Table 1-1 gives
+# every 4 MB QFN32 variant as "4 MB (Quad SPI)" — so the flash is QUAD-wired.
+# 80 MHz is that datasheet's default (Table 1-1 fn 3, Table 5-10 FC).
+# https://documentation.espressif.com/esp32-c3_datasheet_en.pdf
+# Which exact variant (C3FN4, EOL, vs C3FH4) is NOT PUBLISHED — M5Stack's spec
+# table says only "ESP32-C3 ... 4MB". The two differ solely in temperature
+# grade (85 vs 105 C), which changes nothing here.
+# DIO is kept deliberately: QIO/DIO is an ESP-IDF setting, never stated in a
+# datasheet. The quad wiring permits QIO; raising it needs a real flash test.
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y

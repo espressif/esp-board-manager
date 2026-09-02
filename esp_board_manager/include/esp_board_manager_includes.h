@@ -139,6 +139,11 @@
 #include "dev_gpio_expander.h"
 #endif  /* CONFIG_ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT */
 
+/* Knob Device */
+#ifdef CONFIG_ESP_BOARD_DEV_KNOB_SUPPORT
+#include "dev_knob.h"
+#endif  /* CONFIG_ESP_BOARD_DEV_KNOB_SUPPORT */
+
 /* LCD Touch Device */
 #ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
 #include "dev_lcd_touch.h"

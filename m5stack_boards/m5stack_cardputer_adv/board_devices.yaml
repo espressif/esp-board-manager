@@ -1,0 +1,155 @@
+# Devices Configuration for M5Stack Cardputer Adv
+#
+# Source: M5Stack Cardputer-Adv official documentation (pin map) and
+#         schematic Sch_M5CardputerAdv_v1.0
+# Reference: https://docs.m5stack.com/en/core/Cardputer-Adv
+#
+# Audio: one physical ES8311 (mono codec) driving an NS4150B amplifier on
+# playback and the on-board MEMS microphone on capture, split into
+# audio_dac / audio_adc per the dev_audio_codec model (same I2C address,
+# same I2S port).
+#
+# The panel is an ST7789V2 driven over write-only SPI; esp_lcd carries the
+# ST7789 driver in IDF itself, so no extra component dependency is needed.
+#
+devices:
+  # ---------- 1.14" 240x135 IPS LCD (ST7789V2, SPI) ----------
+  # Native panel geometry is 135x240 portrait with a 52 / 40 pixel window
+  # offset; the Cardputer is used in landscape, hence swap_xy. The offset
+  # is not expressible here — apply it with esp_lcd_panel_set_gap(40, 52)
+  # in the landscape orientation after init.
+  - name: display_lcd
+    chip: st7789
+    type: display_lcd
+    sub_type: spi
+    version: default
+    config:
+      swap_xy: true
+      mirror_x: false
+      mirror_y: true
+      x_max: 240
+      y_max: 135
+      invert_color: true              # ST7789V2 panel on the Cardputer needs inversion
+      need_reset: true
+      io_spi_config:
+        cs_gpio_num: 37
+        dc_gpio_num: 34
+        spi_mode: 0
+        pclk_hz: 40000000
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+        flags:
+          sio_mode: true              # 3-wire SPI: MOSI is the only data line
+      lcd_panel_config:
+        reset_gpio_num: 33
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: false
+        vendor_config: ""
+    peripherals:
+      - spi_name: spi_display
+
+  # ---------- LCD backlight (GPIO38 via LEDC) ----------
+  # Same rail also feeds the Stamp-S3A RGB LED: at 0 % the LED is dark.
+  - name: lcd_brightness
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 100
+    peripherals:
+      - ledc_name: ledc_backlight
+
+  # ---------- microSD card (own SPI bus, CS GPIO12) ----------
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        cs_gpio_num: 12
+    peripherals:
+      - spi_name: spi_sdcard
+
+  # ---------- Audio: ES8311 DAC (speaker via NS4150B) ----------
+  - name: audio_dac
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: true                 # MCLK is tied to BCLK on this board
+      dac_cfg:
+        ref_enable: true
+    peripherals:
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
+        address: 0x30                 # ES8311 7-bit 0x18 << 1
+        frequency: 400000
+
+  # ---------- Audio: ES8311 ADC (on-board MEMS microphone) ----------
+  - name: audio_adc
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        label: [FC, RE]
+    peripherals:
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
+        address: 0x30
+        frequency: 400000
+
+  # ---------- Stamp-S3A on-board RGB LED (GPIO21) ----------
+  # Its supply is behind the GPIO38 switch shared with the backlight.
+  - name: led_strip
+    chip: ws2812
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 21
+      max_leds: 1
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- Infrared transmit LED (GPIO44) ----------
+  - name: ir_tx
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_ir_tx
+
+  # ---------- BtnG0 side button (GPIO0, active-low) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button

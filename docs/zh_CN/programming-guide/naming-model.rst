@@ -16,6 +16,6 @@
 - ``power_ctrl_device``：用于需要受控供电的设备。通过配置 ``power_ctrl_device`` 引用 ``power_ctrl`` 类型设备，可在初始化时自动上电。
 - ``depends_on``：用于声明设备间的初始化依赖。初始化时 BMGR 自动检查并先初始化所声明的依赖设备；类型不限，一个设备可声明多个依赖。
 - ``init_skip``：标记该 device 不参与 :cpp:func:`esp_board_manager_init` 的自动初始化，需要应用在合适时机手动初始化。
-- ``gen_skip``：通常用于覆盖开发板默认配置，表示当前工程不使用该设备或外设，在解析和生成阶段跳过。
+- ``gen_skip``：通常用于覆盖开发板默认配置，表示当前工程不使用该设备或外设，在解析和生成阶段跳过。板目录中的 ``.c`` 仍会编译进 ``gen_bmgr_codes``；依赖芯片驱动组件的工厂函数或 ``custom`` 实现须用 ``__has_include`` 包裹，否则去掉 ``dependencies:`` 后会因缺少头文件而编译失败。详见 :doc:`board-directory`。
 
 整体可以分为两层关系：``peripherals`` 描述底层资源的接入方式，``devices`` 描述由底层资源组合而成的功能能力。``name`` 是板内实例名，``type``、``sub_type``、``role``、``format`` 决定具体走哪条实现路径。``depends_on`` 与 ``power_ctrl_device`` 描述设备之间的依赖关系，影响运行时初始化顺序，详见 :doc:`runtime-lifecycle`。

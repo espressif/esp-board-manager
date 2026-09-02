@@ -1,0 +1,5 @@
+board: esp32_sense_kit
+chip: esp32
+version: 1.0.0
+description: "ESP32-Sense-Kit mainboard (touch-sensor evaluation kit, CH455G segment display, RGB LED)"
+manufacturer: "ESPRESSIF"

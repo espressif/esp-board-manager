@@ -1,0 +1,53 @@
+# Peripherals Configuration for M5Stack AtomS3-Lite
+#
+# Source: M5Stack AtomS3-Lite documentation
+# Reference: https://docs.m5stack.com/en/core/AtomS3%20Lite
+#
+# Module: ESP32-S3FN8 (8 MB in-package flash, no PSRAM), 3D antenna.
+# On-board hardware is minimal: a WS2812C-2020 RGB LED (owned by the
+# led_strip device, so not declared here), the full-face button and an IR
+# transmit LED.
+#
+# The vendor page lists the feature set but not the GPIO numbers, however it
+# links the SAME schematic as the AtomS3 (Sch_M5_AtomS3_v1.0.pdf) — the two
+# variants share the base PCB, and that sheet carries the RGB LED, the button
+# and the IR LED. Pins below are cited from it and cross-checked against
+# M5Unified's pin tables.
+#
+peripherals:
+  # Front button, full face (active-low)
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 41             # Sch_M5_AtomS3_v1.0.pdf: net USER_BUT on U1 pin 47
+                          # (MTDI = GPIO41), switch S1 to GND with R4 10K pull-up.
+                          # Matches M5Unified.cpp _update_button_state,
+                          # board_M5AtomS3Lite: btn_rawstate = !gpio_in(GPIO_NUM_41)
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Infrared transmit LED (active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 4              # Sch_M5_AtomS3_v1.0.pdf, "RGB & IR" block: IR LED anode
+                          # on net GPIO4, cathode via R16 22R/1% to GND — so the
+                          # pin sources the current and the LED is active-HIGH
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND): a user-wired
+  #   expansion port, not an on-board device
+  # - Bottom expansion pads GPIO5 / GPIO6 / GPIO7 / GPIO8 / GPIO38 / GPIO39
+  # - RESET button (EN pin, handled in hardware)
+  # - Native USB Serial/JTAG on the USB Type-C port (console path)
+  # - SY8089 5V-to-3.3V DC-DC (always on, no SoC enable line)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

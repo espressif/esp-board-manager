@@ -157,7 +157,7 @@ devices:
       - i2c_name: i2c_master
         i2c_addr: [0x70]
 
-  - name: gpio_button
+  - name: boot_button
     type: button
     sub_type: gpio
     version: default

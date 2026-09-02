@@ -3,6 +3,8 @@
 #
 # See LICENSE file for details.
 
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path

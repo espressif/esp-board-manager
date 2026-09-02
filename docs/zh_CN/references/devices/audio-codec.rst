@@ -3,9 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _audio-codec-intro:
+
+简介
+------
+
 ``audio_codec`` 设备用于描述音频播放、录音和内部 ADC 音频输入路径。当外接编解码器（codec）芯片用于播放或采集时，外设侧至少需要一路 ``i2c`` 控制接口与一路 ``i2s`` 数据接口；功放 GPIO 为可选。
 
 同一逻辑 ``audio_codec`` 设备不可同时启用 ``adc_enabled`` 与 ``dac_enabled``。当一颗物理编解码器芯片需要全双工时，在 ``board_devices.yaml`` 中拆为两个单向设备，例如 ``audio_dac`` 与 ``audio_adc``。
+
+.. _audio-codec-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -15,9 +22,11 @@
 - :ref:`播放（DAC，dac_enabled: true） <audio-codec-dac>`
 - :ref:`录音（ADC，adc_enabled: true） <audio-codec-adc>`
 - :ref:`全双工（同一颗编解码器芯片） <audio-codec-full-duplex>`
-- :ref:`无外部 Codec 的录音和播放 <audio-codec-internal>`
+- :ref:`基于芯片内部 ADC 的音频录制 <audio-codec-internal>`
 - :ref:`PDM 数字麦克风 <audio-codec-pdm>`
 - :ref:`PDM 扬声器 <audio-codec-pdm-dac>`
+
+.. _audio-codec-min-config:
 
 最小配置
 ------------
@@ -26,6 +35,8 @@
 
 播放（DAC，``dac_enabled: true``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`audio-codec-full-external`。
 
 播放模式用于外接 codec 的 DAC 输出。``board_peripherals.yaml`` 至少配置 ``i2c`` 与 ``i2s`` 输出外设；当开发板带有功放控制脚时，额外配置 ``gpio`` 外设。
 
@@ -90,6 +101,8 @@
 录音（ADC，``adc_enabled: true``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`audio-codec-full-external`。
+
 录音模式用于外接 codec 的 ADC 输入。``board_peripherals.yaml`` 可与播放共用同一个 ``i2c_master``；I2S 录音建议使用独立的 ``std-in`` 外设名。
 
 ``board_peripherals.yaml``：
@@ -142,6 +155,8 @@
 全双工（同一颗编解码器芯片）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`audio-codec-full-external`。
+
 全双工模式用于一颗物理 codec 同时承担播放与录音。BMGR 中仍配置两个 ``audio_codec`` 逻辑设备，分别只启用 DAC 或 ADC；I2C 控制接口可指向同一个 ``i2c_master``。
 
 ``board_devices.yaml``：
@@ -174,17 +189,14 @@
 
 .. _audio-codec-internal:
 
-无外部 Codec 的录音和播放
+基于芯片内部 ADC 的音频录制
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-将 ``chip`` 设为 ``internal`` 时，``audio_codec`` 不通过 ``esp_codec_dev`` 驱动初始化外部编解码器芯片，适用于以下场景：
+完整字段见 :ref:`audio-codec-full-adc-reuse`。
+完整字段见 :ref:`audio-codec-full-adc-patterns`。
+完整字段见 :ref:`audio-codec-full-adc-single-unit`。
 
-- 无外部编解码器芯片，音频信号直接送入 SoC 内部 ADC 或经 I2S 接口传输。
-- 存在编解码器芯片，但无需经 I2C 软件配置即可工作，音频数据直接经 I2S 接口读写。
-
-关键在于将 ``chip`` 设为 ``internal``，再根据实际硬件接口配置对应的 I2S 或 ADC 外设。
-
-内部 ADC 路径：当板级已定义 ``adc`` 外设时，可在设备 ``peripherals`` 中引用该外设；不需要复用外设时，可通过 ``config.adc_local_cfg`` 让 ``audio_codec`` 创建设备本地的 ADC continuous 配置。
+将 ``chip`` 设为 ``internal`` 并启用 ``adc_enabled`` 时，``audio_codec`` 不通过 ``esp_codec_dev`` 初始化外部编解码器芯片，可以使用 SoC 内部 ADC 采集音频。板级已定义 ``adc`` 外设时，可在设备 ``peripherals`` 中复用该外设；不需要复用外设时，可通过 ``config.adc_local_cfg`` 创建设备本地的 ADC continuous 配置。
 
 复用 ``adc`` 外设：
 
@@ -324,15 +336,21 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 
 若扬声器有 PA 控制引脚，需在 ``board_peripherals.yaml`` 中额外定义 ``gpio_pa_control`` 外设（``type: gpio``）。板级参考：``boards/esp32_c3_lyra/board_peripherals.yaml``、``boards/esp32_c3_lyra/board_devices.yaml``。
 
+.. _audio-codec-mode-notes:
+
 模式说明
 ------------
 
 播放与录音是两个互斥的逻辑设备方向。播放设备仅启用 ``dac_enabled``，录音设备仅启用 ``adc_enabled``。同一物理 codec 需要全双工时，配置两个逻辑设备，并分别引用输出和输入 I2S 外设。
 
-外接编解码器路径使用 I2S 传输音频数据、使用 I2C 配置编解码器芯片。将 ``chip`` 设为 ``internal`` 时不依赖 ``esp_codec_dev`` 驱动，适用于无外部编解码器芯片或编解码器无需软件配置的场景；音频数据直接经由内部 ADC 或 I2S 外设读写，I2S ``format`` 按实际接口选择。
+外接编解码器路径使用 I2S 传输音频数据、使用 I2C 配置编解码器芯片。将 ``chip`` 设为 ``internal`` 时，不初始化外部编解码器控制接口，但仍创建数据接口和 ``esp_codec_dev`` 句柄。该路径适用于无外部编解码器芯片或编解码器无需软件配置的场景；音频数据使用内部 ADC 或 I2S 外设，I2S ``format`` 按实际接口选择。内部 DAC 路径使用 dummy codec；未配置 PA GPIO 时，PA 控制操作由 ``esp_codec_dev`` 忽略。
+
+.. _audio-codec-full-fields:
 
 完整字段
 ------------
+
+.. _audio-codec-full-external:
 
 外接编解码器芯片
 ^^^^^^^^^^^^^^^^^^^
@@ -405,6 +423,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
           address: 0x30                      # [TO_BE_CONFIRMED] I2C device address, include the read/write bit (hex format) (default: 0x30)
           frequency: 100000                  # I2C clock frequency in Hz (default: 100000)
 
+.. _audio-codec-full-adc-reuse:
+
 使用芯片内部 ADC 读取数据：复用 ADC 外设
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -431,6 +451,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
         #   type: adc
         #   role: continuous
         - adc_name: adc_audio_in              # ADC peripheral name to be reused by dev_audio_codec
+
+.. _audio-codec-full-adc-patterns:
 
 使用芯片内部 ADC 读取数据：本地采样模式列表（patterns）配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -506,6 +528,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
               # - SOC_ADC_DIGI_MAX_BITWIDTH
               bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
 
+.. _audio-codec-full-adc-single-unit:
+
 使用芯片内部 ADC 读取数据：本地单 Unit 配置
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -536,10 +560,14 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 - YAML 模板：``esp_board_manager/devices/dev_audio_codec/dev_audio_codec.yaml``。
 - 头文件：``esp_board_manager/devices/dev_audio_codec/dev_audio_codec.h``。
 
+.. _audio-codec-deps:
+
 组件依赖
 ------------
 
 ``audio_codec`` 使用 ``esp_codec_dev`` 提供 codec 设备抽象。板级 YAML 中只需在 ``chip`` 字段指定芯片型号即可。
+
+.. _audio-codec-peripherals:
 
 依赖外设
 ------------
@@ -568,6 +596,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
      - 使用内部 ADC 音频输入并复用外设时使用
      - 提供 ADC continuous 句柄
 
+.. _audio-codec-code:
+
 参考代码
 ------------
 
@@ -575,6 +605,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
+
+.. _audio-codec-boards:
 
 板级参考
 ------------
@@ -584,6 +616,8 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 - ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：ES8311 播放和 ES7210 录音配置。
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：TDM I2S 输入/输出配置。
 
+.. _audio-codec-notes:
+
 注意事项
 ------------
 
@@ -592,8 +626,12 @@ I2S PDM 输出可直接驱动 PDM 扬声器或 PDM 功放，无需外部编解�
 - 开发板无 PA 控制引脚时，无需配置 ``gpio_pa_control``，且不应在设备引用列表中保留该外设。
 - 修改音频设备或 I2S 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _audio-codec-debug:
+
 调试技巧
 ------------
+
+.. _audio-codec-api:
 
 API 参考
 ------------

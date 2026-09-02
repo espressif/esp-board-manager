@@ -61,6 +61,41 @@ peripherals:
       mode: "GPIO_MODE_INPUT"
       pull_up: true
 
+  # Boot button. Schematic net: download key / IO0_Auto / IO0.
+  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
+  # the I2S audio interface.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: "GPIO_MODE_INPUT"
+      pull_up: true
+      pull_down: false
+      intr_type: "GPIO_INTR_DISABLE"
+
+  # Physical REC button (active-low).
+  - name: gpio_button_rec
+    type: gpio
+    role: io
+    config:
+      pin: 36
+      mode: "GPIO_MODE_INPUT"
+      pull_up: true
+      pull_down: false
+      intr_type: "GPIO_INTR_DISABLE"
+
+  # Physical MODE button (active-low).
+  - name: gpio_button_mode
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: "GPIO_MODE_INPUT"
+      pull_up: true
+      pull_down: false
+      intr_type: "GPIO_INTR_DISABLE"
+
   # Green LED.
   - name: gpio_green_led
     type: gpio

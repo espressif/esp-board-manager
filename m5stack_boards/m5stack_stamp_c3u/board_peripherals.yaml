@@ -1,0 +1,38 @@
+# Peripherals Configuration for M5Stamp C3U
+#
+# Source: M5Stamp C3U documentation
+# Reference: https://docs.m5stack.com/en/core/stamp_c3u
+#
+# Module: chip-down ESP32-C3 with 4 MB SPI flash, no PSRAM.
+# On-board hardware is minimal: an SK6812 RGB LED on GPIO2 (owned by the
+# led_strip device, so not declared here) and the user button on GPIO9.
+#
+# The C3U drops the C3's CH9102 bridge: the USB Type-C port is wired
+# straight to the native USB Serial/JTAG on GPIO18 (D-) / GPIO19 (D+), so
+# the console lives there and UART0 (GPIO20/21) is free as ordinary IO.
+# The user button moves from GPIO3 (C3) to GPIO9 (C3U), which is also the
+# boot strapping pin — holding it at reset enters download mode.
+#
+peripherals:
+  # User button (GPIO9, active-low, strapping pin — input only at runtime).
+  # GPIO9 has a usable internal pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Native USB Serial/JTAG on GPIO18 / GPIO19 (console path, handled by
+  #   ROM and the console driver, not an application device)
+  # - Grove HY2.0-4P port (GPIO1 / GPIO0 plus 5V and GND)
+  # - Castellated pads GPIO3 / GPIO4 / GPIO5 / GPIO6 / GPIO7 / GPIO8 /
+  #   GPIO10 / GPIO20 / GPIO21
+  # - GPIO2, GPIO8 and GPIO9 are strapping pins on the ESP32-C3
+  # - RESET button (EN pin, handled in hardware)
+  # ----------------------------------------------------------------------

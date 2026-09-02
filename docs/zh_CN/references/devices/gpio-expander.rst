@@ -3,12 +3,16 @@ GPIO 扩展器 gpio_expander
 
 :link_to_translation:`en:[English]`
 
+.. _gpio-expander-intro:
+
 简介
 ------
 
 ``gpio_expander`` 设备用于描述通过 I2C 连接的 IO 扩展芯片，初始化后返回 ``esp_io_expander_handle_t`` 句柄。板级代码或其他设备可通过 :cpp:func:`esp_board_manager_get_device_handle` 获取该句柄，再设置扩展 IO 的方向、电平或上下拉能力。
 
 该类型适用于板上 GPIO 数量不足，或 LCD 初始化线、按键、电源控制脚接在 IO 扩展芯片上的场景。
+
+.. _gpio-expander-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -17,6 +21,8 @@ GPIO 扩展器 gpio_expander
 
 - :ref:`gpio-expander-i2c`
 
+.. _gpio-expander-min-config:
+
 最小配置
 ------------
 
@@ -24,6 +30,8 @@ GPIO 扩展器 gpio_expander
 
 I2C IO 扩展
 ^^^^^^^^^^^^^
+
+完整字段见 :ref:`gpio-expander-i2c-full`。
 
 ``board_peripherals.yaml`` 至少需要一个 ``i2c`` master 外设。
 
@@ -48,37 +56,12 @@ I2C IO 扩展
 
 ``gpio_expander`` 初始化时引用 ``i2c`` 外设句柄，并按 ``i2c_addr`` 列表探测可响应的地址。驱动创建成功后，设备会按配置设置输出、输入、默认输出电平、可选输出模式以及可选上下拉。初始化完成后，BMGR 会记录探测到的有效 I2C 地址，供同一 I2C 总线上的其他逻辑使用。
 
-板级 IO 扩展器工厂函数
---------------------------
-
-``gpio_expander`` 没有内置的芯片构造函数。每个使用该设备类型的开发板都必须在板级源文件中提供 ``io_expander_factory_entry_t``；BMGR 探测到有效 I2C 地址后调用它创建 ``esp_io_expander_handle_t``。
-
-函数签名如下：
-
-.. code-block:: c
-
-    esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_bus,
-                                          const uint16_t dev_addr,
-                                          esp_io_expander_handle_t *handle_ret);
-
-例如，TCA9554 使用对应组件提供的构造函数：
-
-.. code-block:: c
-
-    #include "esp_io_expander_tca9554.h"
-
-    __attribute__((weak)) esp_err_t io_expander_factory_entry_t(
-            i2c_master_bus_handle_t i2c_bus,
-            const uint16_t dev_addr,
-            esp_io_expander_handle_t *handle_ret)
-    {
-        return esp_io_expander_new_i2c_tca9554(i2c_bus, dev_addr, handle_ret);
-    }
-
-``dependencies`` 中的组件必须提供工厂函数所调用的构造函数，并与 YAML 的 ``chip`` 字段指向同一颗 IO 扩展芯片。一个开发板配置多个 ``gpio_expander`` 设备且芯片不同时，工厂函数需要依据 ``dev_addr`` 选择对应的芯片构造函数。源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
+.. _gpio-expander-full-fields:
 
 完整字段
 ------------
+
+.. _gpio-expander-i2c-full:
 
 I2C IO 扩展完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,10 +92,14 @@ I2C IO 扩展完整字段
         - i2c_name: i2c_master             # I2C peripheral used by the IO expander
           i2c_addr: [0x70, 0x7A]          # [TO_BE_CONFIRMED] I2C address of the IO expander
 
+.. _gpio-expander-deps:
+
 组件依赖
 ------------
 
-``gpio_expander`` 需要在 ``dependencies`` 中声明对应 IO 扩展芯片驱动组件。模板使用 ``espressif/esp_io_expander_generic`` 作为占位，板级配置应替换为与 ``chip`` 及板级 ``io_expander_factory_entry_t`` 匹配的组件。
+``gpio_expander`` 需要在 ``dependencies`` 中声明对应 IO 扩展芯片驱动组件。模板使用 ``espressif/esp_io_expander_generic`` 作为占位，板级配置应替换为与 ``chip`` 和 ``io_expander_factory_entry_t`` 匹配的组件。
+
+.. _gpio-expander-peripherals:
 
 依赖外设
 ------------
@@ -129,11 +116,15 @@ I2C IO 扩展完整字段
      - 必选
      - IO 扩展芯片通信
 
+.. _gpio-expander-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/test_dev_gpio_expander.c``：获取 ``gpio_expander`` 配置和句柄，并打印 IO 扩展状态。
 - ``esp_board_manager/devices/dev_gpio_expander/dev_gpio_expander.c``：I2C 地址探测、IO 方向和电平初始化实现。
+
+.. _gpio-expander-boards:
 
 板级参考
 ------------
@@ -145,17 +136,52 @@ I2C IO 扩展完整字段
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``：两个 ``gpio_expander`` 设备配置。
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml``：``gpio_expander`` 配置。
 
+.. _gpio-expander-notes:
+
 注意事项
 ------------
 
 - 模板中的 ``i2c_addr`` 使用地址列表，初始化会按列表探测并选择可响应的地址。
 - ``output_io_mask``、``output_io_level_mask``、``output_io_mode_mask``、``io_pullup_list`` 和 ``io_pulldown_list`` 需要符合具体芯片能力；不支持的能力不应写入板级配置。
 - 被其他设备引用的扩展 IO 需要在使用方初始化前可用。
-- 缺少 ``io_expander_factory_entry_t`` 会导致 ``gpio_expander`` 无法完成初始化；仅添加芯片组件依赖不能替代该函数。
 - 修改 IO 扩展设备或 I2C 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
+
+.. _gpio-expander-factory:
+
+工厂函数
+------------
+
+工程需要提供 ``io_expander_factory_entry_t``，由 BMGR 在创建 IO 扩展设备时回调，用于根据芯片组件创建 ``esp_io_expander_handle_t``。``dependencies`` 中的组件须与 ``chip`` 及该工厂函数匹配。函数签名为：
+
+.. code-block:: c
+
+   esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
+                                         const uint16_t dev_addr,
+                                         esp_io_expander_handle_t *handle_ret)
+
+板级实现须将该函数声明为弱符号 ``__attribute__((weak))``，并用 ``__has_include`` 包裹芯片驱动头文件与函数体。下游通过 ``gen_skip`` 去掉该设备，或通过 amend 替换工厂函数后，板级源码仍可编译。完整约定见 :doc:`/programming-guide/board-directory`。
+
+最小实现示例：
+
+.. code-block:: c
+
+   #if __has_include(<esp_io_expander_tca9554.h>)
+   #include "esp_io_expander_tca9554.h"
+
+   __attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
+                                                              const uint16_t dev_addr,
+                                                              esp_io_expander_handle_t *handle_ret)
+   {
+       return esp_io_expander_new_i2c_tca9554(i2c_handle, dev_addr, handle_ret);
+   }
+   #endif  /* __has_include(<esp_io_expander_tca9554.h>) */
+
+.. _gpio-expander-debug:
 
 调试技巧
 ------------
+
+.. _gpio-expander-api:
 
 API 参考
 ----------

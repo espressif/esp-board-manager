@@ -1,0 +1,5 @@
+board: m5stack_cardputer
+chip: esp32s3
+version: 1.0.0
+description: "M5Stack Cardputer (1.14 inch 240x135 ST7789V2 LCD, 56-key keyboard, microSD)"
+manufacturer: "M5Stack"

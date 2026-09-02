@@ -1,0 +1,56 @@
+# Peripherals Configuration for M5Stack ATOM Matrix
+#
+# Source: M5Stack ATOM Matrix documentation
+# Reference: https://docs.m5stack.com/en/core/ATOM%20Matrix
+#
+# Module: ESP32-PICO-D4 (in-package 4 MB flash, no PSRAM).
+# On-board hardware: a 5x5 WS2812C-2020 matrix on GPIO27 (owned by the
+# led_strip device, so not declared here), the under-matrix button on
+# GPIO39, an IR transmit LED on GPIO12 and an MPU6886 IMU on the internal
+# I2C bus.
+#
+peripherals:
+  # Internal I2C bus: MPU6886 IMU (7-bit 0x68). The same two pins are
+  # brought out on the bottom pads, so an external I2C device shares them.
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 25
+        scl: 21
+
+  # Under-matrix button (GPIO39, active-low).
+  # GPIO39 is input-only on ESP32 and has NO internal pull resistor;
+  # the board provides the external pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Infrared transmit LED (GPIO12, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - MPU6886 6-axis IMU, I2C 7-bit 0x68 (8-bit 0xD0): no bmgr device type;
+  #   the i2c_master above is its bus
+  # - Grove HY2.0-4P port (GPIO26 / GPIO32 plus 5V and GND)
+  # - Bottom expansion pads GPIO19 / GPIO22 / GPIO23 / GPIO33
+  # - RESET button (EN pin, handled in hardware)
+  # - CH9102 USB-to-UART bridge on the USB Type-C port (console path)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

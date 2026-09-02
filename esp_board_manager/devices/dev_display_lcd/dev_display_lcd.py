@@ -16,6 +16,13 @@ DEV_DISPLAY_LCD_IO_LIST = {
     'dsi': [
         'reset_gpio_num',
     ],
+    'i80': [
+        'dc_gpio_num',
+        'wr_gpio_num',
+        'data_gpio_nums',
+        'cs_gpio_num',
+        'reset_gpio_num',
+    ],
     'spi': [
         'cs_gpio_num',
         'dc_gpio_num',

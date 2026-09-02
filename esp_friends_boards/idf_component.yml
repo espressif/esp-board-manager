@@ -1,4 +1,4 @@
-version: 0.6.0
+version: 0.6.1
 description: Non-official board definitions for ESP Board Manager
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_friends_boards/README.md

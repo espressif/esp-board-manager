@@ -3,12 +3,16 @@ LEDC 控制 ledc_ctrl
 
 :link_to_translation:`en:[English]`
 
+.. _ledc-ctrl-intro:
+
 简介
 ------
 
 ``ledc_ctrl`` 是基于 ``ledc`` peripheral 的 PWM 控制型 device，用于将一个 LEDC 通道封装为可按名称获取的设备句柄。该设备适合描述 LCD 背光亮度、单路 PWM 输出等需按占空比控制的板级信号。
 
 BMGR 初始化 ``ledc_ctrl`` 时引用已初始化的 ``ledc`` peripheral，根据 ``default_percent`` 与该外设的 ``duty_resolution`` 计算初始 duty，并调用 LEDC 驱动写入通道。应用通过 :cpp:func:`esp_board_manager_get_device_handle` 获取 ``periph_ledc_handle_t``，再调用 LEDC 驱动调整占空比。
+
+.. _ledc-ctrl-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -17,11 +21,17 @@ BMGR 初始化 ``ledc_ctrl`` 时引用已初始化的 ``ledc`` peripheral，根�
 
 - `LEDC PWM 控制`_
 
+.. _ledc-ctrl-min-config:
+
 最小配置
 ------------
 
+.. _ledc-ctrl-pwm:
+
 LEDC PWM 控制
 ^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`ledc-ctrl-pwm-full`。
 
 ``board_peripherals.yaml``：
 
@@ -55,8 +65,12 @@ LEDC PWM 控制
 
 ``default_percent`` 表示初始化时写入的百分比，驱动会按 ``duty = default_percent * (2^duty_resolution - 1) / 100`` 计算初始 duty，并调用 ``ledc_set_duty`` 与 ``ledc_update_duty`` 生效。后续亮度或 PWM 变化由应用直接使用 LEDC 驱动完成。
 
+.. _ledc-ctrl-full-fields:
+
 完整字段
 ------------
+
+.. _ledc-ctrl-pwm-full:
 
 LEDC PWM 控制完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,10 +89,14 @@ LEDC PWM 控制完整字段
       peripherals:
         - ledc_name: ledc_backlight  # LEDC peripheral name (must reference an LEDC peripheral)
 
+.. _ledc-ctrl-deps:
+
 组件依赖
 ------------
 
 ``ledc_ctrl`` 不需要在 ``dependencies`` 中声明额外组件。它使用 ESP-IDF LEDC 驱动和 BMGR 的 ``ledc`` peripheral。
+
+.. _ledc-ctrl-peripherals:
 
 依赖外设
 ------------
@@ -95,11 +113,15 @@ LEDC PWM 控制完整字段
      - 必选
      - 提供 LEDC 通道、定时器、分辨率和输出 GPIO
 
+.. _ledc-ctrl-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/test_dev_ledc.c``
 - ``esp_board_manager/devices/dev_ledc_ctrl/dev_ledc_ctrl.c``
+
+.. _ledc-ctrl-boards:
 
 板级参考
 ------------
@@ -109,16 +131,22 @@ LEDC PWM 控制完整字段
 - ``esp_boards/esp32_s3_box_3/board_devices.yaml``：配置 ``ledc_ctrl`` 背光设备。
 - ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：配置被背光设备引用的 ``ledc`` peripheral。
 
+.. _ledc-ctrl-notes:
+
 注意事项
 ------------
 
-- 设备通过 ``ledc_name`` 选择 ``ledc`` 外设实例。
+- 设备引用的 ``ledc`` 外设名称必须与 ``board_peripherals.yaml`` 中的实例名一致，并且名称需以 ``ledc`` 或 ``ledc_`` 开头。
 - ``default_percent`` 只用于初始化时设置 duty；运行时改变亮度需要应用重新调用 LEDC 驱动设置 duty 并更新通道。
 - ``ledc_ctrl`` 去初始化时会调用 ``ledc_stop``，停止电平参数为 ``0``。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _ledc-ctrl-debug:
+
 调试技巧
 ------------
+
+.. _ledc-ctrl-api:
 
 API 参考
 ----------

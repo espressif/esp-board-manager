@@ -3,12 +3,16 @@ spi
 
 :link_to_translation:`en:[English]`
 
+.. _spi-intro:
+
 简介
 ------
 
 ``spi`` 外设描述 ESP-IDF SPI master bus。BMGR 将 ``board_peripherals.yaml`` 中的 ``spi`` 条目转换为 ``periph_spi_config_t``，并在初始化时调用 ``spi_bus_initialize`` 创建 SPI 总线。
 
 ``spi`` 常用于 SPI LCD、部分 SPI 摄像头或其他需要共享 SPI host 的设备。片选、D/C、LCD 像素时钟、设备 SPI mode 等设备私有参数写在设备侧配置中；外设侧仅描述 SPI bus 的 host、数据线与传输能力。
+
+.. _spi-working-modes:
 
 支持的工作模式
 ---------------------
@@ -18,6 +22,8 @@ spi
 - :ref:`标准 SPI bus <spi-standard-bus>`
 - :ref:`Quad / Octal SPI bus <spi-wide-bus>`
 
+.. _spi-min-config:
+
 最小配置
 ------------
 
@@ -25,6 +31,8 @@ spi
 
 标准 SPI bus
 ^^^^^^^^^^^^^^
+
+完整字段见 :ref:`spi-full`。
 
 ``board_peripherals.yaml``：
 
@@ -45,6 +53,8 @@ spi
 Quad / Octal SPI bus
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`spi-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -61,6 +71,8 @@ Quad / Octal SPI bus
             data2_io_num: 14    # [IO]
             data3_io_num: 15    # [IO]
 
+.. _spi-mode-notes:
+
 模式说明
 ------------
 
@@ -70,8 +82,12 @@ Quad / Octal SPI bus 使用 ESP-IDF ``spi_bus_config_t`` 的 data 线字段。``
 
 SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 transaction queue 深度属于 ``display_lcd`` 设备侧 ``io_spi_config``，不写进 ``spi`` 外设 ``config``。
 
+.. _spi-full-fields:
+
 完整字段
 ------------
+
+.. _spi-full:
 
 标准 SPI bus / Quad / Octal SPI bus 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,6 +161,8 @@ SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 t
           # Interrupt flags (default: 0)
           intr_flags: 0
 
+.. _spi-devices:
+
 适用设备
 ------------
 
@@ -161,11 +179,15 @@ SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 t
      - SPI 摄像头设备在设备侧配置 ``spi_config``
      - 当前已有板级配置中 SPI 摄像头参数直接在设备侧描述，不复用 ``spi`` 外设实例
 
+.. _spi-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/peripherals/periph_spi/periph_spi.c``
 - ``esp_board_manager/peripherals/periph_spi/periph_spi.h``
+
+.. _spi-boards:
 
 板级参考
 ------------
@@ -174,6 +196,8 @@ SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 t
 - ``esp_boards/esp_vocat_1_2/board_peripherals.yaml``：SPI LCD bus 配置。
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：SPI LCD bus 配置。
 - ``m5stack_boards/m5stack_cores3/board_peripherals.yaml``：SPI master bus 配置。
+
+.. _spi-notes:
 
 注意事项
 ------------
@@ -184,8 +208,12 @@ SPI LCD 的 ``cs_gpio_num``、``dc_gpio_num``、``spi_mode``、``pclk_hz`` 和 t
 - SPI 外设初始化只创建总线；具体设备的片选、命令/数据脚和设备时钟写在对应 device 配置中。
 - 修改 SPI 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _spi-debug:
+
 调试技巧
 ------------
+
+.. _spi-api:
 
 API 参考
 ----------

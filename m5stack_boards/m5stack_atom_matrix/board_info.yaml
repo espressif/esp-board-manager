@@ -1,0 +1,5 @@
+board: m5stack_atom_matrix
+chip: esp32
+version: 1.0.0
+description: "ATOM Matrix Development Board (5x5 RGB LED matrix)"
+manufacturer: "M5Stack"

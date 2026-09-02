@@ -1,0 +1,94 @@
+# Peripherals Configuration for M5Stack Fire v2.7
+#
+# Source: M5Stack Fire v2.7 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/fire_v2.7
+#
+# Module: ESP32-D0WDQ6, 16 MB SPI flash, 8 MB quad PSRAM.
+# GPIO16 / GPIO17 are wired to the PSRAM die and must never be reused.
+#
+# One SPI bus (VSPI / SPI3_HOST, IOMUX pins GPIO18/19/23) is shared by the
+# ILI9342C LCD (CS GPIO14) and the microSD card (CS GPIO4) — the same
+# arrangement as the Core Basic.
+#
+# I2C0 on GPIO21/22 is both the internal bus (MPU6886 IMU 7-bit 0x68,
+# IP5306 power management IC 7-bit 0x75) and the red PORT A Grove connector.
+#
+peripherals:
+  # Shared I2C bus: MPU6886 IMU + IP5306 PMU + PORT A (Grove, red)
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # Shared SPI bus: ILI9342C LCD + microSD card
+  - name: spi_master
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST     # VSPI: GPIO18/19/23 are its IOMUX pins
+        sclk_io_num: 18
+        mosi_io_num: 23
+        miso_io_num: 19
+        max_transfer_sz: 15360  # 320 * 24 lines * 2 bytes
+
+  # LCD backlight (GPIO32, PWM dimmable)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 32
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # Button A (left, active-low). GPIO39 is input-only and has no internal
+  # pull resistor on the ESP32 - the board provides an external pull-up.
+  - name: gpio_button_a
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Button B (middle, active-low). GPIO38 is input-only, external pull-up.
+  - name: gpio_button_b
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Button C (right, active-low). GPIO37 is input-only, external pull-up.
+  - name: gpio_button_c
+    type: gpio
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - MPU6886 6-axis IMU (I2C 7-bit 0x68 on i2c_master): no bmgr device
+  #   type; the shared bus above is its interface
+  # - IP5306 power management / charger IC (I2C 7-bit 0x75 on i2c_master):
+  #   battery charge + 5 V boost; no bmgr device type
+  # - 1 W speaker driven from GPIO25 (DAC1) through an amplifier: a bare
+  #   DAC/PWM speaker has no bmgr device type (no codec IC, no I2S here)
+  # - Analog MEMS microphone on GPIO34 (ADC1_CH6): no bmgr device type
+  # - M5-BUS 30-pin stacking header and the M5GO base PORT B (GPIO26/36)
+  #   and PORT C (GPIO17/16 — note the PSRAM caveat above)
+  # - USB-to-UART bridge (CP2104 or CH9102 depending on batch) on
+  #   GPIO1/GPIO3
+  # ----------------------------------------------------------------------

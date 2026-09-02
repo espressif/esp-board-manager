@@ -85,7 +85,7 @@ Each YAML fragment must contain ``devices:`` or ``peripherals:`` at the top leve
 Source File Override
 --------------------
 
-``.c``, ``.cpp``, ``.cc``, ``.cxx``, and ``.S`` files listed in ``apply:`` are compiled into the generated component. The generated component sets ``WHOLE_ARCHIVE``, so strong symbols provided by the amend override weak symbol functions of the same name in the base board. The typical usage is to rewrite initialization hooks in ``setup_device.c``. It is recommended that hook functions in the base board uniformly use the ``__attribute__((weak))`` and ``__has_include`` combination to facilitate amend replacement; see the ``setup_device.c`` section in :doc:`/programming-guide/board-directory`.
+``.c``, ``.cpp``, ``.cc``, ``.cxx``, and ``.S`` files listed in ``apply:`` are compiled into the generated component. The generated component sets ``WHOLE_ARCHIVE``, so strong symbols provided by the amend override weak symbol functions of the same name in the base board. The typical usage is to rewrite initialization hooks in ``setup_device.c``. Factory functions, ``custom`` implementations, and chip-driver ``DEVICE_EXTRA_FUNC_REGISTER`` hooks on the base board should uniformly use ``__attribute__((weak))`` (for factory entries with external linkage) together with ``__has_include``, so an amend can replace them and a downstream ``gen_skip`` can still compile. See the ``setup_device.c`` section in :doc:`/programming-guide/board-directory`.
 
 Cross-Board Module Reuse
 ------------------------

@@ -3,12 +3,16 @@ rmt
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _rmt-intro:
+
 Overview
 --------
 
 The ``rmt`` peripheral type is used to describe an ESP-IDF RMT channel. BMGR creates a TX or RX channel based on ``role`` and returns a ``periph_rmt_handle_t``.
 
 This peripheral is suitable for board configurations that need to directly expose an RMT channel handle. LED strip devices can also use RMT, but the ``rmt`` parameters for ``led_strip`` are written in the device-side configuration; an ``rmt`` peripheral in ``board_peripherals.yaml`` is only needed when a device explicitly references a defined ``rmt`` peripheral.
+
+.. _rmt-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -18,11 +22,18 @@ Supported Operating Modes
 - `TX Channel`_
 - `RX Channel`_
 
+.. _rmt-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _rmt-tx:
+
 TX Channel
 ^^^^^^^^^^
+
+See complete fields: :ref:`rmt-tx-idf5`.
+See complete fields: :ref:`rmt-tx-idf6`.
 
 ``board_peripherals.yaml``:
 
@@ -46,8 +57,13 @@ TX Channel
             allow_pd: false
             init_level: 0
 
+.. _rmt-rx:
+
 RX Channel
 ^^^^^^^^^^
+
+See complete fields: :ref:`rmt-rx-idf5`.
+See complete fields: :ref:`rmt-rx-idf6`.
 
 ``board_peripherals.yaml``:
 
@@ -68,6 +84,8 @@ RX Channel
             with_dma: false
             allow_pd: false
 
+.. _rmt-mode-notes:
+
 Mode Notes
 ----------
 
@@ -75,8 +93,12 @@ Mode Notes
 
 The RMT YAML templates for IDF 5 and IDF 6 are mostly identical, with a difference in flags: the IDF 5 template includes ``io_loop_back``, while the IDF 6 template moves open-drain related configuration into BMGR extra flags and no longer lists ``io_loop_back`` in the template.
 
+.. _rmt-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _rmt-tx-idf5:
 
 IDF 5 TX Channel Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,6 +139,8 @@ IDF 5 TX Channel Full Fields
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
           init_level: 0                  # Set initial level of RMT channel signal (0=low, 1=high)
 
+.. _rmt-rx-idf5:
+
 IDF 5 RX Channel Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -147,6 +171,8 @@ IDF 5 RX Channel Full Fields
                                           # to determine whether the chip supports
           io_loop_back: false            # For debug: signal output from GPIO fed back to input path
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
+
+.. _rmt-tx-idf6:
 
 IDF 6 TX Channel Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -186,6 +212,8 @@ IDF 6 TX Channel Full Fields
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
           init_level: 0                  # Set initial level of RMT channel signal (0=low, 1=high)
 
+.. _rmt-rx-idf6:
+
 IDF 6 RX Channel Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -216,6 +244,8 @@ IDF 6 RX Channel Full Fields
                                           # to determine whether the chip supports
           allow_pd: false                # If set, allow power domain to power off during sleep (saves power, uses more RAM)
 
+.. _rmt-devices:
+
 Applicable Devices
 ------------------
 
@@ -232,6 +262,8 @@ Applicable Devices
      - The device side can reference a defined ``rmt`` peripheral
      - Encoder, transmit queue usage, and receive buffer are determined by the custom device or application code
 
+.. _rmt-code:
+
 Reference Code
 --------------
 
@@ -239,12 +271,16 @@ Reference Code
 - ``esp_board_manager/peripherals/periph_rmt/idf6/periph_rmt.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_rmt.c``
 
+.. _rmt-boards:
+
 Board Examples
 --------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``: Defines the ``rmt_tx`` test peripheral.
 - ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
 - ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``: ``led_strip`` using ``sub_type: rmt``.
+
+.. _rmt-notes:
 
 Notes
 -----
@@ -254,8 +290,12 @@ Notes
 - ``role`` determines whether TX or RX configuration is parsed. TX-specific fields must not be written into an RX peripheral, and RX-specific fields must not be written into a TX peripheral.
 - After modifying RMT peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _rmt-debug:
+
 Debugging Tips
 --------------
+
+.. _rmt-api:
 
 API Reference
 -------------
