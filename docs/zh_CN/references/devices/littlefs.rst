@@ -3,6 +3,8 @@ LittleFS 文件系统 littlefs
 
 :link_to_translation:`en:[English]`
 
+.. _littlefs-intro:
+
 简介
 ------
 
@@ -14,6 +16,8 @@ LittleFS 文件系统 littlefs
 - ``sdmmc``：初始化 SDMMC SD 卡，并在该卡上挂载 LittleFS。
 - ``spi``：复用 BMGR SPI master 外设初始化 SDSPI SD 卡，并在该卡上挂载 LittleFS。
 
+.. _littlefs-usage-modes:
+
 支持的使用模式
 ---------------------
 
@@ -23,11 +27,17 @@ LittleFS 文件系统 littlefs
 - `SDMMC SD 卡挂载`_
 - `SPI SD 卡挂载`_
 
+.. _littlefs-min-config:
+
 最小配置
 ------------
 
+.. _littlefs-flash:
+
 Flash 分区挂载
 ^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`littlefs-flash-full`。
 
 ``flash`` 模式调用 ``esp_vfs_littlefs_register`` 挂载 flash 分区，无需新增 ``board_peripherals.yaml`` 条目。工程分区表需要提供一个 ``data`` 类型分区；``partition_label`` 应与分区表的分区名称一致。
 
@@ -57,8 +67,12 @@ Flash 分区挂载
             dont_mount: false
             grow_on_mount: false
 
+.. _littlefs-sdmmc:
+
 SDMMC SD 卡挂载
 ^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`littlefs-sdmmc-full`。
 
 ``sdmmc`` 模式由 BMGR 初始化 SDMMC host 和 SD 卡句柄，再将 SD 卡句柄传给 ``esp_vfs_littlefs_register``。该模式无需新增 ``board_peripherals.yaml`` 条目。
 
@@ -94,8 +108,12 @@ SDMMC 和 SDSPI 两种 SD 后端都依赖 ``joltwallet/littlefs`` 组件的 SD c
               cmd: -1
               d0: -1
 
+.. _littlefs-spi:
+
 SPI SD 卡挂载
 ^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`littlefs-spi-full`。
 
 ``spi`` 模式复用 ``board_peripherals.yaml`` 中已定义的 SPI master 外设，并在该总线上初始化 SDSPI SD 卡。设备级 ``peripherals`` 需引用一个 ``role`` 为 ``master`` 的 ``spi`` 外设。
 
@@ -127,8 +145,12 @@ SDMMC 和 SDSPI 两种 SD 后端都依赖 ``joltwallet/littlefs`` 组件的 SD c
         peripherals:
           - spi_name: spi_master
 
+.. _littlefs-full-fields:
+
 完整字段
 ------------
+
+.. _littlefs-flash-full:
 
 Flash 分区完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -149,6 +171,8 @@ Flash 分区完整字段
           read_only: false                    # Mount as read-only (default: false; cannot be used with format_if_mount_failed or grow_on_mount)
           dont_mount: false                   # Register the filesystem without mounting (default: false)
           grow_on_mount: false                # Grow filesystem to match partition size on mount (default: false; cannot be used with read_only)
+
+.. _littlefs-sdmmc-full:
 
 SDMMC 卡完整字段
 ^^^^^^^^^^^^^^^^^^^^
@@ -197,6 +221,8 @@ SDMMC 卡完整字段
             wp: -1      # [IO] Write-protect pin (-1 if unused)
           ldo_chan_id: -1                     # On-chip LDO channel ID for SDMMC IO power (-1 when unused)
 
+.. _littlefs-spi-full:
+
 SPI SD 卡完整字段
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -223,12 +249,16 @@ SPI SD 卡完整字段
 
 ``esp_vfs_littlefs_conf_t`` 中的 ``partition``、``sdcard`` 和 ``blockdev`` 是运行期挂载源字段，不能写入 YAML。BMGR 根据 ``sub_type`` 在初始化过程中设置相应挂载源。
 
+.. _littlefs-deps:
+
 组件依赖
 ------------
 
 ``littlefs`` 会通过 ``esp_board_manager/idf_component.yml`` 在启用 ``CONFIG_ESP_BOARD_DEV_LITTLEFS_SUPPORT`` 时引入 ``joltwallet/littlefs``，版本为 ``7b72caff1de089598a9b5b0b15a7226b790f3c96``。板级 YAML 不需要为该通用组件重复声明 ``dependencies``。
 
 SDMMC 和 SDSPI 两种 SD 后端需要启用 ``CONFIG_LITTLEFS_SDMMC_SUPPORT``，否则 ``esp_vfs_littlefs_conf_t`` 中的 SD card 支持字段与相关 API 不会参与编译。
+
+.. _littlefs-peripherals:
 
 依赖外设
 ------------
@@ -253,6 +283,8 @@ SDMMC 和 SDSPI 两种 SD 后端需要启用 ``CONFIG_LITTLEFS_SDMMC_SUPPORT``�
      - 必选
      - 复用 SPI master 外设初始化 SDSPI SD 卡
 
+.. _littlefs-code:
+
 参考代码
 ------------
 
@@ -262,11 +294,15 @@ SDMMC 和 SDSPI 两种 SD 后端需要启用 ``CONFIG_LITTLEFS_SDMMC_SUPPORT``�
 - ``esp_board_manager/devices/dev_littlefs/dev_littlefs_sub_sdmmc.c``
 - ``esp_board_manager/devices/dev_littlefs/dev_littlefs_sub_spi.c``
 
+.. _littlefs-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/test_board_littlefs_flash/board_devices.yaml``：flash 分区挂载测试配置。
 - ``esp_board_manager/test_apps/partitions_test_app.csv``：测试应用中的 ``littlefs`` 分区配置。
+
+.. _littlefs-notes:
 
 注意事项
 ------------
@@ -278,12 +314,16 @@ SDMMC 和 SDSPI 两种 SD 后端需要启用 ``CONFIG_LITTLEFS_SDMMC_SUPPORT``�
 - ``format_if_mount_failed: true`` 会在挂载失败时格式化目标文件系统。SD 卡模式下该操作会清除卡上原有文件系统内容。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _littlefs-debug:
+
 调试技巧
 ------------
 
 - SD 卡模式初始化成功后，可使用 ``sdmmc_card_print_info(stdout, handle->card)`` 打印 SD 卡信息。
 - SD 卡首次挂载已有 FAT 或未格式化介质时，LittleFS 挂载失败属于预期现象。启用 ``format_if_mount_failed`` 后，组件会格式化 SD 卡。
 - SDSPI 模式需检查 SPI master 外设名称、CS GPIO、电源控制和与其他 SPI 设备的总线占用关系。
+
+.. _littlefs-api:
 
 API 参考
 ----------

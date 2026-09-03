@@ -1,0 +1,5 @@
+board: m5stack_fire
+chip: esp32
+version: 1.0.0
+description: "M5Stack Fire v2.7 (2.0 inch 320x240 ILI9342C LCD, 3 buttons, 2x5 SK6812 RGB bars, speaker, microSD, 8 MB PSRAM)"
+manufacturer: "M5Stack"

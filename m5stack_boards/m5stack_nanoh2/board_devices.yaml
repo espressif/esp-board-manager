@@ -1,0 +1,78 @@
+# Devices Configuration for M5NanoH2
+#
+# Source: M5NanoH2 documentation + board schematic
+# Reference: https://docs.m5stack.com/en/core/NanoH2
+# Schematic: SCH_M5NanoH2_v0.0.3 (linked from that page). One sheet; its
+#   "RGB LED", "IR&LED" and "Button" blocks together with U3's net labels
+#   settle the RGB-vs-blue-LED assignment. Net labels sit on U3 pins as:
+#   pin 12 = GPIO10 = RGBPWR, pin 13 = GPIO11 = RGB, pin 6 = GPIO3 = IR,
+#   pin 7 = GPIO4 = LED1 (blue), pin 11 = GPIO9 = button.
+#
+devices:
+  # ---------- RGB LED supply switch (GPIO10) ----------
+  # Schematic "RGB LED": U6 AW35122FDR load switch, VIN = VDD_3V3,
+  # VOUT = F3V3 (the WS2812's VDD), EN = net RGBPWR on U3 pin 12 = GPIO10.
+  # EN is active-high, so the rail is off until the SoC drives it.
+  - name: led_power
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_led
+        active_level: 1
+
+  # ---------- On-board addressable RGB LED (GPIO11) ----------
+  - name: led_strip
+    chip: ws2812                        # schematic "RGB LED" block: U2 is
+                                        # designated WS2812; DI (pin 3) is net
+                                        # RGB = U3 pin 13 = GPIO11, VDD (pin 4)
+                                        # is the switched F3V3 rail, DO (pin 1)
+                                        # is left unconnected (one LED)
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    power_ctrl_device: led_power
+    config:
+      strip_gpio_num: 11
+      max_leds: 1
+      led_model: LED_MODEL_WS2812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- Blue indicator LED (GPIO4) ----------
+  - name: blue_led
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_blue_led
+
+  # ---------- Infrared transmit LED (GPIO3) ----------
+  - name: ir_tx
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_ir_tx
+
+  # ---------- User button (GPIO9, active-low) ----------
+  - name: user_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_user_button

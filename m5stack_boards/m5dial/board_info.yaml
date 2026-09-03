@@ -1,0 +1,5 @@
+board: m5dial
+chip: esp32s3
+version: 1.0.0
+description: M5Dial with GC9A01 LCD, FT5x06 touch, button, and rotary knob
+manufacturer: M5Stack

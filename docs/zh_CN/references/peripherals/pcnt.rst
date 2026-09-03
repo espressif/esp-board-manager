@@ -3,12 +3,16 @@ pcnt
 
 :link_to_translation:`en:[English]`
 
+.. _pcnt-intro:
+
 简介
 ------
 
 ``pcnt`` 外设类型用于描述 ESP-IDF pulse counter 单元、glitch filter、channel 与 watch point。BMGR 根据该配置创建 PCNT unit 与 channel，并返回 ``periph_pcnt_handle_t``。
 
 该外设适用于需要直接使用 PCNT 句柄的计数、编码器或测试场景。计数值读取、事件回调与业务层处理由使用该句柄的设备或应用代码完成。
+
+.. _pcnt-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ pcnt
 
 - `PCNT 计数单元`_
 
+.. _pcnt-min-config:
+
 最小配置
 ------------
 
+.. _pcnt-unit:
+
 PCNT 计数单元
 ^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`pcnt-unit-full`。
 
 ``board_peripherals.yaml``：
 
@@ -58,13 +68,19 @@ PCNT 计数单元
           watch_point_count: 3
           watch_point_list: [-100, 0, 100]
 
+.. _pcnt-mode-notes:
+
 模式说明
 ------------
 
 ``pcnt`` 外设先创建 unit，再设置 glitch filter，然后按 ``channel_count`` 创建 channel 并设置 edge/level action。``watch_point_list`` 用于向 unit 添加 watch point；事件回调不在外设初始化中注册。
 
+.. _pcnt-full-fields:
+
 完整字段
 ------------
+
+.. _pcnt-unit-full:
 
 PCNT 计数单元完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,6 +168,8 @@ PCNT 计数单元完整字段
                               # users can also customize SOC_PCNT_THRES_POINT_PER_UNIT watch points
         watch_point_list: [-100, -50, 0, 50, 100]
 
+.. _pcnt-devices:
+
 适用设备
 ------------
 
@@ -165,16 +183,22 @@ PCNT 计数单元完整字段
      - 设备侧可引用已定义的 ``pcnt`` 外设
      - 计数读取、watch point 回调和业务语义由自定义设备或应用代码完成
 
+.. _pcnt-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/peripherals/periph_pcnt/periph_pcnt.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_pcnt.c``
 
+.. _pcnt-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``：定义 ``pcnt_unit`` 测试外设。
+
+.. _pcnt-notes:
 
 注意事项
 ------------
@@ -184,8 +208,12 @@ PCNT 计数单元完整字段
 - ``edge_gpio_num`` 或 ``level_gpio_num`` 设为 ``-1`` 时，对应 virtual IO level 字段才有意义。
 - 修改 PCNT 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _pcnt-debug:
+
 调试技巧
 ------------
+
+.. _pcnt-api:
 
 API 参考
 ----------

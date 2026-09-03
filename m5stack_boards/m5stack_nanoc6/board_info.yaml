@@ -1,0 +1,5 @@
+board: m5stack_nanoc6
+chip: esp32c6
+version: 1.0.0
+description: "M5NanoC6 Development Board"
+manufacturer: "M5Stack"

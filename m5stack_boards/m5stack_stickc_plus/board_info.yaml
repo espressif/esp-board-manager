@@ -1,0 +1,5 @@
+board: m5stack_stickc_plus
+chip: esp32
+version: 1.0.0
+description: "M5StickC PLUS (1.14 inch 135x240 ST7789v2 LCD, AXP192 PMU, IMU, PDM mic, buzzer, IR)"
+manufacturer: "M5Stack"

@@ -126,3 +126,31 @@ devices:
     peripherals:
       - i2c_name: i2c_master
         i2c_addr: [0x70]  # FT5x06 8-bit I2C address, from 7-bit 0x38
+
+  - name: camera
+    type: camera
+    sub_type: dvp
+    version: default
+    power_ctrl_device: axp2101_power_manager
+    config:
+      dvp_config:
+        reset_io: -1
+        pwdn_io: -1
+        vsync_io: 46
+        de_io: 38
+        pclk_io: 45
+        xclk_io: -1
+        xclk_freq: 20000000
+        data_width: CAM_CTLR_DATA_WIDTH_8
+        data_io:
+          data_io_0: 39
+          data_io_1: 40
+          data_io_2: 41
+          data_io_3: 42
+          data_io_4: 15
+          data_io_5: 16
+          data_io_6: 48
+          data_io_7: 47
+    peripherals:
+      - i2c_name: i2c_master
+        frequency: 100000

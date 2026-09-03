@@ -1,0 +1,206 @@
+# Devices Configuration for ESP32-P4X-C5-Function-EV-Board
+#
+# Source: ESP32-P4X-C5-Function-EV-Board user guide (esp-dev-kits)
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4x-c5-function-ev-board/user_guide.html
+#
+# The on-board device set matches the ESP32-P4X-Function-EV-Board (the two
+# boards differ in the companion radio module and two of its control pins —
+# see board_peripherals.yaml). The display is the same 7-inch 1024x600 unit
+# on the same LCD adapter board.
+#
+# Panel driver = EK79007. Source: esp-bsp
+# bsp/esp32_p4_function_ev_board/Kconfig, choice BSP_LCD_TYPE, default
+# BSP_LCD_TYPE_1024_600 "LCD 7-inch 1024x600 - ek79007"; the same board's
+# idf_component.yml pulls espressif/esp_lcd_ek79007 (>=2.0.1,<3.0.0). The
+# choice is compile-time — esp-bsp does no runtime panel detection.
+# https://github.com/espressif/esp-bsp/blob/master/bsp/esp32_p4_function_ev_board/Kconfig
+# The user guide's Related Documents lists an EK73217BCGA datasheet beside
+# the EK79007AD one but never says which the shipped panel carries. There is
+# no esp_lcd_ek73217 component in the component registry or in esp-bsp
+# (checked, 404), so EK73217BCGA is not a driver identity anything could be
+# configured to — read it as a panel-internal source/gate driver, not the
+# host-facing controller.
+#
+# Audio: one physical ES8311 mono codec behind an NS4150B 3 W Class-D PA,
+# split into audio_dac / audio_adc per the dev_audio_codec model (same I2C
+# address, same I2S port).
+#
+devices:
+  - name: audio_dac
+    chip: es8311  # Codec chip (ES8311)
+    type: audio_codec
+    config:
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: true
+      dac_cfg:
+        ref_enable: true
+    peripherals:
+      - pa_name: gpio_pa_control
+        gain: 4.1               # dB. AUDITED 2026-08-26, CHANGED from 6.
+                                # Deliberate divergence from upstream
+                                # esp_boards/esp32_p4_function_ev_board (which
+                                # carries 6): 6 is derivably wrong for this part,
+                                # and shipping a known-wrong calibration to stay
+                                # byte-identical is the worse trade. Upstream's P4
+                                # board and ESP-ADF's board_def.h need the same fix;
+                                # reported. Full derivation, citations and the
+                                # direction-of-harm note live in
+                                # esp32_p4x_function_ev/board_devices.yaml — the same
+                                # NS4150B at the same RIN=150k gives
+                                # Av = 240k/150k = 1.6 V/V = 4.08 dB. The error is in
+                                # the SAFE direction (plays ~1.9 dB quieter than
+                                # asked), which is why it is a flag, not an urgency.
+        active_level: 1
+      # I2S interface for audio output
+      - i2s_name: i2s_audio_out
+
+      # I2C interface for codec control
+      - i2c_name: i2c_master
+        address: 0x30           # ES8311 7-bit 0x18 << 1
+        frequency: 400000
+
+  - name: audio_adc
+    chip: es8311  # Codec chip (ES8311)
+    type: audio_codec
+    config:
+      adc_enabled: true
+      sys_cfg:
+        no_mclk: true
+      adc_cfg:
+        # codec_dev 2.0 label order is LSB to MSB: ADC microphone, DAC reference.
+        label: [FC, RE]
+
+    # Peripheral configuration
+    peripherals:
+      # I2S interface for audio input
+      - i2s_name: i2s_audio_in
+
+      # I2C interface for codec control
+      - i2c_name: i2c_master
+        address: 0x30           # ES8311 7-bit 0x18 << 1
+        frequency: 400000
+
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: sdmmc
+    version: default
+    config:
+      sub_config:
+        # Use SDMMC slot 0
+        slot: SDMMC_HOST_SLOT_0
+        frequency: SDMMC_FREQ_HIGHSPEED
+        bus_width: 4
+        # If using slot 0, the pin must be configured as 0, the IO pins actually used are configured by the SDMMC driver
+        # For more details, please check https://github.com/espressif/esp-idf/blob/v5.5.1/components/esp_driver_sdmmc/src/sdmmc_host.c#L668
+        pins:
+          clk: 0
+          cmd: 0
+          d0: 0
+          d1: 0
+          d2: 0
+          d3: 0
+          d4: 0
+          d5: 0
+          d6: 0
+          d7: 0
+        ldo_chan_id: 4  # Use LDO_VO4 to power SDMMC IO
+
+  # Boot button. Schematic net: ESP_BOOT / GPIO35_BOOTMODE.
+  # GPIO35 is also the EMAC RMII_TXD1 pin. Do not use this button together
+  # with the board Ethernet interface.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
+  # DSI Display Device
+  - name: display_lcd
+    chip: ek79007
+    type: display_lcd
+    sub_type: dsi
+    dependencies:
+      espressif/esp_lcd_ek79007: "^1.0.0"
+    config:
+      reset_gpio_num: 27
+      rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+      bits_per_pixel: 16
+      reset_active_high: 0
+      dbi_config:
+        virtual_channel: 0
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+      dpi_config:
+        virtual_channel: 0
+        dpi_clk_src: MIPI_DSI_DPI_CLK_SRC_DEFAULT
+        dpi_clock_freq_mhz: 48
+        pixel_format: LCD_COLOR_PIXEL_FORMAT_RGB565
+        in_color_format: LCD_COLOR_FMT_RGB565
+        out_color_format: LCD_COLOR_FMT_RGB565
+        num_fbs: 1
+        flags:
+          use_dma2d: true
+          disable_lp: false
+        video_timing:
+          h_size: 1024
+          v_size: 600
+          hsync_back_porch : 120
+          hsync_pulse_width : 10
+          hsync_front_porch : 120
+          vsync_back_porch : 20
+          vsync_pulse_width : 1
+          vsync_front_porch : 20
+    peripherals:
+    - ldo_name: ldo_mipi
+    - dsi_name: dsi_display
+
+  # Touch Panel Configuration
+  - name: lcd_touch
+    chip: gt911
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      espressif/esp_lcd_touch_gt911: "*"
+    config:
+      # esp_lcd_panel_io_i2c_config_t fields for touch communication
+      io_i2c_config:
+        lcd_cmd_bits: 16        # Bit-width of LCD command
+      # esp_lcd_touch_config_t fields for touch configuration
+      touch_config:
+        x_max: 1024  # Maximum X coordinate (BSP_LCD_H_RES)
+        y_max: 600   # Maximum Y coordinate (BSP_LCD_V_RES)
+        flags:
+          mirror_x: true
+          mirror_y: true
+    peripherals:
+      - i2c_name: i2c_master    # I2C peripheral for touch communication
+        i2c_addr: [0xBA, 0x28]  # GT911 8-bit I2C addresses, from 7-bit 0x5D/0x14
+
+  - name: lcd_brightness
+    type: ledc_ctrl
+    version: default
+    peripherals:
+      - ledc_name: ledc_backlight
+
+  - name: camera
+    type: camera
+    version: default
+    sub_type: "csi"   # The bus type: csi
+    config:
+      csi_config:
+        reset_io: -1
+        pwdn_io: -1
+        dont_init_ldo: true  # Using periph_ldo to manager this peripheral
+    peripherals:
+      - i2c_name: i2c_master
+        frequency: 100000
+      - ldo_name: ldo_mipi

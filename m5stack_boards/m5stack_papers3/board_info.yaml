@@ -1,0 +1,5 @@
+board: m5stack_papers3
+chip: esp32s3
+version: 1.0.0
+description: "M5PaperS3 (4.7 inch 960x540 16-grey parallel e-ink with GT911 touch, microSD, BMI270 IMU, BM8563 RTC)"
+manufacturer: "M5Stack"

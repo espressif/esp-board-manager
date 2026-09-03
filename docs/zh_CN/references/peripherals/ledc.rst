@@ -3,12 +3,16 @@ ledc
 
 :link_to_translation:`en:[English]`
 
+.. _ledc-intro:
+
 简介
 ------
 
 ``ledc`` 外设类型用于描述一个 LEDC PWM 输出通道。BMGR 根据该配置完成 LEDC timer 与 channel 的初始化，并返回包含 channel 与 speed mode 的 ``periph_ledc_handle_t``。
 
 该外设适用于板级背光、简单 PWM 输出等场景。亮度百分比、默认亮度等设备语义属于 ``ledc_ctrl`` 设备配置，不写入 ``ledc`` 外设的 ``config``。
+
+.. _ledc-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ ledc
 
 - `PWM 输出`_
 
+.. _ledc-min-config:
+
 最小配置
 ------------
 
+.. _ledc-pwm:
+
 PWM 输出
 ^^^^^^^^^^
+
+完整字段见 :ref:`ledc-pwm-full`。
 
 ``board_peripherals.yaml``：
 
@@ -39,13 +49,19 @@ PWM 输出
           duty_resolution: LEDC_TIMER_10_BIT
           speed_mode: LEDC_LOW_SPEED_MODE
 
+.. _ledc-mode-notes:
+
 模式说明
 ------------
 
 ``ledc`` 外设同时配置 LEDC timer 和 channel。多个 LEDC 外设若复用同一个 timer，需要保持 timer 相关参数一致；若频率或分辨率不同，应选择不同 ``timer_sel``。
 
+.. _ledc-full-fields:
+
 完整字段
 ------------
+
+.. _ledc-pwm-full:
 
 PWM 输出完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -97,6 +113,8 @@ PWM 输出完整字段
         # - LEDC_SLEEP_MODE_NO_ALIVE_ALLOW_PD
         # - LEDC_SLEEP_MODE_KEEP_ALIVE
 
+.. _ledc-devices:
+
 适用设备
 ------------
 
@@ -110,12 +128,16 @@ PWM 输出完整字段
      - 设备侧 ``peripherals`` 引用 ``ledc`` 外设
      - ``default_percent`` 等亮度控制参数写在设备侧，PWM GPIO、timer、channel、频率和分辨率写在外设侧
 
+.. _ledc-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/peripherals/periph_ledc/periph_ledc.c``
 - ``esp_board_manager/devices/dev_ledc_ctrl/dev_ledc_ctrl.c``
 - ``esp_board_manager/test_apps/main/test_dev_ledc.c``
+
+.. _ledc-boards:
 
 板级参考
 ------------
@@ -126,6 +148,8 @@ PWM 输出完整字段
 - ``esp_boards/esp32_s3_box_3/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
 - ``esp_boards/esp_vocat_1_0/board_peripherals.yaml``：定义 LCD 背光 ``ledc_backlight``。
 
+.. _ledc-notes:
+
 注意事项
 ------------
 
@@ -134,8 +158,12 @@ PWM 输出完整字段
 - ``ledc_ctrl`` 设备引用 LEDC 外设后，设备侧不要重复配置 LEDC channel、timer、frequency 或 GPIO。
 - 修改 LEDC 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _ledc-debug:
+
 调试技巧
 ------------
+
+.. _ledc-api:
 
 API 参考
 ----------

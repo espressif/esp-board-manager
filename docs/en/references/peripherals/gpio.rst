@@ -3,12 +3,16 @@ gpio
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _gpio-intro:
+
 Overview
 --------
 
 The ``gpio`` peripheral describes the direction, pull resistors, interrupt type, and default output level of a single ESP-IDF GPIO pin. BMGR converts a ``gpio`` entry in ``board_peripherals.yaml`` into a ``periph_gpio_config_t``, calls ``gpio_config`` during initialization, and sets the default level in output mode.
 
 ``gpio`` is commonly used for board-level signals such as amplifier enable, LCD and SD card power control, backlight control, mute control, and button input. GPIOs that need to be managed by a device should be written as peripheral entries and then referenced by devices such as ``gpio_ctrl``, ``button``, or ``audio_codec``.
+
+.. _gpio-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -19,6 +23,8 @@ Supported Operating Modes
 - :ref:`GPIO Output <gpio-output>`
 - :ref:`GPIO Input-Output / Open-Drain <gpio-io-od>`
 
+.. _gpio-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -26,6 +32,8 @@ Minimal Configuration
 
 GPIO Input
 ^^^^^^^^^^
+
+See complete fields: :ref:`gpio-full`.
 
 ``board_peripherals.yaml``:
 
@@ -44,6 +52,8 @@ GPIO Input
 GPIO Output
 ^^^^^^^^^^^
 
+See complete fields: :ref:`gpio-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -61,6 +71,8 @@ GPIO Output
 GPIO Input-Output / Open-Drain
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`gpio-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -74,6 +86,8 @@ GPIO Input-Output / Open-Drain
           pull_up: true
           default_level: 1
 
+.. _gpio-mode-notes:
+
 Mode Description
 ----------------
 
@@ -81,8 +95,12 @@ Input mode is used for buttons, detection pins, or interrupt inputs. Output mode
 
 ``default_level`` is set by the initialization code only in output-type modes. Device-side ``active_level``, ``gain``, button events, and application semantics are not written into the ``gpio`` peripheral ``config``.
 
+.. _gpio-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _gpio-full:
 
 GPIO Input / Output / Input-Output — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,6 +146,8 @@ GPIO Input / Output / Input-Output — Full Fields
         default_level: 0
         # Valid values: 0 or 1
 
+.. _gpio-devices:
+
 Applicable Devices
 ------------------
 
@@ -150,6 +170,8 @@ Applicable Devices
      - Reset, interrupt, backlight, or power GPIOs can be expressed via device-side fields or a standalone GPIO control device
      - The LCD panel's ``reset_gpio_num`` and the touch controller's ``rst_gpio_num`` / ``int_gpio_num`` are device-side fields
 
+.. _gpio-code:
+
 Reference Code
 --------------
 
@@ -158,6 +180,8 @@ Reference Code
 - ``esp_board_manager/examples/play_embed_music/main/play_embed_music.c``
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 
+.. _gpio-boards:
+
 Board-Level Reference
 ---------------------
 
@@ -165,6 +189,8 @@ Board-Level Reference
 - ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``: SD card power, headphone detection, amplifier, LED, and SD card detect GPIOs.
 - ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``: amplifier, power control, codec power, and IMU interrupt GPIOs.
 - ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: boot button GPIO.
+
+.. _gpio-notes:
 
 Notes
 -----
@@ -175,8 +201,12 @@ Notes
 - The same physical GPIO should not be configured in multiple peripheral entries with conflicting directions or default levels.
 - After modifying the GPIO peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _gpio-debug:
+
 Debugging Tips
 --------------
+
+.. _gpio-api:
 
 API Reference
 -------------

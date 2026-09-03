@@ -73,6 +73,7 @@ int dev_ledc_ctrl_deinit(void *device_handle)
         ESP_LOGE(TAG, "Invalid LEDC handle");
         return -1;
     }
+    ledc_channel_t channel = ledc_handle->channel;
     // Stop the LEDC channel
     esp_err_t err = ledc_stop(ledc_handle->speed_mode, ledc_handle->channel, 0);
     if (err != ESP_OK) {
@@ -86,6 +87,6 @@ int dev_ledc_ctrl_deinit(void *device_handle)
         esp_board_periph_unref_handle(cfg->ledc_name);
     }
 
-    ESP_LOGI(TAG, "LEDC control device channel %d deinitialized", ledc_handle->channel);
+    ESP_LOGI(TAG, "LEDC control device channel %d deinitialized", channel);
     return 0;
 }

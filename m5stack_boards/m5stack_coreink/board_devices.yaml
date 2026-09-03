@@ -1,0 +1,88 @@
+# Devices Configuration for M5Stack CoreInk
+#
+# Source: M5Stack CoreInk (K048) official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/coreink
+#
+# No display device: the GDEW0154M09 e-paper panel has no bmgr device type
+# and no esp_lcd driver component. Its bus is the spi_eink peripheral in
+# board_peripherals.yaml, whose Not-modeled section lists the CS / D/C /
+# RST / BUSY pins.
+#
+devices:
+  # ---------- Power latch: hold HIGH to stay powered ----------
+  - name: power_hold
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_hold
+        active_level: 1
+
+  # ---------- External LED (GPIO10) ----------
+  - name: status_led
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0         # M5-CoreInk FactoryTest.ino set_led():
+                              # digitalWrite(LED_EXT_PIN, !status) — LOW lights
+                              # it; LED_EXT_PIN = 10 (src/utility/config.h).
+                              # The LED is on the front FPC sub-board, so the
+                              # main schematic shows only J1 pin 1 net "LED".
+      default_level: 1
+    peripherals:
+      - gpio_name: gpio_status_led
+
+  # ---------- User button (side, active-low) ----------
+  - name: user_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_user_button
+
+  # ---------- Dial switch: three discrete positions, each a key ----------
+  # The "dial" is a three-way rocker, not a quadrature encoder: UP, PRESS
+  # and DOWN are independent active-low contacts, so each is a button.
+  - name: dial_up
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO37 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_dial_up
+
+  - name: dial_press
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO38 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_dial_press
+
+  - name: dial_down
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO39 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_dial_down

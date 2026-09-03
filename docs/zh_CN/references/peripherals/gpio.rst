@@ -3,12 +3,16 @@ gpio
 
 :link_to_translation:`en:[English]`
 
+.. _gpio-intro:
+
 简介
 ------
 
 ``gpio`` 外设描述单个 ESP-IDF GPIO 管脚的方向、上下拉、中断类型与默认输出电平。BMGR 将 ``board_peripherals.yaml`` 中的 ``gpio`` 条目转换为 ``periph_gpio_config_t``，初始化时调用 ``gpio_config``；在输出模式下设置默认电平。
 
 ``gpio`` 常用于功放使能、LCD 与 SD 卡电源控制、背光控制、静音控制、按键输入等简单板级信号。需要由设备管理的 GPIO 应写为外设条目，再由 ``gpio_ctrl``、``button``、``audio_codec`` 等设备引用。
+
+.. _gpio-working-modes:
 
 支持的工作模式
 ---------------------
@@ -19,6 +23,8 @@ gpio
 - :ref:`GPIO 输出 <gpio-output>`
 - :ref:`GPIO 输入输出 / 开漏 <gpio-io-od>`
 
+.. _gpio-min-config:
+
 最小配置
 ------------
 
@@ -26,6 +32,8 @@ gpio
 
 GPIO 输入
 ^^^^^^^^^^^
+
+完整字段见 :ref:`gpio-full`。
 
 ``board_peripherals.yaml``：
 
@@ -44,6 +52,8 @@ GPIO 输入
 GPIO 输出
 ^^^^^^^^^^^
 
+完整字段见 :ref:`gpio-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -61,6 +71,8 @@ GPIO 输出
 GPIO 输入输出 / 开漏
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`gpio-full`。
+
 ``board_peripherals.yaml``：
 
 .. code-block:: yaml
@@ -74,6 +86,8 @@ GPIO 输入输出 / 开漏
           pull_up: true
           default_level: 1
 
+.. _gpio-mode-notes:
+
 模式说明
 ------------
 
@@ -81,8 +95,12 @@ GPIO 输入输出 / 开漏
 
 ``default_level`` 只在输出类模式下由初始化代码设置。设备侧的 ``active_level``、``gain``、按键事件、业务语义不写进 ``gpio`` 外设 ``config``。
 
+.. _gpio-full-fields:
+
 完整字段
 ------------
+
+.. _gpio-full:
 
 GPIO 输入 / 输出 / 输入输出完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,6 +146,8 @@ GPIO 输入 / 输出 / 输入输出完整字段
         default_level: 0
         # Valid values: 0 or 1
 
+.. _gpio-devices:
+
 适用设备
 ------------
 
@@ -150,6 +170,8 @@ GPIO 输入 / 输出 / 输入输出完整字段
      - reset、interrupt、backlight 或 power GPIO 可由设备侧字段或独立 GPIO 控制设备表达
      - LCD panel 的 ``reset_gpio_num`` 和 touch 的 ``rst_gpio_num`` / ``int_gpio_num`` 属于设备侧字段
 
+.. _gpio-code:
+
 参考代码
 ------------
 
@@ -158,6 +180,8 @@ GPIO 输入 / 输出 / 输入输出完整字段
 - ``esp_board_manager/examples/play_embed_music/main/play_embed_music.c``
 - ``esp_board_manager/examples/play_sdcard_music/main/play_sdcard_music.c``
 
+.. _gpio-boards:
+
 板级参考
 ------------
 
@@ -165,6 +189,8 @@ GPIO 输入 / 输出 / 输入输出完整字段
 - ``esp_boards/esp32_lyrat_mini_1_1/board_peripherals.yaml``：SD 卡电源、耳机检测、功放、LED 和 SD 卡检测 GPIO。
 - ``esp_friends_boards/esp32_c5_spot/board_peripherals.yaml``：功放、电源控制、codec 电源和 IMU interrupt GPIO。
 - ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``：boot button GPIO。
+
+.. _gpio-notes:
 
 注意事项
 ------------
@@ -175,8 +201,12 @@ GPIO 输入 / 输出 / 输入输出完整字段
 - 同一个物理 GPIO 不应在多个外设条目中重复配置为互相冲突的方向或默认电平。
 - 修改 GPIO 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _gpio-debug:
+
 调试技巧
 ------------
+
+.. _gpio-api:
 
 API 参考
 ----------

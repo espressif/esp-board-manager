@@ -1,0 +1,26 @@
+# Peripherals Configuration for ESP32-C5-DevKitC-1
+#
+# Source: ESP32-C5-DevKitC-1 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c5/esp32-c5-devkitc-1/user_guide.html
+#
+# On-board hardware is minimal: a WS2812 addressable LED on GPIO27 (owned by
+# the led_strip device, so not declared here — GPIO27 is a strapping pin,
+# fine as an output after boot) and the BOOT button on GPIO28.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - RESET button (EN pin, handled in hardware)
+# - Two USB Type-C ports: USB-to-UART bridge + native USB (GPIO13/GPIO14),
+#   both handled by ROM/console, not application devices
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO28, active-low, strapping — internal pull-up, selects boot mode)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 28
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

@@ -25,6 +25,7 @@ static esp_err_t bmgr_test_console_register_cases(void)
     bmgr_register_custom_cases();
     bmgr_register_fs_cases();
     bmgr_register_gpio_expander_cases();
+    bmgr_register_knob_cases();
     bmgr_register_lcd_cases();
     bmgr_register_led_cases();
     bmgr_register_periph_cases();

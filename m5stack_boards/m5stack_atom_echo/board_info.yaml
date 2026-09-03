@@ -1,0 +1,5 @@
+board: m5stack_atom_echo
+chip: esp32
+version: 1.0.0
+description: "ATOM Echo Smart Speaker Development Kit"
+manufacturer: "M5Stack"

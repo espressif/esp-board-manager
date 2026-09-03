@@ -277,10 +277,10 @@ Factory functions entered through a fixed function signature must have external 
 
 ``setup_device.c`` is the recommended filename for board-level extension functions. BMGR recursively scans C, C++, and assembly source files in the board directory and adds them to the generated component, so an extension function can also reside in another scanned board source file.
 
-To allow downstream projects to override the board's default behavior via ``-a/--amend``, the following two conventions are recommended:
+To allow downstream projects to override the board's default behavior via ``-a/--amend``, or to disable a device with ``gen_skip``, board-level source should follow these conventions:
 
 - Declare the factory or hook functions exposed to the outside (such as ``lcd_panel_factory_entry_t``, ``lcd_touch_factory_entry_t``, and ``io_expander_factory_entry_t``) as weak symbols with ``__attribute__((weak))``. A strong symbol implementation with the same name in the amend directory will replace the board's default implementation at link time, without modifying the original board source. See :doc:`/create-board/amend` for the override mechanism.
-- Wrap ``#include`` directives for chip driver headers with ``__has_include``, and apply the same guard around the weak symbol function body. This allows an amend to not only replace the function itself but also, by removing the corresponding component dependency (or substituting another chip component), cause the board's default implementation to disappear automatically—avoiding the situation where an amend has taken over a factory entry while the old board implementation still fails to compile because its header is missing.
+- Wrap ``#include`` directives for chip driver headers with ``__has_include``, and apply the same guard around the related function body. This allows an amend to not only replace the function itself but also, by removing the corresponding component dependency (or substituting another chip component), cause the board's default implementation to disappear automatically. ``gen_skip`` likewise drops that device's ``dependencies:`` from ``idf_component.yml``, but board-directory source files are still compiled into ``gen_bmgr_codes``; without ``__has_include``, the build fails because the header is missing.
 
 .. code-block:: c
 
@@ -296,12 +296,16 @@ To allow downstream projects to override the board's default behavior via ``-a/-
    }
    #endif  /* __has_include(<esp_lcd_ili9341.h>) */
 
-``custom`` type devices are suitable for hardware not yet built into BMGR, such as specific power management chips or sensors. Set ``type`` to ``custom`` in ``board_devices.yaml``; during generation, BMGR expands the fields under ``config:`` into a dedicated configuration structure and writes it to ``components/gen_bmgr_codes/gen_board_device_custom.h``. To provide custom initialization logic, implement the initialization and deinitialization functions in the board directory and register them with the ``CUSTOM_DEVICE_IMPLEMENT`` macro, for example:
+``custom`` type devices are suitable for hardware not yet built into BMGR, such as specific power management chips or sensors. Set ``type`` to ``custom`` in ``board_devices.yaml``; during generation, BMGR expands the fields under ``config:`` into a dedicated configuration structure and writes it to ``components/gen_bmgr_codes/gen_board_device_custom.h``. To provide custom initialization logic, implement the initialization and deinitialization functions in the board directory and register them with the ``CUSTOM_DEVICE_IMPLEMENT`` macro. If the implementation depends on a third-party chip driver, place the driver header, generated struct, init/deinit, and registration macro in the same ``#if __has_include`` block, for example:
 
 .. code-block:: c
+
+   #if __has_include("axp2101.h")
+   #include "axp2101.h"
 
    CUSTOM_DEVICE_IMPLEMENT(axp2101_power_manager,
                              cores3_power_manager_init,
                              cores3_power_manager_deinit);
+   #endif  /* __has_include("axp2101.h") */
 
 For the configuration struct naming convention, type inference table, macro usage, and application-side access methods, see :doc:`/references/devices/custom`; for a complete board-level example, refer to ``boards/m5stack_cores3/power_manager.c``.

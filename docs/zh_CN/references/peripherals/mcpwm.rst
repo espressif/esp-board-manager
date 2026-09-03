@@ -3,12 +3,16 @@ mcpwm
 
 :link_to_translation:`en:[English]`
 
+.. _mcpwm-intro:
+
 简介
 ------
 
 ``mcpwm`` 外设类型用于描述一组 MCPWM timer、operator、comparator 与 generator。BMGR 根据该配置创建 MCPWM 资源，并返回 ``periph_mcpwm_handle_t``。
 
 该外设仅创建 MCPWM 基础资源。生成器事件动作与 comparator 占空比不在外设初始化中设置，需由使用该句柄的设备或应用代码继续配置。
+
+.. _mcpwm-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,18 @@ mcpwm
 
 - `MCPWM 资源组`_
 
+.. _mcpwm-min-config:
+
 最小配置
 ------------
 
+.. _mcpwm-group:
+
 MCPWM 资源组
 ^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`mcpwm-group-idf5`。
+完整字段见 :ref:`mcpwm-group-idf6`。
 
 ``board_peripherals.yaml``：
 
@@ -67,6 +78,8 @@ MCPWM 资源组
               pull_up: false
               pull_down: false
 
+.. _mcpwm-mode-notes:
+
 模式说明
 ------------
 
@@ -74,8 +87,12 @@ MCPWM 资源组
 
 IDF 5 与 IDF 6 的 MCPWM 模板基本一致，差异在 ``generator_config.flags``：IDF 5 模板包含 ``io_loop_back``，IDF 6 模板不包含该字段。
 
+.. _mcpwm-full-fields:
+
 完整字段
 ------------
+
+.. _mcpwm-group-idf5:
 
 IDF 5 MCPWM 资源组完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,6 +239,8 @@ IDF 5 MCPWM 资源组完整字段
             # Whether to pull down internally (default: false)
             pull_down: false
 
+.. _mcpwm-group-idf6:
+
 IDF 6 MCPWM 资源组完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -364,6 +383,8 @@ IDF 6 MCPWM 资源组完整字段
             # Whether to pull down internally (default: false)
             pull_down: false
 
+.. _mcpwm-devices:
+
 适用设备
 ------------
 
@@ -377,6 +398,8 @@ IDF 6 MCPWM 资源组完整字段
      - 设备侧可引用已定义的 ``mcpwm`` 外设
      - waveform action、duty 更新和电机控制逻辑由自定义设备或应用代码完成
 
+.. _mcpwm-code:
+
 参考代码
 ------------
 
@@ -384,10 +407,14 @@ IDF 6 MCPWM 资源组完整字段
 - ``esp_board_manager/peripherals/periph_mcpwm/idf6/periph_mcpwm.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_mcpwm.c``
 
+.. _mcpwm-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``：定义 ``mcpwm_group_0`` 测试外设。
+
+.. _mcpwm-notes:
 
 注意事项
 ------------
@@ -397,8 +424,12 @@ IDF 6 MCPWM 资源组完整字段
 - ``periph_mcpwm_init`` 只创建 timer、operator、comparator 和 generator，不设置 generator event action 和 comparator duty。
 - 修改 MCPWM 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _mcpwm-debug:
+
 调试技巧
 ------------
+
+.. _mcpwm-api:
 
 API 参考
 ----------

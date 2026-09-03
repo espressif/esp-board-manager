@@ -3,12 +3,16 @@ LED Strip (``led_strip``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _led-strip-intro:
+
 Overview
 --------
 
 ``led_strip`` is an addressable LED strip device based on the ESP-IDF ``led_strip`` component, used to initialize single-wire protocol LEDs such as WS2812, SK6812, WS2811, and WS2816. This device writes the common strip parameters and specific backend configuration into ``board_devices.yaml``. After obtaining the ``led_strip_handle_t`` via BMGR, the application calls the ``led_strip`` component API to set pixel colors and refresh the output.
 
 ``led_strip`` selects the backend with ``sub_type``. The current source code implements two sub-types: ``rmt`` and ``spi``. Both modes have the underlying driver instance created by the ``led_strip`` component during device initialization; no new RMT or SPI peripheral entry is needed in ``board_peripherals.yaml``.
+
+.. _led-strip-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -18,11 +22,17 @@ Supported Usage Modes
 - `RMT LED Strip`_
 - `SPI LED Strip`_
 
+.. _led-strip-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _led-strip-rmt:
+
 RMT LED Strip
 ^^^^^^^^^^^^^
+
+See complete fields: :ref:`led-strip-rmt-full`.
 
 ``rmt`` mode calls ``led_strip_new_rmt_device`` to create the strip instance. It is suitable for RMT-backend LED strip output. After successful initialization, ``led_strip_clear`` is called to clear the strip output. No new ``board_peripherals.yaml`` entry is required.
 
@@ -48,8 +58,12 @@ RMT LED Strip
             mem_block_symbols: 0
             with_dma: false
 
+.. _led-strip-spi:
+
 SPI LED Strip
 ^^^^^^^^^^^^^
+
+See complete fields: :ref:`led-strip-spi-full`.
 
 ``spi`` mode calls ``led_strip_new_spi_device`` to create the strip instance. It is suitable for SPI-backend LED strip output. After successful initialization, ``led_strip_clear`` is called to clear the strip output. No new ``board_peripherals.yaml`` entry is required; the ``led_strip`` component creates the SPI backend based on the device configuration. The selected ``spi_bus`` must not conflict with any already-initialized SPI bus.
 
@@ -74,8 +88,12 @@ SPI LED Strip
             spi_bus: SPI3_HOST
             with_dma: true
 
+.. _led-strip-full-fields:
+
 All Fields
 ----------
+
+.. _led-strip-rmt-full:
 
 RMT LED Strip All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,6 +130,8 @@ RMT LED Strip All Fields
           mem_block_symbols: 0             # RMT symbols per channel block; 0 lets driver choose default size
           with_dma: false                  # Use DMA for RMT transmission when target supports it
 
+.. _led-strip-spi-full:
+
 SPI LED Strip All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -144,10 +164,14 @@ SPI LED Strip All Fields
           spi_bus: SPI2_HOST               # SPI host used by led_strip driver; must not conflict with another initialized SPI bus
           with_dma: true                   # Use DMA for SPI transmission when target supports it
 
+.. _led-strip-deps:
+
 Component Dependencies
 ----------------------
 
 ``led_strip`` introduces ``espressif/led_strip`` (version ``"*"``) via ``esp_board_manager/idf_component.yml`` when ``CONFIG_ESP_BOARD_DEV_LED_STRIP_SUPPORT`` is enabled. Board YAML does not need to re-declare ``dependencies`` for this common component.
+
+.. _led-strip-peripherals:
 
 Required Peripherals
 --------------------
@@ -164,6 +188,8 @@ Required Peripherals
      - No BMGR peripheral required
      - The ``led_strip`` component creates the RMT or SPI backend during device initialization
 
+.. _led-strip-code:
+
 Reference Code
 --------------
 
@@ -172,12 +198,16 @@ Reference Code
 - ``esp_board_manager/devices/dev_led_strip/dev_led_strip_sub_rmt.c``
 - ``esp_board_manager/devices/dev_led_strip/dev_led_strip_sub_spi.c``
 
+.. _led-strip-boards:
+
 Board Reference
 ---------------
 
 - ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
 - ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``: RMT mode on-board WS2812 status LED configuration.
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``: SPI mode ``led_strip`` test configuration.
+
+.. _led-strip-notes:
 
 Notes
 -----
@@ -187,8 +217,12 @@ Notes
 - When signal inversion or level shifting circuits are present, confirm ``invert_out`` according to the hardware connections.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _led-strip-debug:
+
 Debugging Tips
 --------------
+
+.. _led-strip-api:
 
 API Reference
 -------------

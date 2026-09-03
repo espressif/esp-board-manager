@@ -3,12 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _display-lcd-intro:
+
 简介
 ------
 
 ``display_lcd`` 设备用于描述 LCD 显示屏，并在初始化阶段创建 ``esp_lcd_panel_handle_t`` 与可选的 panel IO 句柄。应用通过 :cpp:func:`esp_board_manager_get_device_handle` 获取 ``dev_display_lcd_handles_t``，再使用 ESP-IDF ``esp_lcd_panel_ops`` 或上层图形库访问屏幕。
 
-该类型按 ``sub_type`` 选择显示接口。当前设备模板覆盖 ``dsi``、``spi``、``i80``、``rgb``、``rgb_3wire_spi`` 与 ``parlio``。除纯 ``rgb`` 外，各子类型都必须由开发板提供 LCD panel 工厂函数；仅声明芯片驱动组件不足以创建 panel。
+该类型按 ``sub_type`` 选择显示接口。当前设备模板覆盖 ``dsi``、``spi``、``i80``、``rgb``、``rgb_3wire_spi`` 与 ``parlio``。除纯 ``rgb`` 外，每种路径都必须在板级 ``setup_device.c`` 中提供匹配的 LCD 工厂函数。
+
+.. _display-lcd-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -22,92 +26,7 @@
 - :ref:`display-lcd-rgb-3wire-spi`
 - :ref:`display-lcd-parlio`
 
-帧格式
-------
-
-``dev_display_lcd`` 会在设备配置中生成 ``frame_format``，供需要选择像素缓冲区或转换格式的应用使用。解析器能够确定像素表示格式时，取值为 ``RGB565_LE``、``RGB565_BE``、``BGR888`` 或 ``RGB888``。无法确定或不支持的布局使用 ``UNKNOWN``。
-
-可以通过 ``config.frame_format`` 覆盖自动推导结果：
-
-.. code-block:: yaml
-
-    config:
-      frame_format: RGB565_LE
-
-解析阶段会校验覆盖值。如果显式值与 BMGR 能够自动推导的格式不同，解析器会发出告警。生成的值由应用代码使用；LCD 测试应用根据该值选择 LVGL 字节交换或图像转换输出格式。
-
-未配置 ``config.frame_format`` 时，BMGR 按以下规则自动推导：
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``sub_type``
-     - 推导依据
-   * - ``dsi``
-     - ESP-IDF 5.x 使用 ``dpi_config.pixel_format``；ESP-IDF 6.x 及以上使用 ``dpi_config.in_color_format``
-   * - ``rgb``、``rgb_3wire_spi``
-     - ESP-IDF 5.x 使用 ``bits_per_pixel``；ESP-IDF 6.x 及以上使用 ``rgb_panel_config.in_color_format``
-   * - ``spi``
-     - 使用 ``lcd_panel_config.data_endian``；未配置时默认为 ``RGB565_BE``
-   * - ``i80``
-     - 使用 ``panel_config.data_endian``，并根据 ``io_config.flags.swap_color_bytes`` 调整结果
-   * - ``parlio``
-     - 当前无法自动确定，建议显式配置 ``frame_format``
-
-.. note::
-
-   配置 ``data_endian`` 前，需要核对对应的屏幕芯片实现是否读取 ``esp_lcd_panel_dev_config_t.data_endian``。
-
-   即使屏幕芯片实现不读取 ``data_endian``，SPI 和 I80 模式仍可能使用该字段推导应用侧的 ``frame_format``。因此，删除或修改 ``data_endian`` 可能改变 ``frame_format`` 的推导结果。
-
-主要映射关系如下：
-
-- RGB565 色彩格式映射为 ``RGB565_LE``。
-- RGB888 色彩格式映射为 ``BGR888``。
-- 16-bit RGB 配置映射为 ``RGB565_LE``。
-- ``LCD_RGB_DATA_ENDIAN_BIG`` 映射为 ``RGB565_BE``。
-- ``LCD_RGB_DATA_ENDIAN_LITTLE`` 映射为 ``RGB565_LE``。
-
-当配置不足或组合不受支持时，自动推导结果为 ``UNKNOWN``，并输出告警。
-
-板级 panel 工厂函数
---------------------------
-
-BMGR 负责创建显示总线和 panel IO，开发板负责调用实际 LCD 控制器的构造函数并返回 ``esp_lcd_panel_handle_t``。
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``sub_type``
-     - 是否需要板级函数
-     - 必需符号
-   * - ``dsi``
-     - 是
-     - ``lcd_dsi_panel_factory_entry_t``
-   * - ``spi``、``i80``、``parlio``、``rgb_3wire_spi``
-     - 是
-     - ``lcd_panel_factory_entry_t``
-   * - ``rgb``
-     - 否
-     - BMGR 直接调用 ``esp_lcd_new_rgb_panel``
-
-DSI 工厂函数必须使用以下签名。函数负责根据 ``lcd_cfg`` 创建控制器专用 panel，并写入 ``lcd_handles->panel_handle``：
-
-.. code-block:: c
-
-    esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
-                                            dev_display_lcd_config_t *lcd_cfg,
-                                            dev_display_lcd_handles_t *lcd_handles);
-
-SPI、I80、PARLIO 和 RGB + 3-wire SPI 共享以下签名。函数应调用与 LCD 控制器匹配的 ``esp_lcd_new_panel_*`` API：
-
-.. code-block:: c
-
-    esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
-                                         const esp_lcd_panel_dev_config_t *panel_dev_config,
-                                         esp_lcd_panel_handle_t *ret_panel);
-
-基础开发板的实现建议声明为 ``__attribute__((weak))``，使 amend 可以提供同名强符号替换默认面板初始化。工厂函数使用的芯片驱动头文件和 API 必须与设备的 ``chip`` 及 ``dependencies`` 指向同一控制器。源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
+.. _display-lcd-min-config:
 
 最小配置
 ------------
@@ -117,7 +36,9 @@ SPI、I80、PARLIO 和 RGB + 3-wire SPI 共享以下签名。函数应调用与 
 DSI（``sub_type: dsi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``dsi`` 模式用于 MIPI DSI 屏，设备必须引用 ``dsi`` 与 ``ldo`` 外设；运行时会先获取 LDO 句柄，再创建 DSI panel IO。该模式必须实现 ``lcd_dsi_panel_factory_entry_t``。
+完整字段见 :ref:`display-lcd-dsi-full`。
+
+``dsi`` 模式用于 MIPI DSI 屏。当前写法通过 ``dsi_name`` 绑定 ``dsi`` 外设，并通过 ``ldo_name`` 绑定 ``ldo`` 外设。为兼容旧配置，省略这些绑定时解析器可回退到外设表中的第一个全局 ``dsi``/``ldo`` 外设，并输出迁移告警；新配置应使用显式绑定。
 
 ``board_peripherals.yaml``：
 
@@ -177,7 +98,9 @@ DSI（``sub_type: dsi``）
 SPI（``sub_type: spi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``spi`` 模式用于通过 SPI panel IO 发送命令与像素数据的屏，设备依赖 ``spi`` 外设。该模式必须实现 ``lcd_panel_factory_entry_t``。
+完整字段见 :ref:`display-lcd-spi-full`。
+
+``spi`` 模式用于通过 SPI panel IO 发送命令与像素数据的屏，设备依赖 ``spi`` 外设。
 
 ``board_peripherals.yaml``：
 
@@ -225,7 +148,9 @@ SPI（``sub_type: spi``）
 I80（``sub_type: i80``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``i80`` 模式使用 ``esp_lcd_new_i80_bus`` 与 ``esp_lcd_new_panel_io_i80`` 创建 panel IO，不依赖 ``spi`` 外设；I80 总线由设备内部基于 ``bus_config`` 创建，无需新增 ``board_peripherals.yaml`` 条目。该模式必须实现 ``lcd_panel_factory_entry_t``。
+完整字段见 :ref:`display-lcd-i80-full`。
+
+``i80`` 模式使用 ``esp_lcd_new_i80_bus`` 与 ``esp_lcd_new_panel_io_i80`` 创建 panel IO，不依赖 ``spi`` 外设；I80 总线由设备内部基于 ``bus_config`` 创建，无需新增 ``board_peripherals.yaml`` 条目。
 
 ``board_devices.yaml``：
 
@@ -259,6 +184,8 @@ I80（``sub_type: i80``）
 RGB（``sub_type: rgb``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`display-lcd-rgb-full`。
+
 ``rgb`` 模式使用 RGB LCD 外设直接输出像素数据，不调用通用 ``lcd_panel_factory_entry_t``；RGB 总线 GPIO 在设备 ``rgb_panel_config`` 中配置，无需新增 ``board_peripherals.yaml`` 条目。
 
 ``board_devices.yaml``：
@@ -289,7 +216,9 @@ RGB（``sub_type: rgb``）
 RGB + 3-wire SPI（``sub_type: rgb_3wire_spi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``rgb_3wire_spi`` 模式在 RGB 像素总线之外增加 3-wire SPI 初始化 IO，无需 ``spi`` 外设；3-wire SPI 初始化线可直接使用 SoC GPIO，或通过 ``gpio_expander`` 设备提供。该模式必须实现 ``lcd_panel_factory_entry_t``，用于执行控制器的命令初始化。
+完整字段见 :ref:`display-lcd-rgb-3wire-spi-full`。
+
+``rgb_3wire_spi`` 模式在 RGB 像素总线之外增加 3-wire SPI 初始化 IO，无需 ``spi`` 外设；3-wire SPI 初始化线可直接使用 SoC GPIO，或通过 ``gpio_expander`` 设备提供。
 
 ``board_devices.yaml``：
 
@@ -327,8 +256,12 @@ RGB + 3-wire SPI（``sub_type: rgb_3wire_spi``）
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 18            # [TO_BE_CONFIRMED]
 
+.. _display-lcd-rgb-user-fbs:
+
 RGB 自定义用户帧缓冲区
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`display-lcd-rgb-full`。
 
 ``rgb`` 与 ``rgb_3wire_spi`` 类型的 LCD 在 ESP-IDF v6.0 及以上版本支持 ``user_fbs_func`` 字段。该字段不是函数指针，而是通过 ``DEVICE_EXTRA_FUNC_REGISTER`` 注册的板级回调名称，用于向 RGB LCD 驱动提供应用或板级代码管理的帧缓冲区。
 
@@ -379,7 +312,9 @@ BMGR 在创建 RGB panel 前调用该回调，并将返回的指针传入 ``esp_
 PARLIO（``sub_type: parlio``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``parlio`` 模式使用 ``esp_lcd_new_panel_io_parl`` 创建 panel IO，无需 ``spi`` 外设；PARLIO 数据线、时钟线与控制线均在设备 ``io_parl_config`` 中配置，无需新增 ``board_peripherals.yaml`` 条目。该模式必须实现 ``lcd_panel_factory_entry_t``。
+完整字段见 :ref:`display-lcd-parlio-full`。
+
+``parlio`` 模式使用 ``esp_lcd_new_panel_io_parl`` 创建 panel IO，无需 ``spi`` 外设；PARLIO 数据线、时钟线与控制线均在设备 ``io_parl_config`` 中配置，无需新增 ``board_peripherals.yaml`` 条目。
 
 ``board_devices.yaml``：
 
@@ -407,8 +342,12 @@ PARLIO（``sub_type: parlio``）
             reset_gpio_num: -1            # [IO]
             bits_per_pixel: 16            # [TO_BE_CONFIRMED]
 
+.. _display-lcd-full-fields:
+
 完整字段
 ------------
+
+.. _display-lcd-dsi-full:
 
 DSI 完整字段
 ^^^^^^^^^^^^^^^^
@@ -434,12 +373,11 @@ DSI 完整字段
         # Valid values:
         # - LCD_RGB_ELEMENT_ORDER_RGB
         # - LCD_RGB_ELEMENT_ORDER_BGR
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 传递给 DSI panel factory 的面板数据字节序
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 不用于推导 DSI frame_format，使用 dpi_config.in_color_format
         # Valid values:
         # - LCD_RGB_DATA_ENDIAN_BIG
         # - LCD_RGB_DATA_ENDIAN_LITTLE
         bits_per_pixel: 24                        # [TO_BE_CONFIRMED] Bits per pixel (24bpp, RGB888)
-        frame_format: RGB565_LE                   # 应用帧缓冲格式，应与 dpi_config 的像素格式保持一致
         reset_active_high: 0                      # Reset pin active level (0 = active low)
 
         # DBI interface configuration (command/parameter transfer)
@@ -486,6 +424,8 @@ DSI 完整字段
       peripherals:
         - ldo_name: ldo_mipi          # [TO_BE_CONFIRMED] LDO peripheral for dsi power management
         - dsi_name: dsi_display       # [TO_BE_CONFIRMED] DSI peripheral instance used for this display
+
+.. _display-lcd-spi-full:
 
 SPI 完整字段
 ^^^^^^^^^^^^^^^^
@@ -537,7 +477,7 @@ SPI 完整字段
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 16 位 SPI frame_format：BIG=RGB565_BE，LITTLE=RGB565_LE
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -550,6 +490,8 @@ SPI 完整字段
 
       peripherals:
         - spi_name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
+
+.. _display-lcd-i80-full:
 
 I80 完整字段
 ^^^^^^^^^^^^^^^^
@@ -611,7 +553,7 @@ I80 完整字段
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Verify the selected LCD driver consumes this field; if frame_format is omitted, BMGR may derive RGB565_LE/RGB565_BE from it
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 16 位 I80 frame_format：BIG=RGB565_BE，LITTLE=RGB565_LE；swap_color_bytes 会反转结果
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -620,6 +562,8 @@ I80 完整字段
             reset_active_high: false        # Reset pin active level (default: false)
           # Chip-specific configuration
           vendor_config: ""                 # Vendor-specific configuration (default: empty string)
+
+.. _display-lcd-rgb-full:
 
 RGB 完整字段
 ^^^^^^^^^^^^^^^^
@@ -640,7 +584,7 @@ RGB 完整字段
         need_reset: true                    # Whether to call esp_lcd_panel_reset() during initialization
         bits_per_pixel: 16                  # Application-side frame buffer color depth; IDF v5.x emits this into rgb panel config
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # [TO_BE_CONFIRMED] RGB/BGR byte order expected by panel helper logic
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # [TO_BE_CONFIRMED] Endianness for color units larger than 1 byte
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 不用于推导 RGB frame_format，由 RGB 配置决定
         # esp_lcd_rgb_panel_config_t fields
         rgb_panel_config:
           clk_src: LCD_CLK_SRC_DEFAULT      # RGB LCD peripheral clock source (lcd_clock_source_t)
@@ -685,6 +629,8 @@ RGB 完整字段
             no_fb: false                     # Driver does not allocate frame buffer; requires bounce buffer callback workflow
             bb_invalidate_cache: false       # In bounce-buffer mode, invalidate cache after DMA reads; can be unsafe with concurrent writers
 
+.. _display-lcd-rgb-3wire-spi-full:
+
 RGB + 3-wire SPI 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -708,7 +654,7 @@ RGB + 3-wire SPI 完整字段
         need_reset: true                    # Whether to call esp_lcd_panel_reset() during device initialization
         bits_per_pixel: 16                  # Application-side frame buffer color depth; IDF v5.x may emit this into RGB config
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # RGB/BGR byte order used by common panel helper logic
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Endianness for color units larger than 1 byte
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 不用于推导 RGB + 3-wire SPI frame_format，由 RGB 配置决定
 
         # esp_lcd_panel_io_3wire_spi_config_t fields for the low-speed LCD command/init interface.
         io_3wire_spi_config:
@@ -778,12 +724,14 @@ RGB + 3-wire SPI 完整字段
         lcd_panel_config:
           reset_gpio_num: -1                # [IO] Reset GPIO pin; set -1 if reset is not connected to a SoC GPIO
           rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB  # RGB/BGR element order for LCD controller command setup
-          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # Color data endian for units larger than 1 byte
+          data_endian: LCD_RGB_DATA_ENDIAN_BIG      # 不决定生成的 RGB + 3-wire SPI frame_format
           bits_per_pixel: 18                # [TO_BE_CONFIRMED] LCD controller pixel width, e.g., GC9503 often uses 18
           flags:
             reset_active_high: false        # Reset pin active level: false=active low, true=active high
           vendor_config: NULL               # NULL lets bmgr pass rgb_panel_config as vendor_config by default
           auto_del_panel_io: false          # If chip driver supports it, delete 3-wire panel IO after init; GPIO expander is not deleted
+
+.. _display-lcd-parlio-full:
 
 PARLIO 完整字段
 ^^^^^^^^^^^^^^^^^^^
@@ -834,7 +782,7 @@ PARLIO 完整字段
           # Valid values:
           # - LCD_RGB_ELEMENT_ORDER_RGB
           # - LCD_RGB_ELEMENT_ORDER_BGR
-          data_endian: LCD_RGB_DATA_ENDIAN_LITTLE  # [TO_BE_CONFIRMED] Data endianness (default: LITTLE)
+          data_endian: LCD_RGB_DATA_ENDIAN_LITTLE  # 不推导 PARLIO frame_format，需要时设置 config.frame_format
           # Valid values:
           # - LCD_RGB_DATA_ENDIAN_BIG
           # - LCD_RGB_DATA_ENDIAN_LITTLE
@@ -843,12 +791,16 @@ PARLIO 完整字段
             reset_active_high: false             # Reset pin active level (default: false)
           vendor_config: ""
 
+.. _display-lcd-deps:
+
 组件依赖
 ------------
 
 使用芯片驱动组件的 ``display_lcd`` 设备需要在 ``dependencies`` 中声明 LCD 芯片驱动组件。模板使用 ``espressif/esp_lcd_generic``、``espressif/esp_lcd_ili9341``、``espressif/esp_lcd_ek79007`` 作为占位或板级示例，实际组件名与版本应与 ``chip`` 及板级 ``setup_device.c`` 中注册的工厂函数一致。
 
 ``rgb_3wire_spi`` 额外依赖 ``espressif/esp_lcd_panel_io_additions`` 提供 3-wire SPI panel IO。纯 ``rgb`` 路径直接创建 RGB panel，无需 LCD 芯片 factory 组件。
+
+.. _display-lcd-peripherals:
 
 依赖外设
 ------------
@@ -877,6 +829,8 @@ PARLIO 完整字段
      - ``rgb_3wire_spi`` 使用扩展 IO 初始化线时需要
      - 提供 3-wire SPI 的 CS、SCL 或 SDA 线
 
+.. _display-lcd-code:
+
 参考代码
 ------------
 
@@ -889,6 +843,8 @@ PARLIO 完整字段
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd_sub_rgb_3wire_spi.c``：RGB + 3-wire SPI 子类型初始化实现。
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd_sub_parlio.c``：PARLIO 子类型初始化实现。
 
+.. _display-lcd-boards:
+
 板级参考
 ------------
 
@@ -900,6 +856,8 @@ PARLIO 完整字段
 - ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``：``rgb_3wire_spi`` 屏配置。
 - ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/panel_800_480_lcd.yaml``：``rgb`` 屏 amend 配置。
 
+.. _display-lcd-notes:
+
 注意事项
 ------------
 
@@ -908,8 +866,103 @@ PARLIO 完整字段
 - ``rgb_3wire_spi`` 使用 ``IO_TYPE_EXPANDER`` 时，``io_expander_name`` 必须引用已初始化的 ``gpio_expander`` 设备。
 - 修改 LCD 设备、显示外设或工厂函数后，需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _display-lcd-frame-format:
+
+帧格式
+------------
+
+``config.frame_format`` 可选，用于覆盖生成设备配置中记录的帧格式。支持 ``RGB565_LE``、``RGB565_BE``、``BGR888`` 和 ``RGB888``。覆盖值与自动推导值不同的时候，BMGR 保留显式值并输出警告。
+
+未设置覆盖值时，BMGR 按以下规则推导：
+
+- ``dsi``：从 ``dpi_config.in_color_format`` 推导；两者同时存在时，它覆盖 ``pixel_format``。``RGB565`` 对应 ``RGB565_LE``。``RGB888`` 在 ESP-IDF v6 及以上对应 ``BGR888``，在 ESP-IDF v5 对应 ``RGB888``。其他格式为未知。
+- ``rgb`` 与 ``rgb_3wire_spi``：在 ESP-IDF v6 及以上，从 ``rgb_panel_config.in_color_format`` 按相同规则推导。在 ESP-IDF v5，16 位 ``bits_per_pixel`` 对应 ``RGB565_LE``，其他值为未知。
+- ``spi`` 与 ``i80``：16 位屏幕使用显式设置的 ``lcd_panel_config.data_endian`` 或 ``panel_config.data_endian``；大端对应 ``RGB565_BE``，小端对应 ``RGB565_LE``。未设置时，BMGR 假定 ``RGB565_BE``。``i80`` 模式中 ``swap_color_bytes`` 会反转结果。SPI 或 I80 的 ``lsb_first``，以及 I80 的 ``reverse_color_bits`` 会导致自动推导结果为未知。
+- ``parlio`` 没有自动推导；应用需要已知格式时，设置 ``config.frame_format``。
+
+因此，``data_endian`` 仅是 16 位 SPI 和 I80 面板的帧格式输入，不决定 DSI、RGB、RGB + 3-wire SPI 或 PARLIO 的帧格式。
+
+.. _display-lcd-factory:
+
+工厂函数
+------------
+
+所有非纯 ``rgb`` 路径都必须在板级 ``setup_device.c`` 中实现匹配的工厂函数。``spi``、``i80``、``parlio`` 与 ``rgb_3wire_spi`` 无条件调用 ``lcd_panel_factory_entry_t``。``dsi`` 无条件调用 ``lcd_dsi_panel_factory_entry_t``。纯 ``rgb`` 路径直接创建 RGB panel，不调用任何工厂函数。
+
+函数签名为：
+
+.. code-block:: c
+
+   esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                       const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                       esp_lcd_panel_handle_t *ret_panel)
+
+DSI 使用以下签名：
+
+.. code-block:: c
+
+   esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
+                                           dev_display_lcd_config_t *lcd_cfg,
+                                           dev_display_lcd_handles_t *lcd_handles)
+
+对应工厂函数须声明为弱符号。每个可选芯片驱动头文件及依赖它的工厂函数须置于同一 ``__has_include`` / ``HAS_*`` 条件编译块。这样下游通过 ``gen_skip`` 去掉设备，或通过 amend 移除组件依赖后，板级源码仍可编译。完整约定见 :doc:`/programming-guide/board-directory`。
+
+最小实现示例：
+
+.. code-block:: c
+
+   #if __has_include(<esp_lcd_ili9341.h>)
+   #define HAS_ILI9341 1
+   #include "esp_lcd_ili9341.h"
+   #endif
+   #if defined(HAS_ILI9341)
+   __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                            const esp_lcd_panel_dev_config_t *panel_dev_config,
+                                                            esp_lcd_panel_handle_t *ret_panel)
+   {
+       return esp_lcd_new_panel_ili9341(io, panel_dev_config, ret_panel);
+   }
+   #endif
+
+DSI 工厂函数接收 DSI 总线以及 BMGR 配置和句柄，例如：
+
+.. code-block:: c
+
+   #if __has_include(<esp_lcd_ek79007.h>)
+   #define HAS_EK79007 1
+   #include "esp_lcd_ek79007.h"
+   #endif
+   #if defined(HAS_EK79007)
+   __attribute__((weak)) esp_err_t lcd_dsi_panel_factory_entry_t(
+           esp_lcd_dsi_bus_handle_t dsi_handle, dev_display_lcd_config_t *lcd_cfg,
+           dev_display_lcd_handles_t *lcd_handles)
+   {
+       ek79007_vendor_config_t vendor_config = {
+           .mipi_config = {
+               .dsi_bus = dsi_handle,
+               .dpi_config = &lcd_cfg->sub_cfg.dsi.dpi_config,
+           },
+       };
+       esp_lcd_panel_dev_config_t panel_config = {
+           .reset_gpio_num = lcd_cfg->sub_cfg.dsi.reset_gpio_num,
+           .rgb_ele_order = lcd_cfg->rgb_ele_order,
+           .bits_per_pixel = lcd_cfg->bits_per_pixel,
+           .data_endian = lcd_cfg->data_endian,
+           .vendor_config = &vendor_config,
+       };
+       return esp_lcd_new_panel_ek79007(lcd_handles->io_handle, &panel_config,
+                                        &lcd_handles->panel_handle);
+   }
+   #endif
+
+``rgb`` 与 ``rgb_3wire_spi`` 在 ESP-IDF v6.0 及以上可通过 ``user_fbs_func`` 提供用户管理的帧缓冲区。该字段不是函数指针，而是通过 ``DEVICE_EXTRA_FUNC_REGISTER`` 注册的板级回调名称。配置写法与回调示例见 :ref:`display-lcd-rgb-user-fbs`。
+
+.. _display-lcd-debug:
+
 调试技巧
 ------------
+
+.. _display-lcd-api:
 
 API 参考
 ----------

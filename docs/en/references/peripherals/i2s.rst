@@ -3,9 +3,16 @@ i2s
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _i2s-intro:
+
+Introduction
+------------
+
 The ``i2s`` peripheral describes an audio data channel for the ESP-IDF I2S driver. BMGR distinguishes standard, TDM, and PDM input or output paths by ``format``, and is commonly used with ``audio_codec`` for playback, recording, and PDM audio scenarios.
 
 ``i2s`` entries are written in ``board_peripherals.yaml``, and devices reference them by peripheral instance name.
+
+.. _i2s-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -18,6 +25,8 @@ Supported Operating Modes
 - :ref:`PDM Output (pdm-out) <i2s-pdm-out>`
 - :ref:`PDM Input (pdm-in) <i2s-pdm-in>`
 
+.. _i2s-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -25,6 +34,8 @@ Minimal Configuration
 
 STD Output (``std-out``)
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`i2s-std-full`.
 
 STD output is used for audio playback paths, typically referenced by the DAC device of ``audio_codec``.
 
@@ -52,6 +63,8 @@ STD output is used for audio playback paths, typically referenced by the DAC dev
 STD Input (``std-in``)
 ^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`i2s-std-full`.
+
 STD input is used for audio recording paths, typically referenced by the ADC device of ``audio_codec``.
 
 ``board_peripherals.yaml``:
@@ -77,6 +90,8 @@ STD input is used for audio recording paths, typically referenced by the ADC dev
 
 TDM Output/Input (``tdm-out`` / ``tdm-in``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`i2s-tdm-full`.
 
 TDM is used for multi-channel audio or echo-reference scenarios. Output and input can share the same base clock and pin configuration, then adjust ``format`` and slot configuration for direction.
 
@@ -115,6 +130,8 @@ TDM is used for multi-channel audio or echo-reference scenarios. Output and inpu
 PDM Output (``pdm-out``)
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`i2s-pdm-out-full`.
+
 PDM output is used for PDM TX audio paths.
 
 ``board_peripherals.yaml``:
@@ -140,6 +157,8 @@ PDM output is used for PDM TX audio paths.
 PDM Input (``pdm-in``)
 ^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`i2s-pdm-in-full`.
+
 PDM input is used for PDM RX audio paths. Single-line mode uses ``clk`` and ``din``; targets supporting multi-line PDM RX can additionally use ``din0`` through ``din3``.
 
 ``board_peripherals.yaml``:
@@ -160,6 +179,8 @@ PDM input is used for PDM RX audio paths. Single-line mode uses ``clk`` and ``di
             clk: 1                   # [IO]
             din: 2                   # [IO]
 
+.. _i2s-mode-notes:
+
 Mode Notes
 ----------
 
@@ -167,8 +188,12 @@ Mode Notes
 
 The direction of ``format`` must match the device purpose: playback devices reference output formats, and recording devices reference input formats. ``role`` depends on whether the clock is provided by the ESP chip or an external device; ``master`` is the common choice in board configurations.
 
+.. _i2s-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _i2s-std-full:
 
 STD Mode Full Fields
 ^^^^^^^^^^^^^^^^^^^^
@@ -271,6 +296,8 @@ STD Mode Full Fields
           bclk_inv: false
           ws_inv: false
 
+.. _i2s-tdm-full:
+
 TDM Mode Full Fields
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -358,6 +385,8 @@ TDM Mode Full Fields
           mclk_inv: false
           bclk_inv: false
           ws_inv: false
+
+.. _i2s-pdm-out-full:
 
 PDM TX Full Fields
 ^^^^^^^^^^^^^^^^^^
@@ -458,6 +487,8 @@ PDM TX Full Fields
         invert_flags:
           clk_inv: false
 
+.. _i2s-pdm-in-full:
+
 PDM RX Full Fields
 ^^^^^^^^^^^^^^^^^^
 
@@ -554,6 +585,8 @@ Field Sources:
 - YAML template: ``esp_board_manager/peripherals/periph_i2s/periph_i2s.yml``.
 - Header file: ``esp_board_manager/peripherals/periph_i2s/periph_i2s.h``.
 
+.. _i2s-devices:
+
 Applicable Devices
 ------------------
 
@@ -567,6 +600,8 @@ Applicable Devices
      - Device-side ``peripherals`` references ``i2s_audio_out`` or ``i2s_audio_in``
      - External codec uses I2S as the audio data interface; I2C address, PA gain, and other parameters are written in the device-side reference entry
 
+.. _i2s-code:
+
 Reference Code
 --------------
 
@@ -575,12 +610,16 @@ Reference Code
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
 
+.. _i2s-boards:
+
 Board Examples
 --------------
 
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: STD I2S output and input configuration.
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``: TDM I2S output and input configuration.
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: Configuration with I2S audio peripheral alongside other board resources.
+
+.. _i2s-notes:
 
 Notes
 -----
@@ -591,8 +630,12 @@ Notes
 - ``ext_clk_freq_hz`` only takes effect when an external clock source is selected; the input clock must satisfy the BCLK requirement.
 - After modifying I2S peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _i2s-debug:
+
 Debugging Tips
 --------------
+
+.. _i2s-api:
 
 API Reference
 -------------

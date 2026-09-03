@@ -1,0 +1,24 @@
+# ESP32-LCDKit — carrier board; memory comes from the seated ESP32-DevKitC.
+#
+# The user guide names the core board but never its module: "For the
+# HMI-related development with ESP32-LCDKit, you also need the ESP32-DevKitC
+# V4 development board." The DevKitC V4 user guide's "Available Modules" list
+# is ESP32-WROOM-32 / -32D / -32U / -32E / -32UE / -DA / SOLO-1 AND
+# ESP32-WROVER-E / -IE, and refers flash and PSRAM figures out to the
+# per-module datasheets. So there is no single answer to fill in here: flash
+# size and PSRAM presence are a property of whichever core board is seated, not
+# a fact about ESP32-LCDKit, and no Espressif source binds one to this kit.
+# (Not a marker — that IS the resolved answer. A user with a WROVER core board
+# overrides the two keys below.)
+#
+# The no-PSRAM default below is the one the SERIAL (SPI) screen path — the
+# configuration this definition models — is demonstrated in: all four LVGL
+# examples for the 240x320 SPI panel run framebuffer mode with no SPIRAM key
+# at all (esp-iot-solution release/v1.1, examples/hmi/lvgl_*/sdkconfig.defaults);
+# 240*320*2 = 150 kB fits internal DRAM. PSRAM only appears in the uGFX
+# examples and in the 480x800 NT35510 PARALLEL path (768 kB framebuffer), which
+# needs a WROVER core board and CONFIG_SPIRAM=y.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y

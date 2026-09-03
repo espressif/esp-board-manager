@@ -85,7 +85,7 @@ YAML 片段合并规则
 源码文件覆盖
 --------------
 
-``apply:`` 中的 ``.c``、``.cpp``、``.cc``、``.cxx``、``.S`` 文件会编译进生成组件。生成组件设置了 ``WHOLE_ARCHIVE``，因此 amend 提供的强符号会覆盖 base 开发板中同名的弱符号函数。典型用法是重写 ``setup_device.c`` 中的初始化钩子。建议基础开发板（base）的钩子函数统一采用 ``__attribute__((weak))`` 与 ``__has_include`` 组合写法，便于 amend 替换，详见 :doc:`/programming-guide/board-directory` 的 ``setup_device.c`` 一节。
+``apply:`` 中的 ``.c``、``.cpp``、``.cc``、``.cxx``、``.S`` 文件会编译进生成组件。生成组件设置了 ``WHOLE_ARCHIVE``，因此 amend 提供的强符号会覆盖 base 开发板中同名的弱符号函数。典型用法是重写 ``setup_device.c`` 中的初始化钩子。基础开发板（base）的工厂函数、``custom`` 实现以及依赖芯片驱动的 ``DEVICE_EXTRA_FUNC_REGISTER`` 钩子应统一采用 ``__attribute__((weak))``（适用于具有外部链接的工厂入口）与 ``__has_include`` 组合写法，便于 amend 替换，也便于下游用 ``gen_skip`` 关闭设备后仍能编译。详见 :doc:`/programming-guide/board-directory` 的 ``setup_device.c`` 一节。
 
 跨板复用功能模块
 ------------------

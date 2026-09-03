@@ -1,0 +1,5 @@
+board: esp32_ethernet_kit
+chip: esp32
+version: 1.2.0
+description: "ESP32-Ethernet-Kit v1.2 (ESP32-WROVER-E, IP101GRI 10/100 Ethernet PHY)"
+manufacturer: "ESPRESSIF"

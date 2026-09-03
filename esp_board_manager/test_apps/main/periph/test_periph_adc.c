@@ -19,6 +19,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
+#include "soc/soc_caps.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_defs.h"
 #include "periph_adc.h"
@@ -35,6 +36,13 @@
 #endif  /* CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 */
 
 static const char *TAG = "TEST_ADC";
+
+#ifdef SOC_ADC_CHANNEL_NUM
+#define BMGR_ADC_CHANNEL_NUM(adc_unit)  SOC_ADC_CHANNEL_NUM(adc_unit)
+#else
+#include "hal/adc_ll.h"
+#define BMGR_ADC_CHANNEL_NUM(adc_unit)  ADC_LL_CHANNEL_NUM(adc_unit)
+#endif  /* SOC_ADC_CHANNEL_NUM */
 
 static esp_err_t continuous_test(adc_continuous_handle_t adc_handle, periph_adc_config_t *adc_cfg);
 static esp_err_t oneshot_test(adc_oneshot_unit_handle_t adc_handle, periph_adc_config_t *adc_cfg);
@@ -119,7 +127,7 @@ esp_err_t continuous_test(adc_continuous_handle_t adc_handle, periph_adc_config_
                 uint32_t data = EXAMPLE_ADC_GET_DATA(p);
                 uint8_t unit = first_pattern.unit;
                 /* Check the channel number validation, the data is invalid if the channel num exceed the maximum channel */
-                if (chan_num < SOC_ADC_CHANNEL_NUM(unit)) {
+                if (chan_num < BMGR_ADC_CHANNEL_NUM((adc_unit_t)unit)) {
                     int voltage = 0;
                     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, data, &voltage));
                     ESP_LOGI(TAG, "Unit: ADC_UNIT_%d, Channel: %" PRIu32 ", Value: %" PRIx32 ", Cali Voltage: %d mV", unit, chan_num, data, voltage);

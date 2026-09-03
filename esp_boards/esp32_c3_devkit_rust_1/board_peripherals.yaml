@@ -1,0 +1,59 @@
+# Peripherals Configuration for ESP32-C3-DevKit-RUST-1
+#
+# Source: ESP32-C3-DevKit-RUST-1 KiCad schematic, rev 1.2a (2022-04-27)
+# Reference: https://github.com/esp-rs/esp-rust-board (hardware/esp-rust-board/
+#            esp-rust-board.kicad_sch and schematic/esp-rust-board.pdf)
+#
+# NOTE the reference link below is the RUST-2 guide — the only user guide
+# Espressif still publishes for this family, and its pin tables describe a MIX
+# of the two revisions. RUST-1 (rev 1.2a) values are the ones below and they
+# come from the RUST-1 schematic, not from that guide. The two boards differ:
+# on RUST-2 the user LED moves to GPIO10 and I2C SDA moves to GPIO7.
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkit-rust-2/user_guide.html
+#
+# Module: ESP32-C3-MINI-1, 4 MB in-package flash, no PSRAM.
+#
+# On-board sensors sit on one I2C bus (SDA GPIO10 / SCL GPIO8): the
+# ICM-42670-P IMU (7-bit 0x68) and the SHTC3 temperature/humidity sensor
+# (7-bit 0x70). The WS2812 data pin (GPIO2) belongs to the led_strip device,
+# so it is not declared here.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - ICM-42670-P 6-axis IMU, I2C 7-bit 0x68 — no bmgr device type; the
+#   i2c_master peripheral below is its bus
+# - SHTC3 temperature/humidity sensor, I2C 7-bit 0x70 — same
+# - RST button (chip reset, hardware path — not a GPIO)
+# - USB Type-C: native USB Serial/JTAG on GPIO18/GPIO19 (ROM/console)
+# - Li-ion battery charger and its status LEDs (not GPIO controlled)
+# ----------------------------------------------------------------------
+peripherals:
+  # Shared sensor bus (ICM-42670-P IMU, SHTC3)
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 10
+        scl: 8
+
+  # User LED (GPIO7, active-high)
+  - name: gpio_user_led
+    type: gpio
+    role: io
+    config:
+      pin: 7
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # BOOT button (GPIO9, active-low, strapping pin — input only at runtime)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

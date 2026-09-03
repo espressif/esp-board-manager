@@ -1,0 +1,62 @@
+# Peripherals Configuration for M5Stack AtomS3U
+#
+# Source: M5Stack AtomS3U documentation
+# Reference: https://docs.m5stack.com/en/core/AtomS3U
+#
+# Module: ESP32-S3FN8 (8 MB in-package flash, no PSRAM).
+# The board plugs straight into a USB-A socket; on-board hardware is an
+# SPM1423 PDM microphone (GPIO38 clock / GPIO39 data), a WS2812 RGB LED on
+# GPIO35 (owned by the led_strip device, so not declared here), the side
+# button on GPIO41 and an IR transmit LED on GPIO12.
+#
+peripherals:
+  # SPM1423 PDM microphone (capture only). The vendor rates the part for a
+  # 1.0-3.25 MHz PDM clock, which a 16 kHz sample rate stays inside.
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 38
+        din: 39
+
+  # Side button (GPIO41, active-low)
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 41
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Infrared transmit LED (GPIO12, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - SPM1423 PDM MEMS microphone: control-less (no register interface),
+  #   so there is no audio_codec device for it — the pdm-in peripheral
+  #   above IS the interface
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND): a user-wired
+  #   expansion port, not an on-board device
+  # - 2.54 mm 6-pin header GPIO14 / GPIO17 / GPIO42 / GPIO40 (plus 5V, GND)
+  # - RESET button (EN pin, handled in hardware)
+  # - USB-A plug: native USB OTG / USB Serial-JTAG (console path)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

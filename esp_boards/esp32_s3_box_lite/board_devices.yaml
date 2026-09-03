@@ -1,5 +1,19 @@
 # Devices Configuration
 devices:
+  # ---------- BOOT button (GPIO0, active-low) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   - name: audio_dac
     chip: es8156
     type: audio_codec

@@ -1,0 +1,181 @@
+# Devices Configuration for ESP-Mosaico
+#
+# Source: ESP-Mosaico user guide (esp-dev-kits)
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s31/esp-mosaico/user_guide.html
+# Reference: https://dl.espressif.com/AE/SCH_SCH_ESP-Mosaico_CoreBoard_V1_0_2026-08-18.pdf
+#
+# Audio: one physical ES8311 (mono codec) behind an NS4150B PA, split into
+# audio_dac / audio_adc per the dev_audio_codec model (same I2C address,
+# same I2S port). Codec 3V3 is gated by GPIO56 (audio_power).
+#
+devices:
+  # ---------- Codec power gate ----------
+  - name: audio_power
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_audio
+        active_level: 1   # user guide "Power-control GPIOs" table: CODEC_3V3 on
+                          # GPIO56 is active-high. (The same table marks GPIO60
+                          # VCC_3V3 active-LOW, so the two rails differ.)
+
+  # ---------- Audio: ES8311 DAC (speaker via NS4150B PA) ----------
+  - name: audio_dac
+    chip: es8311
+    type: audio_codec
+    power_ctrl_device: audio_power
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: false
+      dac_cfg:
+        ref_enable: true
+    peripherals:
+      - pa_name: gpio_pa_control
+        gain: 7.6               # dB. RESOLVED 2026-08-26 — WAS 6, the bmgr house
+                                # default (10 of 11 upstream boards with a PA carry
+                                # `gain: 6` across completely different amp parts).
+                                #
+                                # The NS4150B has NO gain pin — its 8 are CTRL/
+                                # Bypass/INP/INN/VoN/VCC/GND/VoP — so gain is set by
+                                # the series input resistor. Datasheet "NS4150B
+                                # Jun.2018 V1.0" §10.9 增益设置和输入电阻 prints the
+                                # formula as a fraction with numerator 240K:
+                                #   "NS4150B 内部集成反馈电阻为 300k，增益 AVD
+                                #    [240K/Rin] （NS4150B）， Rin 为外接输入电阻。"
+                                # The 300k in that prose is stale copy-paste from the
+                                # NS4150 manual (which really does read "NS4150 内部
+                                # 集成反馈电阻为 300k，增益 Av=300k/Rin"); the
+                                # "（NS4150B）" tag on the typeset fraction marks the
+                                # differing numerator. THIS BOARD'S OWN schematic
+                                # settles it independently — page 4 prints
+                                # "放大倍数 = 240k / RIN" in the PA block.
+                                #
+                                # RIN here is 100k, differential (schematic p4, PA
+                                # block around U15 "NS4150B"): "OUTP  C54  100nF R28
+                                # 100kΩ" into pin "3 INP", "OUTN  C55  100nF R29
+                                # 100kΩ" into pin "4 INN".
+                                #   Av = 240k/100k = 2.4 V/V = 20*log10(2.4) = 7.60 dB
+                                #
+                                # Direction of harm (esp_codec_dev 1.6.2):
+                                # esp_codec_dev_vol.c:60 adds pa_gain and
+                                # device/es8311/es8311.c:359 does
+                                # `db_value -= codec->hw_gain` — a volume-CALIBRATION
+                                # offset, so too LOW under-attenuates. At 6 this board
+                                # played ~1.6 dB hotter than the level requested.
+        active_level: 1
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
+        address: 0x32           # ES8311 7-bit 0x19 << 1
+        frequency: 400000
+
+  # ---------- Audio: ES8311 ADC (on-board microphone) ----------
+  - name: audio_adc
+    chip: es8311
+    type: audio_codec
+    power_ctrl_device: audio_power
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      sys_cfg:
+        no_mclk: false
+      adc_cfg:
+        label: [FC, RE]
+    peripherals:
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
+        address: 0x32
+        frequency: 400000
+
+  # ---------- 480x480 CO5300 AMOLED panel (QSPI) ----------
+  - name: display_lcd
+    chip: co5300
+    type: display_lcd
+    sub_type: spi
+    version: default
+    dependencies:
+      espressif/esp_lcd_co5300: "*"
+    config:
+      x_max: 480
+      y_max: 480
+      need_reset: true
+      io_spi_config:
+        cs_gpio_num: 50
+        dc_gpio_num: -1         # QSPI panel: no D/C line, commands in-band
+        spi_mode: 0
+        lcd_cmd_bits: 32
+        lcd_param_bits: 8
+        flags:
+          quad_mode: true
+      lcd_panel_config:
+        reset_gpio_num: 42
+        bits_per_pixel: 16
+        vendor_config: NULL
+    peripherals:
+      - spi_name: spi_display
+
+  # ---------- CST9220 touch controller (shared I2C0, INT GPIO6) ----------
+  - name: lcd_touch
+    chip: cst9217              # driver component covers CST9217/CST9220
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      waveshare/esp_lcd_touch_cst9217: "*"
+    config:
+      touch_config:
+        x_max: 480
+        y_max: 480
+        int_gpio_num: 6
+    peripherals:
+      - i2c_name: i2c_master
+        i2c_addr: [0xB4]     # CST9220 8-bit I2C address, from 7-bit 0x5A
+
+  # ---------- Orange status LED (GPIO3, active-low) ----------
+  - name: status_led
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_status_led
+
+  # ---------- Vibration motor (GPIO8) ----------
+  - name: vibration_motor
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_vibration_motor
+
+  # ---------- AI button (GPIO7, active-low) ----------
+  - name: ai_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_ai_button
+
+  # Boot button. Schematic net: BOOT GPIO_61.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button

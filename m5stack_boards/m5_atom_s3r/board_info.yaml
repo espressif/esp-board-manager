@@ -1,0 +1,5 @@
+board: m5_atom_s3r
+chip: esp32s3
+version: 1.0.0
+description: M5Stack AtomS3R with the current ST7735 LCD revision, LP5562 backlight, and button
+manufacturer: M5Stack

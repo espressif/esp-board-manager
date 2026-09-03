@@ -1,0 +1,21 @@
+# M5NanoH2 — ESP32-H2FH4S, 4 MB in-package flash, no PSRAM
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+# In-package flash is QUAD-wired: ESP32-H2 Series Datasheet v1.3, Table 1-1
+# ("ESP32-H2FH4S | 4 MB (Quad SPI)"), footnote 2: on the QFN32 variants "the
+# pins allocated for communication with in-package flash are not routed out."
+# https://documentation.espressif.com/esp32-h2_datasheet_en.pdf
+#
+# No CONFIG_ESPTOOLPY_FLASHFREQ_* is set here ON PURPOSE. The H2 is the one
+# chip in this pack whose flash does NOT reach 80 MHz: datasheet 4.1.2.1 says
+# "Clock frequency: ESP32-H2FH4S chip variant: up to 64 MHz", and IDF offers
+# only 64/32/16 MHz for esp32h2 (components/spi_flash/esp32h2/
+# Kconfig.flash_freq), defaulting to 64 MHz. Do not "fix" this to 80M — it is
+# not a valid choice for the target. Also do not be alarmed that the build
+# emits --flash_freq 48m: that is esptool's bin-header encoding for the
+# 64 MHz choice (ESPTOOLPY_FLASHFREQ: "default '48m' if
+# ESPTOOLPY_FLASHFREQ_64M # For 0xf in esptool"), not the real clock.
+# NB: QIO/DIO itself is an ESP-IDF setting, never stated in a datasheet.
+
+# No USB-to-UART bridge on board: console over the native USB Serial/JTAG
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

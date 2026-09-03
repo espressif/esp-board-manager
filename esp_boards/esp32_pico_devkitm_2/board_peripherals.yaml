@@ -1,0 +1,30 @@
+# Peripherals Configuration for ESP32-PICO-DevKitM-2
+#
+# Source: ESP32-PICO-DevKitM-2 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-pico-devkitm-2/user_guide.html
+# Reference: https://documentation.espressif.com/esp32-pico-mini-02_datasheet_en.pdf
+#
+# SiP: ESP32-PICO-MINI-02 (N8R2 — 8 MB in-package flash, 2 MB in-package
+# PSRAM); also sold as ESP32-PICO-MINI-02U with an external antenna connector.
+# On-board hardware is minimal: BOOT and EN buttons, a CP2102N USB-to-UART
+# bridge and a red power indicator LED.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - EN button (chip reset, hardware path — not a GPIO)
+# - Red power-on LED: wired to the 3.3 V rail, NOT GPIO controlled
+# - CP2102N USB-to-UART bridge on UART0 (console, handled by ROM/IDF)
+# - In-package PSRAM occupies GPIO16/GPIO17 on the PICO-MINI-02; those pins
+#   are not available to the application
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO0, active-low, strapping pin — input only at runtime)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

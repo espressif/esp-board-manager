@@ -3,12 +3,16 @@ dac
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _dac-intro:
+
 Overview
 --------
 
 The ``dac`` peripheral type is used to describe an on-chip DAC channel. BMGR generates a ``periph_dac_config_t`` based on this configuration and creates the ESP-IDF DAC driver handle during initialization. This type covers the three DAC driver entry points in ``driver/dac_oneshot.h``, ``driver/dac_continuous.h``, and ``driver/dac_cosine.h``.
 
 When configuring ``dac`` in ``board_peripherals.yaml``, select the operating mode via ``role``. After BMGR initialization, the application obtains the ``periph_dac_handle_t`` via :cpp:func:`esp_board_manager_get_periph_handle`, then calls the corresponding ESP-IDF DAC API to output voltage, voltage sequences, or cosine waves.
+
+.. _dac-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -19,11 +23,17 @@ The classification axis for ``dac`` is ``role``. Each peripheral instance can on
 - `continuous`_
 - `cosine`_
 
+.. _dac-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _dac-oneshot:
+
 oneshot
 ^^^^^^^
+
+See complete fields: :ref:`dac-oneshot-full`.
 
 ``board_peripherals.yaml``:
 
@@ -36,8 +46,12 @@ oneshot
         config:
           channel: 0
 
+.. _dac-continuous:
+
 continuous
 ^^^^^^^^^^
+
+See complete fields: :ref:`dac-continuous-full`.
 
 ``board_peripherals.yaml``:
 
@@ -56,8 +70,12 @@ continuous
           clk_src: DAC_DIGI_CLK_SRC_DEFAULT
           chan_mode: DAC_CHANNEL_MODE_SIMUL
 
+.. _dac-cosine:
+
 cosine
 ^^^^^^
+
+See complete fields: :ref:`dac-cosine-full`.
 
 ``board_peripherals.yaml``:
 
@@ -76,6 +94,8 @@ cosine
           offset: 0
           force_set_freq: false
 
+.. _dac-mode-notes:
+
 Mode Notes
 ----------
 
@@ -83,8 +103,12 @@ Mode Notes
 
 BMGR fills the union members of ``periph_dac_config_t`` according to ``role``. After obtaining the handle, the application must access the corresponding ``oneshot``, ``continuous``, or ``cosine`` member in ``periph_dac_handle_t`` based on the ``role`` in the configuration.
 
+.. _dac-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _dac-oneshot-full:
 
 oneshot Full Fields
 ^^^^^^^^^^^^^^^^^^^
@@ -101,6 +125,8 @@ oneshot Full Fields
         # Valid values: 0, 1
         # Channel 0: GPIO25 on ESP32, GPIO17 on ESP32S2
         # Channel 1: GPIO26 on ESP32, GPIO18 on ESP32S2
+
+.. _dac-continuous-full:
 
 continuous Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -152,6 +178,8 @@ continuous Full Fields
         # Valid values:
         # - DAC_CHANNEL_MODE_SIMUL
         # - DAC_CHANNEL_MODE_ALTER
+
+.. _dac-cosine-full:
 
 cosine Full Fields
 ^^^^^^^^^^^^^^^^^^
@@ -205,6 +233,8 @@ Field Sources:
 - YAML template: ``esp_board_manager/peripherals/periph_dac/periph_dac.yml``.
 - Header file: ``esp_board_manager/peripherals/periph_dac/periph_dac.h``.
 
+.. _dac-devices:
+
 Applicable Devices
 ------------------
 
@@ -218,15 +248,21 @@ Applicable Devices
      - Application obtains the DAC peripheral handle via ``esp_board_manager_get_periph_handle``
      - The current repository provides no device type that references a ``dac`` peripheral; data output and start/stop actions are handled by the application or test code
 
+.. _dac-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_dac.c``
 
+.. _dac-boards:
+
 Board Examples
 --------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_devkitc/board_peripherals.yaml``: ``oneshot`` example and commented ``continuous`` / ``cosine`` examples.
+
+.. _dac-notes:
 
 Notes
 -----
@@ -237,8 +273,12 @@ Notes
 - The ``atten`` and ``phase`` for ``cosine`` must use the enumeration values listed in the template.
 - After modifying DAC peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _dac-debug:
+
 Debugging Tips
 --------------
+
+.. _dac-api:
 
 API Reference
 -------------

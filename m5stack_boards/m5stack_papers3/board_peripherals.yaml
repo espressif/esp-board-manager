@@ -1,0 +1,88 @@
+# Peripherals Configuration for M5PaperS3
+#
+# Source: M5PaperS3 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/PaperS3
+#
+# Module: ESP32-S3R8, 16 MB SPI flash, 8 MB octal PSRAM. Octal PSRAM
+# occupies GPIO33-GPIO37, which are therefore unavailable to the board.
+#
+# Unlike the ESP32-based M5Paper, the ED047TC1 panel here is NOT on SPI:
+# it is driven directly by a bit-banged 8-bit parallel bus (DB0-DB7 plus
+# XSTL / XLE / SPV / CKV) with the panel rail gated by GPIO45. Those are
+# individual pins with no bmgr peripheral type that fits, so the panel
+# lives entirely in the Not-modeled section below and only its power gate
+# is declared.
+#
+# I2C0 on GPIO41 (SDA) / GPIO42 (SCL) carries the GT911 touch controller,
+# the BM8563 RTC (7-bit 0x51) and the BMI270 IMU (0x68).
+#
+# The microSD card has a bus of its own (SPI2_HOST on GPIO39/38/40, CS
+# GPIO47) — it shares nothing with the panel.
+#
+peripherals:
+  # Shared I2C bus: GT911 touch, BM8563 RTC, BMI270 IMU
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 41
+        scl: 42
+
+  # microSD card bus
+  - name: spi_master
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 39
+        mosi_io_num: 38
+        miso_io_num: 40
+        max_transfer_sz: 4096
+
+  # E-paper panel rail enable (PWR).
+  - name: gpio_power_epd
+    type: gpio
+    role: io
+    config:
+      pin: 45
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # USB present sense: reads high (>0.2 V) when the Type-C port is powered.
+  # Read directly by the application; there is no bmgr device type for a
+  # level sense, so no device references this peripheral.
+  - name: gpio_usb_detect
+    type: gpio
+    role: io
+    config:
+      pin: 5
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - ED047TC1 4.7" 960x540 16-grey e-paper panel: no e-ink device type in
+  #   bmgr, and the panel is on a bit-banged 8-bit parallel bus rather than
+  #   any modellable peripheral. Wiring: DB0 GPIO6, DB1 GPIO14, DB2 GPIO7,
+  #   DB3 GPIO12, DB4 GPIO9, DB5 GPIO11, DB6 GPIO8, DB7 GPIO10; XSTL
+  #   GPIO13, XLE GPIO15, SPV GPIO17, CKV GPIO18; rail enable GPIO45
+  #   (gpio_power_epd above)
+  # - BM8563 RTC (I2C 7-bit 0x51 on i2c_master): no bmgr device type; the
+  #   shared bus above is its interface
+  # - BMI270 6-axis IMU (I2C 7-bit 0x68 on i2c_master): likewise
+  # - PMS150GU06 power-management MCU: it owns the side power button
+  #   (click on / double-click off) and the power-hold handshake on GPIO3
+  #   and GPIO21, so the button is not a GPIO key and there is no
+  #   button device for it
+  # - Buzzer (PWM) and the battery voltage ADC: the vendor pin map does not
+  #   name their GPIOs
+  # - LGS4056H Li-ion charger (1800 mAh cell)
+  # - HC1.25-4PLT back expansion port (GPIO1 / GPIO2). Its supply pin is
+  #   3V3, NOT 5 V, unlike the HY2.0-4P ports on the other M5Stack cores
+  # - Native USB Type-C (USB Serial/JTAG for flashing and console, OTG for
+  #   CDC/MSC) on GPIO19/GPIO20
+  # ----------------------------------------------------------------------

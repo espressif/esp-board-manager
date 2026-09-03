@@ -1,0 +1,34 @@
+# Peripherals Configuration for M5Stamp Pico
+#
+# Source: M5Stamp Pico documentation
+# Reference: https://docs.m5stack.com/en/core/stamp_pico
+#
+# Module: ESP32-PICO-D4 SiP (in-package 4 MB flash, no PSRAM).
+# On-board hardware is minimal: an SK6812 RGB LED on GPIO27 (owned by the
+# led_strip device, so not declared here) and the user button on GPIO39.
+#
+peripherals:
+  # User button (GPIO39, active-low).
+  # GPIO39 is input-only on ESP32 and has NO internal pull resistor;
+  # the board provides the external pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - No on-board USB-to-UART bridge and no native USB: firmware is flashed
+  #   through an external USB-TTL adapter on GND / G0 / EN / TX=G1 / RX=G3
+  #   / 3V3, so the console stays on UART0
+  # - Grove HY2.0-4P port (GPIO32 / GPIO33 plus 5V and GND), also the
+  #   external I2C bus in M5Stack's convention
+  # - Castellated / header pads GPIO18 / GPIO19 / GPIO21 / GPIO22 /
+  #   GPIO25 / GPIO26 / GPIO36
+  # - RESET button (EN pin, handled in hardware)
+  # ----------------------------------------------------------------------

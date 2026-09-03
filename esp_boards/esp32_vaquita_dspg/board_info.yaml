@@ -1,0 +1,5 @@
+board: esp32_vaquita_dspg
+chip: esp32
+version: 1.0.0
+description: "ESP32-Vaquita-DSPG v1.0 (ESP32-WROVER-E, ES8311 codec, DBMD5P voice DSP, 2-mic far-field)"
+manufacturer: "ESPRESSIF"

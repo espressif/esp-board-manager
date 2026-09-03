@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.1
+
+### Features
+
+- Added board definitions for AtomS3, AtomS3R, M5Dial, ATOM Echo/Lite/Matrix/U, AtomS3 Lite/U, M5Capsule, Cardputer, and Cardputer Adv.
+- Added board definitions for M5Stack Basic, Core2, CoreInk, DinMeter, Fire, NanoC6, NanoH2, Paper, PaperS3, Stamp C3/C3U/Pico/S3, Station-485, StickC/PLUS/PLUS2/S3, and Tough.
+
+### Bug Fixes
+
+- Updated M5Stack CoreS3 and Tab5 board initialization, power management, and LCD setup for current Board Manager device behavior.
+
+### Modifications
+
+- Added configured boot-button resources and normalized board YAML formatting across supported M5Stack boards.
+
 ## 0.6.0
 
 ### Modifications

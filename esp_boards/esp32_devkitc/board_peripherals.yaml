@@ -1,0 +1,30 @@
+# Peripherals Configuration for ESP32-DevKitC V4
+#
+# Source: ESP32-DevKitC V4 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html
+#
+# On-board hardware is minimal: the BOOT and EN buttons, a USB-to-UART bridge
+# (CP2102) and a 5 V power indicator LED. Only the BOOT button is a GPIO the
+# application can read.
+#
+# The board ships with several different modules (ESP32-WROOM-32E/32UE,
+# ESP32-WROVER-E/IE, ESP32-WROOM-32D/32U, ESP32-WROOM-DA, ESP32-SOLO-1,
+# ESP32-WROOM-32); none of them changes the on-board wiring below.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - EN button (chip reset, hardware path — not a GPIO)
+# - 5 V power-on LED: wired to the 5 V rail, NOT GPIO controlled
+# - CP2102 USB-to-UART bridge on UART0 (console, handled by ROM/IDF)
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO0, active-low, strapping pin — input only at runtime)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

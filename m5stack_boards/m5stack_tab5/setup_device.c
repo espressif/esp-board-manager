@@ -7,13 +7,33 @@
 
 #include "esp_log.h"
 #include "esp_board_manager_includes.h"
+#include "esp_io_expander.h"
+#include "esp_lcd_touch.h"
+#if __has_include(<esp_io_expander_pi4ioe5v6408.h>)
+#define HAS_PI4IOE5V6408  1
 #include "esp_io_expander_pi4ioe5v6408.h"
+#endif  /* __has_include(<esp_io_expander_pi4ioe5v6408.h>) */
+#if __has_include(<esp_lcd_ili9881c.h>)
+#define HAS_ILI9881C  1
 #include "esp_lcd_ili9881c.h"
+#endif  /* __has_include(<esp_lcd_ili9881c.h>) */
 #include "esp_lcd_panel_io.h"
+#if __has_include(<esp_lcd_st7121.h>)
+#define HAS_ST7121  1
 #include "esp_lcd_st7121.h"
+#endif  /* __has_include(<esp_lcd_st7121.h>) */
+#if __has_include(<esp_lcd_st7123.h>)
+#define HAS_ST7123  1
 #include "esp_lcd_st7123.h"
+#endif  /* __has_include(<esp_lcd_st7123.h>) */
+#if __has_include(<esp_lcd_touch_gt911.h>)
+#define HAS_GT911  1
 #include "esp_lcd_touch_gt911.h"
+#endif  /* __has_include(<esp_lcd_touch_gt911.h>) */
+#if __has_include(<esp_lcd_touch_st7123.h>)
+#define HAS_TOUCH_ST7123  1
 #include "esp_lcd_touch_st7123.h"
+#endif  /* __has_include(<esp_lcd_touch_st7123.h>) */
 #include "disp_init_data.h"
 
 static const char *TAG = "M5STACK_TAB5_SETUP_DEVICE";
@@ -124,9 +144,10 @@ static tab5_panel_variant_t detect_panel_variant(uint16_t touch_addr)
     return TAB5_PANEL_VARIANT_ST7123;
 }
 
-esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
-                                      const uint16_t dev_addr,
-                                      esp_io_expander_handle_t *handle_ret)
+#if defined(HAS_PI4IOE5V6408)
+__attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
+                                                            const uint16_t dev_addr,
+                                                            esp_io_expander_handle_t *handle_ret)
 {
     esp_err_t ret = esp_io_expander_new_i2c_pi4ioe5v6408(i2c_handle, dev_addr, handle_ret);
     if (ret != ESP_OK) {
@@ -134,10 +155,11 @@ esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle,
     }
     return ret;
 }
+#endif  /* defined(HAS_PI4IOE5V6408) */
 
-esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
-                                        dev_display_lcd_config_t *lcd_cfg,
-                                        dev_display_lcd_handles_t *lcd_handles)
+__attribute__((weak)) esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
+                                                              dev_display_lcd_config_t *lcd_cfg,
+                                                              dev_display_lcd_handles_t *lcd_handles)
 {
     uint16_t touch_addr = 0;
     esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
@@ -150,6 +172,7 @@ esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
     tab5_panel_variant_t panel_variant = detect_panel_variant(touch_addr);
     const tab5_panel_timing_t *timing = &s_timing_ili9881c;
     if (panel_variant == TAB5_PANEL_VARIANT_ST7121) {
+#if defined(HAS_ST7121)
         timing = &s_timing_st7121;
     } else if (panel_variant == TAB5_PANEL_VARIANT_ST7123) {
         timing = &s_timing_st7123;
@@ -185,9 +208,13 @@ esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
             ESP_LOGE(TAG, "Failed to create st7121 panel: %s", esp_err_to_name(ret));
         }
         return ret;
+#else
+        return ESP_ERR_NOT_SUPPORTED;
+#endif  /* defined(HAS_ST7121) */
     }
 
     if (panel_variant == TAB5_PANEL_VARIANT_ST7123) {
+#if defined(HAS_ST7123)
         ESP_LOGI(TAG, "Tab5 panel variant: ST7123");
         st7123_vendor_config_t vendor = {
             .init_cmds = tab5_st7123_init_cmds,
@@ -203,8 +230,12 @@ esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
             ESP_LOGE(TAG, "Failed to create st7123 panel: %s", esp_err_to_name(ret));
         }
         return ret;
+#else
+        return ESP_ERR_NOT_SUPPORTED;
+#endif  /* defined(HAS_ST7123) */
     }
 
+#if defined(HAS_ILI9881C)
     ESP_LOGI(TAG, "Tab5 panel variant: ILI9881C (touch addr=0x%02x)", touch_addr);
     ili9881c_vendor_config_t vendor = {
         .init_cmds = tab5_ili9881c_init_cmds,
@@ -220,11 +251,14 @@ esp_err_t lcd_dsi_panel_factory_entry_t(esp_lcd_dsi_bus_handle_t dsi_handle,
         ESP_LOGE(TAG, "Failed to create ili9881c panel: %s", esp_err_to_name(ret));
     }
     return ret;
+#else
+    return ESP_ERR_NOT_SUPPORTED;
+#endif  /* defined(HAS_ILI9881C) */
 }
 
-esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
-                                    const esp_lcd_touch_config_t *touch_dev_config,
-                                    esp_lcd_touch_handle_t *ret_touch)
+__attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                          const esp_lcd_touch_config_t *touch_dev_config,
+                                                          esp_lcd_touch_handle_t *ret_touch)
 {
     uint16_t touch_addr = 0;
     esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
@@ -234,16 +268,24 @@ esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
     }
 
     if (touch_addr == TAB5_TOUCH_ADDR_ST712X) {
+#if defined(HAS_TOUCH_ST7123)
         ret = esp_lcd_touch_new_i2c_st7123(io, touch_dev_config, ret_touch);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to create st7123 touch: %s", esp_err_to_name(ret));
         }
         return ret;
+#else
+        return ESP_ERR_NOT_SUPPORTED;
+#endif  /* defined(HAS_TOUCH_ST7123) */
     }
 
+#if defined(HAS_GT911)
     ret = esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create gt911 touch: %s", esp_err_to_name(ret));
     }
     return ret;
+#else
+    return ESP_ERR_NOT_SUPPORTED;
+#endif  /* defined(HAS_GT911) */
 }

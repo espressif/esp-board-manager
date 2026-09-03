@@ -1,0 +1,5 @@
+board: esp32_c3_devkit_rust_1
+chip: esp32c3
+version: 1.0.0
+description: "ESP32-C3-DevKit-RUST-1"
+manufacturer: "ESPRESSIF"

@@ -1,0 +1,5 @@
+board: m5stack_stamp_c3
+chip: esp32c3
+version: 1.0.0
+description: "M5Stamp C3 Development Board"
+manufacturer: "M5Stack"

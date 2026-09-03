@@ -1,0 +1,152 @@
+# Peripherals Configuration for the ESP32-Sense-Kit mainboard
+#
+# Source: ESP32-Sense-Kit mainboard schematic
+#         (SCH_ESP32-Sense-Series-MainBoard.pdf) + the kit's reference
+#         firmware in ESP-IoT-Solution (examples/touch_pad_evb), which is
+#         where the pin numbers below are taken from verbatim
+#         (main/evb.h, main/evb_rgb_led.c, main/evb_adc.c).
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-sense-kit/user_guide.html
+# Reference: https://dl.espressif.com/dl/schematics/SCH_ESP32-Sense-Series-MainBoard.pdf
+#
+# The mainboard is a carrier for interchangeable touch daughterboards (spring
+# button, linear slider, matrix button, duplex slider, touch wheel). Its own
+# hardware is: the ESP32 module, a CH455G-driven 3-digit 7-segment display on
+# I2C, an RGB indicator LED, an ESP-Prog debug header, and a resistor divider
+# on an ADC pin that tells the firmware which daughterboard is fitted.
+#
+# There is NO USB-to-UART bridge: the mini-USB jack supplies power only, and
+# flashing goes through ESP-Prog on header J38.
+#
+peripherals:
+  # CH455G segment-display bus (I2C0). Schematic sheet 2, "Digital Tube
+  # Driver": U4 pin 7 SDA = net CH_SDA = GPIO22, pin 6 SCL = CH_SCL = GPIO23.
+  # evb.h:207-208 agrees (I2C_MASTER_SDA_IO 22 / SCL 23).
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 22
+        scl: 23
+
+  # ---------- RGB indicator LED, PWM-dimmed on three LEDC channels ----------
+  # CHANGED to 18/19/21 (was 25/26/27) on the schematic's authority.
+  #
+  # SCH_ESP32-Sense-Series-MainBoard.pdf, sheet 2. Hop 1, the "IO Configure
+  # Table" block: ESP_IO18 = IO_RED, ESP_IO19 = IO_BLE, ESP_IO21 = IO_GRN.
+  # Hop 2, the RGB circuit: U9 (LED-RGB) pin 2 COM+ ties to VDD33 (common
+  # ANODE); each cathode sinks through an S8050 NPN — Q2 (red, R45 1k ballast,
+  # base R47 2k from IO_RED), Q3 (green, R46, R48 from IO_GRN), Q1 (blue, R42,
+  # R43 from IO_BLE) — each with a 10k base-emitter resistor holding it off
+  # while the GPIO floats at reset. So the drive AT THE SOC IS ACTIVE-HIGH even
+  # though the LED itself is common-anode.
+  #
+  # Note the channel order: red 18, BLUE 19, GREEN 21 — the pin triple that
+  # circulates as "18/19/21" usually lists them R/G/B, which swaps two of them.
+  #
+  # The apparent board-revision conflict is SETTLED against the schematic, and
+  # the settling argument is the reference firmware's own internals:
+  #
+  # ESP-IoT-Solution's touch_pad_evb drives 25/26/27 (release/v1.1,
+  # main/evb_rgb_led.c:26-28) — the source of the "25/26/27" claim. But the SAME
+  # firmware uses TOUCH_PAD_NUM7 in five of its six touch modes
+  # (evb_touch_matrix.cpp, evb_touch_slide.cpp, evb_touch_wheel.cpp,
+  # evb_touch_spring.cpp, evb_touch_seq_slide.cpp), and touch channel T7 IS
+  # GPIO27 — that pairing is fixed in ESP32 silicon, so no board revision can
+  # move it. A board wired for ten touch channels therefore cannot also put the
+  # LED's blue leg on GPIO27, and evb_rgb_led.c contradicts its own siblings.
+  # On the schematic GPIO27 is exactly that touch channel (net ESP_TCH_7_A, via
+  # R11 510R to J6 pin 11), and GPIO25/GPIO26 are not connected to anything —
+  # they appear only as module pin names on U8, never as nets. So the stale
+  # datum is the firmware file, not the sheet.
+  #
+  # Remaining caveat, not a marker: the published sheet's title block reads
+  # ESP32_TOUCH_EVB_V2 (PDF metadata: "esp32-sense-series-mainboard",
+  # 2018-03-26) while the kit is sold as V3.2. It is nonetheless the schematic
+  # Espressif's own ESP32-Sense-Kit user guide links as "Mainboard Schematic";
+  # the V3.2 reference-design zip it also links
+  # (espressif.com/.../ESP32-Sense-Kit_V3.2_reference_design_r1.0.zip) now 301s
+  # to documentation.espressif.com and serves the SPA shell instead of the file.
+  - name: ledc_led_red
+    type: ledc
+    role: none
+    config:
+      gpio_num: 18            # ESP_IO18 = IO_RED
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 1000
+      duty: 0
+      duty_resolution: LEDC_TIMER_13_BIT
+
+  - name: ledc_led_green
+    type: ledc
+    role: none
+    config:
+      gpio_num: 21            # ESP_IO21 = IO_GRN
+      channel: LEDC_CHANNEL_1
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 1000
+      duty: 0
+      duty_resolution: LEDC_TIMER_13_BIT
+
+  - name: ledc_led_blue
+    type: ledc
+    role: none
+    config:
+      gpio_num: 19            # ESP_IO19 = IO_BLE
+      channel: LEDC_CHANNEL_2
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 1000
+      duty: 0
+      duty_resolution: LEDC_TIMER_13_BIT
+
+  # Daughterboard identification: 10 kOhm divider on the mainboard against a
+  # per-daughterboard resistor, read on ADC1 channel 7 (GPIO35, input-only).
+  # Schematic sheet 2: IO Configure Table row ESP_IO35 = ADC_BRD_ID; "Board ID
+  # Table" block puts R1 10K 1% from VDD33 to ADC_BRD_ID, the daughterboard's
+  # own resistor arriving on J6 pin 7. evb.h:205 ADC1_TEST_CHANNEL = CH7.
+  - name: adc_board_id
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 7
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  #
+  # - The touch pads themselves — the entire point of the kit. The ESP32's
+  #   capacitive touch channels T0-T9 are routed to the daughterboard
+  #   connector; each daughterboard wires some subset of them into a spring
+  #   button, slider, matrix, wheel, etc. esp-board-manager has no touch
+  #   device type and no touch peripheral type, so there is nothing legitimate
+  #   to declare: an application uses the ESP-IDF touch_pad / touch_element
+  #   driver directly.
+  #
+  #   Channel-to-pad mapping (fixed by the SoC, not by this board — the
+  #   mainboard just brings all ten out):
+  #     T0 GPIO4    T1 GPIO0 (strapping)   T2 GPIO2 (strapping)
+  #     T3 GPIO15 (strapping)              T4 GPIO13
+  #     T5 GPIO12 (strapping)              T6 GPIO14
+  #     T7 GPIO27   T8 GPIO33   T9 GPIO32
+  #
+  #   NOTE: none of T0-T9 collides with the schematic's RGB pins (18/19/21).
+  #   It DOES collide with the 25/26/27 triple that ESP-IoT-Solution's
+  #   touch_pad_evb firmware drives — T7 is GPIO27 — which is one reason the
+  #   schematic is followed above. See the RGB block for the full conflict.
+  #
+  # - CH455G 3-digit 7-segment display driver. It sits on the `i2c_master` bus
+  #   declared above, and bmgr has no segment-display device type. It is also
+  #   an unusual I2C part: it has no single device address — the command byte
+  #   IS the address byte, spanning 0x48 (system/config), 0x4F (key read) and
+  #   0x64/0x66/0x68/0x6A/0x6C/0x6E (digit registers), all 8-bit. The kit's
+  #   firmware drives it with the ESP-IoT-Solution `ch450` driver.
+  #
+  # - ESP-Prog debug header J38 (JTAG + UART). Flashing and debugging path,
+  #   not an application device; there is no on-board bridge.
+  #
+  # - Mini-USB jack: power input only, with a series protection diode.
+  # ----------------------------------------------------------------------

@@ -3,12 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _lcd-touch-intro:
+
 简介
 ------
 
 ``lcd_touch`` 是通用触摸屏控制器设备，用于将触摸控制器芯片、触摸总线与 ``esp_lcd_touch`` 驱动实例封装为一个 BMGR 设备。该设备适用于已迁移到通用触摸模型的板级配置：通过 ``chip`` 与 ``dependencies`` 选择具体驱动组件，通过 ``sub_type`` 选择总线实现。
 
 当前源码中 ``lcd_touch`` 仅实现 ``sub_type: i2c``。``sub_type: spi`` 在头文件与 Kconfig 中保留，但解析脚本会拒绝该配置，且 SPI 子类型源文件未加入组件构建。
+
+.. _lcd-touch-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -18,11 +22,17 @@
 - `I2C 触摸`_
 - `SPI 触摸预留`_
 
+.. _lcd-touch-min-config:
+
 最小配置
 ------------
 
+.. _lcd-touch-i2c:
+
 I2C 触摸
 ^^^^^^^^^^
+
+完整字段见 :ref:`lcd-touch-i2c-full`。
 
 ``lcd_touch`` I2C 模式使用 ``i2c`` 外设提供总线句柄，初始化时创建 LCD panel IO I2C 句柄，再调用工程中链接的 ``lcd_touch_factory_entry_t`` 创建具体触摸驱动；触摸芯片依赖组件需在 ``dependencies`` 中声明。设备侧 ``peripherals`` 引用条目中的 ``i2c_addr`` 采用 8-bit 左移格式，运行时探测成功后再右移为 ESP-IDF I2C API 使用的地址；最多可写 4 个候选地址，解析脚本会拒绝奇数地址、超过 ``0xfe`` 的地址以及空列表。
 
@@ -62,13 +72,19 @@ I2C 触摸
           - i2c_name: i2c_master
             i2c_addr: [0xBA, 0x28]
 
+.. _lcd-touch-spi:
+
 SPI 触摸预留
 ^^^^^^^^^^^^^^^^
 
 ``sub_type: spi`` 当前不能作为可用配置写入 ``board_devices.yaml``。解析脚本会报错提示该子类型已预留但尚未实现。
 
+.. _lcd-touch-full-fields:
+
 完整字段
 ------------
+
+.. _lcd-touch-i2c-full:
 
 I2C 触摸完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -119,10 +135,14 @@ I2C 触摸完整字段
         - i2c_name: i2c_master           # I2C peripheral for touch communication
           i2c_addr: [0xba]              # [TO_BE_CONFIRMED] I2C address candidates, 8-bit / left-shifted values, up to 4 entries
 
+.. _lcd-touch-spi-full:
+
 SPI 触摸完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
 
 ``sub_type: spi`` 当前没有可用 YAML 模板。源码中仅保留 ``dev_lcd_touch_spi_sub_config_t`` 和未参与构建的 ``dev_lcd_touch_sub_spi.c`` 预留实现。
+
+.. _lcd-touch-deps:
 
 组件依赖
 ------------
@@ -130,6 +150,8 @@ SPI 触摸完整字段
 ``lcd_touch`` 通过 ``esp_board_manager/idf_component.yml`` 在启用 ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` 时引入公共组件 ``espressif/esp_lcd_touch``，版本为 ``"*"``。
 
 具体触摸芯片驱动需在设备条目的 ``dependencies`` 中声明。已有板级配置中，GT911 触摸使用 ``espressif/esp_lcd_touch_gt911: "*"``。YAML 模板中的 ``espressif/esp_lcd_touch_generic: "*"`` 是待确认的芯片组件占位，板级维护者需替换为实际触摸芯片对应的组件。
+
+.. _lcd-touch-peripherals:
 
 依赖外设
 ------------
@@ -146,12 +168,16 @@ SPI 触摸完整字段
      - ``sub_type: i2c`` 必选
      - 提供触摸控制器通信总线；设备侧引用条目填写 ``i2c_addr``
 
+.. _lcd-touch-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/test_dev_lcd_init.c``
 - ``esp_board_manager/devices/dev_lcd_touch/dev_lcd_touch.c``
 - ``esp_board_manager/devices/dev_lcd_touch/dev_lcd_touch_sub_i2c.c``
+
+.. _lcd-touch-boards:
 
 板级参考
 ------------
@@ -161,19 +187,23 @@ SPI 触摸完整字段
 - ``esp_boards/esp32_s3_box_3/board_devices.yaml``：I2C 触摸配置。
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml``：I2C 触摸配置。
 
+.. _lcd-touch-notes:
+
 注意事项
 ------------
 
 - 新配置使用 ``type: lcd_touch`` 与 ``sub_type: i2c``。
 - ``sub_type: spi`` 当前不可用；不要在板级 YAML 中配置该子类型。
 - ``i2c_addr`` 使用 8-bit 左移地址，最多 4 个候选值。源码会逐个探测并记录探测成功的有效地址。
-- 工程必须提供 ``lcd_touch_factory_entry_t``，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。
+- 工程中需提供 ``lcd_touch_factory_entry_t``，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。
 - 修改 YAML 后需重新执行 ``idf.py bmgr -b <board>``。
 
-工厂函数与多地址选择
---------------------
+.. _lcd-touch-factory:
 
-工程必须在板级源文件中提供 ``lcd_touch_factory_entry_t``，由 BMGR 在创建触摸设备时回调，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。函数签名为：
+工厂函数
+------------
+
+工程需要提供 ``lcd_touch_factory_entry_t``，由 BMGR 在创建触摸设备时回调，用于根据触摸芯片组件创建 ``esp_lcd_touch_handle_t``。函数签名为：
 
 .. code-block:: c
 
@@ -181,30 +211,54 @@ SPI 触摸完整字段
                                        const esp_lcd_touch_config_t *touch_dev_config,
                                        esp_lcd_touch_handle_t *ret_touch)
 
-源文件放置与弱符号覆盖规则见 :doc:`/programming-guide/board-directory`\ 。
+板级实现须将该函数声明为弱符号 ``__attribute__((weak))``，并用 ``__has_include`` 包裹各触摸芯片驱动头文件与对应分支。下游通过 ``gen_skip`` 去掉该设备，或通过 amend 替换工厂函数后，板级源码仍可编译。完整约定见 :doc:`/programming-guide/board-directory`。
 
 如果同一块开发板可能搭载不同触摸芯片（即 ``i2c_addr`` 写了多个候选地址），可以在工厂函数中通过 ``esp_board_device_get_i2c_effective_addr()`` 获取实际探测命中的地址，再选择对应驱动：
 
 .. code-block:: c
 
-   uint16_t touch_addr = 0;
-   esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
-   if (ret != ESP_OK) {
-       return ret;
-   }
+   #if __has_include(<esp_lcd_touch_gt911.h>)
+   #include "esp_lcd_touch_gt911.h"
+   #endif
+   #if __has_include(<esp_lcd_touch_tt21100.h>)
+   #include "esp_lcd_touch_tt21100.h"
+   #endif
 
-   if (touch_addr == 0xba) {
-       return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
-   }
+   #if __has_include(<esp_lcd_touch_gt911.h>) || __has_include(<esp_lcd_touch_tt21100.h>)
+   __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                            const esp_lcd_touch_config_t *touch_dev_config,
+                                                            esp_lcd_touch_handle_t *ret_touch)
+   {
+       uint16_t touch_addr = 0;
+       esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
+       if (ret != ESP_OK) {
+           return ret;
+       }
 
-   if (touch_addr == 0x48) {
-       return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+   #if __has_include(<esp_lcd_touch_gt911.h>)
+       if (touch_addr == 0xba) {
+           return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
+       }
+   #endif
+
+   #if __has_include(<esp_lcd_touch_tt21100.h>)
+       if (touch_addr == 0x48) {
+           return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+       }
+   #endif
+
+       return ESP_ERR_NOT_SUPPORTED;
    }
+   #endif
 
 ``esp_board_device_get_i2c_effective_addr()`` 返回的是 8-bit 左移地址，与 YAML 中的 ``i2c_addr`` 语义一致。
 
+.. _lcd-touch-debug:
+
 调试技巧
 ------------
+
+.. _lcd-touch-api:
 
 API 参考
 ----------

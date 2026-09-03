@@ -20,6 +20,10 @@ def _generate_metadata(
 ):
     sys.path.insert(0, str(bmgr_root))
     from gen_bmgr_config_codes import BoardConfigGenerator
+    from generators.utils.soc_capability_query import (
+        clear_soc_capabilities,
+        configure_soc_capabilities,
+    )
 
     case_dir = tmp_path / 'case'
     case_dir.mkdir(parents=True, exist_ok=True)
@@ -36,15 +40,20 @@ def _generate_metadata(
         encoding='utf-8',
     )
 
-    generator = BoardConfigGenerator(bmgr_root)
-    generator.project_root = str(case_dir)
+    catalog_dir = Path(bmgr_root) / 'private_inc' / 'soc_capability_catalog'
+    configure_soc_capabilities(catalog_dir, '6.1.0', chip)
+    try:
+        generator = BoardConfigGenerator(bmgr_root)
+        generator.project_root = str(case_dir)
 
-    peripherals_dict, periph_name_map, _ = generator.process_peripherals(str(periph_yaml))
-    generator.process_devices(str(dev_yaml), peripherals_dict, periph_name_map)
+        peripherals_dict, periph_name_map, _ = generator.process_peripherals(str(periph_yaml))
+        generator.process_devices(str(dev_yaml), peripherals_dict, periph_name_map)
 
-    output_path = case_dir / 'components' / 'gen_bmgr_codes' / 'gen_board_metadata.yaml'
-    generator.write_board_metadata('unit_test_board', chip, str(output_path))
-    return yaml.safe_load(output_path.read_text(encoding='utf-8'))
+        output_path = case_dir / 'components' / 'gen_bmgr_codes' / 'gen_board_metadata.yaml'
+        generator.write_board_metadata('unit_test_board', chip, str(output_path))
+        return yaml.safe_load(output_path.read_text(encoding='utf-8'))
+    finally:
+        clear_soc_capabilities()
 
 
 PERIPHERAL_CASES = [
@@ -349,7 +358,7 @@ PERIPHERAL_CASES = [
                 'type': 'mcpwm',
                 'config': {
                     'generator_config': {
-                        'gpio_num': 22,
+                        'gpio_num': 26,
                     },
                 },
             }
@@ -357,7 +366,7 @@ PERIPHERAL_CASES = [
         'expected': {
             'type': 'mcpwm',
             'io': {
-                'gen_gpio_num': 22,
+                'gen_gpio_num': 26,
             },
         },
     },
@@ -449,14 +458,14 @@ PERIPHERAL_CASES = [
                 'name': 'sdm_out',
                 'type': 'sdm',
                 'config': {
-                    'gpio_num': 23,
+                    'gpio_num': 27,
                 },
             }
         ],
         'expected': {
             'type': 'sdm',
             'io': {
-                'gpio_num': 23,
+                'gpio_num': 27,
             },
         },
     },
@@ -710,6 +719,29 @@ DEVICE_CASES = [
             'type': 'button',
             'sub_type': 'adc_multi',
             'peripherals': ['adc_oneshot'],
+        },
+    },
+    {
+        'id': 'dev_knob_gpio',
+        'chip': 'esp32s3',
+        'peripherals': [],
+        'device': {
+            'name': 'knob',
+            'type': 'knob',
+            'sub_type': 'gpio',
+            'config': {
+                'gpio_encoder_a': 41,
+                'gpio_encoder_b': 40,
+                'use_rtc': False,
+            },
+        },
+        'expected': {
+            'type': 'knob',
+            'sub_type': 'gpio',
+            'io': {
+                'gpio_encoder_a': 41,
+                'gpio_encoder_b': 40,
+            },
         },
     },
     {
@@ -976,8 +1008,42 @@ DEVICE_CASES = [
         },
     },
     {
+        'id': 'dev_display_lcd_i80',
+        'chip': 'esp32p4',
+        'peripherals': [],
+        'device': {
+            'name': 'display_lcd',
+            'type': 'display_lcd',
+            'sub_type': 'i80',
+            'config': {
+                'bus_config': {
+                    'dc_gpio_num': 3,
+                    'wr_gpio_num': 4,
+                    'data_gpio_nums': [5, 6, 7, 8],
+                },
+                'io_config': {
+                    'cs_gpio_num': 9,
+                },
+                'panel_config': {
+                    'reset_gpio_num': 10,
+                },
+            },
+        },
+        'expected': {
+            'type': 'display_lcd',
+            'sub_type': 'i80',
+            'io': {
+                'dc_gpio_num': 3,
+                'wr_gpio_num': 4,
+                'data_gpio_nums': [5, 6, 7, 8],
+                'cs_gpio_num': 9,
+                'reset_gpio_num': 10,
+            },
+        },
+    },
+    {
         'id': 'dev_display_lcd_parlio',
-        'chip': 'esp32s3',
+        'chip': 'esp32p4',
         'peripherals': [],
         'device': {
             'name': 'display_lcd',
@@ -1330,6 +1396,27 @@ DEVICE_CASES = [
         'expected': {
             'type': 'ledc_ctrl',
             'peripherals': ['ledc_backlight'],
+        },
+    },
+    {
+        'id': 'dev_led_strip',
+        'chip': 'esp32s3',
+        'peripherals': [],
+        'device': {
+            'name': 'status_led',
+            'type': 'led_strip',
+            'sub_type': 'rmt',
+            'config': {
+                'strip_gpio_num': 18,
+                'max_leds': 1,
+            },
+        },
+        'expected': {
+            'type': 'led_strip',
+            'sub_type': 'rmt',
+            'io': {
+                'strip_gpio_num': 18,
+            },
         },
     },
     {

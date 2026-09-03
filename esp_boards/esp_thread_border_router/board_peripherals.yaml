@@ -1,0 +1,94 @@
+# Peripherals Configuration for ESP Thread Border Router Board
+#
+# Source: ESP Thread BR hardware platforms + esp-thread-br board Kconfig defaults
+# Reference: https://docs.espressif.com/projects/esp-thread-br/en/latest/hardware_platforms.html
+# Reference: https://github.com/espressif/esp-thread-br/blob/main/examples/common/thread_border_router/Kconfig.projbuild
+# Reference: https://dl.espressif.com/dl/schematics/esp_thread_br_zigbee_gw_schematics_v1.3.pdf
+#
+# The board carries two SoCs on one module: an ESP32-S3-WROOM-1 host (8 MB
+# flash, 2 MB PSRAM; early samples 4 MB flash) running the border router, and
+# an ESP32-H2-MINI-1 running the 802.15.4 Radio Co-Processor (RCP).
+#
+# Host <-> RCP link (ESP_BR_BOARD_DEV_KIT defaults):
+#   UART1 @ 460800 8N1 — S3 RX = GPIO17 (RCP TX), S3 TX = GPIO18 (RCP RX)
+#   RCP RESET = GPIO7, RCP BOOT = GPIO8 (both driven by the S3, used by
+#   esp_rcp_update to reflash the H2 over the same UART)
+#
+peripherals:
+  # Host <-> RCP serial link (Spinel over UART)
+  - name: uart_1
+    type: uart
+    config:
+      uart_num: 1
+      rx_buffer_size: 1024
+      tx_buffer_size: 1024
+      tx_io_num: 18            # to RCP RX
+      rx_io_num: 17            # from RCP TX
+      rts_io_num: -1
+      cts_io_num: -1
+      uart_mode: UART_MODE_UART
+      uart_config:
+        baud_rate: 460800
+        data_bits: UART_DATA_8_BITS
+        parity: UART_PARITY_DISABLE
+        stop_bits: UART_STOP_BITS_1
+        flow_ctrl: UART_HW_FLOWCTRL_DISABLE
+        source_clk: UART_SCLK_DEFAULT
+
+  # RCP (ESP32-H2) reset line, active-low, idle high
+  - name: gpio_rcp_reset
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 7
+      mode: GPIO_MODE_OUTPUT
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 1
+
+  # RCP (ESP32-H2) boot/strapping line — held low with reset to enter the
+  # H2 download mode for an RCP firmware update, idle high
+  - name: gpio_rcp_boot
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 8
+      mode: GPIO_MODE_OUTPUT
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 1
+
+  # BOOT2 button — ESP32-S3 boot strapping key
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0                  # schematic sheet 2, block "Buttons": SW4, silkscreen
+                              # BOOT2, drives net S3_GPIO0. (SW3 RESET2 = S3_EN;
+                              # the H2's own keys are SW1 BOOT1 = H2_GPIO9 and
+                              # SW2 RESET1 = H2_EN.) The sheet-1 block diagram
+                              # says the same: S3 branch "IO0+EN, Button*2".
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - ESP32-H2-MINI-1 802.15.4 RCP: a second SoC, not a peripheral of the
+  #   host. Its link is the uart_1 / gpio_rcp_reset / gpio_rcp_boot trio
+  #   above; its firmware is managed by esp_rcp_update, not by bmgr.
+  # - Alternative Spinel-over-SPI link to the same RCP (SPI2: CS GPIO10,
+  #   MOSI GPIO11, SCLK GPIO12, MISO GPIO13, INT = the BOOT line GPIO8).
+  #   Mutually exclusive with the UART link above, so only one is declared.
+  # - 3-wire PTA RF coexistence between the S3 Wi-Fi and the H2 802.15.4
+  #   radio (pins configured through the example's coexist menu).
+  # - RST1/BOOT1 (H2) and RST2 (S3) hardware keys: reset paths, not
+  #   application inputs.
+  # - Two USB Type-C ports (one per SoC): USB-to-UART bridge / console.
+  # - Optional W5500 Ethernet over SPI is an add-on module, not on board.
+  # ----------------------------------------------------------------------

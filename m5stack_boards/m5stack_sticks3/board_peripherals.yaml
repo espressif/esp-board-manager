@@ -1,0 +1,180 @@
+# Peripherals Configuration for M5StickS3
+#
+# Source: M5StickS3 official documentation (pin map) + board schematic
+# Reference: https://docs.m5stack.com/en/core/StickS3
+# Schematic: K150_Stick_S3_PRJ_V0.6_20251111.pdf (linked from that page).
+#   Sheet 1 carries the complete "I/Os Map" for the ESP32-S3-PICO-1; sheet 2
+#   the power tree + PMIC; sheet 3 the core, audio, IMU and LCD BTB; sheet 4
+#   the IR/speaker daughter board. Every pin below is cited to that document.
+#
+# Module: ESP32-S3-PICO-1-N8R8 (8 MB flash, 8 MB octal PSRAM).
+#
+# One internal I2C bus on GPIO47 (SDA) / GPIO48 (SCL) carries the BMI270 IMU
+# (7-bit 0x68), the ES8311 audio codec (7-bit 0x18) and the M5PM1 power
+# management IC (7-bit 0x6e). The codec sits on the switched 3V3_L3B_AU rail,
+# so its two I2C lines reach the bus through the "I2C HOT PLUGIN" 2N7002DW
+# level shifters (schematic sheet 3) — electrically still one bus.
+#
+# THE SoC DOES NOT OWN THE BOARD'S POWER OR THE AMPLIFIER. The M5PM1 is a
+# PY32L020F15U6 MCU acting as a PMIC; it owns the rail enables
+# (PYG2_L3B_EN gates BOTH the LCD's 3V3_L3B load switch U5 and the audio
+# 3V3_L3B_AU LDO U1), the AW8737 amplifier's SHDN pulse line
+# (PYG3_SPK_Pulse), the IMU wake interrupt (PYG4_IMU_INT), charger status
+# (PYG0_CHG_STAT) and the status LED (PY_STATUS_LED). The only SoC-side
+# handle is GPIO13 = PYG1_IRQ, the PMIC's interrupt line into the SoC, plus
+# the I2C bus. See sheets 1 and 2.
+#
+# Audio: one physical ES8311 (mono codec) behind an AW8737A power amplifier,
+# split into audio_dac / audio_adc per the dev_audio_codec model — same I2C
+# address, same I2S port.
+#
+peripherals:
+  # Internal I2C bus: BMI270 IMU + ES8311 codec + M5PM1 PMIC
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 47
+        scl: 48
+
+  # ST7789P3 LCD bus. Write-only panel, so no MISO line is wired.
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 40
+        mosi_io_num: 39
+        miso_io_num: -1
+        max_transfer_sz: 6480   # 135 * 24 lines * 2 bytes
+
+  # LCD backlight (GPIO38, PWM dimmable)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 38
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # ES8311 audio I2S (full-duplex on a single I2S port)
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: tdm-out
+    config: &i2s_config
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_STEREO
+      ws_width: 16
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0
+      pins:                     # schematic sheet 3, ES8311 (U18) net names:
+        mclk: 18                #   G18_I2S_MCLK  -> MCLK
+        bclk: 17                #   G17_I2S_BCLK  -> SCLK/DMIC_SCL
+        ws:   15                #   G15_I2S_LRCK  -> LRCK
+        dout: 14                #   G14_I2S_DDAC  -> DSDIN  (SoC -> codec DAC)
+        din:  16                #   G16_I2S_DADC  <- ASDOUT (codec ADC -> SoC)
+
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: tdm-in
+    config:
+      <<: *i2s_config
+      total_slot: 2
+      slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1
+
+  # NOTE: there is deliberately no gpio_pa_control here. The AW8737A's SHDN
+  # pin is driven by PYG3_SPK_Pulse — a PMIC (PY32L020F15U6) output, not an
+  # SoC GPIO (schematic sheet 3, "SPKER" block: U19 pin A4 SHDN <-
+  # PYG3_SPK_Pulse, R30 100K pulldown; sheet 1 I/Os Map lists PYG3_SPK_Pulse
+  # under "PMIC"). SoC GPIO3 is EXT_GPIO3, a HAT2-Bus expansion pin
+  # (sheet 1 I/Os Map, HAT2_BTB pin 23) — an earlier revision of this file
+  # wired the PA there, which would have toggled a user header instead.
+  # Enabling the speaker is an I2C command to the PMIC.
+
+  # Infrared transmit LED (GPIO46, active-high). On the IR/SPK daughter
+  # board: schematic sheet 4, U3 IR928-6C from 5V_VBUS through R2 10R into
+  # NMOS Q1, gate = net LED_TX via R3 22R with R1 10K to GND.
+  # LED_TX is HAT2/BTB net G46_IR_TX.
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 46
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Infrared receiver output (GPIO42, idles high, pulses low on a carrier).
+  # Schematic sheet 4: U1 VSOP38338 OUT -> R6 10K / R5 20K divider -> net
+  # LED_RX, which is BTB net G42_IR_RX.
+  - name: gpio_ir_rx
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 42
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # KEY1, front button (GPIO11, active-low)
+  - name: gpio_button_key1
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 11
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # KEY2, side button (GPIO12, active-low)
+  - name: gpio_button_key2
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - BMI270 6-axis IMU (I2C 7-bit 0x68): no bmgr device type; the shared
+  #   i2c_master above is its bus. Its INT1 goes to the PMIC as
+  #   PYG4_IMU_INT, not to the SoC (schematic sheet 3, "IMU" block; INT2 is
+  #   left unconnected) — the IMU is a wake source for the PMIC, so the SoC
+  #   has no motion interrupt line. CSB is tied to 3V3_L1 (I2C mode) and SDO
+  #   to GND, which is what makes the address 0x68.
+  # - M5PM1 power management IC (I2C 7-bit 0x6e), a PY32L020F15U6 (U16 on
+  #   sheet 2): owns every rail enable and the charger. No bmgr device type.
+  #   Charger status is the PMIC's own PYG0_CHG_STAT, and the LCD/audio L3B
+  #   rail is gated by the PMIC's PYG2_L3B_EN (active-high: it is the EN of
+  #   LDO U1 and the ON of load switch U5, sheet 2 "L3B开关"). NEITHER is an
+  #   SoC pin. The SoC's only PMIC line is GPIO13 = PYG1_IRQ, the PMIC's
+  #   interrupt output (sheet 1 I/Os Map). SoC GPIO2 is EXT_GPIO2, a plain
+  #   HAT2-Bus expansion pin, and has nothing to do with the L3B rail.
+  # - AW8737A class-D amplifier: SHDN is the PMIC's PYG3_SPK_Pulse (see the
+  #   note above the IR entries); it has no register interface
+  # - Status LED (LED1, sheet 2): driven by the PMIC's PY_STATUS_LED through
+  #   Q3, not by the SoC
+  # - On-board MEMS microphone: it feeds the ES8311 ADC, so the audio_adc
+  #   device is its interface
+  # - IR receiver on GPIO42: a demodulating receiver module, decoded by the
+  #   application (RMT); there is no bmgr device type for it
+  # - HY2.0-4P PORT.A (GPIO9 yellow / GPIO10 white plus 5V and GND)
+  # - Hat2-Bus 16-pin expansion connector
+  # - RESET button (EN pin, handled in hardware)
+  # - USB Type-C is the ESP32-S3's native USB Serial/JTAG (console path)
+  # ----------------------------------------------------------------------

@@ -1,0 +1,92 @@
+# Devices Configuration for ESP32-MeshKit-Sense v1.1
+#
+# Source: ESP32-MeshKit-Sense v1.1 schematic (ESP32-MESHKIT-SENSE_V1_1-0917A.pdf)
+#         + ESP-MDF examples/development_kit/sense
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-meshkit-sensor/user_guide.html
+#
+# The two sensors (HTS221, BH1750FVI) and the e-paper panel have no
+# esp-board-manager device type; their buses, rail gates and signal pins are
+# declared in board_peripherals.yaml, which also records the parts and their
+# I2C addresses in its "Not modeled" section.
+#
+devices:
+  # ---------- Rail gate: 3V3_PeriP_Sensor (HTS221 + BH1750FVI) ----------
+  - name: sensor_power
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_sensor
+        active_level: 0   # CONFIRMED from the schematic: Q2 is an Si2301
+                          # P-channel high-side switch feeding VDD33_PeriP_Sensor;
+                          # R176 10K holds its gate at the source rail and
+                          # net Power_ON_Sensor (GPIO27) reaches that gate
+                          # through R177 1K with no inverting stage, so a LOW
+                          # turns the rail ON. Corroborated by ESP-MDF
+                          # examples/development_kit/sense/main/sense_sensors.cpp
+                          # rtc_sensor_power_on(): rtc_gpio_set_level(
+                          # SENSOR_POWER_CNTL_IO /* GPIO_NUM_27 */, 0) is the
+                          # power-ON path.
+
+  # ---------- Rail gate: 3V3_PeriP_Screen (e-paper connector) ----------
+  - name: screen_power
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_screen
+        active_level: 0   # CONFIRMED from the schematic: the identical circuit
+                          # one block over — Q3 Si2301 gating VDD33_PeriP ->
+                          # VDD33_PeriP_Screen, gate pulled up by R200 10K and
+                          # driven by net Power_ON_Screen (GPIO14) through
+                          # R201 1K. LOW = rail ON. ESP-MDF names the same pin
+                          # (sense/main/include/sense_epaper.h: "The power of
+                          # epaper was controlled by GPIO_NUM_14").
+
+  # ---------- Wake button (GPIO34, RTC-domain wake source) ----------
+  # GPIO34 is input-only with NO internal pull; the pull-up is on the board,
+  # so disable_pull must stay true or the button device fails to configure.
+  - name: wake_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_wake_button
+
+  # Boot button. Schematic net: BOOT / GPIO0.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
+  # ---------- Wi-Fi status LED (GPIO15, active-low) ----------
+  - name: led_wifi
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 1
+    peripherals:
+      - gpio_name: gpio_led_wifi
+
+  # ---------- Network/mesh status LED (GPIO4, active-high) ----------
+  - name: led_network
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_led_network

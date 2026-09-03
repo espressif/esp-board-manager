@@ -3,12 +3,16 @@ anacmpr
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _anacmpr-intro:
+
 Overview
 --------
 
 The ``anacmpr`` peripheral type describes an on-chip analog comparator unit. BMGR generates an ``ana_cmpr_config_t`` from this configuration and calls the ESP-IDF ``driver/ana_cmpr.h`` to create the analog comparator unit.
 
 After BMGR initialization, the application retrieves the ``periph_anacmpr_handle_t`` via :cpp:func:`esp_board_manager_get_periph_handle` and then uses the ESP-IDF analog comparator APIs to configure the internal reference, level-crossing callback, debounce, and start/stop actions.
+
+.. _anacmpr-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -17,11 +21,17 @@ Supported Operating Modes
 
 - `Analog Comparator Unit`_
 
+.. _anacmpr-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _anacmpr-unit:
+
 Analog Comparator Unit
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`anacmpr-unit-full`.
 
 ``board_peripherals.yaml``:
 
@@ -37,6 +47,8 @@ Analog Comparator Unit
           clk_src: ANA_CMPR_CLK_SRC_DEFAULT
           intr_priority: 0
 
+.. _anacmpr-mode-notes:
+
 Mode Description
 ----------------
 
@@ -44,8 +56,12 @@ Mode Description
 
 The current BMGR parser only accepts ``unit: 0``. The internal reference voltage, debounce, and event callbacks are not configured in the peripheral YAML; they must be set by the application after obtaining the handle via the ESP-IDF analog comparator APIs.
 
+.. _anacmpr-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _anacmpr-unit-full:
 
 Analog Comparator Unit — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,6 +102,8 @@ Field sources:
 - YAML template: ``esp_board_manager/peripherals/periph_anacmpr/periph_anacmpr.yml``.
 - Header file: ``esp_board_manager/peripherals/periph_anacmpr/periph_anacmpr.h``.
 
+.. _anacmpr-devices:
+
 Applicable Devices
 ------------------
 
@@ -99,15 +117,21 @@ Applicable Devices
      - Application retrieves the analog comparator peripheral handle via ``esp_board_manager_get_periph_handle``
      - No device type in the current repository references the ``anacmpr`` peripheral; reference voltage, debounce, callbacks, and start/stop are handled by application or test code
 
+.. _anacmpr-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_anacmpr.c``
 
+.. _anacmpr-boards:
+
 Board-Level Reference
 ---------------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_p4_core/board_peripherals.yaml``: ``anacmpr_unit_0`` configuration, along with ``gpio_monitor`` for observing crossing events during testing.
+
+.. _anacmpr-notes:
 
 Notes
 -----
@@ -119,8 +143,12 @@ Notes
 - The internal reference voltage, debounce, and event callbacks must be configured in application code and must not be written into the ``anacmpr`` peripheral ``config``.
 - After modifying the analog comparator peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _anacmpr-debug:
+
 Debugging Tips
 --------------
+
+.. _anacmpr-api:
 
 API Reference
 -------------

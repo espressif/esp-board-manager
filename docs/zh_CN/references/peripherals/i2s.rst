@@ -3,9 +3,16 @@ i2s
 
 :link_to_translation:`en:[English]`
 
+.. _i2s-intro:
+
+简介
+------
+
 ``i2s`` 外设用于描述 ESP-IDF I2S 驱动的音频数据通道。BMGR 按 ``format`` 区分 standard、TDM 与 PDM 的输入或输出路径，常用于 ``audio_codec`` 的播放、录音以及 PDM 音频场景。
 
 ``i2s`` 条目写在 ``board_peripherals.yaml`` 中，设备通过外设实例名引用它。
+
+.. _i2s-working-modes:
 
 支持的工作模式
 ---------------------
@@ -18,6 +25,8 @@ i2s
 - :ref:`PDM 输出（pdm-out） <i2s-pdm-out>`
 - :ref:`PDM 输入（pdm-in） <i2s-pdm-in>`
 
+.. _i2s-min-config:
+
 最小配置
 ------------
 
@@ -25,6 +34,8 @@ i2s
 
 STD 输出（``std-out``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`i2s-std-full`。
 
 STD 输出用于音频播放路径，常被 ``audio_codec`` 的 DAC 设备引用。
 
@@ -52,6 +63,8 @@ STD 输出用于音频播放路径，常被 ``audio_codec`` 的 DAC 设备引用
 STD 输入（``std-in``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`i2s-std-full`。
+
 STD 输入用于音频录音路径，常被 ``audio_codec`` 的 ADC 设备引用。
 
 ``board_peripherals.yaml``：
@@ -77,6 +90,8 @@ STD 输入用于音频录音路径，常被 ``audio_codec`` 的 ADC 设备引用
 
 TDM 输出/输入（``tdm-out`` / ``tdm-in``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`i2s-tdm-full`。
 
 TDM 用于多通道音频或回采场景。输出与输入可使用同一组基础时钟与管脚配置，再按输入或输出方向调整 ``format`` 与 slot 配置。
 
@@ -115,6 +130,8 @@ TDM 用于多通道音频或回采场景。输出与输入可使用同一组基�
 PDM 输出（``pdm-out``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`i2s-pdm-out-full`。
+
 PDM 输出用于 PDM TX 音频路径。
 
 ``board_peripherals.yaml``：
@@ -140,6 +157,8 @@ PDM 输出用于 PDM TX 音频路径。
 PDM 输入（``pdm-in``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`i2s-pdm-in-full`。
+
 PDM 输入用于 PDM RX 音频路径。单线模式使用 ``clk`` 和 ``din``；支持多线 PDM RX 的目标还可以使用 ``din0`` 到 ``din3``。
 
 ``board_peripherals.yaml``：
@@ -160,6 +179,8 @@ PDM 输入用于 PDM RX 音频路径。单线模式使用 ``clk`` 和 ``din``；
             clk: 1                   # [IO]
             din: 2                   # [IO]
 
+.. _i2s-mode-notes:
+
 模式说明
 ------------
 
@@ -167,8 +188,12 @@ PDM 输入用于 PDM RX 音频路径。单线模式使用 ``clk`` 和 ``din``；
 
 ``format`` 的方向需与设备用途一致：播放设备引用输出格式，录音设备引用输入格式。``role`` 取决于时钟由 ESP 芯片提供还是由外部器件提供，板级配置中常用 ``master``。
 
+.. _i2s-full-fields:
+
 完整字段
 ------------
+
+.. _i2s-std-full:
 
 STD 模式完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -271,6 +296,8 @@ STD 模式完整字段
           bclk_inv: false
           ws_inv: false
 
+.. _i2s-tdm-full:
+
 TDM 模式完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -358,6 +385,8 @@ TDM 模式完整字段
           mclk_inv: false
           bclk_inv: false
           ws_inv: false
+
+.. _i2s-pdm-out-full:
 
 PDM 输出完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -458,6 +487,8 @@ PDM 输出完整字段
         invert_flags:
           clk_inv: false
 
+.. _i2s-pdm-in-full:
+
 PDM 输入完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -554,6 +585,8 @@ PDM 输入完整字段
 - YAML 模板：``esp_board_manager/peripherals/periph_i2s/periph_i2s.yml``。
 - 头文件：``esp_board_manager/peripherals/periph_i2s/periph_i2s.h``。
 
+.. _i2s-devices:
+
 适用设备
 ------------
 
@@ -567,6 +600,8 @@ PDM 输入完整字段
      - 设备侧 ``peripherals`` 引用 ``i2s_audio_out`` 或 ``i2s_audio_in``
      - 外接 codec 使用 I2S 作为音频数据接口；I2C 地址、PA 增益等参数写在设备侧引用条目中
 
+.. _i2s-code:
+
 参考代码
 ------------
 
@@ -575,12 +610,16 @@ PDM 输入完整字段
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 - ``esp_board_manager/examples/record_and_play/main/record_and_play.c``
 
+.. _i2s-boards:
+
 板级参考
 ------------
 
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``：STD I2S 输出和输入配置。
 - ``esp_boards/esp32_s3_korvo_2_3/board_peripherals.yaml``：TDM I2S 输出和输入配置。
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：I2S 音频外设与其他板级资源并存的配置。
+
+.. _i2s-notes:
 
 注意事项
 ------------
@@ -591,8 +630,12 @@ PDM 输入完整字段
 - ``ext_clk_freq_hz`` 仅在选择外部时钟源时生效，输入时钟需满足 BCLK 需求。
 - 修改 I2S 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _i2s-debug:
+
 调试技巧
 ------------
+
+.. _i2s-api:
 
 API 参考
 ----------

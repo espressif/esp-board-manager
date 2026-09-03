@@ -1,0 +1,123 @@
+# Peripherals Configuration for M5Station-485
+#
+# Source: M5Station-485 official documentation (pin map) + the M5Station
+#         factory firmware pin header (RS-485 DE/RE, NeoPixel)
+# Reference: https://docs.m5stack.com/en/core/station_485
+#            https://github.com/m5stack/M5Station (example/Factory/include/m5station.h)
+#
+# Module: ESP32-D0WDQ6-V3, 16 MB SPI flash, 520 KB SRAM, no PSRAM.
+#
+# I2C0 on GPIO21 (SDA) / GPIO22 (SCL) is the internal control bus: AXP192
+# PMU (7-bit 0x34), BM8563 RTC (0x51) and INA3221 current monitor
+# (0x40 / 0x41). PORT A1/A2 is a SEPARATE I2C bus on GPIO32 / GPIO33.
+#
+# The RS-485 transceiver (SP3485, 9~24 V bus power through an SY8303
+# step-down) sits on UART0: TXD GPIO3, RXD GPIO1, driver-enable GPIO2.
+# UART0 is also where the CH9102F USB-serial bridge lands, so the ROM
+# console and the RS-485 line share one controller — move the console off
+# UART0 before driving the bus in anger.
+#
+peripherals:
+  # Internal control bus: AXP192 PMU, BM8563 RTC, INA3221 monitor
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # PORT A1 / A2 (red Grove connectors) — the external I2C bus
+  - name: i2c_port_a
+    type: i2c
+    role: master
+    config:
+      port: 1
+      pins:
+        sda: 32
+        scl: 33
+
+  # ST7789V2 LCD (write-only 3-wire SPI: no MISO wire)
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST     # HSPI
+        sclk_io_num: 18
+        mosi_io_num: 23
+        miso_io_num: -1
+        max_transfer_sz: 9600   # 240 * 20 lines * 2 bytes
+
+  # RS-485 (SP3485) on UART0, half duplex — the driver-enable line GPIO2
+  # is wired to RTS so the ESP-IDF RS485 mode toggles it automatically.
+  - name: uart_rs485
+    type: uart
+    config:
+      uart_num: 0
+      rx_buffer_size: 1024
+      tx_buffer_size: 1024
+      tx_io_num: 3
+      rx_io_num: 1
+      rts_io_num: 2
+      uart_mode: UART_MODE_RS485_HALF_DUPLEX
+      uart_config:
+        baud_rate: 115200       # application choice, not a board fact: the RS-485
+                                # bus rate is set by whatever is on the bus
+        data_bits: UART_DATA_8_BITS
+        parity: UART_PARITY_DISABLE
+        stop_bits: UART_STOP_BITS_1
+        flow_ctrl: UART_HW_FLOWCTRL_DISABLE
+
+  # Button A (left, active-low). GPIO37 is input-only on the ESP32 and has
+  # no internal pull resistor — the board provides an external pull-up.
+  - name: gpio_button_a
+    type: gpio
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Button B (middle, active-low). GPIO38 is input-only, external pull-up.
+  - name: gpio_button_b
+    type: gpio
+    role: io
+    config:
+      pin: 38
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Button C (right, active-low). GPIO39 is input-only, external pull-up.
+  - name: gpio_button_c
+    type: gpio
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - AXP192 power management IC (I2C 7-bit 0x34 on i2c_master): battery
+  #   charge, rail control AND the LCD backlight (AXP192 LDO3) plus the LCD
+  #   power rail. No bmgr device type and no SoC GPIO in the path, so the
+  #   backlight is not a ledc_ctrl device on this board — the bus above is
+  #   the whole interface
+  # - BM8563 real-time clock (I2C 7-bit 0x51, 8-bit 0xA2): no bmgr device
+  #   type; the i2c_master above is its bus
+  # - INA3221 3-channel current/voltage monitor (I2C 7-bit 0x40 and 0x41):
+  #   likewise no bmgr device type
+  # - Central POWER button: routed to the AXP192, not a plain GPIO
+  # - PORT B1 (GPIO25 / GPIO35), PORT B2 (GPIO26 / GPIO36),
+  #   PORT C1 UART (TX GPIO14 / RX GPIO13), PORT C2 UART (TX GPIO17 /
+  #   RX GPIO16): user-wired Grove expansion, not on-board devices
+  # - USB Type-A output port monitoring: current sense on GPIO34, port
+  #   power switch on GPIO12
+  # - CH9102F USB-to-UART bridge on UART0 (console path, shared with RS-485)
+  # - RESET button (EN pin, handled in hardware)
+  # ----------------------------------------------------------------------

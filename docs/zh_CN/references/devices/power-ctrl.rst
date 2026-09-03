@@ -3,12 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _power-ctrl-intro:
+
 简介
 ------
 
 ``power_ctrl`` 设备用于将板级电源使能信号封装为可复用的 device。其他设备可通过 ``power_ctrl_device`` 引用它，在设备初始化与关闭过程中触发上电或下电控制。
 
 ``sub_type: gpio`` 通过一个 ``gpio`` 外设设置电源控制引脚电平，``active_level`` 表示上电有效电平。``sub_type: custom`` 通过板级生命周期操作支持 PMIC、IO 扩展器、多路电源时序及其他板级电源实现。
+
+.. _power-ctrl-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -18,11 +22,17 @@
 - `GPIO 电源控制`_
 - `自定义电源控制`_
 
+.. _power-ctrl-min-config:
+
 最小配置
 ------------
 
+.. _power-ctrl-gpio:
+
 GPIO 电源控制
 ^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`power-ctrl-gpio-full`。
 
 ``board_peripherals.yaml``：
 
@@ -66,9 +76,9 @@ GPIO 电源控制
 自定义电源控制
 ^^^^^^^^^^^^^^^^^
 
-板级需要使用 PMIC、IO 扩展器、多路电源或特定上电时序时使用 ``custom``。在板级代码中以与 ``power_ctrl`` 设备同名的名称注册操作。源文件放置与构建规则见 :doc:`/programming-guide/board-directory`\ 。``init`` 与 ``deinit`` 为可选，``set_power`` 为必选。框架会在调用 ``init`` 前引用 ``peripherals`` 中的外设，并在 ``deinit`` 后释放引用。PMIC 等独立 device 依赖应使用 ``depends_on`` 声明。
+板级需要使用 PMIC、IO 扩展器、多路电源或特定上电时序时使用 ``custom``。在板级代码中以与 ``power_ctrl`` 设备同名的名称注册操作。``init`` 与 ``deinit`` 为可选，``set_power`` 为必选。框架会在调用 ``init`` 前引用 ``peripherals`` 中的外设，并在 ``deinit`` 后释放引用。PMIC 等独立 device 依赖应使用 ``depends_on`` 声明。
 
-``gpio_name``、``i2c_name`` 等语义化选择器仅适用于设备规则明确支持的绑定场景，不适用于 ``custom`` 电源控制器中用于声明生命周期依赖的 ``peripherals`` 列表。``custom`` 电源控制器中的 ``peripherals`` 列表仍使用旧版的 ``name`` 引用写法。
+``gpio_name``、``i2c_name`` 等语义化选择器仅适用于设备规则明确支持的绑定场景，不适用于 ``custom`` 电源控制器中用于声明生命周期依赖的 ``peripherals`` 列表。``custom`` 电源控制器中的 ``peripherals`` 列表仍使用通用 ``name`` 引用写法。
 
 ``board_devices.yaml``：
 
@@ -79,6 +89,9 @@ GPIO 电源控制
         type: power_ctrl
         sub_type: custom
         depends_on: pmic_device
+        peripherals:
+          - name: i2c_pmic
+          - name: gpio_lcd_power
         config:
           startup_delay_ms: 10
 
@@ -115,8 +128,12 @@ GPIO 电源控制
 
     DEVICE_EXTRA_FUNC_REGISTER(board_power_ctrl, &s_board_power_ctrl_ops);
 
+.. _power-ctrl-full-fields:
+
 完整字段
 ------------
+
+.. _power-ctrl-gpio-full:
 
 GPIO 电源控制完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,6 +159,7 @@ GPIO 电源控制完整字段
       depends_on: pmic_device          # 可选的 device 依赖
       peripherals:                     # 可选，由框架管理引用的外设
         - name: i2c_pmic
+        - name: gpio_lcd_power
       config:                          # 可选，传入 user_cfg 的强类型板级配置
         startup_delay_ms: 10
 
@@ -149,6 +167,7 @@ GPIO 电源控制完整字段
     # - name: audio_dac
     #   chip: es8311
     #   type: audio_codec
+    #   version: default
     #   power_ctrl_device: audio_power_ctrl  # Reference to power control device
     #   config:
     #     adc_enabled: false
@@ -161,10 +180,14 @@ GPIO 电源控制完整字段
     #       address: 0x30
     #       frequency: 400000
 
+.. _power-ctrl-deps:
+
 组件依赖
 ------------
 
 ``power_ctrl`` 的 ``gpio`` 模式使用 ESP-IDF GPIO driver 和 BMGR ``gpio`` 外设。``custom`` 没有 BMGR 强加的组件依赖，板级所需组件应在使用它们的 device 中声明。
+
+.. _power-ctrl-peripherals:
 
 依赖外设
 ------------
@@ -185,6 +208,8 @@ GPIO 电源控制完整字段
      - ``sub_type: custom`` 可选
      - 由框架在自定义控制器生命周期内保持引用
 
+.. _power-ctrl-code:
+
 参考代码
 ------------
 
@@ -192,6 +217,8 @@ GPIO 电源控制完整字段
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl_sub_gpio.c``
 - ``esp_board_manager/devices/dev_power_ctrl/dev_power_ctrl_sub_custom.c``
 - 板级自定义流程：:doc:`/create-board/index`
+
+.. _power-ctrl-boards:
 
 板级参考
 ------------
@@ -202,6 +229,8 @@ GPIO 电源控制完整字段
 - ``esp_boards/esp32_s3_box_3/board_devices.yaml``
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``
 - ``esp_friends_boards/esp32_c5_spot/board_devices.yaml``
+
+.. _power-ctrl-notes:
 
 注意事项
 ------------
@@ -214,8 +243,12 @@ GPIO 电源控制完整字段
 - 自定义生命周期代码只拥有自己创建的 ``context``；``peripherals`` 中的引用由框架管理。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _power-ctrl-debug:
+
 调试技巧
 ------------
+
+.. _power-ctrl-api:
 
 API 参考
 ----------

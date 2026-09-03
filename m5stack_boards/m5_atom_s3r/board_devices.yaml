@@ -1,0 +1,92 @@
+devices:
+  # Current AtomS3R units use ST7735. Early GC9107 units need a separate
+  # panel init sequence and are intentionally not selected by this board.
+  - name: lp5562_backlight
+    chip: lp5562
+    type: custom
+    version: 1.0.0
+    dependencies:
+      lp5562:
+        override_path: "${BOARD_PATH}/lp5562"
+        require: public
+    config:
+      i2c_addr: 0x30
+      default_percent: 100
+    peripherals:
+      - name: i2c_internal
+
+  - name: display_lcd
+    chip: st7735
+    type: display_lcd
+    sub_type: spi
+    version: default
+    depends_on: lp5562_backlight
+    dependencies:
+      waveshare/esp_lcd_st7735: "^2.0.0"
+    config:
+      mirror_x: true
+      mirror_y: true
+      swap_xy: false
+      invert_color: true
+      x_max: 128
+      y_max: 128
+      io_spi_config:
+        cs_gpio_num: 14
+        dc_gpio_num: 42
+        pclk_hz: 40000000
+        spi_mode: 0
+      lcd_panel_config:
+        reset_gpio_num: 48
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_BGR
+        data_endian: LCD_RGB_DATA_ENDIAN_BIG
+        bits_per_pixel: 16
+    peripherals:
+      - spi_name: spi_display
+
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+      events_cfg:
+        press_down: true
+        press_up: true
+        single_click: true
+        double_click: true
+        multi_click: false
+        click_counts: []
+        long_press_start: true
+        long_press_start_time: []
+        long_press_hold: false
+        long_press_up: true
+        long_press_up_time: []
+        press_repeat: false
+        press_repeat_done: false
+        press_end: false
+    peripherals:
+      - gpio_name: gpio_button
+
+  - name: fs_spiffs
+    type: fs_spiffs
+    version: default
+    config:
+      partition_label: NULL
+      format_if_mount_failed: false
+
+  - name: bmi270_sensor_hub
+    chip: bmi270_sensor_hub
+    type: custom
+    version: 1.0.0
+    dependencies:
+      espressif/bmi270: "^1.1.0"
+      espressif/sensor_hub: "*"
+    config:
+      # M5Stack documents the onboard BMI270 at I2C address 0x68.
+      i2c_addr: 0x68
+    peripherals:
+      - name: i2c_internal

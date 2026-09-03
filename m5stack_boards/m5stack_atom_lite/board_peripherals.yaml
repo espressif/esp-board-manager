@@ -1,0 +1,45 @@
+# Peripherals Configuration for M5Stack ATOM Lite
+#
+# Source: M5Stack ATOM Lite documentation
+# Reference: https://docs.m5stack.com/en/core/ATOM%20Lite
+#
+# Module: ESP32-PICO-D4 (in-package 4 MB flash, no PSRAM).
+# On-board hardware is minimal: an SK6812 RGB LED on GPIO27 (owned by the
+# led_strip device, so not declared here), the full-face button on GPIO39
+# and an IR transmit LED on GPIO12.
+#
+peripherals:
+  # Front button, full face (GPIO39, active-low).
+  # GPIO39 is input-only on ESP32 and has NO internal pull resistor;
+  # the board provides the external pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Infrared transmit LED (GPIO12, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Grove HY2.0-4P port (GPIO26 / GPIO32 plus 5V and GND): a user-wired
+  #   expansion port, not an on-board device; also usable as the external
+  #   I2C bus
+  # - Bottom expansion pads GPIO19 / GPIO21 / GPIO22 / GPIO23 / GPIO25 /
+  #   GPIO33 (GPIO21 = SCL, GPIO25 = SDA in M5Stack's I2C convention)
+  # - RESET button (EN pin, handled in hardware)
+  # - CH9102 USB-to-UART bridge on the USB Type-C port (console path)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

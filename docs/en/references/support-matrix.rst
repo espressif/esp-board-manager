@@ -3,7 +3,7 @@ Support Matrix
 
 :link_to_translation:`zh_CN:[中文]`
 
-The support matrix provides a quick overview of the device types and peripheral types currently built into BMGR. For detailed configuration instructions, see the Device Reference and Peripheral Reference. For individual board details, see the Board Reference.
+The support matrix provides a quick overview of the device types and peripheral types currently built into BMGR. For detailed configuration instructions, see the Device Reference and Peripheral Reference. For individual board details, see :doc:`Boards Catalog </references/boards/index>`.
 
 Supported Device Types
 -----------------------

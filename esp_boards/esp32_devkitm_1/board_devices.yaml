@@ -1,0 +1,19 @@
+# Devices Configuration for ESP32-DevKitM-1
+#
+# Source: ESP32-DevKitM-1 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitm-1/user_guide.html
+#
+devices:
+  # ---------- BOOT button (GPIO0, active-low, strapping) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button

@@ -45,7 +45,7 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
         return -1;
     }
 
-    // Set the active level using the GPIO handle
+    // Initialize the output to the configured active level.
     esp_err_t err = gpio_set_level(gpio_handle->gpio_num, config->active_level);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set active level for GPIO %d: %s", gpio_handle->gpio_num, esp_err_to_name(err));

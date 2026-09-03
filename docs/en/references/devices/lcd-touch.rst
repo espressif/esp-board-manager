@@ -3,12 +3,16 @@ Touch Controller (``lcd_touch``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _lcd-touch-intro:
+
 Overview
 --------
 
 ``lcd_touch`` is a generic touch controller device that wraps a touch controller chip, the touch bus, and an ``esp_lcd_touch`` driver instance into a single BMGR device. This device is suitable for board configurations that have migrated to the generic touch model: the specific driver component is selected via ``chip`` and ``dependencies``, and the bus implementation is selected via ``sub_type``.
 
 In the current source code, ``lcd_touch`` only implements ``sub_type: i2c``. ``sub_type: spi`` is reserved in the header file and Kconfig, but the parser will reject this configuration and the SPI sub-type source file is not included in the component build.
+
+.. _lcd-touch-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -18,11 +22,17 @@ Supported Usage Modes
 - `I2C Touch`_
 - `SPI Touch (Reserved)`_
 
+.. _lcd-touch-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _lcd-touch-i2c:
+
 I2C Touch
 ^^^^^^^^^^
+
+See complete fields: :ref:`lcd-touch-i2c-full`.
 
 In I2C mode, ``lcd_touch`` uses the ``i2c`` peripheral to provide the bus handle. During initialization it creates an LCD panel IO I2C handle, then calls the ``lcd_touch_factory_entry_t`` linked in the project to create the specific touch driver. The touch chip dependency component must be declared in ``dependencies``. The ``i2c_addr`` in the device-side ``peripherals`` reference entry uses 8-bit left-shifted format; after a successful probe at runtime it is shifted right for use by the ESP-IDF I2C API. Up to 4 candidate addresses can be specified; the parser rejects odd addresses, addresses above ``0xfe``, and empty lists.
 
@@ -62,13 +72,19 @@ In I2C mode, ``lcd_touch`` uses the ``i2c`` peripheral to provide the bus handle
           - i2c_name: i2c_master
             i2c_addr: [0xBA, 0x28]
 
+.. _lcd-touch-spi:
+
 SPI Touch (Reserved)
 ^^^^^^^^^^^^^^^^^^^^
 
 ``sub_type: spi`` cannot currently be used in ``board_devices.yaml``. The parser will report an error indicating this sub-type is reserved but not yet implemented.
 
+.. _lcd-touch-full-fields:
+
 All Fields
 ----------
+
+.. _lcd-touch-i2c-full:
 
 I2C Touch All Fields
 ^^^^^^^^^^^^^^^^^^^^^
@@ -119,10 +135,14 @@ I2C Touch All Fields
         - i2c_name: i2c_master           # I2C peripheral for touch communication
           i2c_addr: [0xba]              # [TO_BE_CONFIRMED] I2C address candidates, 8-bit / left-shifted values, up to 4 entries
 
+.. _lcd-touch-spi-full:
+
 SPI Touch All Fields
 ^^^^^^^^^^^^^^^^^^^^^
 
 ``sub_type: spi`` currently has no available YAML template. Only the ``dev_lcd_touch_spi_sub_config_t`` and the unbuilt ``dev_lcd_touch_sub_spi.c`` reserved implementation exist in the source code.
+
+.. _lcd-touch-deps:
 
 Component Dependencies
 ----------------------
@@ -130,6 +150,8 @@ Component Dependencies
 ``lcd_touch`` introduces the common component ``espressif/esp_lcd_touch`` (version ``"*"``) via ``esp_board_manager/idf_component.yml`` when ``CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT`` is enabled.
 
 The specific touch chip driver must be declared in the device entry's ``dependencies``. In existing board configurations, GT911 touch uses ``espressif/esp_lcd_touch_gt911: "*"``. The ``espressif/esp_lcd_touch_generic: "*"`` in the YAML template is a placeholder for the touch chip component to be confirmed; board maintainers should replace it with the component corresponding to the actual touch chip.
+
+.. _lcd-touch-peripherals:
 
 Required Peripherals
 --------------------
@@ -146,12 +168,16 @@ Required Peripherals
      - Required for ``sub_type: i2c``
      - Provides the touch controller communication bus; ``i2c_addr`` is filled in the device-side reference entry
 
+.. _lcd-touch-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/test_dev_lcd_init.c``
 - ``esp_board_manager/devices/dev_lcd_touch/dev_lcd_touch.c``
 - ``esp_board_manager/devices/dev_lcd_touch/dev_lcd_touch_sub_i2c.c``
+
+.. _lcd-touch-boards:
 
 Board Reference
 ---------------
@@ -160,6 +186,8 @@ Board Reference
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``i2c_master`` configuration referenced by the touch device.
 - ``esp_boards/esp32_s3_box_3/board_devices.yaml``: I2C touch configuration.
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml``: I2C touch configuration.
+
+.. _lcd-touch-notes:
 
 Notes
 -----
@@ -170,10 +198,12 @@ Notes
 - The project must provide an ``lcd_touch_factory_entry_t`` to create an ``esp_lcd_touch_handle_t`` from the touch chip component.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
-Factory function and multi-address selection
---------------------------------------------
+.. _lcd-touch-factory:
 
-The project must provide ``lcd_touch_factory_entry_t`` in a board source file. BMGR calls it when creating the touch device to build an ``esp_lcd_touch_handle_t`` from the touch chip component. The signature is:
+Factory Functions
+-----------------
+
+The project must provide an ``lcd_touch_factory_entry_t``, which BMGR calls back when creating the touch device to build an ``esp_lcd_touch_handle_t`` from the touch chip component. The signature is:
 
 .. code-block:: c
 
@@ -181,30 +211,54 @@ The project must provide ``lcd_touch_factory_entry_t`` in a board source file. B
                                        const esp_lcd_touch_config_t *touch_dev_config,
                                        esp_lcd_touch_handle_t *ret_touch)
 
-See :doc:`/programming-guide/board-directory` for board source placement and weak-symbol override rules.
+The board implementation must declare this function as a weak symbol with ``__attribute__((weak))`` and wrap each touch-chip driver header and its branch with ``__has_include``. The board source then still compiles after a downstream ``gen_skip`` of this device or an amend that replaces the factory. See :doc:`/programming-guide/board-directory` for the full convention.
 
 If the same board may carry different touch chips (that is, ``i2c_addr`` lists several candidate addresses), the factory function can read the actually probed address with ``esp_board_device_get_i2c_effective_addr()`` and select the matching driver:
 
 .. code-block:: c
 
-   uint16_t touch_addr = 0;
-   esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
-   if (ret != ESP_OK) {
-       return ret;
-   }
+   #if __has_include(<esp_lcd_touch_gt911.h>)
+   #include "esp_lcd_touch_gt911.h"
+   #endif
+   #if __has_include(<esp_lcd_touch_tt21100.h>)
+   #include "esp_lcd_touch_tt21100.h"
+   #endif
 
-   if (touch_addr == 0xba) {
-       return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
-   }
+   #if __has_include(<esp_lcd_touch_gt911.h>) || __has_include(<esp_lcd_touch_tt21100.h>)
+   __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io,
+                                                            const esp_lcd_touch_config_t *touch_dev_config,
+                                                            esp_lcd_touch_handle_t *ret_touch)
+   {
+       uint16_t touch_addr = 0;
+       esp_err_t ret = esp_board_device_get_i2c_effective_addr("lcd_touch", &touch_addr);
+       if (ret != ESP_OK) {
+           return ret;
+       }
 
-   if (touch_addr == 0x48) {
-       return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+   #if __has_include(<esp_lcd_touch_gt911.h>)
+       if (touch_addr == 0xba) {
+           return esp_lcd_touch_new_i2c_gt911(io, touch_dev_config, ret_touch);
+       }
+   #endif
+
+   #if __has_include(<esp_lcd_touch_tt21100.h>)
+       if (touch_addr == 0x48) {
+           return esp_lcd_touch_new_i2c_tt21100(io, touch_dev_config, ret_touch);
+       }
+   #endif
+
+       return ESP_ERR_NOT_SUPPORTED;
    }
+   #endif
 
 ``esp_board_device_get_i2c_effective_addr()`` returns the 8-bit left-shifted address, matching the YAML ``i2c_addr`` semantics.
 
+.. _lcd-touch-debug:
+
 Debugging Tips
 --------------
+
+.. _lcd-touch-api:
 
 API Reference
 -------------

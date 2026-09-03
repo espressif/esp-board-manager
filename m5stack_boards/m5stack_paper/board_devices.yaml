@@ -1,0 +1,113 @@
+# Devices Configuration for M5Paper v1.1
+#
+# Source: M5Paper v1.1 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/m5paper_v1.1
+#
+# No display device: the IT8951E-driven e-paper panel has no bmgr device
+# type and no esp_lcd driver component. Its bus is the spi_master
+# peripheral in board_peripherals.yaml, whose Not-modeled section lists the
+# CS and BUSY pins. The GT911 touch panel in front of it IS modeled — it is
+# an ordinary I2C touch controller with an upstream driver, and lcd_touch
+# does not require a display_lcd device beside it.
+#
+devices:
+  # ---------- GT911 capacitive touch (shared I2C, INT GPIO36) ----------
+  - name: lcd_touch
+    chip: gt911
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      espressif/esp_lcd_touch_gt911: "*"
+    config:
+      io_i2c_config:
+        lcd_cmd_bits: 16                # GT911 uses 16-bit register addresses
+        scl_speed_hz: 400000
+      touch_config:
+        x_max: 540                      # panel-native portrait axes
+        y_max: 960
+        rst_gpio_num: -1                # touch reset shares the panel rail
+        int_gpio_num: 36                # input-only GPIO; external pull-up
+    peripherals:
+      - i2c_name: i2c_master
+        i2c_addr: [0x28]                # GT911 8-bit address, from 7-bit 0x14
+
+  # ---------- microSD card (shares the e-paper SPI bus, CS GPIO4) --------
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        cs_gpio_num: 4
+    peripherals:
+      - spi_name: spi_master
+
+  # ---------- Power gates ----------
+  - name: power_main
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_main
+        active_level: 1
+
+  - name: power_epd
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_epd
+        active_level: 1
+
+  - name: power_ext
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_ext
+        active_level: 1
+
+  # ---------- Side wheel: three discrete positions, each a key ----------
+  # The wheel is a three-way rocker, not a quadrature encoder: UP, PRESS
+  # and DOWN are independent active-low contacts, so each is a button.
+  - name: wheel_up
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO37 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_wheel_up
+
+  - name: wheel_press
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO38 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_wheel_press
+
+  - name: wheel_down
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO39 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_wheel_down

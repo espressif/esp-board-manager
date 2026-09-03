@@ -1,0 +1,83 @@
+# Devices Configuration for ESP32-LCDKit
+#
+# Source: ESP32-LCDKit schematic SCH_ESP32-LCDKit_V1.1_20190218
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-lcdkit/user_guide.html
+# Reference: https://dl.espressif.com/dl/schematics/SCH_ESP32-LCDKit_V1.1_20190218.pdf
+# Reference: https://github.com/espressif/esp-iot-solution/blob/master/examples/common_components/boards/esp32-lcdkit/iot_board.h
+#
+devices:
+  # ---------- Serial (SPI) screen on J5 ----------
+  # Schematic nets: CS_1 = IO5, RESET_1 = IO18, D/C_1 = IO19.
+  #
+  # NO SCREEN SHIPS WITH THE BOARD. Both the esp-dev-kits user guide and its
+  # source (esp-iot-solution docs/en/hw-reference/ESP32_LCDKit_guide.rst) say
+  # only that the kit "can be connected to an external display" and list the
+  # three connector types. The REFERENCE screen for J5 is named in every HMI
+  # example's "What You Need": "1 x display (2.8 inches, 240x320 pixels,
+  # ILI9341 LCD + XPT2046 Touchscreen)" — esp-iot-solution release/v1.1,
+  # examples/hmi/lvgl_example/lvgl_example_en.md (same line in lvgl_thermostat,
+  # lvgl_coffee, lvgl_wificonfig).
+  #
+  # The v1.1 driver does not trust the Kconfig choice: both adapters set
+  # .lcd_model = LCD_MOD_AUTO_DET and components/spi_devices/lcd/spi_lcd.c
+  # picks st7789_init_cmds when (lcd_id >> 8) & 0xff == 0x42, else
+  # ili_init_cmds. So an ILI9341-class 240x320 panel is the right model here,
+  # and an ST7789 module of the same size drops in on the identical pin config.
+  - name: display_lcd
+    chip: ili9341
+    type: display_lcd
+    sub_type: spi
+    version: default
+    dependencies:
+      espressif/esp_lcd_ili9341: "*"
+    config:
+      x_max: 240               # 240x320 portrait, per the reference module above
+      y_max: 320               # (was 320x240 — the "3.2 inch" claim was wrong)
+      need_reset: true
+      io_spi_config:
+        cs_gpio_num: 5
+        dc_gpio_num: 19
+        spi_mode: 0
+        pclk_hz: 20000000      # esp-iot-solution examples/common_components/
+                               # boards/esp32-lcdkit/iot_board.h:
+                               # BOARD_LCD_SPI_CLOCK_FREQ 20000000
+      lcd_panel_config:
+        reset_gpio_num: 18
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: false
+        vendor_config: NULL
+    peripherals:
+      - spi_name: spi_display
+
+  # ---------- Screen backlight (J5 pin 8, LED_1 = IO23) ----------
+  - name: lcd_brightness
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 100
+    peripherals:
+      - ledc_name: ledc_backlight
+
+  # ---------- microSD card slot J4 (SDMMC, 4-bit) ----------
+  # Schematic nets: SD_CLK = IO14, SD_CMD = IO15, SD_D0 = IO2, SD_D1 = IO4,
+  # SD_D2 = IO12, SD_D3 = IO13. IO12 is a strapping pin (MTDI / flash voltage).
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: sdmmc
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        bus_width: 4
+        pins:
+          clk: 14
+          cmd: 15
+          d0: 2
+          d1: 4
+          d2: 12
+          d3: 13

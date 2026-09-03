@@ -300,6 +300,7 @@ void app_main(void)
 | `gpio_expander` | GPIO 扩展芯片 | gpio_expander | - | i2c | [`dev_gpio_expander.yaml`](devices/dev_gpio_expander/dev_gpio_expander.yaml) | **[`test_dev_gpio_expander.c`](test_apps/main/test_dev_gpio_expander.c)**<br/>GPIO 扩展芯片测试 |
 | `camera` | 摄像头 | camera | dvp<br/>csi | i2c<br/>ldo | [`dev_camera.yaml`](devices/dev_camera/dev_camera.yaml) | **[`test_dev_camera.c`](test_apps/main/test_dev_camera.c)** <br/>测试 Camera sensor 的视频流捕获能力 |
 | `button` | 按键 | button | gpio<br/>adc_single<br/>adc_multi<br/>custom | gpio<br/>adc | [`dev_button.yaml`](devices/dev_button/dev_button.yaml) | **[`test_dev_button.c`](test_apps/main/test_dev_button.c)** <br/>按钮测试 |
+| `knob` | 正交旋钮 | knob | gpio | - | [`dev_knob.yaml`](devices/dev_knob/dev_knob.yaml) | **[`test_dev_knob.c`](test_apps/main/test_dev_knob.c)** <br/>独立旋钮事件与计数测试 |
 | `led_strip` | LED 灯带 | led_strip | rmt<br/>spi | - | [`dev_led_strip.yaml`](devices/dev_led_strip/dev_led_strip.yaml) | **[`test_dev_led_strip.c`](test_apps/main/test_dev_led_strip.c)** <br/>LED 灯带初始化和控制测试 |
 
 > 对于同一种设备，我们将不再使用接口类型来区分类型。例如，`dev_fatfs_sdcard` 和 `dev_fatfs_sdcard_spi` 将统一使用 `fs_fat` 进行管理，`dev_display_lcd_spi` 也将改为使用 `dev_display_lcd` 进行管理。

@@ -1,0 +1,5 @@
+board: m5stack_stamp_c3u
+chip: esp32c3
+version: 1.0.0
+description: "M5Stamp C3U Development Board (native USB, no UART bridge)"
+manufacturer: "M5Stack"

@@ -1,5 +1,16 @@
 # Peripherals Configuration for ESP-VoCat V1.2
 peripherals:
+  # Boot button. The schematic labels this net ESP_BOOT / GPIO0.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
   # I2C Configuration
   - name: i2c_master
     type: i2c

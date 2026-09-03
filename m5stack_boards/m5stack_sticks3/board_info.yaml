@@ -1,0 +1,5 @@
+board: m5stack_sticks3
+chip: esp32s3
+version: 1.0.0
+description: "M5StickS3 (1.14 inch 135x240 ST7789P3 LCD, ES8311 codec, BMI270 IMU, IR TX/RX)"
+manufacturer: "M5Stack"

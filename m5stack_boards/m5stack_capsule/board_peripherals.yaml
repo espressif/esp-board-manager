@@ -1,0 +1,136 @@
+# Peripherals Configuration for M5Capsule
+#
+# Source: M5Capsule official documentation (pinout tables) + schematic
+# Reference: https://docs.m5stack.com/en/core/M5Capsule
+# Schematic: Sch_M5Capsule.pdf (linked from that page). Sheet 1 is the
+#   carrier (power latch, buzzer, IR, microSD, headers); sheet 2 is the
+#   BMI270 + SPM1423. Sheet 2 also settles the IMU address: SDO is pulled to
+#   VDDIO by R7 15K, and the sheet's own note reads "SDO=VDDIO 0x69".
+#
+# Core: M5StampS3 module — ESP32-S3FN8, 8 MB in-package flash, no PSRAM.
+# This board has NO display; the enclosure is a sealed capsule with a wake
+# button, a buzzer, an IR emitter and a microSD slot.
+#
+# One internal I2C bus on GPIO8 (SDA) / GPIO10 (SCL) carries the BMI270 IMU
+# (7-bit 0x69) and the BM8563 RTC (7-bit 0x51).
+#
+# The microSD card has the SPI bus to itself (no display shares it).
+#
+peripherals:
+  # Internal I2C bus: BMI270 IMU + BM8563 RTC
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 8
+        scl: 10
+
+  # microSD card bus (SPI mode)
+  - name: spi_sdcard
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 14
+        mosi_io_num: 12
+        miso_io_num: 39
+        max_transfer_sz: 4092
+
+  # SPM1423 PDM microphone
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 40
+        din: 41
+
+  # Passive buzzer (GPIO2). A passive buzzer is driven by a PWM tone, so the
+  # LEDC channel is the peripheral; there is no bmgr buzzer device type, and
+  # ledc_ctrl models a duty percentage rather than a frequency.
+  - name: ledc_buzzer
+    type: ledc
+    config:
+      gpio_num: 2
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 4000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # Power HOLD (GPIO46): drive HIGH at boot to keep the battery latch closed;
+  # releasing it powers the board down. Sch_M5Capsule.pdf sheet 1: M1
+  # (STAMP-S3-SMD) pin 27 is G46 and its net is HOLD, which drives the gate of
+  # Q4 (LN2324DT2AG NMOS, R23 100K to GND). Q4 pulls the gate of Q3
+  # (LP3218DT1G PMOS, R15 100K to VBAT_IN) low, and Q3 is what passes
+  # VBAT_IN -> VBAT_OUT. So the latch is active-HIGH and defaults OFF. The
+  # RTC INT and the WAKE button reach the same gate through D3/D4, which is
+  # how the board turns itself back on. Corroborated by M5Unified.cpp
+  # _pin_table_other1 (POWER_HOLD): { board_M5Capsule, GPIO_NUM_46 }.
+  - name: gpio_power_hold
+    type: gpio
+    role: io
+    config:
+      pin: 46
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1        # keep the board powered
+
+  # Infrared transmit LED (GPIO4, active-high). Sch_M5Capsule.pdf sheet 1:
+  # IR1 anode on net G4, cathode through R3 22R/1% to GND.
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 4
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Wake button (GPIO42, active-low)
+  - name: gpio_button_wake
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 42
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # BOOT button on the StampS3 core (GPIO0, active-low, strapping pin)
+  - name: gpio_button_boot
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - BMI270 6-axis IMU (I2C 7-bit 0x69) and BM8563 RTC (I2C 7-bit 0x51):
+  #   no bmgr device types; the shared i2c_master above is their bus
+  # - SPM1423 PDM MEMS microphone: control-less, the pdm-in peripheral
+  #   above IS the interface
+  # - Battery voltage divider on GPIO6: a raw ADC reading, no fuel gauge
+  #   and no bmgr device type
+  # - HY2.0-4P PORT.CUSTOM (GPIO13 yellow / GPIO15 white plus 5V and GND)
+  # - Capsule Bus 18-pin header (GPIO1/3/5/7/9/13/15, WAKE, EN, Boot, UART
+  #   on GPIO43 TX / GPIO44 RX, and the 5V / 3V3 / VBAT rails)
+  # - RESET button (EN pin, handled in hardware)
+  # - The IR LED is a plain GPIO; carrier modulation is an application
+  #   concern (RMT), there is no bmgr device type for it
+  # - USB Type-C is the ESP32-S3's native USB Serial/JTAG (console path)
+  # ----------------------------------------------------------------------

@@ -18,6 +18,7 @@ idf_component_register(
         "cases/bmgr_case_custom.c"
         "cases/bmgr_case_fs.c"
         "cases/bmgr_case_gpio_expander.c"
+        "cases/bmgr_case_knob.c"
         "cases/bmgr_case_lcd.c"
         "cases/bmgr_case_led.c"
         "cases/bmgr_case_periph.c"
@@ -53,6 +54,7 @@ idf_component_register(
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:test_dev_camera_convert.c>
         $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>,$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>>:test_dev_camera_lcd.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT}>:test_dev_button.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_KNOB_SUPPORT}>:test_dev_knob.c>
 
         # Audio board manager test (conditionally included based on SD card support)
         $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>,$<BOOL:${CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT}>>:test_board_mgr_audio_sdcard.c>

@@ -1,0 +1,134 @@
+# Devices Configuration for M5StickS3
+#
+# Source: M5StickS3 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/StickS3
+#
+# Schematic: K150_Stick_S3_PRJ_V0.6_20251111.pdf (linked from that page).
+#
+# Audio: one physical ES8311 (mono codec) behind an AW8737A PA, split into
+# audio_dac / audio_adc per the dev_audio_codec model (same I2C address,
+# same I2S port). The PA's shutdown pin belongs to the PMIC, not the SoC —
+# see board_peripherals.yaml.
+#
+# The ST7789P3 panel is command-compatible with the ST7789 and is driven by
+# the esp_lcd_panel_st7789 driver built into ESP-IDF's esp_lcd component, so
+# no extra dependency is declared.
+#
+devices:
+  # ---------- Audio: ES8311 DAC (speaker via AW8737 PA) ----------
+  - name: audio_dac
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: false
+      dac_cfg:
+        ref_enable: true
+    peripherals:
+      # No pa_name: the AW8737A's SHDN is the PMIC's PYG3_SPK_Pulse, not an
+      # SoC GPIO (schematic sheet 3 "SPKER"). See board_peripherals.yaml.
+      - i2s_name: i2s_audio_out
+      - i2c_name: i2c_master
+        address: 0x30           # ES8311 7-bit 0x18 << 1
+        frequency: 400000
+
+  # ---------- Audio: ES8311 ADC (on-board microphone) ----------
+  - name: audio_adc
+    chip: es8311
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+      sys_cfg:
+        no_mclk: false
+      adc_cfg:
+        label: [FC, RE]
+    peripherals:
+      - i2s_name: i2s_audio_in
+      - i2c_name: i2c_master
+        address: 0x30
+        frequency: 400000
+
+  # ---------- 1.14" 135x240 IPS LCD (ST7789P3, SPI) ----------
+  # The visible window is offset inside the controller's 240x320 GRAM
+  # (column +52, row +40). bmgr's display model has no offset field; the
+  # application applies it via the panel gap API.
+  - name: display_lcd
+    chip: st7789
+    type: display_lcd
+    sub_type: spi
+    version: default
+    config:
+      swap_xy: false
+      mirror_x: false
+      mirror_y: false
+      x_max: 135
+      y_max: 240
+      invert_color: true              # ST7789-class panel on M5Stack needs inversion
+      need_reset: true
+      io_spi_config:
+        cs_gpio_num: 41                 # schematic sheet 3 LCD_BTB: G41_LCD_CS
+        dc_gpio_num: 45                 # G45_LCD_RS
+        spi_mode: 0
+        pclk_hz: 40000000
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+      lcd_panel_config:
+        reset_gpio_num: 21              # G21_LCD_RST
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: false
+        vendor_config: NULL
+    peripherals:
+      - spi_name: spi_display
+
+  # ---------- LCD backlight (GPIO38 via LEDC) ----------
+  - name: lcd_brightness
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 100
+    peripherals:
+      - ledc_name: ledc_backlight
+
+  # ---------- Infrared transmit LED (GPIO46) ----------
+  - name: ir_tx
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_ir_tx
+
+  # ---------- KEY1, front button (GPIO11, active-low) ----------
+  - name: button_key1
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_key1
+
+  # ---------- KEY2, side button (GPIO12, active-low) ----------
+  - name: button_key2
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_key2

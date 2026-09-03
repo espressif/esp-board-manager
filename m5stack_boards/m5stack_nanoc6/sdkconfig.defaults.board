@@ -1,0 +1,13 @@
+# M5NanoC6 — ESP32-C6FH4, 4 MB in-package flash, no PSRAM
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+# In-package flash is QUAD-wired: ESP32-C6 Series Datasheet v1.5, Table 1-1
+# ("ESP32-C6FH4 | 4 MB (Quad SPI)"); Section 2.6 notes the flash pins "are
+# not routed out" on the QFN32 variants and Table 2-16 lists the four data
+# lines. 80 MHz is the datasheet default (Table 1-1 fn 5, Table 5-12 FC).
+# https://documentation.espressif.com/esp32-c6_datasheet_en.pdf
+# NB: QIO/DIO itself is an ESP-IDF setting, never stated in a datasheet.
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# No USB-to-UART bridge on board: console over the native USB Serial/JTAG
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

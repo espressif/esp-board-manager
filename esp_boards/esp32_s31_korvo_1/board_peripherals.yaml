@@ -10,6 +10,19 @@ peripherals:
         sda: 0
         scl: 1
 
+  # Boot button. The official schematic labels the button net BOOT_IO61.
+  # GPIO61 is also routed to the optional LCD_SCK connector pin; the current
+  # RGB LCD configuration does not consume that SPI clock.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 61
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
   # ES8389 audio output path. Schematic nets:
   # I2S_MCLK=GPIO2, I2S_SCLK=GPIO3, I2S_LRCK=GPIO4, I2S_DSDIN=GPIO5.
   - name: i2s_audio_out

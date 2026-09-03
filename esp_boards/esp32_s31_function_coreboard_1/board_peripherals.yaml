@@ -23,6 +23,17 @@
 #   IO52 -> ESP_I2C_SCL  [TO_BE_CONFIRMED]
 #
 peripherals:
+  # BOOT button (GPIO61, active-low, strapping input).
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 61
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
   # ES8311 control bus. Schematic nets: ESP_I2C_SDA, ESP_I2C_SCL.
   - name: i2c_master
     type: i2c
@@ -87,5 +98,5 @@ peripherals:
   # - Ethernet (YT8531DC-CA + RGMII): bmgr currently has no eth device template
   # - USB Host (USB2.0 Type-A on USB1P1_DP/DN), USB Serial/JTAG, USB-UART
   # - SDIO header pins on J1 (SD_D0..3, SD_CLK, SD_CMD) - no SD socket on board
-  # - BOOT button on GPIO61 (handled by ROM bootloader; add as button device if needed)
+  # - BOOT button on GPIO61 is declared above; ROM also uses it for download mode.
   # ----------------------------------------------------------------------

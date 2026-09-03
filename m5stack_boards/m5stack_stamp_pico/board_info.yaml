@@ -1,0 +1,5 @@
+board: m5stack_stamp_pico
+chip: esp32
+version: 1.0.0
+description: "M5Stamp Pico Development Board"
+manufacturer: "M5Stack"

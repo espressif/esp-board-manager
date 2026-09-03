@@ -3,12 +3,16 @@ i2c
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _i2c-intro:
+
 Overview
 --------
 
 The ``i2c`` peripheral describes an ESP-IDF I2C master bus. BMGR converts an ``i2c`` entry in ``board_peripherals.yaml`` into an ``i2c_master_bus_config_t`` and creates an I2C master bus handle during initialization.
 
 ``i2c`` is commonly used for external audio codec control, LCD touch controllers, IO expanders, and camera SCCB control. Device-side entries reference the same I2C bus by peripheral instance name, and device-private parameters such as device addresses are filled in the device ``peripherals`` reference entry.
+
+.. _i2c-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -18,6 +22,8 @@ Supported Operating Modes
 - :ref:`HP I2C master <i2c-hp-master>`
 - :ref:`LP I2C master <i2c-lp-master>`
 
+.. _i2c-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -25,6 +31,8 @@ Minimal Configuration
 
 HP I2C Master
 ^^^^^^^^^^^^^
+
+See complete fields: :ref:`i2c-full`.
 
 ``board_peripherals.yaml``:
 
@@ -44,6 +52,8 @@ HP I2C Master
 LP I2C Master
 ^^^^^^^^^^^^^
 
+See complete fields: :ref:`i2c-full`.
+
 ``board_peripherals.yaml``:
 
 .. code-block:: yaml
@@ -58,6 +68,8 @@ LP I2C Master
             sda: 6      # [IO]
             scl: 7      # [IO]
 
+.. _i2c-mode-notes:
+
 Mode Description
 ----------------
 
@@ -67,8 +79,12 @@ LP I2C requires explicit use of port macros such as ``LP_I2C_NUM_0`` and ``LP_I2
 
 I2C device addresses are not written into the peripheral ``config``: audio codecs use ``address``, and LCD touch controllers and IO expanders use ``i2c_addr``. These fields belong to device-side reference entries.
 
+.. _i2c-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _i2c-full:
 
 HP I2C Master — Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,6 +131,8 @@ HP I2C Master — Full Fields
         # Interrupt priority (default: 1)
         intr_priority: 1
 
+.. _i2c-devices:
+
 Applicable Devices
 ------------------
 
@@ -137,6 +155,8 @@ Applicable Devices
      - DVP / SPI cameras can reference ``i2c`` as the SCCB control bus
      - Camera data bus or SPI data lines are not written into the ``i2c`` peripheral
 
+.. _i2c-code:
+
 Reference Code
 --------------
 
@@ -145,12 +165,16 @@ Reference Code
 - ``esp_board_manager/examples/play_embed_music/main/play_embed_music.c``
 - ``esp_board_manager/examples/record_to_sdcard/main/record_to_sdcard.c``
 
+.. _i2c-boards:
+
 Board-Level Reference
 ---------------------
 
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_peripherals.yaml``: I2C control bus used by the audio codec.
 - ``esp_boards/esp32_s3_lcd_ev_board/board_peripherals.yaml``: shared I2C bus for audio, touch, and IO expander.
 - ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``: I2C bus used by audio, touch, and multiple IO expanders.
+
+.. _i2c-notes:
 
 Notes
 -----
@@ -160,8 +184,12 @@ Notes
 - Device address, I2C transfer frequency, touch control parameters, and codec control parameters belong to device-side configuration and must not be written into the ``i2c`` peripheral ``config``.
 - After modifying the I2C peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _i2c-debug:
+
 Debugging Tips
 --------------
+
+.. _i2c-api:
 
 API Reference
 -------------

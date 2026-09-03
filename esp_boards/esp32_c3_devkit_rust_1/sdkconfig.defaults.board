@@ -1,0 +1,3 @@
+# ESP32-C3-DevKit-RUST-1 — ESP32-C3-MINI-1 module,
+# 4 MB in-package flash, no PSRAM
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

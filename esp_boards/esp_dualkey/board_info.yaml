@@ -1,0 +1,5 @@
+board: esp_dualkey
+chip: esp32s3
+version: 1.0.0
+description: "ESP-DualKey (two-key ESP32-S3 macro key with WS2812 backlight and Li-ion battery)"
+manufacturer: "ESPRESSIF"

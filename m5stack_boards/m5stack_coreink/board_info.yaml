@@ -1,0 +1,5 @@
+board: m5stack_coreink
+chip: esp32
+version: 1.0.0
+description: "M5Stack CoreInk (1.54 inch 200x200 GDEW0154M09 e-ink, dial switch, user button, buzzer, BM8563 RTC)"
+manufacturer: "M5Stack"

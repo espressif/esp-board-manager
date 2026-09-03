@@ -41,9 +41,6 @@ static esp_lcd_touch_handle_t tp = NULL;
 #endif  /* CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT */
 static lv_display_t *disp = NULL;
 static lv_indev_t *touch_indev = NULL;
-#ifdef CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT
-static periph_ledc_handle_t *ledc_handle = NULL;
-#endif  /* CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT */
 
 static esp_err_t lcd_lvgl_port_init(void)
 {
@@ -73,9 +70,8 @@ static esp_err_t lcd_backlight_set(int brightness_percent)
     }
 
     ESP_LOGI(TAG, "Setting LCD backlight: %d%%,", brightness_percent);
-    if (ledc_handle == NULL) {
-        ESP_BOARD_RETURN_ON_ERROR(esp_board_manager_get_device_handle(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle), TAG, "Get LEDC control device handle failed");
-    }
+    periph_ledc_handle_t *ledc_handle = NULL;
+    ESP_BOARD_RETURN_ON_ERROR(esp_board_manager_get_device_handle(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void **)&ledc_handle), TAG, "Get LEDC control device handle failed");
     dev_ledc_ctrl_config_t *dev_ledc_cfg = NULL;
     esp_err_t config_ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_LCD_BRIGHTNESS, (void *)&dev_ledc_cfg);
     if (config_ret != ESP_OK) {

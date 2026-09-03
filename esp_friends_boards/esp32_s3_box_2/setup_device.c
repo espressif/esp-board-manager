@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
@@ -8,13 +8,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
-#include "esp_io_expander_tca95xx_16bit.h"
-#include "esp_lcd_panel_st7789.h"
+#include "esp_err.h"
+#include "esp_lcd_panel_io.h"
 #include "dev_display_lcd.h"
 #include "dev_button.h"
 #include "esp_board_extra_func_entry.h"
 #include "button_interface.h"
 #include "esp_board_device.h"
+
+#if __has_include(<esp_io_expander_tca95xx_16bit.h>)
+#define HAS_TCA95XX_16BIT  1
+#include "esp_io_expander_tca95xx_16bit.h"
+#endif  /* __has_include(<esp_io_expander_tca95xx_16bit.h>) */
+
+#if __has_include(<esp_lcd_panel_st7789.h>)
+#define HAS_ST7789  1
+#include "esp_lcd_panel_st7789.h"
+#endif  /* __has_include(<esp_lcd_panel_st7789.h>) */
 
 #define XIO_KEY_L  5
 #define XIO_KEY_M  7
@@ -27,7 +37,8 @@ typedef struct {
 } custom_button_driver_t;
 static const char *TAG = "ESP32S3_BOX2_SETUP_DEVICE";
 
-esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle, const uint16_t dev_addr, esp_io_expander_handle_t *handle_ret)
+#if defined(HAS_TCA95XX_16BIT)
+__attribute__((weak)) esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle, const uint16_t dev_addr, esp_io_expander_handle_t *handle_ret)
 {
     esp_err_t ret = esp_io_expander_new_i2c_tca95xx_16bit(i2c_handle, dev_addr, handle_ret);
     // printf("handle_ret->io_count: %d\n", (*handle_ret)->config.io_count);
@@ -37,8 +48,10 @@ esp_err_t io_expander_factory_entry_t(i2c_master_bus_handle_t i2c_handle, const 
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_TCA95XX_16BIT) */
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
+#if defined(HAS_ST7789)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
 {
     esp_lcd_panel_dev_config_t panel_dev_cfg = {0};
     memcpy(&panel_dev_cfg, panel_dev_config, sizeof(esp_lcd_panel_dev_config_t));
@@ -71,7 +84,9 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_ST7789) */
 
+#if defined(HAS_TCA95XX_16BIT)
 static uint8_t custom_button_get_level(button_driver_t *driver)
 {
     custom_button_driver_t *custom = (custom_button_driver_t *)driver;
@@ -138,3 +153,4 @@ static button_driver_t *button_m_create(const dev_button_config_t *config)
 
 DEVICE_EXTRA_FUNC_REGISTER(button_l, button_l_create);
 DEVICE_EXTRA_FUNC_REGISTER(button_m, button_m_create);
+#endif  /* HAS_TCA95XX_16BIT */

@@ -1,0 +1,109 @@
+# Peripherals Configuration for M5Stack Tough
+#
+# Source: M5Stack Tough official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/tough
+#
+# Module: ESP32-D0WDQ6-V3, 16 MB SPI flash, 8 MB quad PSRAM.
+#
+# The Tough is a sealed, UV-resistant industrial variant of the Core2: same
+# SPI/I2C/I2S wiring, but no mechanical buttons, a different touch
+# controller (CHSC6540 instead of FT6336U), an AXP192 PMU instead of the
+# AXP2101, and a 6-24 V RS485 port in place of the M5GO base ports.
+#
+# One SPI bus (VSPI / SPI3_HOST) is shared by the ILI9342C LCD (CS GPIO5)
+# and the microSD card (CS GPIO4). GPIO38 is input-only, which is fine for
+# MISO but means the bus cannot be reversed.
+#
+# Internal I2C0 on GPIO21 (SDA) / GPIO22 (SCL) carries: AXP192 PMU
+# (7-bit 0x34), BM8563 RTC (0x51) and the CHSC6540 touch panel (0x2E).
+#
+# As on the Core2, much of the board hangs off the PMU rather than a SoC
+# pin: LCD reset (AXP_IO4), LCD power (LDO2), backlight (DC3), touch reset
+# (AXP_IO4) and the speaker enable (AXP_IO2) are all PMU outputs, so they
+# appear in no peripheral below.
+#
+peripherals:
+  # Internal I2C bus: AXP192 PMU, BM8563 RTC, CHSC6540 touch
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # Shared SPI bus: ILI9342C LCD + microSD card
+  - name: spi_master
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST     # VSPI
+        sclk_io_num: 18
+        mosi_io_num: 23
+        miso_io_num: 38         # input-only GPIO; MISO only
+        max_transfer_sz: 15360  # 320 * 24 lines * 2 bytes
+
+  # NS4168 I2S class-D amplifier (playback). No MCLK: the NS4168 derives
+  # its clock from BCLK. The amplifier enable line is an AXP192 output.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_LEFT
+      ws_width: 16
+      pins:
+        mclk: -1
+        bclk: 12
+        ws:   0
+        dout: 2
+        din:  -1
+
+  # RS485 port (6-24 V industrial bus) on the auto-direction transceiver.
+  - name: uart_2
+    type: uart
+    config:
+      uart_num: 2
+      rx_buffer_size: 256
+      tx_buffer_size: 256
+      tx_io_num: 19
+      rx_io_num: 27
+      rts_io_num: -1            # transceiver switches direction automatically
+      cts_io_num: -1
+      uart_mode: UART_MODE_RS485_HALF_DUPLEX
+      uart_config:
+        baud_rate: 115200       # application choice, not a board fact: the RS-485
+                                # bus rate is set by whatever is on the bus
+        data_bits: UART_DATA_8_BITS
+        parity: UART_PARITY_DISABLE
+        stop_bits: UART_STOP_BITS_1
+        flow_ctrl: UART_HW_FLOWCTRL_DISABLE
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - CHSC6540 capacitive touch controller (I2C 7-bit 0x2E on i2c_master,
+  #   INT GPIO39, reset on AXP_IO4): there is no esp_lcd_touch driver
+  #   component for the CHSC6540, so no lcd_touch device is declared — the
+  #   shared i2c_master above plus the INT pin are the whole interface
+  # - AXP192 power management IC (I2C 7-bit 0x34 on i2c_master): no bmgr
+  #   device type. It owns LCD reset (AXP_IO4), LCD power (LDO2), backlight
+  #   (DC3), touch reset (AXP_IO4) and the speaker enable (AXP_IO2) — none
+  #   of those are SoC pins, so there is no ledc_ctrl backlight device here
+  # - BM8563 RTC (I2C 7-bit 0x51): no bmgr device type
+  # - NS4168 I2S class-D amplifier: control-less (no I2C register set, and
+  #   its enable line is a PMU rail), so there is no audio_codec device —
+  #   the i2s_audio_out peripheral above IS the interface
+  # - Analog microphone input on GPIO34 (ADC1_CH6): no bmgr device type
+  # - No mechanical buttons: the sealed case exposes only the touch panel
+  # - PORT A (GPIO32/33), PORT B (GPIO26/36), PORT C (GPIO14/13) HY2.0-4P
+  #   connectors and the M5-BUS stacking header
+  # - CH9102 USB-to-UART bridge on GPIO1/GPIO3
+  # ----------------------------------------------------------------------

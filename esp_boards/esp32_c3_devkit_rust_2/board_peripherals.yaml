@@ -1,0 +1,96 @@
+# Peripherals Configuration for ESP32-C3-DevKit-RUST-2
+#
+# Source: ESP32-C3-DevKit-RUST-2 SCHEMATIC, rev 2.0, dated 2025-10-28
+# Reference: https://dl.espressif.com/public/esp32-c3-devkit-rust-2-schematic.pdf
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkit-rust-2/user_guide.html
+#
+# Module: ESP32-C3-MINI-1, 4 MB in-package flash (Quad SPI), no PSRAM.
+# Powered over USB-C (native USB Serial/JTAG, no bridge chip) or from a
+# single-cell LiPo on the BAT/GND header pins.
+#
+# ----------------------------------------------------------------------
+# DO NOT TRUST THE RUST-2 USER GUIDE FOR PIN FACTS. It carries stale RUST-1
+# text in three places, and the combination reads as a pin collision:
+#   - "I2C Signal Mapping: SDA -> GPIO10, SCL -> GPIO8"   (RUST-1 values)
+#   - Left Header row 12: "IO7 | GPIO7, MTDO, LED"        (RUST-1 value)
+#   - "Peripherals Connected to GPIOs: ... LED -> GPIO7"  (RUST-1 value)
+# The same guide contradicts itself correctly elsewhere: its components table
+# says "User LED ... connected to GPIO10", and its revision list says "Changed
+# the GPIO for the user LED from GPIO7 to GPIO10". The schematic settles it.
+#
+# What actually happened between RUST-1 (rev 1.2a) and RUST-2 (rev 2.0) is a
+# SWAP, which is why half-updated docs look like two owners for GPIO10:
+#            RUST-1        RUST-2
+#   SDA      GPIO10        GPIO7     (schematic net renamed IO10_SDA ->
+#   SCL      GPIO8         GPIO8      IO7_SDA; the revision list hides it as
+#   user LED GPIO7         GPIO10     "changes on the traces on the I2C bus
+#                                      for better signal integrity")
+# Treat RUST-1 and RUST-2 as two different boards, not one with a revision
+# field: SDA and the user LED both move, and the right header changes from an
+# I2C breakout to N/C.
+#
+# One stale annotation in the SCHEMATIC too: the caption beside the LED block
+# still reads "LED / Regular on GPIO7 / Addressable on GPIO2", copied from
+# RUST-1. The drawn netlist (GPIO10) is the fact; the caption is not.
+# ----------------------------------------------------------------------
+#
+# On-board sensors sit on one I2C bus (SDA GPIO7 / SCL GPIO8 — schematic nets
+# IO7_SDA and IO8_SCL, each with a 10 k pull-up to +3V3: R18 on SDA, R17 on
+# SCL): the ICM-42670-P IMU (7-bit 0x68, AP_CS strapped to +3V3 through R7 so
+# it comes up in I2C mode) and the SHTC3 temperature/humidity sensor (7-bit
+# 0x70). Both addresses are annotated on the schematic sheet itself.
+# The WS2812 data pin (GPIO2) belongs to the led_strip device, so it is not
+# declared here.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - ICM-42670-P 6-axis IMU, I2C 7-bit 0x68 — no bmgr device type; the
+#   i2c_master peripheral below is its bus. Its INT2 goes to test point TP2
+#   (IMU_INT2); INT1 is not connected.
+# - SHTC3 temperature/humidity sensor, I2C 7-bit 0x70 — same
+# - RST button (SW1 on CHIP_PU to GND — chip reset, hardware path, not a GPIO)
+# - USB Type-C: native USB Serial/JTAG on GPIO18/GPIO19 (ROM/console)
+# - MCP73831T-2ACI/OT Li-ion charger and its D3 status LED on the charger's
+#   STAT pin — not GPIO controlled, and a different part from the D2 user LED
+# - GPIO10 reaches NO header on RUST-2. Right-header pins 17/18 are marked
+#   no-connect on the schematic's board-connector symbol (their pin NAMES are
+#   stale RUST-1 labels), and the user guide's Right Header table agrees —
+#   pins 11 and 12 are "N/C - Not connected." GPIO7 and GPIO8 come out on
+#   left-header pins 12 and 13 instead.
+# ----------------------------------------------------------------------
+peripherals:
+  # Shared sensor bus (ICM-42670-P IMU, SHTC3).
+  # SDA GPIO7 / SCL GPIO8 — schematic nets IO7_SDA (module pin 21) and
+  # IO8_SCL (module pin 22). NOT GPIO10; see the header note above.
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 7
+        scl: 8
+
+  # User LED (GPIO10, active-high).
+  # Schematic: IO10 -> R10 470R 1% -> D2 anode; D2 cathode -> GND
+  # ("Red LED 0603"). The anode faces the GPIO, so drive 1 to light.
+  - name: gpio_user_led
+    type: gpio
+    role: io
+    config:
+      pin: 10
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # BOOT button (GPIO9, active-low, strapping pin — input only at runtime).
+  # Schematic "Buttons (Reset & Boot)": net IO9_BOOT, R19 10 k pull-up to
+  # +3V3, SW2 to GND. (C14 1 nF is marked "Do not populate!".)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

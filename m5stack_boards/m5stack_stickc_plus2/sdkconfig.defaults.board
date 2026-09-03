@@ -1,0 +1,20 @@
+# M5StickC PLUS2 — ESP32-PICO-V3-02: 8 MB in-package flash, 2 MB quad PSRAM
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+# ESP32-PICO Series Datasheet v1.3, Table 1:
+#   "ESP32-PICO-V3-02 | 8 MB (Quad SPI) | 2 MB (Quad SPI)"
+# — flash and PSRAM are both QUAD-wired, which is what CONFIG_SPIRAM_MODE_QUAD
+# below rests on. Table 5 shows only four SiP pins are spent (FLASH_CLK=IO6,
+# FLASH_CS=IO11, PSRAM_CS=IO9, PSRAM_CLK=IO10); the data lines never leave the
+# package. 80 MHz for both is published by the module that embeds this SiP —
+# ESP32-PICO-MINI-02 Datasheet v1.7, Table 18 (flash FC 80 MHz) and Table 19
+# (PSRAM FC 80 MHz); the SiP datasheet itself carries no timing table.
+# https://documentation.espressif.com/esp32-pico-v3-02_datasheet_en.pdf
+# https://documentation.espressif.com/esp32-pico-mini-02_datasheet_en.pdf
+# DIO is kept deliberately: QIO/DIO is an ESP-IDF setting, never stated in a
+# datasheet. The quad wiring permits QIO; raising it needs a real flash test.
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_80M=y

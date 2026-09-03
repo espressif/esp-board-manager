@@ -1,0 +1,5 @@
+board: esp_thread_border_router
+chip: esp32s3
+version: 1.0.0
+description: "ESP Thread Border Router Board (ESP32-S3-WROOM-1 host + ESP32-H2-MINI-1 RCP)"
+manufacturer: "ESPRESSIF"

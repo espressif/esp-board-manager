@@ -180,7 +180,7 @@ If the project must use an older Board Manager release, add the board component 
 
 **Version Relationship**
 
-- ``esp_boards 0.6.0``, ``esp_friends_boards 0.6.0``, and ``m5stack_boards 0.6.0`` require ``esp_board_manager >=0.7.1``.
+- ``esp_boards 0.6.0``, ``esp_friends_boards 0.6.0``, and ``m5stack_boards 0.6.0`` and later require ``esp_board_manager >=0.7.1``.
 - ``esp_boards 0.5.4``, ``esp_friends_boards 0.5.3``, and ``m5stack_boards 0.5.4`` require ``esp_board_manager >=0.7.0``.
 
 Runtime Phase

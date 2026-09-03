@@ -1,0 +1,16 @@
+# M5Capsule — M5StampS3 core (ESP32-S3FN8): 8 MB in-package flash, no PSRAM
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+# In-package flash is QUAD-wired: ESP32-S3 Series Datasheet v2.2, Table 1-1
+# ("ESP32-S3FN8 | 8 MB (Quad SPI)"); Section 2.6 / Table 2-14 map the six
+# quad lines (SPICLK/SPICS0/SPID/SPIQ/SPIWP/SPIHD) and warn "Do not use the
+# pins connected to in-package flash/PSRAM for any other purposes."
+# 80 MHz is the datasheet default, Table 1-1 footnote 2: "By default, the SPI
+# flash on the chip operates at a maximum clock frequency of 80 MHz and does
+# not support the auto suspend feature."  (Table 5-11 repeats FC = 80 MHz.)
+# https://documentation.espressif.com/esp32-s3_datasheet_en.pdf
+# NB: QIO/DIO itself is an ESP-IDF setting; no Espressif datasheet states it.
+# What is published, and what this line rests on, is the quad wiring.
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

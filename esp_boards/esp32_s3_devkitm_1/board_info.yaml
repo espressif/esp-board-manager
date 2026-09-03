@@ -1,0 +1,5 @@
+board: esp32_s3_devkitm_1
+chip: esp32s3
+version: 1.0.0
+description: "ESP32-S3-DevKitM-1"
+manufacturer: "ESPRESSIF"

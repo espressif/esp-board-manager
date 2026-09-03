@@ -3,12 +3,16 @@ mcpwm
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _mcpwm-intro:
+
 Overview
 --------
 
 The ``mcpwm`` peripheral type is used to describe a group of MCPWM timer, operator, comparator, and generator resources. BMGR creates MCPWM resources based on this configuration and returns a ``periph_mcpwm_handle_t``.
 
 This peripheral only creates the basic MCPWM resources. Generator event actions and comparator duty cycles are not set during peripheral initialization; they must be further configured by the device or application code using the handle.
+
+.. _mcpwm-working-modes:
 
 Supported Operating Modes
 --------------------------
@@ -17,11 +21,18 @@ Supported Operating Modes
 
 - `MCPWM Resource Group`_
 
+.. _mcpwm-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _mcpwm-group:
+
 MCPWM Resource Group
 ^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`mcpwm-group-idf5`.
+See complete fields: :ref:`mcpwm-group-idf6`.
 
 ``board_peripherals.yaml``:
 
@@ -67,6 +78,8 @@ MCPWM Resource Group
               pull_up: false
               pull_down: false
 
+.. _mcpwm-mode-notes:
+
 Mode Notes
 ----------
 
@@ -74,8 +87,12 @@ The ``group_id`` in ``timer_config`` and ``operator_config`` should point to the
 
 The MCPWM templates for IDF 5 and IDF 6 are mostly identical, with a difference in ``generator_config.flags``: the IDF 5 template includes ``io_loop_back``, while the IDF 6 template does not include this field.
 
+.. _mcpwm-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _mcpwm-group-idf5:
 
 IDF 5 MCPWM Resource Group Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,6 +239,8 @@ IDF 5 MCPWM Resource Group Full Fields
             # Whether to pull down internally (default: false)
             pull_down: false
 
+.. _mcpwm-group-idf6:
+
 IDF 6 MCPWM Resource Group Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -364,6 +383,8 @@ IDF 6 MCPWM Resource Group Full Fields
             # Whether to pull down internally (default: false)
             pull_down: false
 
+.. _mcpwm-devices:
+
 Applicable Devices
 ------------------
 
@@ -377,6 +398,8 @@ Applicable Devices
      - The device side can reference a defined ``mcpwm`` peripheral
      - Waveform actions, duty cycle updates, and motor control logic are handled by the custom device or application code
 
+.. _mcpwm-code:
+
 Reference Code
 --------------
 
@@ -384,10 +407,14 @@ Reference Code
 - ``esp_board_manager/peripherals/periph_mcpwm/idf6/periph_mcpwm.c``
 - ``esp_board_manager/test_apps/main/periph/test_periph_mcpwm.c``
 
+.. _mcpwm-boards:
+
 Board Examples
 --------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_peripherals.yaml``: Defines the ``mcpwm_group_0`` test peripheral.
+
+.. _mcpwm-notes:
 
 Notes
 -----
@@ -397,8 +424,12 @@ Notes
 - ``periph_mcpwm_init`` only creates the timer, operator, comparator, and generator; it does not set generator event actions or comparator duty cycles.
 - After modifying MCPWM peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _mcpwm-debug:
+
 Debugging Tips
 --------------
+
+.. _mcpwm-api:
 
 API Reference
 -------------

@@ -1,0 +1,5 @@
+board: m5stack_dinmeter
+chip: esp32s3
+version: 1.0.0
+description: "M5Stack Din Meter (1.14 inch 135x240 ST7789V2 LCD, rotary encoder, buzzer, DIN rail)"
+manufacturer: "M5Stack"

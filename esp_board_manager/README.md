@@ -302,6 +302,7 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 | `gpio_expander` | GPIO expander chip | gpio_expander | - | i2c | [`dev_gpio_expander`](devices/dev_gpio_expander/dev_gpio_expander.yaml) | **[`test_dev_gpio_expander.c`](test_apps/main/test_dev_gpio_expander.c)**<br/>GPIO expander chip testing |
 | `camera` | Camera | camera | dvp<br/>csi | i2c<br/>ldo | [`dev_camera`](devices/dev_camera/dev_camera.yaml) | **[`test_dev_camera.c`](test_apps/main/test_dev_camera.c)** <br/>Testing Camera sensor's video stream capture capability |
 | `button` | Button | button | gpio<br/>adc_single<br/>adc_multi<br/>custom | gpio<br/>adc | [`dev_button`](devices/dev_button/dev_button.yaml) | **[`test_dev_button.c`](test_apps/main/test_dev_button.c)** <br/>Button testing |
+| `knob` | Quadrature knob | knob | gpio | - | [`dev_knob`](devices/dev_knob/dev_knob.yaml) | **[`test_dev_knob.c`](test_apps/main/test_dev_knob.c)** <br/>Standalone knob event and count testing |
 | `led_strip` | LED strip | led_strip | rmt<br/>spi | - | [`dev_led_strip`](devices/dev_led_strip/dev_led_strip.yaml) | **[`test_dev_led_strip.c`](test_apps/main/test_dev_led_strip.c)** <br/>LED strip initialization and control testing |
 
 > For the same device, we will no longer distinguish types by interface. For example, `dev_fatfs_sdcard` and `dev_fatfs_sdcard_spi` will be unified under `fs_fat` for management, and `dev_display_lcd_spi` will also be changed to use `dev_display_lcd` for management.

@@ -1,0 +1,34 @@
+# Peripherals Configuration for M5Stamp S3
+#
+# Source: M5Stamp S3 documentation
+# Reference: https://docs.m5stack.com/en/core/StampS3
+#
+# Module: ESP32-S3FN8 (8 MB in-package flash, no PSRAM).
+# On-board hardware is minimal: a WS2812B-2020 RGB LED on GPIO21 (owned by
+# the led_strip device, so not declared here) and the user/BOOT button on
+# GPIO0. The USB Type-C port is wired to the S3's native USB on GPIO19
+# (D-) / GPIO20 (D+), so there is no UART bridge and the console lives on
+# USB Serial/JTAG.
+#
+peripherals:
+  # User / BOOT button (GPIO0, active-low, strapping pin — holding it at
+  # reset enters download mode). GPIO0 has a usable internal pull-up.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Native USB (OTG / Serial-JTAG) on GPIO19 / GPIO20: console path
+  # - Castellated / header pads GPIO1..GPIO15, GPIO39..GPIO44, GPIO46
+  #   (GPIO46 is pulled down on the module and is a strapping pin)
+  # - The 8-pin / 12-pin FPC footprints for an SPI TFT are user-wired
+  #   expansion, not an on-board device
+  # - RESET button (EN pin, handled in hardware)
+  # ----------------------------------------------------------------------

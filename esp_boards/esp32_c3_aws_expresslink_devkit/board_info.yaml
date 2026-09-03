@@ -1,0 +1,5 @@
+board: esp32_c3_aws_expresslink_devkit
+chip: esp32c3
+version: 1.0.0
+description: "ESP32-C3-AWS-ExpressLink-DevKit"
+manufacturer: "ESPRESSIF"

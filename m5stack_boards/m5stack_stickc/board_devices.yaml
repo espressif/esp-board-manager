@@ -1,0 +1,56 @@
+# Devices Configuration for M5StickC
+#
+# Source: M5StickC official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/m5stickc
+#
+# The ST7735S panel has no esp_lcd driver component, so it is intentionally
+# absent here — see the "Not modeled" section of board_peripherals.yaml.
+#
+devices:
+  # ---------- Red status LED (GPIO10, active-low) ----------
+  - name: status_led
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_status_led
+
+  # ---------- Infrared transmit LED (GPIO9) ----------
+  - name: ir_tx
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_ir_tx
+
+  # ---------- Button A (front, active-low) ----------
+  - name: button_a
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true        # GPIO37 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_a
+
+  # ---------- Button B (side, active-low) ----------
+  - name: button_b
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true        # GPIO39 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_b

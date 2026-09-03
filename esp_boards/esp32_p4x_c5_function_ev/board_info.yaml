@@ -1,0 +1,5 @@
+board: esp32_p4x_c5_function_ev
+chip: esp32p4
+version: 1.0.0
+description: "ESP32-P4X-C5-Function-EV-Board (ESP32-P4 with ESP32-C5-MINI-1 dual-band companion, 1024x600 MIPI-DSI touch panel, MIPI-CSI camera)"
+manufacturer: "ESPRESSIF"

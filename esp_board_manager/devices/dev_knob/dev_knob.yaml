@@ -1,0 +1,10 @@
+# Knob device configuration example
+- name: knob
+  type: knob
+  sub_type: gpio
+  config:
+    gpio_encoder_a: 41       # [TO_BE_CONFIRMED] Encoder phase A GPIO
+    gpio_encoder_b: 40       # [TO_BE_CONFIRMED] Encoder phase B GPIO
+    default_direction: 0     # 0: positive count for the default direction; 1: negative
+    enable_power_save: false # Enable the upstream knob driver's power-save path
+    use_rtc: false           # Use RTC GPIO HAL; both encoder GPIOs must be RTC-capable

@@ -12,9 +12,14 @@
 #include "esp_err.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
 
+#if __has_include(<esp_lcd_panel_vendor.h>)
+#define HAS_ST7789  1
+#include "esp_lcd_panel_vendor.h"
+#endif  /* __has_include(<esp_lcd_panel_vendor.h>) */
+
+#if defined(HAS_ST7789)
 static const char *TAG = "P4_EYE_SETUP_DEVICE";
 
 typedef struct {
@@ -46,7 +51,7 @@ static const st7789_lcd_init_cmd_t vendor_specific_init[] = {
     {0x2C, (uint8_t[]) {0x00}, 1, 0},
 };
 
-esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
+__attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)
 {
     esp_err_t ret = esp_lcd_new_panel_st7789(io, panel_dev_config, ret_panel);
     if (ret != ESP_OK) {
@@ -68,3 +73,4 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_
     }
     return ESP_OK;
 }
+#endif  /* defined(HAS_ST7789) */

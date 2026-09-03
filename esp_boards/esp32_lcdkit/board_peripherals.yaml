@@ -1,0 +1,81 @@
+# Peripherals Configuration for ESP32-LCDKit
+#
+# Source: ESP32-LCDKit schematic SCH_ESP32-LCDKit_V1.1_20190218
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-lcdkit/user_guide.html
+# Reference: https://dl.espressif.com/dl/schematics/SCH_ESP32-LCDKit_V1.1_20190218.pdf
+# Reference: https://github.com/espressif/esp-iot-solution/blob/master/examples/common_components/boards/esp32-lcdkit/iot_board.h
+#
+# ESP32-LCDKit is a CARRIER board: it has no MCU of its own. An ESP32-DevKitC
+# is seated in the J1/J2 (and mirrored J9/J10) socket rows, so every pin below
+# is an ESP32-DevKitC GPIO routed to a connector on this board.
+#
+# The board has THREE mutually exclusive screen wirings, selected by which 0R
+# resistors are stuffed (schematic notes 1-3):
+#   - serial (SPI) screen on J5   -> R84~R92 + R67~R74 stuffed, R10~R21/J13~J20 NC
+#   - 8-line parallel screen J3   -> R10~R21 + R67~R74 stuffed
+#   - 16-line parallel screen J3  -> R10~R21 + J13~J20 stuffed; SD card and DAC
+#                                    audio are then UNAVAILABLE
+# This definition models the SERIAL (SPI) configuration, which is the one that
+# keeps the microSD slot and the DAC audio path usable.
+#
+peripherals:
+  # Serial screen connector J5 (HSPI). Schematic nets:
+  # SCK_1 = IO22, MOSI_1 = IO21, MISO_1 = IO27.
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 22
+        mosi_io_num: 21
+        miso_io_num: 27
+        max_transfer_sz: 4800    # width * 2 * 10 (240 px)
+
+  # Screen backlight, J5 pin 8 (LED_1 = IO23)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 23
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # DAC audio into the MIX3006 class-D amplifier (J6/J7 speaker terminals).
+  # DAC1_L = IO25 (DAC channel 0), DAC2_R = IO26 (DAC channel 1).
+  - name: dac_audio
+    type: dac
+    role: continuous
+    config:
+      chan_mask: DAC_CHANNEL_MASK_ALL
+      freq_hz: 48000
+      chan_mode: DAC_CHANNEL_MODE_ALTER
+
+  # microSD card-detect, J4 (SD_DET = IO34, input-only pin)
+  - name: gpio_sd_detect
+    type: gpio
+    role: io
+    config:
+      pin: 34
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Resistive touch controller on the J5 screen module: T_CS = IO32,
+  #   T_IRQ = IO33, and T_CLK/T_DIN/T_DO tied to the display's SCK/MOSI/MISO
+  #   (R117/R119/R120). The part is on the screen module, not on this PCB, and
+  #   bmgr's lcd_touch device has no SPI sub_type, so only the bus + the two
+  #   dedicated pins are documented here.
+  # - MIX3006 speaker amplifier: its EN pin is pulled high by R97 and is NOT
+  #   driven by any GPIO, so there is no power_ctrl / pa_name to declare.
+  # - Parallel screen connector J3 (8080). Alternative stuffing, nets:
+  #   RS = IO5, WR = IO18, D00 = IO19, D01 = IO21, D02 = IO0, D03 = IO22,
+  #   D04 = IO23, D05 = IO33, D06 = IO32, D07 = IO27, D08 = IO25, D09 = IO26,
+  #   D10 = IO12, D11 = IO13, D12 = IO14, D13 = IO15, D14 = IO2, D15 = IO4.
+  #   CS / RST / RD / BL are NC by default (R113~R116).
+  # - Core-board connector rows J1/J2 (mirrored on J9/J10) and the USB
+  #   connector J8, which belong to the seated ESP32-DevKitC.
+  # ----------------------------------------------------------------------

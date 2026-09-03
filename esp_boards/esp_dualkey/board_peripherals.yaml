@@ -1,0 +1,120 @@
+# Peripherals Configuration for ESP-DualKey
+#
+# Source: SCH-ESP-Dualkey-MainBoard-V1_2.pdf and the
+#         official ESP-DualKey BSP pin definitions
+# Reference: https://dl.espressif.com/AE/esp-dev-kits/SCH-ESP-Dualkey-MainBoard-V1_2.pdf
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp-dualkey/user_guide.html
+# Reference: https://github.com/espressif/esp-dev-kits/blob/master/examples/esp-dualkey/components/esp_dualkey/include/bsp/esp_dualkey.h
+#
+# ESP32-S3, 8 MB flash, no PSRAM. A battery-powered two-key macro pad:
+# two mechanical keys, a 3-position mode slide switch, two WS2812B-2020
+# backlight LEDs behind a power gate, two auxiliary UART headers, and a
+# set of ADC monitors for the Li-ion charging path.
+#
+# The mode slide switch is read as ANALOG levels (not as digital contacts):
+# GPIO7 = ADC1_CH6 and GPIO8 = ADC1_CH7, thresholded in software into
+# left / middle / right. It is therefore modeled as ADC peripherals, not
+# as buttons.
+#
+peripherals:
+  # KEY 1 (active-low)
+  - name: gpio_key_1
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0                  # also the S3 boot strapping pin
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # KEY 2 (active-low)
+  - name: gpio_key_2
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 17
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # WS2812 backlight power gate — open-drain, active-LOW
+  # (the BSP drives level 0 to enable the LED rail)
+  - name: gpio_power_ws2812
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 40
+      mode: GPIO_MODE_OUTPUT_OD
+      pull_up: false
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+      default_level: 1        # LEDs off (active-low gate)
+
+  # Battery voltage monitor (GPIO10 = ADC1_CH9; on-board divider ratio 1.51)
+  - name: adc_battery
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 9
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_DEFAULT
+      ulp_mode: ADC_ULP_MODE_DISABLE
+
+  # AUX UART1 header
+  - name: uart_1
+    type: uart
+    config:
+      uart_num: 1
+      rx_buffer_size: 256
+      tx_buffer_size: 256
+      tx_io_num: 47
+      rx_io_num: 48
+      rts_io_num: -1
+      cts_io_num: -1
+      uart_mode: UART_MODE_UART
+      uart_config:
+        baud_rate: 115200     # application choice, not a board fact (the header only carries TX/RX)
+        data_bits: UART_DATA_8_BITS
+        parity: UART_PARITY_DISABLE
+        stop_bits: UART_STOP_BITS_1
+        flow_ctrl: UART_HW_FLOWCTRL_DISABLE
+        source_clk: UART_SCLK_DEFAULT
+
+  # AUX UART2 header
+  - name: uart_2
+    type: uart
+    config:
+      uart_num: 2
+      rx_buffer_size: 256
+      tx_buffer_size: 256
+      tx_io_num: 6
+      rx_io_num: 5
+      rts_io_num: -1
+      cts_io_num: -1
+      uart_mode: UART_MODE_UART
+      uart_config:
+        baud_rate: 115200     # application choice, not a board fact (the header only carries TX/RX)
+        data_bits: UART_DATA_8_BITS
+        parity: UART_PARITY_DISABLE
+        stop_bits: UART_STOP_BITS_1
+        flow_ctrl: UART_HW_FLOWCTRL_DISABLE
+        source_clk: UART_SCLK_DEFAULT
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - 3-position mode slide switch, read as two ADC1 levels: GPIO8 =
+  #   ADC1_CH7 and GPIO7 = ADC1_CH6, thresholded in software. Only one
+  #   oneshot ADC peripheral is declared above (the battery); the switch and
+  #   the remaining monitors share ADC unit 1 and are read by the
+  #   application through the same unit.
+  # - VBUS presence monitor GPIO2 (ADC1_CH1) and charge-status monitor
+  #   GPIO9 (ADC1_CH8): Li-ion charger telemetry, no bmgr device type.
+  # - Built-in Li-ion battery and its USB-C charger.
+  # - Native USB (D- GPIO19 / D+ GPIO20): the HID/CDC interface, owned by
+  #   TinyUSB, not an application device.
+  # - RESET key (EN pin, handled in hardware).
+  # ----------------------------------------------------------------------

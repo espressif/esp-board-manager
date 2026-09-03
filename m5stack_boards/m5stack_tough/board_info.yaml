@@ -1,0 +1,5 @@
+board: m5stack_tough
+chip: esp32
+version: 1.0.0
+description: "M5Stack Tough (sealed 2.0 inch 320x240 ILI9342C touch LCD, NS4168 speaker, microSD, RS485, AXP192 PMU)"
+manufacturer: "M5Stack"

@@ -1,0 +1,5 @@
+board: esp_wrover_kit
+chip: esp32
+version: 1.0.0
+description: ESP-WROVER-KIT with ST7789 LCD, buttons, LED, and microSD
+manufacturer: Espressif

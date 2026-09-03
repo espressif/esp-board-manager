@@ -3,12 +3,16 @@
 
 :link_to_translation:`en:[English]`
 
+.. _camera-intro:
+
 简介
 ------
 
 ``camera`` 设备用于描述摄像头传感器及其数据接口，初始化后返回 ``dev_camera_handle_t``。该句柄保存视频设备路径，应用可通过 V4L2 路径采集图像数据。
 
 该类型按 ``sub_type`` 选择摄像头接口。当前设备模板覆盖 ``dvp``、``csi`` 与 ``spi``；头文件中保留 ``usb_uvc`` 占位结构，但设备模板未给出 USB-UVC 的板级 YAML。
+
+.. _camera-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -19,6 +23,8 @@
 - :ref:`camera-csi`
 - :ref:`camera-spi`
 
+.. _camera-min-config:
+
 最小配置
 ------------
 
@@ -26,6 +32,8 @@
 
 DVP（``sub_type: dvp``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`camera-dvp-full`。
 
 ``dvp`` 模式使用 LCD_CAM DVP 控制器与并行数据线。``board_peripherals.yaml`` 至少需要可被摄像头 SCCB 控制接口引用的 ``i2c`` 外设。
 
@@ -65,6 +73,8 @@ DVP（``sub_type: dvp``）
 CSI（``sub_type: csi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+完整字段见 :ref:`camera-csi-full`。
+
 ``csi`` 模式使用 MIPI CSI 路径。``board_peripherals.yaml`` 至少需要 ``i2c`` 外设；当 ``dont_init_ldo: true`` 且由 BMGR 管理 MIPI LDO 时，还需配置 ``ldo`` 外设。
 
 ``board_devices.yaml``：
@@ -92,6 +102,8 @@ CSI（``sub_type: csi``）
 
 SPI 相机（``sub_type: spi``）
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`camera-spi-full`。
 
 ``spi`` 模式使用 ``esp_video_init_spi_config_t`` 描述连接，初始化时由 ``i2c`` 外设提供 SCCB 句柄。``board_peripherals.yaml`` 至少需要可被 SCCB 控制接口引用的 ``i2c`` 外设；SPI 相机的数据接口 GPIO 写在设备 ``spi_config`` 中，不引用 ``spi`` 外设。``camera`` 初始化按 ``sub_type`` 查找子设备入口，``spi`` 模式在内部映射到 ``camera_spi`` 子入口以避免与其他设备的 ``spi`` 子入口重名。
 
@@ -125,8 +137,12 @@ SPI 相机（``sub_type: spi``）
           - i2c_name: i2c_master
             frequency: 100000
 
+.. _camera-full-fields:
+
 完整字段
 ------------
+
+.. _camera-dvp-full:
 
 DVP 完整字段
 ^^^^^^^^^^^^^^^^
@@ -180,6 +196,8 @@ DVP 完整字段
         - i2c_name: i2c_master # [TO_BE_CONFIRMED] I2C bus name for camera control (default: depends on implementation)
           frequency: 100000    # I2C frequency in Hz (default: 400kHz)
 
+.. _camera-csi-full:
+
 CSI 完整字段
 ^^^^^^^^^^^^^^^^
 
@@ -205,6 +223,8 @@ CSI 完整字段
         - i2c_name: i2c_master  # [TO_BE_CONFIRMED] I2C bus name for camera control
           frequency: 100000     # I2C frequency in Hz
         - ldo_name: ldo_mipi    # [TO_BE_CONFIRMED] LDO peripheral for csi power management
+
+.. _camera-spi-full:
 
 SPI 相机完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -246,10 +266,14 @@ SPI 相机完整字段
         - i2c_name: i2c_master               # Must match a periph_i2c name; provides SCCB i2c_handle to esp_video
           frequency: 100000                   # SCCB I2C frequency (Hz)
 
+.. _camera-deps:
+
 组件依赖
 ------------
 
 ``dev_camera.yaml`` 未在设备条目中声明 ``dependencies``。摄像头子类型依赖 ESP-IDF 与 ``esp_video`` 相关的头文件、驱动及目标芯片能力，板级无需在该设备 YAML 中额外补写不存在的依赖字段。
+
+.. _camera-peripherals:
 
 依赖外设
 ------------
@@ -270,6 +294,8 @@ SPI 相机完整字段
      - ``csi`` 使用 BMGR 管理 MIPI LDO 时需要
      - MIPI CSI 供电管理
 
+.. _camera-code:
+
 参考代码
 ------------
 
@@ -277,6 +303,8 @@ SPI 相机完整字段
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_dvp.c``：DVP 子类型初始化实现。
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_csi.c``：CSI 子类型初始化实现。
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_spi.c``：SPI 子类型初始化实现。
+
+.. _camera-boards:
 
 板级参考
 ------------
@@ -287,6 +315,8 @@ SPI 相机完整字段
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：``csi`` 摄像头使用的 ``i2c`` 和 ``ldo`` 外设。
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``：摄像头配置。
 
+.. _camera-notes:
+
 注意事项
 ------------
 
@@ -295,8 +325,12 @@ SPI 相机完整字段
 - ``spi`` 模式使用 ``ESP_CAM_SENSOR_XCLK_LEDC`` 时，模板要求启用 ``CONFIG_CAMERA_XCLK_USE_LEDC``。
 - 修改摄像头设备、I2C 外设或 LDO 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。
 
+.. _camera-debug:
+
 调试技巧
 ------------
+
+.. _camera-api:
 
 API 参考
 ----------

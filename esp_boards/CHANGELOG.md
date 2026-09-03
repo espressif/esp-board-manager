@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.1
+
+### Features
+
+- Added board definitions for ESP32-C3-LCDKit, ESP32-LCDKit, ESP32-MeshKit-Sense, ESP32-P4X-C5-Function-EV-Board, ESP-DualKey, ESP-Mosaico, ESP-SensairShuttle, ESP Thread Border Router, and the ESP32-C3/C5/C6/H2/S3/ESP32 DevKit families.
+- Added board definitions for ESP32-C3-AWS-ExpressLink-DevKit, ESP32-C3 DevKit Rust 1/2, ESP32-Ethernet-Kit, ESP32-PICO DevKitM-2, ESP32-PICO-KIT/KIT-1, ESP32-S3-EYE, ESP32-S3-Korvo-1, ESP32-S3-USB-OTG, ESP32-Sense-Kit, and ESP32-Vaquita-DSPG.
+
+### Modifications
+
+- Added configured boot-button resources and normalized device/peripheral YAML formatting across supported official boards.
+- Updated optional LCD, touch, and IO-expander factory implementations for amend and `gen_skip` compatibility.
+
 ## 0.6.0
 
 ### Modifications

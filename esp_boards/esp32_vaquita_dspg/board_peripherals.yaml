@@ -1,0 +1,152 @@
+# Peripherals Configuration for ESP32-Vaquita-DSPG v1.0
+#
+# Source: ESP32-Vaquita-DSPG v1.0 schematics
+#         (ESP32-VAQUITA-DSPG_V1.0_schematics.pdf) + the board's reference
+#         firmware in ESP-VA-SDK
+#         (components/audio_hal/audio_board/audio_board_vaquita_dspg), which
+#         is where the pin numbers below are taken from verbatim.
+# Reference: https://github.com/espressif/esp-va-sdk/blob/master/docs/en/hw-reference/esp32/user-guide-esp32-vaquita-dspg.md
+# Reference: https://dl.espressif.com/dl/schematics/ESP32-VAQUITA-DSPG_V1.0_schematics.pdf
+#
+# Module: ESP32-WROVER-E (ESP32-D0WD-V3) — schematic p1 fits BOTH footprints,
+# and U1 (ESP32-WROOM-32) is marked (NC); U2, the WROVER-E, is the populated
+# one. 16 MB SPI flash + 8 MB in-package
+# PSRAM. Two boards: the mainboard (module, ES8311 + HT8692 speaker path,
+# DBMD5P DSP, buttons) and a microphone sub-board (2x PDM MEMS mics, 5x WS2812
+# LEDs, function buttons).
+#
+# The audio topology is the unusual part and worth stating once. The two
+# microphones do NOT reach the ESP32: they are PDM inputs to the DBMD5P voice
+# DSP, which runs wake-word detection and far-field processing on its own and
+# hands the ESP32 processed audio. The ESP32 talks to the DSP over a private
+# SPI link plus a handful of reset/interrupt lines — no bmgr peripheral type
+# covers that role, so the DSP's pins are recorded in "Not modeled" below.
+# The ES8311 on I2S0 is therefore PLAYBACK ONLY from the ESP32's point of view.
+#
+peripherals:
+  # Control bus: ES8311 codec (and the sub-board's I2C fan-out)
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 18
+        scl: 23
+
+  # ES8311 playback path. MCLK is GPIO0, which on the ESP32 is one of the
+  # three pads (GPIO0/1/3) the I2S master clock can leave the chip on.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_mode: I2S_SLOT_MODE_STEREO
+      pins:
+        mclk: 0
+        bclk: 5
+        ws: 25
+        dout: 26
+        din: -1     # GPIO35 carries processed audio back from the DBMD5P DSP;
+                    # see "Not modeled" — it is not an ES8311 capture path
+
+  # Boot button. Schematic net: Boot_IO0 -> GPIO0 via R12.
+  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
+  # the I2S audio interface.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # HT8692 speaker power amplifier, enable line (shared with the DSP's
+  # pa_pin in the reference firmware). ACTIVE-HIGH: schematic p4, GPIO12 ->
+  # R27 0R -> PA_CTRL -> R308 0R -> U22 pin 16 CTRL, 10k pull-down to AGND, and
+  # the p4 truth table reads "CTRL (Default Low In D): H = ACF Mode, L = Shut
+  # Down". Reset state is therefore shutdown, which is also required — GPIO12
+  # is the ESP32 MTDI flash-voltage strapping pin and must not be high at boot.
+  # esp-va-sdk's audio_board_vaquita_dspg/audio_board/va_board.c sets
+  # .pin_conf.pa_pin = 12 and the prebuilt dspg driver raises it after boot.
+  - name: gpio_pa_control
+    type: gpio
+    role: io
+    config:
+      pin: 12
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0      # muted by default; raised by the codec PA path
+
+  # HT8692 mute line (MUCH, active-HIGH = mute; see board_devices.yaml for the
+  # schematic citation). Level 0 = un-muted, which matches the 10k pull-down
+  # the part comes out of reset with.
+  #
+  # Schematic p4 note 3, verbatim: "In order to avoid pop noise, the correct
+  # sequence: Mute and then Shut down before power-off, cancel Shut down and
+  # then cancel Mute after power-on." So power-on is GPIO12 -> 1 THEN
+  # GPIO13 -> 0; power-off is GPIO13 -> 1 THEN GPIO12 -> 0. The ordering is as
+  # load-bearing as the polarity.
+  - name: gpio_pa_mute
+    type: gpio
+    role: io
+    config:
+      pin: 13
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0      # un-muted
+
+  # Function buttons: a two-button resistor ladder on ADC1 channel 3 (GPIO39,
+  # input-only)
+  - name: adc_button
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 3
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  #
+  # - DBMD5P voice DSP (DSP Group). This is the board's second processor: the
+  #   two PDM MEMS microphones on the sub-board feed IT, not the ESP32, and it
+  #   returns wake-word events and processed audio. esp-board-manager has no
+  #   DSP/co-processor device type, and the link is a private SPI bus plus
+  #   control lines rather than any standard bus role, so the pins are
+  #   recorded here instead:
+  #     SPI MOSI      GPIO19
+  #     SPI MISO      GPIO34   (input-only pad)
+  #     SPI CLK       GPIO22
+  #     APR CS        GPIO32
+  #     VT  CS        GPIO33
+  #     APR reset     GPIO21
+  #     VT  reset     GPIO4
+  #     APR wakeup    GPIO2    (strapping pin)
+  #     VT  interrupt GPIO36   (input-only pad)
+  #     PA enable     GPIO12   (the same line as gpio_pa_control above — the
+  #                             DSP driver owns the amplifier in this design)
+  #   Its firmware ships as a prebuilt blob in ESP-VA-SDK's dspg_driver, so
+  #   the DSP cannot be driven by a bmgr device even in principle.
+  #
+  # - Processed-audio return path on GPIO35 (I2S0 data-in). Declaring it as an
+  #   i2s_audio_in peripheral would only be honest if there were an
+  #   `audio_codec` device behind it; there is not — the source is the DSP,
+  #   not a codec bmgr can configure. Left out rather than declared empty.
+  #
+  # - 2x PDM MEMS microphones on the sub-board: wired to the DBMD5P, no path
+  #   to the ESP32.
+  #
+  # - Earphone jack (PJ-393) with its detect switch, and the 2-pin speaker
+  #   connector. Both hang off the ES8311/HT8692 output stage; the jack's
+  #   detect line is not brought to a module GPIO.
+  #
+  # - Two micro-USB jacks: one power-only, one on the USB-UART bridge for the
+  #   console. Neither is an application device.
+  #
+  # - EN (reset) button.
+  # ----------------------------------------------------------------------

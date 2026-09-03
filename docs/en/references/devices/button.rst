@@ -3,12 +3,16 @@ Button (button)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _button-intro:
+
 Overview
 --------
 
 The ``button`` device integrates GPIO buttons or ADC buttons into the ESP Board Manager device management flow. After initialization, applications can obtain a ``dev_button_handles_t`` via ``esp_board_manager_get_device_handle()``, or register button event callbacks enabled in the YAML via ``esp_board_device_callback_register()``.
 
 This device is based on the ``espressif/button`` component. GPIO buttons are suitable for dedicated button pins; ADC buttons are suitable for resistor-divider button networks on the same ADC channel; custom buttons are suitable for matrix keypads, touch keys, I2C or SPI button controllers, and other scenarios that require the application layer to provide a ``button_driver_t``.
+
+.. _button-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -20,11 +24,17 @@ Supported Usage Modes
 - `ADC Multi-Button`_
 - `Custom Button`_
 
+.. _button-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _button-gpio:
+
 GPIO Button
 ^^^^^^^^^^^
+
+See complete fields: :ref:`button-gpio-full`.
 
 ``gpio`` mode creates a single button handle via the ``gpio`` peripheral.
 
@@ -53,8 +63,12 @@ GPIO Button
         peripherals:
           - gpio_name: gpio_button_io_0
 
+.. _button-adc-single:
+
 ADC Single Button
 ^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`button-adc-single-full`.
 
 ``adc_single`` mode creates a single ADC button via the ``oneshot`` role of the ``adc`` peripheral.
 
@@ -85,8 +99,12 @@ ADC Single Button
         peripherals:
           - adc_name: adc_oneshot
 
+.. _button-adc-multi:
+
 ADC Multi-Button
 ^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`button-adc-multi-full`.
 
 ``adc_multi`` mode creates multiple button handles on the same ADC channel. ``button_num`` must not exceed ``CONFIG_ADC_BUTTON_MAX_BUTTON_PER_CHANNEL``. When registering callbacks, the corresponding label from ``button_labels`` is used as ``user_data`` by default; if no labels are configured, callbacks are still registered, but the default ``user_data`` cannot distinguish individual buttons.
 
@@ -118,8 +136,12 @@ ADC Multi-Button
         peripherals:
           - adc_name: adc_oneshot
 
+.. _button-custom:
+
 Custom Button
 ^^^^^^^^^^^^^
+
+See complete fields: :ref:`button-custom-full`.
 
 ``custom`` does not depend on any entry in ``board_peripherals.yaml``; the bus and GPIO are managed by the driver implemented on the application side.
 
@@ -147,10 +169,14 @@ Application code (for example ``setup_device.c`` or another source file particip
     }
     DEVICE_EXTRA_FUNC_REGISTER(custom_button_0, custom_button_0);
 
-The registered function name must exactly match the ``name`` in ``board_devices.yaml``. During BMGR initialization, the function is looked up by device name, and the returned ``button_driver_t`` is passed to ``iot_button_create()``. The ``peripherals`` list for ``custom`` mode must be empty; ``events_cfg`` and timing fields are configured in the same way as other sub-types. See :doc:`/programming-guide/board-directory` for board source placement and build rules.
+The registered function name must exactly match the ``name`` in ``board_devices.yaml``. During BMGR initialization, the function is looked up by device name, and the returned ``button_driver_t`` is passed to ``iot_button_create()``. The ``peripherals`` list for ``custom`` mode must be empty; ``events_cfg`` and timing fields are configured in the same way as other sub-types.
+
+.. _button-full-fields:
 
 Full Field Reference
 --------------------
+
+.. _button-gpio-full:
 
 GPIO Button Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,6 +219,8 @@ GPIO Button Full Fields
       peripherals:
         - gpio_name: gpio            # [TO_BE_CONFIRMED] GPIO peripheral name
 
+.. _button-adc-single-full:
+
 ADC Single Button Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -233,6 +261,8 @@ ADC Single Button Full Fields
 
       peripherals:
         - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
+
+.. _button-adc-multi-full:
 
 ADC Multi-Button Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,6 +311,8 @@ ADC Multi-Button Full Fields
       peripherals:
         - adc_name: adc_oneshot       # [TO_BE_CONFIRMED] ADC peripheral name
 
+.. _button-custom-full:
+
 Custom Button Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -316,10 +348,14 @@ Custom Button Full Fields
           press_repeat_done: false   # Enable press repeat done event (default: false)
           press_end: false           # Enable press end event (default: false)
 
+.. _button-deps:
+
 Component Dependencies
 ----------------------
 
 When the ``button`` device is enabled, the component manifest introduces ``espressif/button`` with the version constraint ``^4.1.4`` via ``CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT``. The GPIO and ADC sub-modes use the ``button_gpio`` and ``button_adc`` interfaces provided by this component.
+
+.. _button-peripherals:
 
 Required Peripherals
 --------------------
@@ -344,6 +380,8 @@ Required Peripherals
      - ``sub_type: custom`` does not reference any ``board_peripherals.yaml`` entry
      - Bus and GPIO are managed by the application-side ``button_driver_t`` implementation
 
+.. _button-code:
+
 Code Reference
 --------------
 
@@ -354,6 +392,8 @@ Code Reference
 - ``esp_board_manager/devices/dev_button/dev_button_sub_adc_multi.c``
 - ``esp_board_manager/devices/dev_button/dev_button_sub_custom.c``
 
+.. _button-boards:
+
 Board-level Reference
 ---------------------
 
@@ -362,6 +402,8 @@ Board-level Reference
 - ``esp_boards/esp32_lyrat_mini_1_1/board_devices.yaml``
 - ``esp_boards/esp32_s3_lcd_ev_board/board_devices.yaml``
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``
+
+.. _button-notes:
 
 Notes
 -----
@@ -372,8 +414,19 @@ Notes
 - The driver creator function name registered for the ``custom`` sub-type must match the device ``name``; ``board_devices.yaml`` does not allow adding ``peripherals`` for this sub-type.
 - After modifying the YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _button-factory:
+
+Factory Functions
+-----------------
+
+``sub_type: custom`` must register a ``button_driver_t`` creator with ``DEVICE_EXTRA_FUNC_REGISTER`` using the same name as the device ``name``. The registered function name must equal the device ``name`` in ``board_devices.yaml``. See :ref:`button-custom` for the description and example.
+
+.. _button-debug:
+
 Debugging Tips
 --------------
+
+.. _button-api:
 
 API Reference
 -------------

@@ -1,0 +1,61 @@
+# Devices Configuration for M5PaperS3
+#
+# Source: M5PaperS3 official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/PaperS3
+#
+# No display device: the ED047TC1 e-paper panel has no bmgr device type and
+# is driven over a bit-banged 8-bit parallel bus — board_peripherals.yaml's
+# Not-modeled section carries its full wiring. The GT911 touch panel in
+# front of it IS modeled: it is an ordinary I2C touch controller with an
+# upstream driver, and lcd_touch does not require a display_lcd beside it.
+#
+devices:
+  # ---------- GT911 capacitive touch (shared I2C) ----------
+  - name: lcd_touch
+    chip: gt911
+    type: lcd_touch
+    sub_type: i2c
+    version: default
+    dependencies:
+      espressif/esp_lcd_touch_gt911: "*"
+    config:
+      io_i2c_config:
+        lcd_cmd_bits: 16                # GT911 uses 16-bit register addresses
+        scl_speed_hz: 400000
+      touch_config:
+        x_max: 540                      # panel-native portrait axes
+        y_max: 960
+        rst_gpio_num: -1                # M5GFX board_M5PaperS3 leaves Touch_GT911
+                                        # cfg.pin_rst unset: the panel reset is not a
+                                        # SoC pin on this board
+        int_gpio_num: 48                # M5GFX.cpp board_M5PaperS3: cfg.pin_int = GPIO_NUM_48
+    peripherals:
+      - i2c_name: i2c_master
+        # GT911 8-bit addresses; which one is strapped depends on the reset
+        # sequence, so both candidates are offered:
+        #   0x28 from 7-bit 0x14, 0xBA from 7-bit 0x5D
+        i2c_addr: [0x28, 0xBA]
+
+  # ---------- microSD card (own SPI bus, CS GPIO47) ----------
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        cs_gpio_num: 47
+    peripherals:
+      - spi_name: spi_master
+
+  # ---------- E-paper rail gate (GPIO45) ----------
+  - name: power_epd
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_epd
+        active_level: 1

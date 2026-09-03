@@ -1,4 +1,4 @@
-version: 0.7.1
+version: 0.7.2
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -52,6 +52,12 @@ dependencies:
     version: "^4.1.4"
     matches:
       - if: "$CONFIG{ESP_BOARD_DEV_BUTTON_SUPPORT} == True"
+
+  espressif/knob:
+    require: public
+    version: "^1.1.0"
+    matches:
+      - if: "$CONFIG{ESP_BOARD_DEV_KNOB_SUPPORT} == True"
 
   espressif/led_strip:
     require: public

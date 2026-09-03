@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.2
+
+### Features
+
+- Added the `knob` device with the `gpio` sub-type. GPIO quadrature encoders can use either the standard GPIO backend or the RTC GPIO backend through `use_rtc`; the native `knob_handle_t` is available from the Board Manager device handle.
+
+### Bug Fixes
+
+- Fixed LCD test lifecycle handling so it does not reuse an invalid LEDC handle.
+- Added the portable ADC channel-count fallback required by current ESP-IDF SoC headers.
+
+### Modifications
+
+- Added I80 LCD and LED-strip GPIO fields to generated board metadata.
+
 ## 0.7.1
 
 ### Features

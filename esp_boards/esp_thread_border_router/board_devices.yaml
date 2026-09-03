@@ -1,0 +1,23 @@
+# Devices Configuration for ESP Thread Border Router Board
+#
+# Source: ESP Thread BR hardware platforms
+# Reference: https://docs.espressif.com/projects/esp-thread-br/en/latest/hardware_platforms.html
+#
+# The board has no display, codec or LED — it is a two-SoC gateway. The only
+# application-facing device is the host BOOT key; the inter-chip UART and the
+# RCP reset/boot lines are declared as peripherals.
+#
+devices:
+  # ---------- BOOT2 button (ESP32-S3 host, active-low) ----------
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button

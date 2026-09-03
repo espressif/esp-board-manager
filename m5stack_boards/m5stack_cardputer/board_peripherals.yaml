@@ -1,0 +1,142 @@
+# Peripherals Configuration for M5Stack Cardputer
+#
+# Source: M5Stack Cardputer official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/Cardputer
+#
+# Module: StampS3 = ESP32-S3FN8 (8 MB in-package flash, no PSRAM).
+#
+# Two separate SPI buses on purpose: the ST7789V2 LCD is write-only
+# 3-wire (no MISO) on SPI3, and the microSD card needs MISO, so it gets
+# SPI2 with its own pins. That is how the board is wired — they share no
+# signal.
+#
+# The audio path is I2S port 0 in both directions and the two directions
+# SHARE GPIO43: it is LRCK for the NS4168 amplifier and CLK for the
+# SPM1423 PDM microphone. Playback and capture are therefore mutually
+# exclusive at runtime — the port is reconfigured when switching.
+#
+peripherals:
+  # ST7789V2 LCD (write-only 3-wire SPI: no MISO wire)
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        sclk_io_num: 36
+        mosi_io_num: 35
+        miso_io_num: -1
+        max_transfer_sz: 9600   # 240 * 20 lines * 2 bytes
+
+  # microSD card slot (its own SPI bus — the LCD bus has no MISO)
+  - name: spi_sdcard
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 40
+        mosi_io_num: 14
+        miso_io_num: 39
+        max_transfer_sz: 4092
+
+  # LCD backlight (GPIO38, PWM dimmable)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 38
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # NS4168 I2S class-D amplifier (playback). No MCLK: the NS4168 derives
+  # its clock from BCLK.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_LEFT
+      ws_width: 16
+      pins:
+        mclk: -1
+        bclk: 41
+        ws:   43
+        dout: 42
+        din:  -1
+
+  # SPM1423 PDM microphone (capture). Shares the GPIO43 clock line with
+  # the amplifier's LRCK above.
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 43
+        din: 46
+
+  # Infrared transmit LED (GPIO44, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 44
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # BtnA / BOOT side button (GPIO0, active-low, strapping pin — holding it
+  # at reset enters download mode). GPIO0 has a usable internal pull-up.
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - The 56-key keyboard. It is a 4x14 matrix behind a 74HC138 3-to-8
+  #   decoder and there is no bmgr device type for a scanned matrix, so no
+  #   peripheral is declared for it. The GPIO story, for an application
+  #   that wants to drive it:
+  #     * three OUTPUTS feed the decoder's address lines —
+  #       A0 GPIO8, A1 GPIO9, A2 GPIO11 — selecting one of 8 column groups
+  #       (the decoder's Y outputs are active-LOW)
+  #     * seven INPUTS read the rows —
+  #       Y0 GPIO13, Y1 GPIO15, Y2 GPIO3, Y3 GPIO4, Y4 GPIO5, Y5 GPIO6,
+  #       Y6 GPIO7 — each with a pull-up, so a pressed key reads 0
+  #     * scanning is: drive an address, settle, read the seven rows,
+  #       repeat for all 8 addresses
+  #   GPIO3 is an ESP32-S3 strapping pin (JTAG source select) and GPIO15
+  #   defaults to a USB-Serial/JTAG function on some S3 packages; both are
+  #   plain IO after boot here.
+  # - Battery voltage sense on GPIO10 (ADC1_CH9, reads 1/2 VBAT through a
+  #   divider): an ADC input, not an on-board device
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND), also the
+  #   external I2C bus in M5Stack's convention
+  # - Native USB (OTG / Serial-JTAG) on GPIO19 / GPIO20: console path
+  # - NS4168 amplifier and SPM1423 microphone are control-less (no I2C
+  #   register set), so there is no audio_codec device — the I2S
+  #   peripherals above ARE the interface
+  # - RESET button (handled in hardware)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

@@ -1,0 +1,108 @@
+# Devices Configuration for M5Station-485
+#
+# Source: M5Station-485 official documentation (pin map) + the M5Station
+#         factory firmware pin header (NeoPixel pin/count)
+# Reference: https://docs.m5stack.com/en/core/station_485
+#            https://github.com/m5stack/M5Station (example/Factory/include/m5station.h)
+#
+# The panel is an ST7789V2 driven over write-only SPI; esp_lcd carries the
+# ST7789 driver in IDF itself, so no extra component dependency is needed.
+#
+devices:
+  # ---------- 1.14" 240x135 IPS LCD (ST7789V2, SPI) ----------
+  # Native panel geometry is 135x240 portrait with a 52 / 40 pixel window
+  # offset; the board is used in landscape, hence swap_xy. The offset is
+  # not expressible here — apply it with esp_lcd_panel_set_gap(52, 40)
+  # (portrait) / (40, 52) (landscape) after init.
+  - name: display_lcd
+    chip: st7789
+    type: display_lcd
+    sub_type: spi
+    version: default
+    config:
+      swap_xy: true
+      mirror_x: false
+      mirror_y: true
+      x_max: 240
+      y_max: 135
+      invert_color: true              # ST7789V2 panel on M5Station needs inversion
+      need_reset: true
+      io_spi_config:
+        cs_gpio_num: 5
+        dc_gpio_num: 19
+        spi_mode: 0
+        pclk_hz: 40000000
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+        flags:
+          sio_mode: true              # 3-wire SPI: MOSI is the only data line
+      lcd_panel_config:
+        reset_gpio_num: 15
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: false
+        vendor_config: ""
+    peripherals:
+      - spi_name: spi_display
+
+  # ---------- 7x SK6812 addressable RGB LEDs (GPIO4) ----------
+  # One chain of 7, one LED beside each of the seven ports
+  # (A1, B1, C1, USB, C2, B2, A2 in chain order).
+  - name: led_strip
+    chip: sk6812
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 4
+      max_leds: 7
+      led_model: LED_MODEL_SK6812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- Front buttons A / B / C (active-low) ----------
+  - name: button_a
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true              # GPIO37 has no internal pull; board pulls up
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_a
+
+  - name: button_b
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true              # GPIO38 has no internal pull; board pulls up
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_b
+
+  - name: button_c
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true              # GPIO39 has no internal pull; board pulls up
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_button_c

@@ -3,12 +3,16 @@ LED 灯带 led_strip
 
 :link_to_translation:`en:[English]`
 
+.. _led-strip-intro:
+
 简介
 ------
 
 ``led_strip`` 是基于 ESP-IDF ``led_strip`` 组件的可寻址灯带 device，用于初始化 WS2812、SK6812、WS2811、WS2816 等单线协议 LED。该设备将公共灯带参数与具体后端配置写入 ``board_devices.yaml``；应用通过 BMGR 获取 ``led_strip_handle_t`` 后，调用 ``led_strip`` 组件 API 设置像素并刷新输出。
 
 ``led_strip`` 按 ``sub_type`` 选择后端。当前源码实现 ``rmt`` 与 ``spi`` 两种子类型；两种模式均由 ``led_strip`` 组件在设备初始化时创建底层驱动实例，无需在 ``board_peripherals.yaml`` 中新增 RMT 或 SPI 外设条目。
+
+.. _led-strip-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -18,11 +22,17 @@ LED 灯带 led_strip
 - `RMT 灯带`_
 - `SPI 灯带`_
 
+.. _led-strip-min-config:
+
 最小配置
 ------------
 
+.. _led-strip-rmt:
+
 RMT 灯带
 ^^^^^^^^^^
+
+完整字段见 :ref:`led-strip-rmt-full`。
 
 ``rmt`` 模式调用 ``led_strip_new_rmt_device`` 创建灯带实例，适合使用 RMT 后端输出灯带，初始化成功后调用 ``led_strip_clear`` 清空灯带输出，无需新增 ``board_peripherals.yaml`` 条目。
 
@@ -48,8 +58,12 @@ RMT 灯带
             mem_block_symbols: 0
             with_dma: false
 
+.. _led-strip-spi:
+
 SPI 灯带
 ^^^^^^^^^^
+
+完整字段见 :ref:`led-strip-spi-full`。
 
 ``spi`` 模式调用 ``led_strip_new_spi_device`` 创建灯带实例，适合使用 SPI 后端输出灯带，初始化成功后调用 ``led_strip_clear`` 清空灯带输出，无需新增 ``board_peripherals.yaml`` 条目；``led_strip`` 组件会按设备配置创建 SPI 后端，所选 ``spi_bus`` 不能与其他已经初始化的 SPI 总线冲突。
 
@@ -74,8 +88,12 @@ SPI 灯带
             spi_bus: SPI3_HOST
             with_dma: true
 
+.. _led-strip-full-fields:
+
 完整字段
 ------------
+
+.. _led-strip-rmt-full:
 
 RMT 灯带完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -112,6 +130,8 @@ RMT 灯带完整字段
           mem_block_symbols: 0             # RMT symbols per channel block; 0 lets driver choose default size
           with_dma: false                  # Use DMA for RMT transmission when target supports it
 
+.. _led-strip-spi-full:
+
 SPI 灯带完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -144,10 +164,14 @@ SPI 灯带完整字段
           spi_bus: SPI2_HOST               # SPI host used by led_strip driver; must not conflict with another initialized SPI bus
           with_dma: true                   # Use DMA for SPI transmission when target supports it
 
+.. _led-strip-deps:
+
 组件依赖
 ------------
 
 ``led_strip`` 会通过 ``esp_board_manager/idf_component.yml`` 在启用 ``CONFIG_ESP_BOARD_DEV_LED_STRIP_SUPPORT`` 时引入 ``espressif/led_strip``，版本为 ``"*"``。板级 YAML 不需要为该通用组件重复声明 ``dependencies``。
+
+.. _led-strip-peripherals:
 
 依赖外设
 ------------
@@ -164,6 +188,8 @@ SPI 灯带完整字段
      - 不需要 BMGR peripheral
      - ``led_strip`` 组件在设备初始化时创建 RMT 或 SPI 后端
 
+.. _led-strip-code:
+
 参考代码
 ------------
 
@@ -172,12 +198,16 @@ SPI 灯带完整字段
 - ``esp_board_manager/devices/dev_led_strip/dev_led_strip_sub_rmt.c``
 - ``esp_board_manager/devices/dev_led_strip/dev_led_strip_sub_spi.c``
 
+.. _led-strip-boards:
+
 板级参考
 ------------
 
 - ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
 - ``esp_boards/esp32_s31_function_coreboard_1/board_devices.yaml``：RMT 模式板载 WS2812 状态灯配置。
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_s3_devkitc/board_devices.yaml``：SPI 模式 ``led_strip`` 测试配置。
+
+.. _led-strip-notes:
 
 注意事项
 ------------
@@ -187,8 +217,12 @@ SPI 灯带完整字段
 - 存在电平反相或电平转换电路时，需要按硬件连接确认 ``invert_out``。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _led-strip-debug:
+
 调试技巧
 ------------
+
+.. _led-strip-api:
 
 API 参考
 ----------

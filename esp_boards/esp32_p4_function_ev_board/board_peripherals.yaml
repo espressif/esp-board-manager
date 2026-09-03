@@ -52,6 +52,15 @@ peripherals:
       pull_up: true
       default_level: 0
 
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 35
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
   # LDO Configuration for MIPI Power Supply, need to be initialized before MIPI.
   - name: ldo_mipi
     type: ldo

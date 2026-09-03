@@ -35,6 +35,7 @@ extern "C" {
 #define ESP_BOARD_DEVICE_NAME_LITTLEFS          "littlefs"           /*!< LittleFS filesystem device base name */
 #define ESP_BOARD_DEVICE_NAME_GPIO_EXPANDER     "gpio_expander"      /*!< GPIO expander device base name */
 #define ESP_BOARD_DEVICE_NAME_CAMERA            "camera"             /*!< Camera device base name */
+#define ESP_BOARD_DEVICE_NAME_KNOB              "knob"               /*!< Knob device base name */
 #define ESP_BOARD_DEVICE_NAME_SD_POWER          "sdcard_power_ctrl"  /*!< SD card power control device base name */
 #define ESP_BOARD_DEVICE_NAME_ADC_BUTTON_0      "adc_button_0"       /*!< ADC button device base name */
 #define ESP_BOARD_DEVICE_NAME_ADC_BUTTON_1      "adc_button_1"       /*!< ADC button device base name */
@@ -64,6 +65,7 @@ extern "C" {
 #define ESP_BOARD_DEVICE_TYPE_CAMERA         "camera"         /*!< Camera sensor device type */
 #define ESP_BOARD_DEVICE_TYPE_POWER_CTRL     "power_ctrl"     /*!< Power control device type */
 #define ESP_BOARD_DEVICE_TYPE_BUTTON         "button"         /*!< Button device type */
+#define ESP_BOARD_DEVICE_TYPE_KNOB           "knob"           /*!< Knob device type */
 
 /**
  * @brief  Peripheral role enum

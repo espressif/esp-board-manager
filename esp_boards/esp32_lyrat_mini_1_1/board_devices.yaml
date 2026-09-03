@@ -57,6 +57,22 @@ devices:
             cmd: 15
             d0: 2
 
+  # Boot button. Schematic net: Reset/Download Keys SW1, IO0_IO2_KEY -> IO0 via R35.
+  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
+  # the I2S audio interface.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   # ADC Button Devices Configuration for multiple buttons
   - name: adc_button_group
     type: button

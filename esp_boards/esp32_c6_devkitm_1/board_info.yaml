@@ -1,0 +1,5 @@
+board: esp32_c6_devkitm_1
+chip: esp32c6
+version: 1.0.0
+description: "ESP32-C6-DevKitM-1"
+manufacturer: "ESPRESSIF"

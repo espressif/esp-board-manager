@@ -180,7 +180,7 @@ undefined reference to g_esp_board_*
 
 **版本关系**
 
-- ``esp_boards 0.6.0``、``esp_friends_boards 0.6.0`` 和 ``m5stack_boards 0.6.0`` 要求配合 ``esp_board_manager >=0.7.1`` 使用。
+- ``esp_boards 0.6.0``、``esp_friends_boards 0.6.0`` 和 ``m5stack_boards 0.6.0`` 及更新的版本要求配合 ``esp_board_manager >=0.7.1`` 使用。
 - ``esp_boards 0.5.4``、``esp_friends_boards 0.5.3`` 和 ``m5stack_boards 0.5.4`` 要求配合 ``esp_board_manager >=0.7.0`` 使用。
 
 运行时阶段

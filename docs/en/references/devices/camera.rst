@@ -3,12 +3,16 @@ Camera (camera)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _camera-intro:
+
 Overview
 --------
 
 The ``camera`` device describes a camera sensor and its data interface. After initialization, it returns a ``dev_camera_handle_t``. This handle stores the video device path, which applications can use to capture image data via the V4L2 path.
 
 This type selects the camera interface via ``sub_type``. The current device template covers ``dvp``, ``csi``, and ``spi``; a ``usb_uvc`` placeholder structure is reserved in the header file, but no board-level YAML is provided for USB-UVC in the device template.
+
+.. _camera-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -19,6 +23,8 @@ Supported Usage Modes
 - :ref:`camera-csi`
 - :ref:`camera-spi`
 
+.. _camera-min-config:
+
 Minimal Configuration
 ---------------------
 
@@ -26,6 +32,8 @@ Minimal Configuration
 
 DVP (``sub_type: dvp``)
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`camera-dvp-full`.
 
 ``dvp`` mode uses the LCD_CAM DVP controller with parallel data lines. ``board_peripherals.yaml`` requires at least an ``i2c`` peripheral that can be referenced by the camera's SCCB control interface.
 
@@ -65,6 +73,8 @@ DVP (``sub_type: dvp``)
 CSI (``sub_type: csi``)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+See complete fields: :ref:`camera-csi-full`.
+
 ``csi`` mode uses the MIPI CSI path. ``board_peripherals.yaml`` requires at least an ``i2c`` peripheral; when ``dont_init_ldo: true`` and the MIPI LDO is managed by BMGR, an ``ldo`` peripheral must also be configured.
 
 ``board_devices.yaml``:
@@ -92,6 +102,8 @@ CSI (``sub_type: csi``)
 
 SPI Camera (``sub_type: spi``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`camera-spi-full`.
 
 ``spi`` mode uses ``esp_video_init_spi_config_t`` to describe the connection, and the ``i2c`` peripheral provides the SCCB handle during initialization. ``board_peripherals.yaml`` requires at least an ``i2c`` peripheral that can be referenced by the SCCB control interface; the SPI camera data interface GPIOs are written in the device's ``spi_config`` and do not reference the ``spi`` peripheral. Camera initialization looks up the sub-device entry by ``sub_type``; ``spi`` mode internally maps to the ``camera_spi`` sub-entry to avoid name conflicts with other devices' ``spi`` sub-entries.
 
@@ -125,8 +137,12 @@ SPI Camera (``sub_type: spi``)
           - i2c_name: i2c_master
             frequency: 100000
 
+.. _camera-full-fields:
+
 Full Field Reference
 --------------------
+
+.. _camera-dvp-full:
 
 DVP Full Fields
 ^^^^^^^^^^^^^^^
@@ -180,6 +196,8 @@ DVP Full Fields
         - i2c_name: i2c_master # [TO_BE_CONFIRMED] I2C bus name for camera control (default: depends on implementation)
           frequency: 100000    # I2C frequency in Hz (default: 400kHz)
 
+.. _camera-csi-full:
+
 CSI Full Fields
 ^^^^^^^^^^^^^^^
 
@@ -205,6 +223,8 @@ CSI Full Fields
         - i2c_name: i2c_master  # [TO_BE_CONFIRMED] I2C bus name for camera control
           frequency: 100000     # I2C frequency in Hz
         - ldo_name: ldo_mipi    # [TO_BE_CONFIRMED] LDO peripheral for csi power management
+
+.. _camera-spi-full:
 
 SPI Camera Full Fields
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -246,10 +266,14 @@ SPI Camera Full Fields
         - i2c_name: i2c_master               # Must match a periph_i2c name; provides SCCB i2c_handle to esp_video
           frequency: 100000                   # SCCB I2C frequency (Hz)
 
+.. _camera-deps:
+
 Component Dependencies
 ----------------------
 
 ``dev_camera.yaml`` does not declare ``dependencies`` in the device entry. Camera sub-types depend on header files, drivers, and target-chip capabilities related to ESP-IDF and ``esp_video``; boards do not need to add non-existent dependency fields in this device YAML.
+
+.. _camera-peripherals:
 
 Required Peripherals
 --------------------
@@ -270,6 +294,8 @@ Required Peripherals
      - Required for ``csi`` when BMGR manages the MIPI LDO
      - MIPI CSI power management
 
+.. _camera-code:
+
 Code Reference
 --------------
 
@@ -277,6 +303,8 @@ Code Reference
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_dvp.c``: DVP sub-type initialization implementation.
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_csi.c``: CSI sub-type initialization implementation.
 - ``esp_board_manager/devices/dev_camera/dev_camera_sub_spi.c``: SPI sub-type initialization implementation.
+
+.. _camera-boards:
 
 Board-level Reference
 ---------------------
@@ -287,6 +315,8 @@ Board-level Reference
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``i2c`` and ``ldo`` peripherals used by the ``csi`` camera.
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``: Camera configuration.
 
+.. _camera-notes:
+
 Notes
 -----
 
@@ -295,8 +325,12 @@ Notes
 - When ``spi`` mode uses ``ESP_CAM_SENSOR_XCLK_LEDC``, the template requires enabling ``CONFIG_CAMERA_XCLK_USE_LEDC``.
 - After modifying the camera device, I2C peripheral, or LDO peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 
+.. _camera-debug:
+
 Debugging Tips
 --------------
+
+.. _camera-api:
 
 API Reference
 -------------

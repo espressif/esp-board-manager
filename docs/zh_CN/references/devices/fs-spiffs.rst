@@ -3,12 +3,16 @@ SPIFFS 文件系统 fs_spiffs
 
 :link_to_translation:`en:[English]`
 
+.. _fs-spiffs-intro:
+
 简介
 ------
 
 ``fs_spiffs`` 设备用于将 SPIFFS 分区挂载到 VFS 路径。初始化后，应用通过标准 C 文件接口访问 ``base_path`` 下的文件。
 
 该设备不对应外接硬件，也不依赖 ``board_peripherals.yaml``。其前提是工程分区表中存在 SPIFFS 分区，``partition_label`` 用于选择分区。
+
+.. _fs-spiffs-usage-modes:
 
 支持的使用模式
 ---------------------
@@ -17,11 +21,17 @@ SPIFFS 文件系统 fs_spiffs
 
 - `SPIFFS 分区挂载`_
 
+.. _fs-spiffs-min-config:
+
 最小配置
 ------------
 
+.. _fs-spiffs-mount:
+
 SPIFFS 分区挂载
 ^^^^^^^^^^^^^^^^^^^
+
+完整字段见 :ref:`fs-spiffs-mount-full`。
 
 无需新增 ``board_peripherals.yaml`` 条目。
 
@@ -38,8 +48,12 @@ SPIFFS 分区挂载
 
 ``fs_spiffs`` 会使用 ``esp_vfs_spiffs_register()`` 挂载文件系统，并使用 ``esp_spiffs_info()`` 输出分区容量信息。设备句柄保存的是运行时分配的 ``esp_vfs_spiffs_conf_t``，卸载时用于调用 ``esp_vfs_spiffs_unregister()``。
 
+.. _fs-spiffs-full-fields:
+
 完整字段
 ------------
+
+.. _fs-spiffs-mount-full:
 
 SPIFFS 分区挂载完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,10 +70,14 @@ SPIFFS 分区挂载完整字段
         max_files: 5                    # The maximum number of files that can be open simultaneously
         format_if_mount_failed: false   # Format the card if mount fails
 
+.. _fs-spiffs-deps:
+
 组件依赖
 ------------
 
 ``fs_spiffs`` 使用 ESP-IDF 内置 ``spiffs`` 和 ``esp_spiffs`` 接口。当前设备模板未要求在 ``board_devices.yaml`` 中为该设备额外声明 ``dependencies``。
+
+.. _fs-spiffs-peripherals:
 
 依赖外设
 ------------
@@ -76,16 +94,22 @@ SPIFFS 分区挂载完整字段
      - 不需要
      - 使用工程分区表中的 SPIFFS 分区
 
+.. _fs-spiffs-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/test_dev_fs_spiffs.c``
 - ``esp_board_manager/devices/dev_fs_spiffs/dev_fs_spiffs.c``
 
+.. _fs-spiffs-boards:
+
 板级参考
 ------------
 
 - ``esp_friends_boards/esp32_s3_korvo_2l/board_devices.yaml``
+
+.. _fs-spiffs-notes:
 
 注意事项
 ------------
@@ -95,8 +119,12 @@ SPIFFS 分区挂载完整字段
 - ``format_if_mount_failed: true`` 会在挂载失败时格式化文件系统，应结合数据保留需求设置。
 - 修改 YAML 后需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _fs-spiffs-debug:
+
 调试技巧
 ------------
+
+.. _fs-spiffs-api:
 
 API 参考
 ----------

@@ -1,4 +1,15 @@
 peripherals:
+  # Boot button. The schematic labels this net ESP_Boot_IO9.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
   - name: sdm
     type: sdm
     config:

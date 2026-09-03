@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1
+
+### Features
+
+- Added board definitions for ESP-Ditto, ESP32-S3 SparkBot, and ESP-WROVER-KIT.
+
+### Modifications
+
+- Added configured boot-button resources and normalized board YAML formatting for supported friend boards.
+- Updated optional LCD, touch, and audio setup code for amend and `gen_skip` compatibility.
+
 ## 0.6.0
 
 ### Modifications

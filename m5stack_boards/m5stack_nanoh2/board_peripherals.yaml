@@ -1,0 +1,72 @@
+# Peripherals Configuration for M5NanoH2
+#
+# Source: M5NanoH2 documentation + board schematic
+# Reference: https://docs.m5stack.com/en/core/NanoH2
+# Schematic: SCH_M5NanoH2_v0.0.3 (linked from that page). Pins below are read
+#   off U3's net labels there. Where the docs page, hardware.json and
+#   M5Unified disagree about which LED is which, the schematic decides:
+#   U3 pin 12 = GPIO10 = RGBPWR, pin 13 = GPIO11 = RGB (the WS2812's DI),
+#   pin 6 = GPIO3 = IR, pin 7 = GPIO4 = LED1 (blue), pin 11 = GPIO9 = button.
+#
+# Module: ESP32-H2FH4S (4 MB in-package flash, no PSRAM). 802.15.4 +
+# Bluetooth LE only — the H2 has no Wi-Fi radio.
+#
+# On-board hardware mirrors the M5NanoC6 with different pins: an RGB LED
+# on GPIO11 (owned by the led_strip device, so not declared here) behind a
+# supply switch on GPIO10, a blue indicator LED on GPIO4, an IR transmit
+# LED on GPIO3 and the user button on GPIO9.
+#
+peripherals:
+  # RGB LED supply switch — GPIO10 must be HIGH before the RGB LED will
+  # light. Driven through the led_power power_ctrl device.
+  - name: gpio_power_led
+    type: gpio
+    role: io
+    config:
+      pin: 10
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Blue indicator LED (GPIO4, active-high). Schematic "IR&LED": LED1 (blue)
+  # anode on net GPIO4, cathode through R9 22R/1% to GND — the pin sources
+  # the current, so active-high.
+  - name: gpio_blue_led
+    type: gpio
+    role: io
+    config:
+      pin: 4
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Infrared transmit LED (GPIO3, active-high). Schematic "IR&LED": IR1 anode
+  # on net GPIO3, cathode through R1 22R/1% to GND.
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 3
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # User button (GPIO9, active-low, boot strapping pin — holding it at
+  # reset enters download mode). Schematic "Button": S1 to GND with R2 10K/1%
+  # to VDD_3V3, so it is externally pulled up as well as internally.
+  - name: gpio_user_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND): a user-wired
+  #   expansion port, also usable as the external I2C bus
+  # - USB Type-C (power + programming) on the H2's native USB Serial/JTAG
+  # - RESET button (EN pin, handled in hardware)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

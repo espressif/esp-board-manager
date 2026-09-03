@@ -3,6 +3,8 @@ Custom Device (``custom``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _custom-intro:
+
 Overview
 --------
 
@@ -18,8 +20,12 @@ Typical use cases:
 - Peripheral chips with custom drivers (PMICs, sensors, actuators, etc.) where board code provides the init function.
 - Exposing board-level configuration parameters (I2C address, GPIO number, default values, etc.) to the application layer without any additional initialization logic.
 
+.. _custom-min:
+
 Minimal Configuration
 ---------------------
+
+See complete fields: :ref:`custom-full`.
 
 ``custom`` does not require additional ``board_peripherals.yaml`` entries; peripherals are referenced on demand.
 
@@ -36,6 +42,8 @@ Minimal Configuration
           i2c_addr: 0x34
         peripherals:
           - name: i2c_master
+
+.. _custom-codegen:
 
 Code Generation Output
 ----------------------
@@ -171,19 +179,23 @@ Peripheral Fields
 When peripherals are declared under the top-level ``peripherals:``, peripheral-related fields are appended to the end of the struct:
 
 - **Single peripheral**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_name``.
-- **Multiple peripherals**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_names[4]``.
+- **Multiple peripherals**: appends ``uint8_t peripheral_count`` and ``const char *peripheral_names[DEV_CUSTOM_MAX_PERIPHERALS]``.
 
-The maximum number of peripherals is fixed at 4, the parser rejects a device definition that exceeds this limit.
+The parser-internal constant ``DEV_CUSTOM_MAX_PERIPHERALS`` is fixed at 4. The parser rejects a ``peripherals:`` list with more than four entries.
 
-.. _custom-entry-impl:
+.. _custom-factory:
 
-Registering an Init Entry
---------------------------
+Factory Functions
+-----------------
 
-To have BMGR automatically call board-level driver code during initialization, implement init/deinit functions in the board source file and register them with the ``CUSTOM_DEVICE_IMPLEMENT`` macro:
+To have BMGR automatically call board-level driver code during initialization, implement init/deinit functions in the board source file and register them with the ``CUSTOM_DEVICE_IMPLEMENT`` macro.
+
+If the implementation depends on a third-party chip-driver component, place the driver header, the generated config struct, init/deinit, and ``CUSTOM_DEVICE_IMPLEMENT`` inside the same ``#if __has_include`` block. After a downstream ``gen_skip`` of this device, that component is no longer written to ``idf_component.yml``, but the board source is still compiled. ``__has_include`` cannot guard a missing generated struct when there is no separate component header. See :doc:`/programming-guide/board-directory` for the full convention.
 
 .. code-block:: c
 
+    #if __has_include("my_sensor.h")
+    #include "my_sensor.h"
     #include "dev_custom.h"
     #include "gen_board_device_custom.h"  /* Generated configuration struct header */
 
@@ -209,8 +221,9 @@ To have BMGR automatically call board-level driver code during initialization, i
 
     /* The first argument must exactly match the device name in board_devices.yaml */
     CUSTOM_DEVICE_IMPLEMENT(my_sensor, my_sensor_init, my_sensor_deinit);
+    #endif  /* __has_include("my_sensor.h") */
 
-``CUSTOM_DEVICE_IMPLEMENT`` uses GCC attributes to place the descriptor into a special linker section (``.esp_board_entries_desc``). At runtime, BMGR performs a linear scan of this section to find the init/deinit functions by device name. See :doc:`/programming-guide/board-directory` for board source placement and build rules.
+``CUSTOM_DEVICE_IMPLEMENT`` uses GCC attributes to place the descriptor into a special linker section (``.esp_board_entries_desc``). At runtime, BMGR performs a linear scan of this section to find the init/deinit functions by device name.
 
 CMakeLists.txt Requirements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -228,6 +241,8 @@ CMakeLists.txt Requirements
           INCLUDE_DIRS "."
           WHOLE_ARCHIVE
       )
+
+.. _custom-app-access:
 
 Application-Side Access
 ------------------------
@@ -260,6 +275,8 @@ After BMGR initialization, access ``custom`` devices as follows.
 
     When no entry with a matching name is registered, ``esp_board_manager_get_device_handle`` returns an error rather than ``NULL``, because the internal handle itself is ``NULL``. **Config-only** usage should use only :cpp:func:`esp_board_manager_get_device_config` and must not call :cpp:func:`esp_board_manager_get_device_handle`.
 
+.. _custom-full:
+
 All Fields
 ----------
 
@@ -286,10 +303,14 @@ All Fields
             require: public
             version: "^2.0.0"
 
+.. _custom-deps:
+
 Component Dependencies
 ----------------------
 
 ``custom`` has no fixed dependencies. Declare driver components in the device's ``dependencies`` field as needed, such as ``esp_driver_i2c``, ``esp_driver_gpio``, ``esp_driver_ledc``, or ``esp_driver_adc``.
+
+.. _custom-peripherals:
 
 Required Peripherals
 --------------------
@@ -310,6 +331,8 @@ Required Peripherals
      - Optional
      - Config-only usage; no peripheral handle needed
 
+.. _custom-code:
+
 Reference Code
 --------------
 
@@ -318,11 +341,15 @@ Reference Code
 - ``esp_board_manager/devices/dev_custom/dev_custom.c``
 - ``esp_board_manager/devices/dev_custom/dev_custom.h``
 
+.. _custom-boards:
+
 Board Reference
 ---------------
 
 - ``m5stack_boards/m5stack_cores3/board_devices.yaml`` + ``power_manager.c``: ``axp2101_power_manager``, with full init/deinit entry registered, driving the AXP2101 PMIC via fields such as ``config->i2c_addr`` and ``config->peripheral_name``.
 - ``esp_board_manager/test_apps/components/test_board_e/board_devices.yaml``: Complete test case with nested structs, lists, and lists of dicts.
+
+.. _custom-notes:
 
 Notes
 -----
@@ -331,11 +358,15 @@ Notes
 - The first argument of ``CUSTOM_DEVICE_IMPLEMENT`` must exactly match the device ``name``, case-sensitively.
 - Components containing ``CUSTOM_DEVICE_IMPLEMENT`` must set ``WHOLE_ARCHIVE`` in CMakeLists.txt, otherwise the linker will discard the descriptor.
 - When no matching init entry is registered, initialization will not fail, but :cpp:func:`esp_board_manager_get_device_handle` returns an error; :cpp:func:`esp_board_manager_get_device_config` still returns a valid configuration struct.
-- The ``peripherals:`` list limit is 4. The parser rejects configurations that declare more peripherals.
+- ``peripherals:`` supports at most four entries (``DEV_CUSTOM_MAX_PERIPHERALS = 4``); the parser rejects larger lists.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
+
+.. _custom-debug:
 
 Debugging Tips
 --------------
+
+.. _custom-api:
 
 API Reference
 -------------

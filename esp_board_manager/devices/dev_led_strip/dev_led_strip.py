@@ -8,6 +8,10 @@ VERSION = 'v1.0.0'
 
 VALID_SUB_TYPES = ['rmt', 'spi']
 
+DEV_LED_STRIP_IO_LIST = [
+    'strip_gpio_num',
+]
+
 
 def get_includes() -> list:
     """Return required include headers for LED strip device"""

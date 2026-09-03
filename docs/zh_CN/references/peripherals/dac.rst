@@ -3,12 +3,16 @@ dac
 
 :link_to_translation:`en:[English]`
 
+.. _dac-intro:
+
 简介
 ------
 
 ``dac`` 外设类型用于描述片上 DAC 通道。BMGR 据此生成 ``periph_dac_config_t``，并在初始化阶段创建 ESP-IDF DAC 驱动句柄。该类型覆盖 ``driver/dac_oneshot.h``、``driver/dac_continuous.h`` 与 ``driver/dac_cosine.h`` 中的三类 DAC 驱动入口。
 
 在 ``board_peripherals.yaml`` 中配置 ``dac`` 时，需通过 ``role`` 选择工作模式。BMGR 初始化后，应用通过 :cpp:func:`esp_board_manager_get_periph_handle` 获取 ``periph_dac_handle_t``，再调用对应的 ESP-IDF DAC API 输出电压、电压序列或余弦波。
+
+.. _dac-working-modes:
 
 支持的工作模式
 ---------------------
@@ -19,11 +23,17 @@ dac
 - `continuous`_
 - `cosine`_
 
+.. _dac-min-config:
+
 最小配置
 ------------
 
+.. _dac-oneshot:
+
 oneshot
 ^^^^^^^^^^^
+
+完整字段见 :ref:`dac-oneshot-full`。
 
 ``board_peripherals.yaml``：
 
@@ -36,8 +46,12 @@ oneshot
         config:
           channel: 0
 
+.. _dac-continuous:
+
 continuous
 ^^^^^^^^^^^^^^
+
+完整字段见 :ref:`dac-continuous-full`。
 
 ``board_peripherals.yaml``：
 
@@ -56,8 +70,12 @@ continuous
           clk_src: DAC_DIGI_CLK_SRC_DEFAULT
           chan_mode: DAC_CHANNEL_MODE_SIMUL
 
+.. _dac-cosine:
+
 cosine
 ^^^^^^^^^^
+
+完整字段见 :ref:`dac-cosine-full`。
 
 ``board_peripherals.yaml``：
 
@@ -76,6 +94,8 @@ cosine
           offset: 0
           force_set_freq: false
 
+.. _dac-mode-notes:
+
 模式说明
 ------------
 
@@ -83,8 +103,12 @@ cosine
 
 BMGR 按 ``role`` 填充 ``periph_dac_config_t`` 的联合体成员。应用获取句柄后，需要根据配置中的 ``role`` 访问 ``periph_dac_handle_t`` 中对应的 ``oneshot``、``continuous`` 或 ``cosine`` 成员。
 
+.. _dac-full-fields:
+
 完整字段
 ------------
+
+.. _dac-oneshot-full:
 
 oneshot 完整字段
 ^^^^^^^^^^^^^^^^^^^^
@@ -101,6 +125,8 @@ oneshot 完整字段
         # Valid values: 0, 1
         # Channel 0: GPIO25 on ESP32, GPIO17 on ESP32S2
         # Channel 1: GPIO26 on ESP32, GPIO18 on ESP32S2
+
+.. _dac-continuous-full:
 
 continuous 完整字段
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,6 +178,8 @@ continuous 完整字段
         # Valid values:
         # - DAC_CHANNEL_MODE_SIMUL
         # - DAC_CHANNEL_MODE_ALTER
+
+.. _dac-cosine-full:
 
 cosine 完整字段
 ^^^^^^^^^^^^^^^^^^^
@@ -205,6 +233,8 @@ cosine 完整字段
 - YAML 模板：``esp_board_manager/peripherals/periph_dac/periph_dac.yml``。
 - 头文件：``esp_board_manager/peripherals/periph_dac/periph_dac.h``。
 
+.. _dac-devices:
+
 适用设备
 ------------
 
@@ -218,15 +248,21 @@ cosine 完整字段
      - 应用通过 ``esp_board_manager_get_periph_handle`` 获取 DAC 外设句柄
      - 当前仓库未提供引用 ``dac`` 外设的 device 类型；输出数据和启停动作由应用或测试代码完成
 
+.. _dac-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/test_apps/main/periph/test_periph_dac.c``
 
+.. _dac-boards:
+
 板级参考
 ------------
 
 - ``esp_board_manager/test_apps/components/board_customer/boards/esp32_devkitc/board_peripherals.yaml``：``oneshot`` 示例和注释形式的 ``continuous`` / ``cosine`` 示例。
+
+.. _dac-notes:
 
 注意事项
 ------------
@@ -237,8 +273,12 @@ cosine 完整字段
 - ``cosine`` 的 ``atten`` 和 ``phase`` 需要使用模板列出的枚举值。
 - 修改 DAC 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _dac-debug:
+
 调试技巧
 ------------
+
+.. _dac-api:
 
 API 参考
 ----------

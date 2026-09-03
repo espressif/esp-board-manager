@@ -3,12 +3,16 @@ GPIO Control (``gpio_ctrl``)
 
 :link_to_translation:`zh_CN:[中文]`
 
+.. _gpio-ctrl-intro:
+
 Overview
 --------
 
 ``gpio_ctrl`` is a GPIO control device based on the ``gpio`` peripheral. It wraps a single board-level GPIO output as a device handle that can be retrieved by name. This device is suitable for describing board-level control signals that only require setting a high or low level, such as LCD power, audio power, and module enable signals.
 
 When BMGR initializes ``gpio_ctrl``, it references the already-initialized ``gpio`` peripheral, reads the GPIO pin number, and sets the output level to ``active_level``. The application retrieves ``periph_gpio_handle_t`` via :cpp:func:`esp_board_manager_get_device_handle` and toggles the state according to the ``active_level`` and ``default_level`` in the device configuration.
+
+.. _gpio-ctrl-usage-modes:
 
 Supported Usage Modes
 ---------------------
@@ -17,11 +21,17 @@ Supported Usage Modes
 
 - `GPIO Output Control`_
 
+.. _gpio-ctrl-min-config:
+
 Minimal Configuration
 ---------------------
 
+.. _gpio-ctrl-output:
+
 GPIO Output Control
 ^^^^^^^^^^^^^^^^^^^
+
+See complete fields: :ref:`gpio-ctrl-output-full`.
 
 ``board_peripherals.yaml``:
 
@@ -54,8 +64,12 @@ GPIO Output Control
 
 ``active_level`` is the level written during device initialization and is also the level the application should write when enabling the control signal. ``default_level`` is not written back automatically during deinitialization; the application must actively call the GPIO driver to set this level when powering off or disabling the signal.
 
+.. _gpio-ctrl-full-fields:
+
 All Fields
 ----------
+
+.. _gpio-ctrl-output-full:
 
 GPIO Output Control All Fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,10 +89,14 @@ GPIO Output Control All Fields
       peripherals:
         - gpio_name: gpio         # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
 
+.. _gpio-ctrl-deps:
+
 Component Dependencies
 ----------------------
 
 ``gpio_ctrl`` does not require additional component declarations in ``dependencies``. It uses the ESP-IDF GPIO driver and the BMGR ``gpio`` peripheral.
+
+.. _gpio-ctrl-peripherals:
 
 Required Peripherals
 --------------------
@@ -95,11 +113,15 @@ Required Peripherals
      - Required
      - Provides the actual GPIO pin and GPIO peripheral handle
 
+.. _gpio-ctrl-code:
+
 Reference Code
 --------------
 
 - ``esp_board_manager/test_apps/main/test_dev_pwr_ctrl.c``
 - ``esp_board_manager/devices/dev_gpio_ctrl/dev_gpio_ctrl.c``
+
+.. _gpio-ctrl-boards:
 
 Board Reference
 ---------------
@@ -109,16 +131,22 @@ Board Reference
 - ``esp_board_manager/test_apps/test_single_board/board_devices.yaml``: ``gpio_ctrl`` configuration in the test board.
 - ``esp_board_manager/test_apps/test_single_board/board_peripherals.yaml``: ``gpio`` peripheral configuration in the test board.
 
+.. _gpio-ctrl-notes:
+
 Notes
 -----
 
-- The device uses ``gpio_name`` to select the ``gpio`` peripheral instance.
+- The ``gpio`` peripheral name referenced by the device must match the instance name in ``board_peripherals.yaml`` and must start with ``gpio`` or ``gpio_``.
 - During ``gpio_ctrl`` initialization, the GPIO is set to ``active_level``. If the board power should be off by default, verify that the initialization order and ``active_level`` setting are consistent with the hardware design.
 - To deactivate the control signal, the application must actively write ``default_level`` using the retrieved ``periph_gpio_handle_t`` and the device configuration.
 - After modifying YAML, re-run ``idf.py bmgr -b <board>``.
 
+.. _gpio-ctrl-debug:
+
 Debugging Tips
 --------------
+
+.. _gpio-ctrl-api:
 
 API Reference
 -------------

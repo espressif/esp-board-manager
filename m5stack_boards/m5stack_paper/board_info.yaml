@@ -1,0 +1,5 @@
+board: m5stack_paper
+chip: esp32
+version: 1.0.0
+description: "M5Paper v1.1 (4.7 inch 960x540 IT8951 e-ink with GT911 touch, side wheel, microSD, SHT30, BM8563 RTC)"
+manufacturer: "M5Stack"

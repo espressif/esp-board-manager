@@ -2,6 +2,7 @@
 Tests for unified board metadata generation.
 """
 
+from pathlib import Path
 import sys
 
 import yaml
@@ -138,46 +139,59 @@ def test_metadata_yaml_renders_io_lists_inline(bmgr_root, tmp_path):
     sys.path.insert(0, str(bmgr_root))
     from devices.dev_audio_codec import dev_audio_codec as mod
     from generators.board_metadata_generator import BoardMetadataGenerator
+    from generators.utils.soc_capability_query import (
+        clear_soc_capabilities,
+        configure_soc_capabilities,
+    )
 
-    result = mod.parse(
-        'audio_adc',
-        {
-            'type': 'audio_codec',
-            'chip': 'internal',
-            'peripherals': [],
-            'config': {
-                'adc_enabled': True,
-                'adc_local_cfg': {
-                    'unit_id': 'ADC_UNIT_1',
-                    'channel_list': [6, 7],
+    catalog_dir = tmp_path / 'soc_capability_catalog'
+    configure_soc_capabilities(
+        catalog_dir=Path(bmgr_root) / 'private_inc' / 'soc_capability_catalog',
+        idf_version='6.1.0',
+        chip='esp32',
+    )
+    try:
+        result = mod.parse(
+            'audio_adc',
+            {
+                'type': 'audio_codec',
+                'chip': 'internal',
+                'peripherals': [],
+                'config': {
+                    'adc_enabled': True,
+                    'adc_local_cfg': {
+                        'unit_id': 'ADC_UNIT_1',
+                        'channel_list': [6, 7],
+                    },
                 },
             },
-        },
-    )
+        )
 
-    output_path = tmp_path / 'gen_board_metadata.yaml'
-    BoardMetadataGenerator().write_metadata_file(
-        output_path=str(output_path),
-        board_name='unit_test_board',
-        chip_name='esp32',
-        device_artifacts=[
-            {
-                'name': 'audio_adc',
-                'type': 'audio_codec',
-                'sub_type': None,
-                'peripherals': [],
-                'dependencies': {},
-                'raw': {},
-                'result': result,
-                'parse_func': mod.parse,
-            }
-        ],
-        peripheral_artifacts=[],
-    )
+        output_path = tmp_path / 'gen_board_metadata.yaml'
+        BoardMetadataGenerator().write_metadata_file(
+            output_path=str(output_path),
+            board_name='unit_test_board',
+            chip_name='esp32',
+            device_artifacts=[
+                {
+                    'name': 'audio_adc',
+                    'type': 'audio_codec',
+                    'sub_type': None,
+                    'peripherals': [],
+                    'dependencies': {},
+                    'raw': {},
+                    'result': result,
+                    'parse_func': mod.parse,
+                }
+            ],
+            peripheral_artifacts=[],
+        )
 
-    output_text = output_path.read_text(encoding='utf-8')
-    assert 'channel_id: [34, 35]' in output_text
-    assert 'channel_id:\n' not in output_text
+        output_text = output_path.read_text(encoding='utf-8')
+        assert 'channel_id: [34, 35]' in output_text
+        assert 'channel_id:\n' not in output_text
+    finally:
+        clear_soc_capabilities()
 
 def test_lcd_touch_metadata_extracts_touch_gpio_fields(bmgr_root):
     sys.path.insert(0, str(bmgr_root))

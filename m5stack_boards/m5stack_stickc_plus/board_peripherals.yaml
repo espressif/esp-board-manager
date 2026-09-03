@@ -1,0 +1,125 @@
+# Peripherals Configuration for M5StickC PLUS
+#
+# Source: M5StickC PLUS official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/m5stickc_plus
+#
+# Module: ESP32-PICO-D4 (in-package 4 MB flash, no PSRAM).
+#
+# One internal I2C bus on GPIO21 (SDA) / GPIO22 (SCL) carries the AXP192
+# power management IC (7-bit 0x34), the MPU6886 IMU (0x68) and the BM8563
+# RTC (0x51); their shared IRQ line is GPIO35.
+#
+# The AXP192 owns the display's power and backlight rails (LDO2/LDO3), so
+# there is no backlight GPIO and no LEDC channel for the panel.
+#
+peripherals:
+  # Internal I2C bus: AXP192 PMU + MPU6886 IMU + BM8563 RTC
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 21
+        scl: 22
+
+  # ST7789v2 LCD bus. Write-only panel, so no MISO line is wired.
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST     # HSPI; routed through the GPIO matrix
+        sclk_io_num: 13
+        mosi_io_num: 15
+        miso_io_num: -1
+        max_transfer_sz: 6480   # 135 * 24 lines * 2 bytes
+
+  # SPM1423 PDM microphone
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 0                  # GPIO0 is a strapping pin; driven only after boot
+        din: 34
+
+  # Passive buzzer (GPIO2). A passive buzzer is driven by a PWM tone, so the
+  # LEDC channel is the peripheral; there is no bmgr buzzer device type, and
+  # ledc_ctrl models a duty percentage rather than a frequency.
+  - name: ledc_buzzer
+    type: ledc
+    config:
+      gpio_num: 2
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 4000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # Red status LED (GPIO10, active-low)
+  - name: gpio_status_led
+    type: gpio
+    role: io
+    config:
+      pin: 10
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1          # off (active-low)
+
+  # Infrared transmit LED (GPIO9, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Button A (front, active-low). GPIO37 is input-only on the ESP32 and has
+  # NO internal pull resistor; the board provides the external pull-up.
+  - name: gpio_button_a
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 37
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # Button B (side, active-low). GPIO39 is input-only, external pull-up.
+  - name: gpio_button_b
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 39
+      mode: GPIO_MODE_INPUT
+      pull_up: false
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - AXP192 power management IC (I2C 7-bit 0x34 on i2c_master): battery
+  #   charge, 5 V boost, and the LCD logic + backlight rails (LDO2/LDO3).
+  #   No bmgr device type; the LCD power-up is an AXP192 register write,
+  #   not a GPIO
+  # - MPU6886 6-axis IMU (I2C 7-bit 0x68) and BM8563 RTC (I2C 7-bit 0x51),
+  #   shared IRQ on GPIO35: no bmgr device types
+  # - SPM1423 PDM MEMS microphone: control-less, the pdm-in peripheral
+  #   above IS the interface
+  # - Grove HY2.0-4P port (GPIO32 / GPIO33 plus 5V and GND)
+  # - Header pads GPIO0 / GPIO25 / GPIO26 / GPIO36 (GPIO25 and GPIO36 share
+  #   one header position; float the unused one)
+  # - RESET button (EN pin, handled in hardware)
+  # - The IR LED is a plain GPIO; carrier modulation is an application
+  #   concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

@@ -1,0 +1,60 @@
+# Devices Configuration for ESP32-C3-AWS-ExpressLink-DevKit
+#
+# Source: ESP32-C3-AWS-ExpressLink-DevKit SCHEMATIC V1D0 (2021-10-12)
+# Reference: https://dl.espressif.com/dl/schematics/SCH_ESP32-C3-AWS-ExpressLink-DevKit_V1D0_20211012.pdf
+# Reference: https://github.com/espressif/esp-aws-expresslink-eval
+# Reference: AWS IoT ExpressLink Programmer's Guide
+#            https://docs.aws.amazon.com/iot-expresslink/latest/programmersguide/elpg-hardware.html
+#
+# The ExpressLink EVENT line and the three RGB LED channels are the on-board
+# outputs with a bmgr device type. The UART and the WAKE input are declared as
+# peripherals and used directly. See board_peripherals.yaml for the full pin
+# contract, the polarities and the strapping-pin warning on the LED.
+#
+devices:
+  # ---------- ExpressLink EVENT line (GPIO10, active-high) ----------
+  - name: event_signal
+    type: gpio_ctrl
+    version: default
+    config:
+      # CONFIRMED active-high. AWS IoT ExpressLink Programmer's Guide
+      # §8.1.1.2: "The EVENT pin is asserted (HIGH) when the event queue
+      # contains one or more events. The EVENT pin is automatically
+      # de-asserted as soon as the host processor has emptied the event
+      # queue." §2.2.7 has the host interrupt on the rising edge.
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_event
+
+  # ---------- RGB LED channels (EAST1616RGBA3, common anode) ----------
+  # Active LOW: LED pin 3 (common) sits on VDD33, so a GPIO lights its colour
+  # by sinking. Pins and per-colour series resistors are from the schematic;
+  # GPIO8 and GPIO9 are strapping pins that must stay HIGH across reset, which
+  # is why default_level is 1 (LED off). See board_peripherals.yaml.
+  - name: led_red
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 1
+    peripherals:
+      - gpio_name: gpio_led_red
+
+  - name: led_green
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 1
+    peripherals:
+      - gpio_name: gpio_led_green
+
+  - name: led_blue
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 0
+      default_level: 1
+    peripherals:
+      - gpio_name: gpio_led_blue

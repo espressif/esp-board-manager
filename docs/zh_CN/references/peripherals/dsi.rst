@@ -3,12 +3,16 @@ dsi
 
 :link_to_translation:`en:[English]`
 
+.. _dsi-intro:
+
 简介
 ------
 
 ``dsi`` 外设类型用于描述 MIPI DSI 总线资源。BMGR 根据该配置创建 ``esp_lcd_dsi_bus_handle_t``，供 ``display_lcd`` 设备的 ``dsi`` 子类型引用。
 
 该外设仅描述 DSI 总线本身，例如总线编号、数据 lane 数、PHY 时钟源与每 lane 比特率。面板复位、DBI 与 DPI 参数、像素格式、分辨率与时序属于 ``display_lcd`` 设备配置，不写入 ``dsi`` 外设的 ``config``。
+
+.. _dsi-working-modes:
 
 支持的工作模式
 ---------------------
@@ -17,11 +21,17 @@ dsi
 
 - `DSI 总线`_
 
+.. _dsi-min-config:
+
 最小配置
 ------------
 
+.. _dsi-bus:
+
 DSI 总线
 ^^^^^^^^^^
+
+完整字段见 :ref:`dsi-bus-full`。
 
 ``board_peripherals.yaml``：
 
@@ -36,13 +46,19 @@ DSI 总线
           phy_clk_src: 0
           lane_bit_rate_mbps: 1000
 
+.. _dsi-mode-notes:
+
 模式说明
 ------------
 
 ``dsi`` 外设创建的是 DSI bus 句柄。使用 DSI 屏时，``display_lcd`` 设备的 ``sub_type`` 设为 ``dsi``，并在设备侧 ``peripherals`` 中引用该外设名称。若板级配置还需要 MIPI 供电控制，应额外定义 ``ldo`` 或其他供电外设，并由设备侧按名称引用。
 
+.. _dsi-full-fields:
+
 完整字段
 ------------
+
+.. _dsi-bus-full:
 
 DSI 总线完整字段
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -77,6 +93,8 @@ DSI 总线完整字段
         # Common values between 80 to 1500 Mbps depending on display capabilities
         lane_bit_rate_mbps: 1000          # [TO_BE_CONFIRMED] Bit rate per data lane in Mbps
 
+.. _dsi-devices:
+
 适用设备
 ------------
 
@@ -90,11 +108,15 @@ DSI 总线完整字段
      - ``sub_type`` 为 ``dsi`` 时，在设备侧 ``peripherals`` 中引用 ``dsi`` 外设
      - DBI/DPI 配置、色彩格式、面板时序和 LCD 组件依赖写在设备配置中
 
+.. _dsi-code:
+
 参考代码
 ------------
 
 - ``esp_board_manager/peripherals/periph_dsi/periph_dsi.c``
 - ``esp_board_manager/devices/dev_display_lcd/dev_display_lcd.c``
+
+.. _dsi-boards:
 
 板级参考
 ------------
@@ -104,6 +126,8 @@ DSI 总线完整字段
 - ``m5stack_boards/m5stack_tab5/board_peripherals.yaml``：定义 ``dsi_display`` 和 LCD 背光 LEDC 外设。
 - ``m5stack_boards/m5stack_tab5/board_devices.yaml``：``display_lcd`` 以 ``sub_type: dsi`` 引用 ``dsi_display``。
 
+.. _dsi-notes:
+
 注意事项
 ------------
 
@@ -112,8 +136,12 @@ DSI 总线完整字段
 - ``lane_bit_rate_mbps`` 需要与屏幕、lane 数和像素时钟预算匹配，模板中保留 ``[TO_BE_CONFIRMED]``。
 - 修改 DSI 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
 
+.. _dsi-debug:
+
 调试技巧
 ------------
+
+.. _dsi-api:
 
 API 参考
 ----------

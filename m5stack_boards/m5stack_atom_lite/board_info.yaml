@@ -1,0 +1,5 @@
+board: m5stack_atom_lite
+chip: esp32
+version: 1.0.0
+description: "ATOM Lite Development Board"
+manufacturer: "M5Stack"

@@ -45,7 +45,6 @@ peripherals:
       total_slot: 4
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2
 
-
   # LCD SPI Configuration
   - name: spi_master
     type: spi
@@ -58,12 +57,3 @@ peripherals:
         miso_io_num: 35
         sclk_io_num: 36
         max_transfer_sz: 3600
-
-  # PA CONTROL
-  - name: gpio_pa_control
-    type: gpio
-    role: io
-    config:
-      pin: 46
-      mode: GPIO_MODE_OUTPUT
-      pull_up: true

@@ -1,0 +1,160 @@
+# Peripherals Configuration for M5Stack Cardputer Adv
+#
+# Source: M5Stack Cardputer-Adv official documentation (pin map) and
+#         schematic Sch_M5CardputerAdv_v1.0
+# Reference: https://docs.m5stack.com/en/core/Cardputer-Adv
+#
+# Module: Stamp-S3A = ESP32-S3FN8 (8 MB in-package flash, no PSRAM).
+#
+# What changed against the original Cardputer: the keyboard is scanned by
+# a TCA8418 keypad controller over I2C instead of by GPIO through a
+# 74HC138, and the audio path is a real ES8311 codec (playback through an
+# NS4150B amplifier, capture from an on-board MEMS microphone) instead of
+# a control-less amplifier plus a PDM microphone. That gives the board an
+# internal I2C bus on GPIO8 (SDA) / GPIO9 (SCL) — the same pins the
+# original used for the keyboard decoder — carrying the TCA8418 (7-bit
+# 0x34), the ES8311 (7-bit 0x18) and a BMI270 IMU (7-bit 0x69 — schematic
+# sheet 3 straps SDO high and labels the part "7-bit Address 69H").
+#
+# The display bus is unchanged: write-only 3-wire SPI on SPI3, with the
+# microSD card on its own SPI2 bus because it needs MISO.
+#
+# GPIO38 does double duty: it is the LCD backlight AND the electronic
+# switch feeding the Stamp-S3A's RGB LED. It is declared here as a LEDC
+# channel (that is how the backlight is driven); the RGB LED simply needs
+# that duty to be non-zero before it will light.
+#
+peripherals:
+  # Internal control bus: TCA8418 keypad controller, ES8311 codec,
+  # BMI270 IMU
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 8
+        scl: 9
+
+  # ST7789V2 LCD (write-only 3-wire SPI: no MISO wire)
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        sclk_io_num: 36
+        mosi_io_num: 35
+        miso_io_num: -1
+        max_transfer_sz: 9600   # 240 * 20 lines * 2 bytes
+
+  # microSD card slot (its own SPI bus — the LCD bus has no MISO)
+  - name: spi_sdcard
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        sclk_io_num: 40
+        mosi_io_num: 14
+        miso_io_num: 39
+        max_transfer_sz: 4092
+
+  # LCD backlight + Stamp-S3A RGB LED supply switch (GPIO38, PWM dimmable)
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 38
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
+  # ES8311 audio I2S (full duplex on a single I2S port). The codec runs
+  # with MCLK tied to BCLK, so no MCLK pin is routed.
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: std-out
+    config: &i2s_config
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_STEREO
+      slot_mask: I2S_STD_SLOT_BOTH
+      ws_width: 16
+      pins:
+        mclk: -1
+        bclk: 41
+        ws:   43
+        dout: 42      # ES8311 DSDIN
+        din:  46      # ES8311 ASDOUT
+
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: std-in
+    config:
+      <<: *i2s_config
+
+  # TCA8418 keypad-controller interrupt line (active-low, open-drain)
+  - name: gpio_keyboard_int
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 11
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # Infrared transmit LED (GPIO44, active-high)
+  - name: gpio_ir_tx
+    type: gpio
+    role: io
+    config:
+      pin: 44
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # BtnG0 side button (GPIO0, active-low, strapping pin — power off, hold
+  # it, power on to enter download mode). GPIO0 has an internal pull-up.
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+
+  # ----------------------------------------------------------------------
+  # Not modeled:
+  # - TCA8418RTWR keypad controller (I2C 7-bit 0x34, 8-bit 0x68) scanning
+  #   the 56-key 4x14 matrix: no bmgr device type for a keypad controller.
+  #   The i2c_master above is its bus and gpio_keyboard_int its interrupt
+  #   line; the matrix itself is wired to the TCA8418, not to the SoC
+  # - BMI270 6-axis IMU on the same I2C bus, 7-bit 0x69 (8-bit 0xD2):
+  #   Sch_M5CardputerAdv_v1.0 sheet 3, U7 — SDO is strapped to +3.3V through
+  #   R43 3.3K and the sheet is annotated "7-bit Address 69H". INT1 and INT2
+  #   are both left unconnected, so there is no motion interrupt to the SoC.
+  #   No bmgr device type; the i2c_master above is its bus
+  # - NS4150B class-D amplifier behind the ES8311 DAC: CTRL sits on net
+  #   AMP_EN, which is pulled up by R23 10K to +3.3V and pulled DOWN by Q4
+  #   (2N7002T) off the HP_DET jack-insert line — Sch_M5CardputerAdv_v1.0
+  #   sheet 3. AMP_EN appears nowhere else in the schematic, so it reaches
+  #   no SoC pin: the amplifier is enabled by default and muted in hardware
+  #   when the 3.5 mm jack is inserted. Hence no pa_name on the codec
+  # - 3.5 mm headphone jack (output only, with insert detect)
+  # - Battery: 1750 mAh single cell, TP4057 charger, OFF/ON slide switch;
+  #   voltage sense on GPIO10 (ADC1_CH9, reads 1/2 VBAT)
+  # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND)
+  # - Native USB (OTG / Serial-JTAG) on GPIO19 (D-) / GPIO20 (D+)
+  # - BtnRst reset button on the bottom edge (handled in hardware)
+  # - The IR LED above is a plain GPIO; carrier modulation is an
+  #   application concern (RMT), there is no bmgr device type for it
+  # ----------------------------------------------------------------------

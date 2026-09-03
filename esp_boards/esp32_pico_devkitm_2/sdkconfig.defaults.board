@@ -1,0 +1,30 @@
+# ESP32-PICO-DevKitM-2 — ESP32-PICO-MINI-02 (N8R2) SiP:
+# 8 MB in-package flash, 2 MB in-package PSRAM
+#
+# CORRECTION: the note that used to stand here said the datasheet states no
+# qualified 80 MHz mode for this SiP. That is wrong. ESP32-PICO-MINI-02 &
+# 02U Datasheet v1.7, section 6.5 Memory Specifications, states it for both
+# memories: Table 18 (Flash) and Table 19 (PSRAM) each give
+#   "FC | Maximum clock frequency | 80 | - | - | MHz".
+# https://documentation.espressif.com/esp32-pico-mini-02_datasheet_en.pdf
+#
+# Both memories are QUAD-wired. ESP32-PICO Series Datasheet v1.3, Table 1:
+# "ESP32-PICO-V3-02 | 8 MB (Quad SPI) | 2 MB (Quad SPI)" — the MINI-02 module
+# embeds that SiP. Table 5 spends only four package pins on them
+# (FLASH_CLK=IO6, FLASH_CS=IO11, PSRAM_CS=IO9, PSRAM_CLK=IO10); the data lines
+# never leave the package, and the module datasheet's pin note confirms
+# "These pins are not led out."
+# https://documentation.espressif.com/esp32-pico-v3-02_datasheet_en.pdf
+#
+# The 40 MHz / DIO values below are therefore a CONSERVATIVE SOFTWARE CHOICE,
+# not a hardware limit. They are left as they are because no source instructs
+# 80 MHz/QIO for this board and nobody has flashed one that way; both are
+# safely raisable on the evidence of one real test. Note QIO/DIO is an
+# ESP-IDF setting that no Espressif datasheet states for any module — the
+# published fact is the quad wiring above, which is what permits QIO.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_SPEED_40M=y

@@ -1,0 +1,85 @@
+peripherals:
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      clk_source: I2C_CLK_SRC_DEFAULT
+      pins:
+        sda: 4
+        scl: 5
+      enable_internal_pullup: true
+
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: std-in
+    config:
+      port: 0
+      sample_rate_hz: 48000
+      mclk_multiple: 256
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_STD_SLOT_LEFT
+      pins:
+        mclk: -1
+        bclk: 41
+        ws: 42
+        din: 2
+      invert_flags:
+        mclk_inv: false
+        bclk_inv: false
+        ws_inv: false
+
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        mosi_io_num: 47
+        miso_io_num: -1
+        sclk_io_num: 21
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 115200
+
+  - name: ledc_backlight
+    type: ledc
+    config:
+      gpio_num: 48
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 5000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      output_invert: true
+
+  - name: adc_oneshot
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 0
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12
+
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE
+
+  - name: gpio_led
+    type: gpio
+    role: io
+    config:
+      pin: 3
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0

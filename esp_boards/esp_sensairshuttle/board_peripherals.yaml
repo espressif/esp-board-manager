@@ -1,0 +1,94 @@
+peripherals:
+  - name: adc_audio_in
+    type: adc
+    role: continuous
+    config:
+      unit_id: ADC_UNIT_1
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12
+      max_store_buf_size: 1024
+      conv_frame_size: 256
+      format: ADC_DIGI_OUTPUT_FORMAT_TYPE2
+      conv_mode: ADC_CONV_SINGLE_UNIT_1
+      channel_list: [5]
+
+  - name: i2c_master
+    type: i2c
+    role: master
+    config:
+      port: 0
+      clk_source: I2C_CLK_SRC_DEFAULT
+      pins:
+        sda: 2
+        scl: 3
+      enable_internal_pullup: true
+
+  - name: i2s_audio_out
+    type: i2s
+    role: master
+    format: pdm-out
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      clk_src: I2S_CLK_SRC_DEFAULT
+      mclk_multiple: 256
+      up_sample_fp: 960
+      up_sample_fs: 480
+      bclk_div: 8
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_LEFT
+      sd_prescale: 0
+      sd_scale: I2S_PDM_SIG_SCALING_MUL_1
+      hp_scale: I2S_PDM_SIG_SCALING_MUL_1
+      lp_scale: I2S_PDM_SIG_SCALING_MUL_1
+      sinc_scale: I2S_PDM_SIG_SCALING_MUL_1
+      line_mode: I2S_PDM_TX_ONE_LINE_CODEC
+      hp_en: true
+      hp_cut_off_freq_hz: 35.5
+      sd_dither: 0
+      sd_dither2: 1
+      pins:
+        clk: -1
+        dout: 7
+        dout2: -1
+      invert_flags:
+        clk_inv: false
+
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI2_HOST
+        mosi_io_num: 23
+        miso_io_num: -1
+        sclk_io_num: 24
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 48000
+
+  - name: gpio_lcd_power
+    type: gpio
+    config:
+      pin: 5
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  - name: gpio_speaker_enable
+    type: gpio
+    config:
+      pin: 1
+      mode: GPIO_MODE_OUTPUT
+      default_level: 0
+
+  # Boot button. Schematic net: ESP Button GPIO28 / ESP_BOOT / BOOT Button.
+  - name: gpio_boot_button
+    type: gpio
+    role: io
+    config:
+      pin: 28
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

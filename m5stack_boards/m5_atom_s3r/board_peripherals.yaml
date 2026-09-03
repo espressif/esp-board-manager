@@ -1,0 +1,32 @@
+peripherals:
+  - name: spi_display
+    type: spi
+    role: master
+    config:
+      spi_bus_config:
+        spi_port: SPI3_HOST
+        mosi_io_num: 21
+        miso_io_num: -1
+        sclk_io_num: 15
+        quadwp_io_num: -1
+        quadhd_io_num: -1
+        max_transfer_sz: 32768
+
+  - name: i2c_internal
+    type: i2c
+    role: master
+    config:
+      port: 0
+      pins:
+        sda: 45
+        scl: 0
+
+  - name: gpio_button
+    type: gpio
+    role: io
+    config:
+      pin: 41
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
+      intr_type: GPIO_INTR_DISABLE

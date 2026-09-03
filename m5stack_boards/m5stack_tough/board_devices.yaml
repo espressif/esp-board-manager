@@ -1,0 +1,65 @@
+# Devices Configuration for M5Stack Tough
+#
+# Source: M5Stack Tough official documentation (pin map)
+# Reference: https://docs.m5stack.com/en/core/tough
+#
+# The panel is an ILI9342C, command-compatible with the ILI9341 and driven
+# by espressif/esp_lcd_ili9341 (same choice as the upstream m5stack_cores3
+# board, whose panel is also an ILI9342C).
+#
+# Panel reset, panel power and backlight are AXP192 rails, not SoC pins, so
+# the display declares reset_gpio_num: -1 and there is no ledc_ctrl
+# brightness device. The CHSC6540 touch controller has no esp_lcd_touch
+# driver component, so there is no lcd_touch device either — see the
+# Not-modeled section of board_peripherals.yaml.
+#
+devices:
+  # ---------- 2.0" 320x240 LCD (ILI9342C, SPI) ----------
+  - name: display_lcd
+    chip: ili9341                     # ILI9342C: ILI9341-compatible command set
+    type: display_lcd
+    sub_type: spi
+    version: default
+    dependencies:
+      espressif/esp_lcd_ili9341: "*"
+    config:
+      swap_xy: false
+      mirror_x: false
+      mirror_y: false
+      x_max: 320
+      y_max: 240
+      invert_color: true              # ILI9342C panel on M5Stack needs inversion
+      need_reset: false               # reset line is AXP192 AXP_IO4, not a GPIO
+      io_spi_config:
+        cs_gpio_num: 5
+        dc_gpio_num: 15
+        spi_mode: 0
+        pclk_hz: 40000000
+        trans_queue_depth: 10
+        lcd_cmd_bits: 8
+        lcd_param_bits: 8
+      lcd_panel_config:
+        reset_gpio_num: -1            # AXP192 AXP_IO4
+        rgb_ele_order: LCD_RGB_ELEMENT_ORDER_BGR
+        bits_per_pixel: 16
+        flags:
+          reset_active_high: false
+        vendor_config: ""
+    peripherals:
+      - spi_name: spi_master
+
+  # ---------- microSD card (shares the LCD SPI bus, CS GPIO4) ----------
+  - name: fs_sdcard
+    type: fs_fat
+    sub_type: spi
+    version: default
+    config:
+      mount_point: "/sdcard"
+      vfs_config:
+        format_if_mount_failed: false
+        max_files: 5
+        allocation_unit_size: 16384
+      sub_config:
+        cs_gpio_num: 4
+    peripherals:
+      - spi_name: spi_master

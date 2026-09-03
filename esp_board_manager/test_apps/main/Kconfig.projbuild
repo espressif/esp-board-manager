@@ -84,6 +84,11 @@ menu "Board Manager Test App"
             depends on ESP_BOARD_DEV_BUTTON_SUPPORT
             default "button_l"
 
+        config BMGR_TEST_NAME_KNOB
+            string "Knob device name"
+            depends on ESP_BOARD_DEV_KNOB_SUPPORT
+            default "knob"
+
         config BMGR_TEST_NAME_I2C_MASTER
             string "I2C master peripheral name"
             depends on ESP_BOARD_PERIPH_I2C_SUPPORT

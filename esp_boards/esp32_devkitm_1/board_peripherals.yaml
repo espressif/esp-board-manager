@@ -1,0 +1,26 @@
+# Peripherals Configuration for ESP32-DevKitM-1
+#
+# Source: ESP32-DevKitM-1 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitm-1/user_guide.html
+#
+# Module: ESP32-MINI-1 (or ESP32-MINI-1U with an external antenna connector),
+# 4 MB in-package flash, no PSRAM. On-board hardware is minimal: BOOT and RST
+# buttons, a USB-to-UART bridge and a 3.3 V power indicator LED.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - RST button (chip reset, hardware path — not a GPIO)
+# - 3.3 V power-on LED: wired to the 3.3 V rail, NOT GPIO controlled
+# - USB-to-UART bridge on UART0 (console, handled by ROM/IDF)
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO0, active-low, strapping pin — input only at runtime)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 0
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false

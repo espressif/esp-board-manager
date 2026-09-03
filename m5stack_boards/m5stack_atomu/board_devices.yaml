@@ -1,0 +1,51 @@
+# Devices Configuration for M5Stack ATOM U
+#
+# Source: M5Stack ATOM U documentation
+# Reference: https://docs.m5stack.com/en/core/ATOM%20U
+#
+# There is no audio_codec device here on purpose: the SPM1423 microphone
+# has no control interface, so the pdm-in peripheral in
+# board_peripherals.yaml is the whole story.
+#
+devices:
+  # ---------- On-board SK6812 3535 addressable RGB LED ----------
+  - name: led_strip
+    chip: sk6812
+    type: led_strip
+    sub_type: rmt
+    version: 1.0.0
+    config:
+      strip_gpio_num: 27
+      max_leds: 1
+      led_model: LED_MODEL_SK6812
+      color_component_format: LED_STRIP_COLOR_COMPONENT_FMT_GRB
+      invert_out: false
+      rmt:
+        clk_src: RMT_CLK_SRC_DEFAULT
+        resolution_hz: 10000000
+        mem_block_symbols: 0
+        with_dma: false
+
+  # ---------- Side button (GPIO39, active-low) ----------
+  - name: user_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: true      # GPIO39 is input-only; no internal pull available
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_user_button
+
+  # ---------- Infrared transmit LED (GPIO12) ----------
+  - name: ir_tx
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_ir_tx

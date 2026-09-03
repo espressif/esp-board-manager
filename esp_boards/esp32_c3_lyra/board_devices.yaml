@@ -1,4 +1,18 @@
 devices:
+  # Boot button (GPIO9, active-low). The schematic labels this net ESP_Boot_IO9.
+  - name: boot_button
+    type: button
+    sub_type: gpio
+    version: default
+    config:
+      active_level: 0
+      enable_power_save: false
+      disable_pull: false
+      long_press_time: 2000
+      short_press_time: 100
+    peripherals:
+      - gpio_name: gpio_boot_button
+
   - name: audio_adc
     chip: internal
     type: audio_codec
@@ -21,7 +35,6 @@ devices:
   #       unit_id: ADC_UNIT_1
   #       atten: ADC_ATTEN_DB_12
   #       bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
-
   - name: audio_dac
     chip: internal
     type: audio_codec

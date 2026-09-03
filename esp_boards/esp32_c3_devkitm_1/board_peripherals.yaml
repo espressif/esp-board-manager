@@ -1,0 +1,25 @@
+# Peripherals Configuration for ESP32-C3-DevKitM-1
+#
+# Source: ESP32-C3-DevKitM-1 user guide
+# Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html
+#
+# On-board hardware is minimal: a WS2812 addressable LED on GPIO8 (owned by
+# the led_strip device, so not declared here) and the BOOT button on GPIO9.
+#
+# ----------------------------------------------------------------------
+# Not modeled:
+# - RESET button (EN pin, handled in hardware)
+# - Micro-USB port: USB-to-UART bridge, handled by ROM/console; the chip's
+#   native USB Serial/JTAG (GPIO18/GPIO19) is broken out to the headers only
+# ----------------------------------------------------------------------
+peripherals:
+  # BOOT button (GPIO9, active-low, strapping)
+  - name: gpio_boot_button
+    type: gpio
+    version: default
+    role: io
+    config:
+      pin: 9
+      mode: GPIO_MODE_INPUT
+      pull_up: true
+      pull_down: false
