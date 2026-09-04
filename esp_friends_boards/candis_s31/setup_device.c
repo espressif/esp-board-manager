@@ -212,6 +212,8 @@ static int rtc_init(void *cfg, int cfg_size, void **device_handle)
         .scl_speed_hz = config->frequency_hz,
         /* Candis-S31 uses a primary backup cell: never charge it. */
         .backup_charge_enable = false,
+        .backup_charge_cutoff = RX8130CE_CHARGE_CUTOFF_3_02V,
+        .backup_voltage_low_detect = true,
     };
     ret = rx8130ce_create(bus, &driver_config, (rx8130ce_handle_t *)device_handle);
     if (ret != ESP_OK) {

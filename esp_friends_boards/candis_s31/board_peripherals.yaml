@@ -1,6 +1,7 @@
 # Peripherals Configuration for Candis-S31
 peripherals:
-  # Main control bus for touch, audio codec, and Type-C controller.
+  # Main control bus for touch and audio codec.
+
   - name: i2c_main
     type: i2c
     role: master
@@ -67,7 +68,8 @@ peripherals:
         data2_io_num: 14
         data3_io_num: 9
         sclk_io_num: 12
-        max_transfer_sz: 73600
+        max_transfer_sz: 44160
+
 
   - name: gpio_display_vbat
     type: gpio
@@ -101,26 +103,8 @@ peripherals:
       mode: GPIO_MODE_OUTPUT
       default_level: 0
 
-  - name: gpio_type_c_enable
-    type: gpio
-    role: io
-    config:
-      pin: 1
-      mode: GPIO_MODE_OUTPUT
-      default_level: 1
-      # No Board Manager device consumes this pin: the type_c_controller
-      # device was removed (see board_devices.yaml header). The entry stays
-      # to pin FUSB303_EN_N to a safe default (high = controller disabled)
-      # for BSP coexistence; the BSP drives Type-C.
 
-  - name: gpio_usb_otg_enable
-    type: gpio
-    role: io
-    config:
-      pin: 45
-      mode: GPIO_MODE_OUTPUT
-      default_level: 0
-
+  # TG28 and RX8130CE share this wire-ORed active-low interrupt line.
   - name: gpio_pmic_rtc_interrupt
     type: gpio
     role: io
@@ -128,24 +112,7 @@ peripherals:
       pin: 2
       mode: GPIO_MODE_INPUT
       pull_up: true
-      # TG28 and RX8130CE share this wire-ORed line: an event asserted while
-      # the other device still holds it low produces no new edge, so it must
-      # be level-triggered (same fix as the BSP).
       intr_type: GPIO_INTR_LOW_LEVEL
-
-  - name: gpio_type_c_interrupt
-    type: gpio
-    role: io
-    config:
-      pin: 43
-      mode: GPIO_MODE_INPUT
-      pull_up: true
-      # The FUSB303B interrupt output stays low until every pending status
-      # bit is cleared, so it is level-active as well.
-      intr_type: GPIO_INTR_LOW_LEVEL
-      # Kept only to hold a documented safe default for the FUSB303B
-      # interrupt pad (level-active, pull-up); no BM device references it
-      # since the type_c_controller removal. The BSP owns the controller.
 
   - name: gpio_display_te
     type: gpio

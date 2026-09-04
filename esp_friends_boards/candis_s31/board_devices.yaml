@@ -1,15 +1,16 @@
 # Devices Configuration for Candis-S31
-# Type-C2 is intentionally absent: Board Manager currently exposes custom
-# driver handles and GPIO controls independently, so it cannot enforce this
-# board's atomic Source-before-boost sequence or 500 mA-only advertisement.
+# Type-C2 is intentionally absent: Board Manager cannot enforce the BSP's
+# atomic Source-before-boost sequence or its 500 mA-only source policy.
 # Applications that need Type-C2 USB Host must use the Candis-S31 BSP API.
+
 devices:
   - name: pmic
     chip: tg28_sw
     type: custom
     version: 1.0.0
     dependencies:
-      espressif/tg28_sw: "^0.3.0"
+      espressif/tg28_sw: "^0.4.0"
+
     config:
       i2c_address: 0x34
       frequency_hz: 400000
@@ -22,7 +23,8 @@ devices:
     type: custom
     version: 1.0.0
     dependencies:
-      espressif/rx8130ce: "^0.3.0"
+      espressif/rx8130ce: "^0.4.0"
+
     config:
       i2c_address: 0x32
       frequency_hz: 400000
@@ -136,20 +138,22 @@ devices:
     power_ctrl_device: board_power_ctrl
     version: default
     dependencies:
-      espressif/esp_lcd_co5300: "^2.0.3"
+      espressif/esp_lcd_co5300: "^2.1.0"
     config:
       swap_xy: false
-      mirror_x: false
-      mirror_y: false
+      mirror_x: true
+      mirror_y: true
       x_max: 460
       y_max: 460
+
       invert_color: false
       need_reset: true
       io_spi_config:
         cs_gpio_num: 10
         dc_gpio_num: -1
         spi_mode: 0
-        pclk_hz: 40000000
+        pclk_hz: 48000000
+
         trans_queue_depth: 10
         lcd_cmd_bits: 32
         lcd_param_bits: 8
@@ -165,6 +169,7 @@ devices:
     peripherals:
       - name: spi_display
 
+
   - name: lcd_touch
     chip: cst820
     type: lcd_touch
@@ -172,22 +177,16 @@ devices:
     power_ctrl_device: board_power_ctrl
     version: default
     dependencies:
-      # "espressif/esp_lcd_touch_cst820" does not exist in the public
-      # component registry (only a kodediy fork is published there), but the
-      # dependency name must stay unchanged: the project-level
-      # idf_component.yml override_path targets this exact name and points at
-      # the locally maintained driver in
-      # esp-bsp/components/lcd_touch/esp_lcd_touch_cst820. The kodediy
-      # version is unusable with this module: it is incompatible with the
-      # panel's 15-byte touch report format.
-      espressif/esp_lcd_touch_cst820: "^1.0.0"
+      espressif/esp_lcd_touch_cst820: "^1.2.0"
+
     config:
       io_i2c_config:
         lcd_cmd_bits: 8
         scl_speed_hz: 400000
       touch_config:
-        x_max: 460
-        y_max: 460
+        x_max: 459
+        y_max: 459
+
         rst_gpio_num: 17
         int_gpio_num: 3
         levels:
@@ -195,8 +194,9 @@ devices:
           interrupt: 0
         flags:
           swap_xy: false
-          mirror_x: false
-          mirror_y: false
+          mirror_x: true
+          mirror_y: true
+
     peripherals:
       - name: i2c_main
         i2c_addr: [0x2A]  # Board Manager uses the 8-bit form of 7-bit address 0x15.
@@ -206,6 +206,10 @@ devices:
     sub_type: dvp
     power_ctrl_device: board_power_ctrl
     version: default
+    init_skip: true
+    # The generic DVP device cannot generate the exact 24 MHz OV5640 clock
+    # on ESP32-S31. Keep the pin map for metadata, but initialize this camera
+    # through the Candis-S31 BSP, which uses the validated LEDC XCLK path.
     config:
       dvp_config:
         reset_io: 39
@@ -215,15 +219,6 @@ devices:
         de_io: 57
         pclk_io: 54
         xclk_io: 55
-        # XCLK is 24 MHz (measured baseline): the OV5640 register tables are
-        # calculated for a 24 MHz input, so keep this in sync with
-        # BSP_CAMERA_XCLK_CLOCK_MHZ in bsp/candis_s31.h. With sub_type dvp
-        # the ESP32-S31 DVP camera controller derives XCLK itself from
-        # PLL_F160M and routes it to xclk_io through the GPIO output matrix.
-        # No LEDC channel is configured on this BM path. The BSP also uses the
-        # camera controller by default; its separate LEDC XCLK exists only
-        # behind the disabled-by-default diagnostic Kconfig option
-        # CONFIG_BSP_CAMERA_XCLK_USE_LEDC.
         xclk_freq: 24000000
         data_io:
           data_io_0: 46
