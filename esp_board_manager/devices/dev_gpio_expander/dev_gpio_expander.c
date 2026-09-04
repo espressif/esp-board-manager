@@ -51,47 +51,42 @@ int dev_gpio_expander_init(void *cfg, int cfg_size, void **device_handle)
         goto init_err_unref_i2c;
     }
 
-    esp_io_expander_handle_t *dev = (esp_io_expander_handle_t *)calloc(1, sizeof(esp_io_expander_handle_t));
-    if (!dev) {
-        ESP_LOGE(TAG, "Failed to allocate memory for io_expander device");
-        goto init_err_unref_i2c;
-    }
+    esp_io_expander_handle_t dev = NULL;
 
-    ret = io_expander_factory_entry_t(bus_handle, dev_addr, dev);
-    if (ret != ESP_OK || !*dev) {
+    ret = io_expander_factory_entry_t(bus_handle, dev_addr, &dev);
+    if (ret != ESP_OK || !dev) {
         ESP_LOGE(TAG, "Failed to create IO expander handle\n");
-        free(dev);
         goto init_err_unref_i2c;
     }
 
     for (uint32_t i = 0; i < config->max_pins; i++) {
         uint32_t pin_mask = (1 << i);
         if (config->output_io_mask & pin_mask) {
-            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(*dev, pin_mask, IO_EXPANDER_OUTPUT),
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(dev, pin_mask, IO_EXPANDER_OUTPUT),
                               io_expander_del, TAG, "Set IO expander pin %" PRIu32 " as output failed", i);
             uint8_t level = (config->output_io_level_mask >> i) & 1;
-            ESP_GOTO_ON_ERROR(esp_io_expander_set_level(*dev, pin_mask, level),
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_level(dev, pin_mask, level),
                               io_expander_del, TAG, "Set IO expander pin %" PRIu32 " default level failed", i);
             if (config->enable_mode_set) {
                 esp_io_expander_output_mode_t mode = (esp_io_expander_output_mode_t)((config->output_io_mode_mask >> i) & 1);
-                ESP_GOTO_ON_ERROR(esp_io_expander_set_output_mode(*dev, pin_mask, mode),
+                ESP_GOTO_ON_ERROR(esp_io_expander_set_output_mode(dev, pin_mask, mode),
                                   io_expander_del, TAG, "Set IO expander pin %" PRIu32 " output mode failed", i);
             }
             ESP_LOGI(TAG, "Set IO expander pin %" PRIu32 " as output, level: %d", i, level);
         } else if (config->input_io_mask & pin_mask) {
-            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(*dev, pin_mask, IO_EXPANDER_INPUT),
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(dev, pin_mask, IO_EXPANDER_INPUT),
                               io_expander_del, TAG, "Set IO expander pin %" PRIu32 " as input failed", i);
             ESP_LOGI(TAG, "Set IO expander pin %" PRIu32 " as input", i);
         }
         if (config->io_pullup_mask & pin_mask) {
             esp_io_expander_pullupdown_t state = IO_EXPANDER_PULL_UP;
-            ESP_GOTO_ON_ERROR(esp_io_expander_set_pullupdown(*dev, pin_mask, state),
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_pullupdown(dev, pin_mask, state),
                               io_expander_del, TAG, "Set IO expander pin %" PRIu32 " pull-up failed", i);
             ESP_LOGI(TAG, "Enable IO expander pin %" PRIu32 " pull-up", i);
         }
         if (config->io_pulldown_mask & pin_mask) {
             esp_io_expander_pullupdown_t state = IO_EXPANDER_PULL_DOWN;
-            ESP_GOTO_ON_ERROR(esp_io_expander_set_pullupdown(*dev, pin_mask, state),
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_pullupdown(dev, pin_mask, state),
                               io_expander_del, TAG, "Set IO expander pin %" PRIu32 " pull-down failed", i);
             ESP_LOGI(TAG, "Enable IO expander pin %" PRIu32 " pull-down", i);
         }
@@ -105,10 +100,9 @@ int dev_gpio_expander_init(void *cfg, int cfg_size, void **device_handle)
     return 0;
 
 io_expander_del:
-    if (*dev) {
-        esp_io_expander_del(*dev);
+    if (dev) {
+        esp_io_expander_del(dev);
     }
-    free(dev);
 init_err_unref_i2c:
     esp_board_periph_unref_handle(config->i2c_name);
     return -1;
@@ -125,15 +119,14 @@ int dev_gpio_expander_deinit(void *device_handle)
         }
     }
 
-    esp_io_expander_handle_t *io_expander_dev = (esp_io_expander_handle_t *)device_handle;
-    if (*io_expander_dev) {
-        esp_io_expander_del(*io_expander_dev);
+    esp_io_expander_handle_t io_expander_dev = (esp_io_expander_handle_t)device_handle;
+    if (io_expander_dev) {
+        esp_io_expander_del(io_expander_dev);
     }
 
     if (cfg) {
         esp_board_periph_unref_handle(cfg->i2c_name);
     }
     ESP_LOGD(TAG, "Successfully deinitialized: %s, dev: %p", cfg ? cfg->name : "(unknown)", io_expander_dev);
-    free(io_expander_dev);
     return 0;
 }
