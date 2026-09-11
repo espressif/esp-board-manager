@@ -9,7 +9,15 @@ VERSION = 'v1.0.0'
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.idf_version import get_idf_version
+
+KNOWN_MIPI_DSI_PHY_CLK_SRC = frozenset((
+    'MIPI_DSI_PHY_CLK_SRC_DEFAULT',
+    'MIPI_DSI_PHY_CLK_SRC_PLL_F20M',
+    'MIPI_DSI_PHY_CLK_SRC_PLL_F25M',
+    'MIPI_DSI_PHY_CLK_SRC_RC_FAST',
+))
 
 # esp_lcd_dsi_bus_config_t.flags (clock_lane_force_hs) was added in ESP-IDF v6.0.1,
 # it is not present in the v6.0.0 release.
@@ -46,16 +54,14 @@ def parse(name: str, config: dict) -> dict:
             raise ValueError(f'Invalid data_lanes: {num_data_lanes}. Must be an integer >= 0.')
 
         # Get phy_clk_src with validation
-        phy_clk_src = bus_cfg.get('phy_clk_src', 0)
-        valid_phy_clk_srcs = [
-            0,  # Set it to 0 and then let the driver configure it
-            'MIPI_DSI_PHY_CLK_SRC_DEFAULT',
-            'MIPI_DSI_PHY_CLK_SRC_PLL_F20M',
-            'MIPI_DSI_PHY_CLK_SRC_PLL_F25M',
-            'MIPI_DSI_PHY_CLK_SRC_RC_FAST'
-        ]
-        if phy_clk_src not in valid_phy_clk_srcs:
-            raise ValueError(f'Invalid phy_clk_src: {phy_clk_src}. Valid values: {valid_phy_clk_srcs}')
+        phy_clk_src = resolve_idf_macro(
+            bus_cfg.get('phy_clk_src', 0),
+            default=0,
+            prefixes=('MIPI_DSI_PHY_CLK_SRC_',),
+            known=KNOWN_MIPI_DSI_PHY_CLK_SRC,
+            field_name='phy_clk_src',
+            extra_allowed=(0,),
+        )
 
         # Get lane_bit_rate_mbps
         lane_bit_rate_mbps = bus_cfg.get('lane_bit_rate_mbps', 0)

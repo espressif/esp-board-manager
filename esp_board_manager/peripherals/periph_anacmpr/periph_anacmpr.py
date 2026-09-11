@@ -6,7 +6,43 @@
 # Analog Comparator peripheral config parser
 VERSION = 'v1.0.0'
 
-import sys
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_ANA_CMPR_REF_SRC = frozenset((
+    'ANA_CMPR_REF_SRC_INTERNAL',
+    'ANA_CMPR_REF_SRC_EXTERNAL',
+))
+KNOWN_ANA_CMPR_CROSS = frozenset((
+    'ANA_CMPR_CROSS_POS',
+    'ANA_CMPR_CROSS_NEG',
+    'ANA_CMPR_CROSS_ANY',
+    'ANA_CMPR_CROSS_DISABLE',
+))
+KNOWN_ANA_CMPR_CLK_SRC = frozenset((
+    'ANA_CMPR_CLK_SRC_DEFAULT',
+    'ANA_CMPR_CLK_SRC_XTAL',
+    'ANA_CMPR_CLK_SRC_RC_FAST',
+    'ANA_CMPR_CLK_SRC_PLL_F48M',
+    'ANA_CMPR_CLK_SRC_PLL_F80M',
+    'ANA_CMPR_CLK_SRC_REF_F80M',
+))
+
+
+def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
+    specs = {
+        'ana_cmpr_ref_src': (('ANA_CMPR_REF_SRC_',), KNOWN_ANA_CMPR_REF_SRC),
+        'ana_cmpr_cross_type': (('ANA_CMPR_CROSS_',), KNOWN_ANA_CMPR_CROSS),
+        'ana_cmpr_clk_src': (('ANA_CMPR_CLK_SRC_',), KNOWN_ANA_CMPR_CLK_SRC),
+    }
+    if not enum_type:
+        return value if value else full_enum
+    spec = specs.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
+        return value if value else full_enum
+    prefixes, known = spec
+    return resolve_idf_macro(value, full_enum, prefixes, known, enum_type)
+
 
 def get_includes() -> list:
     """Return list of required include headers for Analog Comparator peripheral"""
@@ -14,77 +50,6 @@ def get_includes() -> list:
         'periph_anacmpr.h'
     ]
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range for ESP-IDF Analog Comparator driver.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (ana_cmpr_ref_src, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    # Define valid enum values based on ESP-IDF Analog Comparator driver
-    valid_enums = {
-        'ana_cmpr_ref_src': [
-            'ANA_CMPR_REF_SRC_INTERNAL',
-            'ANA_CMPR_REF_SRC_EXTERNAL'
-        ],
-        'ana_cmpr_cross_type': [
-            'ANA_CMPR_CROSS_POS',
-            'ANA_CMPR_CROSS_NEG',
-            'ANA_CMPR_CROSS_ANY'
-        ],
-        'ana_cmpr_clk_src': [
-            'ANA_CMPR_CLK_SRC_DEFAULT'
-        ]
-    }
-
-    if enum_type not in valid_enums:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
-        return True  # Allow unknown types to pass
-
-    if value not in valid_enums[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'      File: board_peripherals.yaml')
-        print(f'      Peripheral: Analog Comparator configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {valid_enums[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
-
-def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        full_enum: The complete ESP-IDF enum value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
-
-    Returns:
-        The enum value to use
-
-    Raises:
-        ValueError: If validation fails and the value is not empty
-    """
-    if not value:
-        result = full_enum
-    else:
-        result = value
-
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        # If validation fails and we have a non-empty value, raise an exception
-        if value:  # Only raise if user provided a value (not empty)
-            raise ValueError(f"Invalid {enum_type} value '{value}'. Please use one of the valid enum values.")
-        else:
-            # If no value provided, use default and show warning
-            print(f"⚠️  WARNING: Using default value '{full_enum}' due to validation failure")
-            result = full_enum
-
-    return result
 
 def parse(name: str, config: dict) -> dict:
     """Parse Analog Comparator peripheral configuration.

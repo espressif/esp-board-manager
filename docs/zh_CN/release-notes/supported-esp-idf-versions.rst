@@ -3,11 +3,10 @@
 
 :link_to_translation:`en:[English]`
 
-本页列出当前支持的 IDF 主版本与最低要求版本。
+当前支持的 ESP-IDF 版本如下：
 
-规划要点：
+- ESP-IDF ``release/v5.4``，最低 ``v5.4.4``。
+- ESP-IDF ``release/v5.5``，最低 ``v5.5.3``。
+- ESP-IDF ``release/v6.0`` 及更新版本。
 
-- 支持的 ESP-IDF release 分支。
-- 每个分支的最低 patch 版本要求。
-- 不同 IDF 版本下 action extension、底层驱动与 Kconfig 行为差异。
-
+ESP32-S31 目标芯片从 ESP-IDF ``v6.1`` 起可用。``release/v6.0`` 及更早分支不包含该芯片。

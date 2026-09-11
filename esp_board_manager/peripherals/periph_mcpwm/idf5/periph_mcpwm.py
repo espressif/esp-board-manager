@@ -10,10 +10,21 @@ PERIPH_MCPWM_IO_LIST = [
     'gen_gpio_num',
 ]
 
-import sys
+from generators.utils.idf_enum import resolve_idf_macro
 
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+KNOWN_MCPWM_TIMER_CLK_SRC = frozenset((
+    'MCPWM_TIMER_CLK_SRC_DEFAULT',
+    'MCPWM_TIMER_CLK_SRC_PLL160M',
+    'MCPWM_TIMER_CLK_SRC_PLL96M',
+    'MCPWM_TIMER_CLK_SRC_XTAL',
+    'MCPWM_TIMER_CLK_SRC_RC_FAST',
+))
+KNOWN_MCPWM_TIMER_COUNT_MODE = frozenset((
+    'MCPWM_TIMER_COUNT_MODE_PAUSE',
+    'MCPWM_TIMER_COUNT_MODE_UP',
+    'MCPWM_TIMER_COUNT_MODE_DOWN',
+    'MCPWM_TIMER_COUNT_MODE_UP_DOWN',
+))
 
 def get_includes() -> list:
     """Return list of required include headers for MCPWM peripheral"""
@@ -38,10 +49,22 @@ def parse(name: str, config: dict) -> dict:
         # Timer configuration
         timer_config = cfg.get('timer_config', {})
         group_id = timer_config.get('group_id', 0)
-        clk_src = timer_config.get('clk_src', 'MCPWM_TIMER_CLK_SRC_DEFAULT')
+        clk_src = resolve_idf_macro(
+            timer_config.get('clk_src', 'MCPWM_TIMER_CLK_SRC_DEFAULT'),
+            default='MCPWM_TIMER_CLK_SRC_DEFAULT',
+            prefixes=('MCPWM_TIMER_CLK_SRC_',),
+            known=KNOWN_MCPWM_TIMER_CLK_SRC,
+            field_name='clk_src',
+        )
         resolution_hz = timer_config.get('resolution_hz', 1000000)
         period_ticks = timer_config.get('period_ticks', 20000)
-        count_mode = timer_config.get('count_mode', 'MCPWM_TIMER_COUNT_MODE_UP')
+        count_mode = resolve_idf_macro(
+            timer_config.get('count_mode', 'MCPWM_TIMER_COUNT_MODE_UP'),
+            default='MCPWM_TIMER_COUNT_MODE_UP',
+            prefixes=('MCPWM_TIMER_COUNT_MODE_',),
+            known=KNOWN_MCPWM_TIMER_COUNT_MODE,
+            field_name='count_mode',
+        )
         intr_priority = timer_config.get('intr_priority', 0)
 
         # Timer flags

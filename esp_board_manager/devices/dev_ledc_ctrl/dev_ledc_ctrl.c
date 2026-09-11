@@ -27,30 +27,33 @@ int dev_ledc_ctrl_init(void *cfg, int cfg_size, void **device_handle)
         ESP_LOGE(TAG, "No LEDC peripheral name configured for device: %s", config->name);
         return -1;
     }
+
+    periph_ledc_config_t *ledc_config = NULL;
+    esp_err_t config_ret = esp_board_periph_get_config(config->ledc_name, (void **)&ledc_config);
+    if (config_ret != ESP_OK || ledc_config == NULL) {
+        ESP_LOGE(TAG, "Failed to get LEDC peripheral config '%s': %s", config->ledc_name, esp_err_to_name(config_ret));
+        return config_ret != ESP_OK ? config_ret : ESP_ERR_INVALID_STATE;
+    }
+
     int ret = esp_board_periph_ref_handle(config->ledc_name, (void *)&ledc_handle);
     if (ret != 0) {
         ESP_LOGE(TAG, "Failed to get LEDC peripheral handle '%s': %d", config->ledc_name, ret);
         return -1;
     }
-    periph_ledc_config_t *ledc_config = NULL;
-    esp_err_t config_ret = esp_board_periph_get_config(config->ledc_name, (void **)&ledc_config);
-    if (config_ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get LEDC peripheral config '%s': %s", config->ledc_name, esp_err_to_name(config_ret));
-        return -1;
-    }
+
     uint32_t duty = (config->default_percent * ((1 << (uint32_t)ledc_config->duty_resolution) - 1)) / 100;
 
     // Set initial duty cycle using the peripheral handle
     esp_err_t err = ledc_set_duty(ledc_handle->speed_mode, ledc_handle->channel, duty);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "ledc_set_duty failed: %s", esp_err_to_name(err));
-        return err;
+        goto cleanup;
     }
     // Update the duty cycle
     err = ledc_update_duty(ledc_handle->speed_mode, ledc_handle->channel);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "ledc_update_duty failed: %s", esp_err_to_name(err));
-        return err;
+        goto cleanup;
     }
 
     ESP_LOGI(TAG, "LEDC control device %s initialized: channel=%d, default_percent=%" PRIu32 "%%, duty=%" PRIu32,
@@ -59,6 +62,10 @@ int dev_ledc_ctrl_init(void *cfg, int cfg_size, void **device_handle)
     // Store the LEDC handle for later use
     *device_handle = ledc_handle;
     return 0;
+
+cleanup:
+    esp_board_periph_unref_handle(config->ledc_name);
+    return err;
 }
 
 int dev_ledc_ctrl_deinit(void *device_handle)
@@ -73,18 +80,21 @@ int dev_ledc_ctrl_deinit(void *device_handle)
         ESP_LOGE(TAG, "Invalid LEDC handle");
         return -1;
     }
+    ledc_mode_t speed_mode = ledc_handle->speed_mode;
     ledc_channel_t channel = ledc_handle->channel;
+
     // Stop the LEDC channel
-    esp_err_t err = ledc_stop(ledc_handle->speed_mode, ledc_handle->channel, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "ledc_stop failed: %s", esp_err_to_name(err));
-        return err;
-    }
+    esp_err_t err = ledc_stop(speed_mode, channel, 0);
 
     dev_ledc_ctrl_config_t *cfg = NULL;
     esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
     if (cfg) {
         esp_board_periph_unref_handle(cfg->ledc_name);
+    }
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ledc_stop failed for channel %d: %s", channel, esp_err_to_name(err));
+        return err;
     }
 
     ESP_LOGI(TAG, "LEDC control device channel %d deinitialized", channel);

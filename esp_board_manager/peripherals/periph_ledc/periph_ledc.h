@@ -21,8 +21,11 @@ extern "C" {
  *         including channel number, GPIO, and speed mode.
  */
 typedef struct {
-    ledc_channel_t  channel;     /*!< LEDC channel number */
-    ledc_mode_t     speed_mode;  /*!< LEDC speed mode */
+    ledc_channel_t  channel;             /*!< LEDC channel number */
+    ledc_mode_t     speed_mode;          /*!< LEDC speed mode */
+    ledc_timer_t    timer_sel;           /*!< LEDC timer selected for this channel */
+    bool            channel_configured;  /*!< Channel cleanup is still required */
+    bool            timer_ref_acquired;  /*!< Shared timer reference is still held */
 } periph_ledc_handle_t;
 
 /**

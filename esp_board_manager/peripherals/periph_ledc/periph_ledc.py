@@ -10,9 +10,18 @@ PERIPH_LEDC_IO_LIST = [
     'gpio_num',
 ]
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_LEDC_CHANNEL = frozenset(f'LEDC_CHANNEL_{i}' for i in range(8))
+KNOWN_LEDC_TIMER = frozenset(('LEDC_TIMER_0', 'LEDC_TIMER_1', 'LEDC_TIMER_2', 'LEDC_TIMER_3'))
+KNOWN_LEDC_DUTY_RESOLUTION = frozenset(f'LEDC_TIMER_{i}_BIT' for i in range(1, 21))
+KNOWN_LEDC_SPEED_MODE = frozenset(('LEDC_LOW_SPEED_MODE', 'LEDC_HIGH_SPEED_MODE'))
+KNOWN_LEDC_SLEEP_MODE = frozenset((
+    'LEDC_SLEEP_MODE_NO_ALIVE_NO_PD',
+    'LEDC_SLEEP_MODE_NO_ALIVE_ALLOW_PD',
+    'LEDC_SLEEP_MODE_KEEP_ALIVE',
+    'LEDC_SLEEP_MODE_INVALID',
+))
 
 def get_includes() -> list:
     """Return list of required include headers for LEDC peripheral"""
@@ -55,23 +64,34 @@ def parse(name: str, config: dict) -> dict:
             channel_enum = channel
         else:
             raise ValueError(f'Invalid LEDC channel type: {type(channel)}. Must be int or str.')
+        channel_enum = resolve_idf_macro(
+            channel_enum,
+            default='LEDC_CHANNEL_0',
+            prefixes=('LEDC_CHANNEL_',),
+            known=KNOWN_LEDC_CHANNEL,
+            field_name='channel',
+        )
 
         # Get LEDC timer_sel with validation
         timer_sel = cfg.get('timer_sel', 'LEDC_TIMER_0')
 
         # Handle both numeric and enum string values
         if isinstance(timer_sel, int):
-            if 0 <= timer_sel <= 3:
-                timer_enum = f'LEDC_TIMER_{timer_sel}'
-            else:
-                raise ValueError(f'Invalid LEDC timer number: {timer_sel}. Must be 0-3.')
+            if timer_sel < 0:
+                raise ValueError(f'Invalid LEDC timer number: {timer_sel}. Must be >= 0.')
+            timer_enum = f'LEDC_TIMER_{timer_sel}'
         elif isinstance(timer_sel, str):
-            valid_timers = ['LEDC_TIMER_0', 'LEDC_TIMER_1', 'LEDC_TIMER_2', 'LEDC_TIMER_3']
-            if timer_sel not in valid_timers:
-                raise ValueError(f'Invalid LEDC timer: {timer_sel}. Valid timers: {valid_timers}')
             timer_enum = timer_sel
         else:
             raise ValueError(f'Invalid LEDC timer type: {type(timer_sel)}. Must be int or str.')
+        timer_enum = resolve_idf_macro(
+            timer_enum,
+            default='LEDC_TIMER_0',
+            prefixes=('LEDC_TIMER_',),
+            known=KNOWN_LEDC_TIMER,
+            field_name='timer_sel',
+            pattern=r'^LEDC_TIMER_[0-9]+$',
+        )
 
         # Get frequency with validation
         freq_hz = cfg.get('freq_hz', 4000)
@@ -88,44 +108,43 @@ def parse(name: str, config: dict) -> dict:
 
         # Handle both numeric and enum string values
         if isinstance(duty_resolution, int):
-            if 1 <= duty_resolution <= 20:
-                duty_resolution_enum = f'LEDC_TIMER_{duty_resolution}_BIT'
-            else:
-                raise ValueError(f'Invalid duty resolution number: {duty_resolution}. Must be 1-20.')
+            if duty_resolution < 1:
+                raise ValueError(f'Invalid duty resolution number: {duty_resolution}. Must be >= 1.')
+            duty_resolution_enum = f'LEDC_TIMER_{duty_resolution}_BIT'
         elif isinstance(duty_resolution, str):
-            valid_duty_resolutions = [
-                'LEDC_TIMER_1_BIT', 'LEDC_TIMER_2_BIT', 'LEDC_TIMER_3_BIT', 'LEDC_TIMER_4_BIT',
-                'LEDC_TIMER_5_BIT', 'LEDC_TIMER_6_BIT', 'LEDC_TIMER_7_BIT', 'LEDC_TIMER_8_BIT',
-                'LEDC_TIMER_9_BIT', 'LEDC_TIMER_10_BIT', 'LEDC_TIMER_11_BIT', 'LEDC_TIMER_12_BIT',
-                'LEDC_TIMER_13_BIT', 'LEDC_TIMER_14_BIT', 'LEDC_TIMER_15_BIT', 'LEDC_TIMER_16_BIT',
-                'LEDC_TIMER_17_BIT', 'LEDC_TIMER_18_BIT', 'LEDC_TIMER_19_BIT', 'LEDC_TIMER_20_BIT'
-            ]
-            if duty_resolution not in valid_duty_resolutions:
-                raise ValueError(f'Invalid duty resolution: {duty_resolution}. Valid resolutions: {valid_duty_resolutions}')
             duty_resolution_enum = duty_resolution
         else:
             raise ValueError(f'Invalid duty resolution type: {type(duty_resolution)}. Must be int or str.')
+        duty_resolution_enum = resolve_idf_macro(
+            duty_resolution_enum,
+            default='LEDC_TIMER_13_BIT',
+            prefixes=('LEDC_TIMER_',),
+            known=KNOWN_LEDC_DUTY_RESOLUTION,
+            field_name='duty_resolution',
+            pattern=r'^LEDC_TIMER_[0-9]+_BIT$',
+        )
 
-        # Get speed mode with validation
-        speed_mode = cfg.get('speed_mode', 'LEDC_LOW_SPEED_MODE')
-        valid_speed_modes = ['LEDC_LOW_SPEED_MODE', 'LEDC_HIGH_SPEED_MODE']
-        if speed_mode not in valid_speed_modes:
-            raise ValueError(f'Invalid speed mode: {speed_mode}. Valid modes: {valid_speed_modes}')
+        speed_mode = resolve_idf_macro(
+            cfg.get('speed_mode', 'LEDC_LOW_SPEED_MODE'),
+            default='LEDC_LOW_SPEED_MODE',
+            prefixes=('LEDC_',),
+            known=KNOWN_LEDC_SPEED_MODE,
+            field_name='speed_mode',
+            pattern=r'^LEDC_[A-Z0-9_]*SPEED_MODE$',
+        )
 
         # Get output inversion with validation
         output_invert = cfg.get('output_invert', False)
         if not isinstance(output_invert, bool):
             raise ValueError(f'Invalid output_invert value: {output_invert}. Must be boolean.')
 
-        # Get sleep mode with validation
-        sleep_mode = cfg.get('sleep_mode', 'LEDC_SLEEP_MODE_NO_ALIVE_NO_PD')
-        valid_sleep_modes = [
-            'LEDC_SLEEP_MODE_NO_ALIVE_NO_PD',
-            'LEDC_SLEEP_MODE_NO_ALIVE_ALLOW_PD',
-            'LEDC_SLEEP_MODE_KEEP_ALIVE'
-        ]
-        if sleep_mode not in valid_sleep_modes:
-            raise ValueError(f'Invalid sleep_mode: {sleep_mode}. Valid modes: {valid_sleep_modes}')
+        sleep_mode = resolve_idf_macro(
+            cfg.get('sleep_mode', 'LEDC_SLEEP_MODE_NO_ALIVE_NO_PD'),
+            default='LEDC_SLEEP_MODE_NO_ALIVE_NO_PD',
+            prefixes=('LEDC_SLEEP_MODE_',),
+            known=KNOWN_LEDC_SLEEP_MODE,
+            field_name='sleep_mode',
+        )
 
         # Create configuration structure
         result = {

@@ -321,6 +321,7 @@ SPI 相机完整字段
 ------------
 
 - 当前设备模板注释说明同一块开发板暂不支持配置多个摄像头。
+- 最后一次引用的 deinit 在 ``esp_video`` 无法完整拆除摄像头时返回错误，例如 V4L2 路径仍处于打开状态。此时设备句柄以及 Board Manager 持有的 I2C、LDO、XCLK 引用保持有效。
 - ``i2c`` 外设仅提供 SCCB 控制句柄；DVP、CSI 或 SPI 数据线在 ``camera`` 设备配置中声明。
 - ``spi`` 模式使用 ``ESP_CAM_SENSOR_XCLK_LEDC`` 时，模板要求启用 ``CONFIG_CAMERA_XCLK_USE_LEDC``。
 - 修改摄像头设备、I2C 外设或 LDO 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。

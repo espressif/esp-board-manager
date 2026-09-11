@@ -229,6 +229,8 @@ esp_err_t esp_board_periph_deinit(const char *name)
         return ESP_OK;
     }
 
+    uint8_t old_ref_count = list->ref_count;
+
     /* Decrement reference count */
     list->ref_count--;
     ESP_LOGI(TAG, "Deinit peripheral %s ref_count: %d", name, list->ref_count);
@@ -236,12 +238,19 @@ esp_err_t esp_board_periph_deinit(const char *name)
     /* Only deinitialize if ref_count reaches 0 */
     if (list->ref_count == 0) {
         /* Check if deinit function exists */
-        ESP_BOARD_RETURN_ON_FALSE(handle->deinit, ESP_BOARD_ERR_PERIPH_NO_INIT, TAG,
-                                  "No deinit function for periph: %s", name);
+        if (!handle->deinit) {
+            list->ref_count = old_ref_count;
+            ESP_LOGE(TAG, "No deinit function for periph: %s", name);
+            return ESP_BOARD_ERR_PERIPH_NO_INIT;
+        }
 
         /* Deinitialize peripheral */
         esp_err_t ret = handle->deinit(list->periph_handle);
-        ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Failed to deinit periph: %s", name);
+        if (ret != ESP_OK) {
+            list->ref_count = old_ref_count;
+            ESP_LOGE(TAG, "Failed to deinit periph: %s", name);
+            return ret;
+        }
 
         list->periph_handle = NULL;
     } else {

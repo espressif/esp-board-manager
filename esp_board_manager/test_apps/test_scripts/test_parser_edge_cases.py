@@ -2309,6 +2309,7 @@ def test_lyrat_mini_peripheral_generation_keeps_structs_aligned(bmgr_root, tmp_p
         ('i2c_master', 'esp_bmgr_i2c_master_cfg'),
         ('i2s_audio_out', 'esp_bmgr_i2s_audio_out_cfg'),
         ('i2s_audio_in', 'esp_bmgr_i2s_audio_in_cfg'),
+        ('gpio_boot_button', 'esp_bmgr_gpio_boot_button_cfg'),
         ('gpio_sd_power', 'esp_bmgr_gpio_sd_power_cfg'),
         ('gpio_headphone_detection', 'esp_bmgr_gpio_headphone_detection_cfg'),
         ('gpio_power_amp', 'esp_bmgr_gpio_power_amp_cfg'),

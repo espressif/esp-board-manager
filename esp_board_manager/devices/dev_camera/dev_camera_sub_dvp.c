@@ -74,6 +74,7 @@ int dev_camera_sub_dvp_deinit(void *device_handle)
     esp_err_t ret = esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_DVP);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to deinitialize DVP camera: %s", esp_err_to_name(ret));
+        return -1;
     }
 
     dev_camera_config_t *cfg = NULL;
@@ -82,7 +83,7 @@ int dev_camera_sub_dvp_deinit(void *device_handle)
         esp_board_periph_unref_handle(cfg->sub_cfg.dvp.i2c_name);
     }
     free(device_handle);
-    return ret == ESP_OK ? 0 : -1;
+    return 0;
 }
 
 ESP_BOARD_SUBTYPE_ENTRY_IMPLEMENT(camera, dvp, dev_camera_sub_dvp_init, dev_camera_sub_dvp_deinit);

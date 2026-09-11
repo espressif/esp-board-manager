@@ -214,12 +214,18 @@ STD Mode Full Fields
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
-        # Valid values:
+        # Valid values (chip-dependent, see i2s_clock_src_t):
         # - I2S_CLK_SRC_DEFAULT
         # - I2S_CLK_SRC_EXTERNAL
-        # - I2S_CLK_SRC_APB
-        # - I2S_CLK_SRC_PLL_F160M
-        # - I2S_CLK_SRC_PLL_F240M
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # External clock source frequency in Hz. Only takes effect when clk_src is
         # I2S_CLK_SRC_EXTERNAL; otherwise the ESP-IDF driver ignores it.
@@ -231,6 +237,7 @@ STD Mode Full Fields
         # MCLK multiple (default: 256)
         mclk_multiple: 256
         # Valid values: 128, 192, 256, 384, 512, 576, 768, 1024, 1152
+        # Other positive integers are emitted as integers (not I2S_MCLK_MULTIPLE_*).
 
         # BCLK divider (default: 8). STD mode emits this field only on ESP-IDF >= 5.5.
         bclk_div: 8
@@ -317,6 +324,18 @@ TDM Mode Full Fields
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # External clock source frequency in Hz. Only takes effect when clk_src is
         # I2S_CLK_SRC_EXTERNAL; otherwise the ESP-IDF driver ignores it.
@@ -405,6 +424,18 @@ PDM TX Full Fields
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # MCLK multiple (default: 256)
         mclk_multiple: 256
@@ -506,6 +537,18 @@ PDM RX Full Fields
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # MCLK multiple (default: 256)
         mclk_multiple: 256
@@ -626,6 +669,7 @@ Notes
 
 - The direction of ``format`` must match the device purpose: playback devices reference ``std-out``, ``tdm-out``, or ``pdm-out``; recording devices reference ``std-in``, ``tdm-in``, or ``pdm-in``.
 - When using 24-bit data, ``mclk_multiple`` must be adjusted according to the codec and ESP-IDF I2S driver requirements; optional multiples are provided in the template.
+- If YAML ``mclk_multiple`` has no matching ``I2S_MCLK_MULTIPLE_*`` macro, the generator emits the integer value instead of an undefined macro name.
 - PDM RX multi-line mode is only available on targets that support this capability; PDM TX dual-line mode is not supported on ESP32.
 - ``ext_clk_freq_hz`` only takes effect when an external clock source is selected; the input clock must satisfy the BCLK requirement.
 - After modifying I2S peripheral configuration, re-run ``idf.py bmgr -b <board>``.

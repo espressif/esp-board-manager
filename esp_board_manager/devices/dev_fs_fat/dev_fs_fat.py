@@ -30,78 +30,47 @@ DEV_FS_FAT_IO_LIST = {
     ],
 }
 
-# Define valid enum values for SDMMC configuration
-VALID_SDMMC_ENUMS = {
-    'slot': [
-        'SDMMC_HOST_SLOT_0',
-        'SDMMC_HOST_SLOT_1',
-        'SDMMC_HOST_SLOT_2'
-    ],
-    'frequency': [
-        'SDMMC_FREQ_DEFAULT',      # 20000
-        'SDMMC_FREQ_HIGHSPEED',    # 40000
-        'SDMMC_FREQ_PROBING',      # 400
-        'SDMMC_FREQ_52M',          # 52000
-        'SDMMC_FREQ_26M',          # 26000
-        'SDMMC_FREQ_DDR50',        # 50000
-        'SDMMC_FREQ_SDR50'         # 100000
-    ],
-    'slot_flags': [
-        0,
-        'SDMMC_SLOT_FLAG_INTERNAL_PULLUP',
-        'SDMMC_SLOT_FLAG_WP_ACTIVE_HIGH',
-        'SDMMC_SLOT_FLAG_UHS1'
-    ]
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_SDMMC_SLOT = frozenset((
+    'SDMMC_HOST_SLOT_0',
+    'SDMMC_HOST_SLOT_1',
+))
+KNOWN_SDMMC_FREQ = frozenset((
+    'SDMMC_FREQ_DEFAULT',
+    'SDMMC_FREQ_HIGHSPEED',
+    'SDMMC_FREQ_PROBING',
+    'SDMMC_FREQ_26M',
+    'SDMMC_FREQ_52M',
+    'SDMMC_FREQ_DDR50',
+    'SDMMC_FREQ_SDR50',
+    'SDMMC_FREQ_SDR104',
+))
+KNOWN_SDMMC_SLOT_FLAG = frozenset((
+    'SDMMC_SLOT_FLAG_INTERNAL_PULLUP',
+    'SDMMC_SLOT_FLAG_WP_ACTIVE_HIGH',
+    'SDMMC_SLOT_FLAG_UHS1',
+))
+
+_SDMMC_ENUMS = {
+    'slot': (('SDMMC_HOST_SLOT_',), KNOWN_SDMMC_SLOT),
+    'frequency': (('SDMMC_FREQ_',), KNOWN_SDMMC_FREQ),
+    'slot_flags': (('SDMMC_SLOT_FLAG_',), KNOWN_SDMMC_SLOT_FLAG),
 }
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range for ESP-IDF SDMMC driver.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (slot, frequency, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    if enum_type not in VALID_SDMMC_ENUMS:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
-        return True  # Allow unknown types to pass
-
-    if value not in VALID_SDMMC_ENUMS[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'   File: board_devices.yaml')
-        print(f'   📋 Device: FS_FAT configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {VALID_SDMMC_ENUMS[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
-
 def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        full_enum: The complete ESP-IDF enum value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
-
-    Returns:
-        The enum value to use
-    """
-    if value is None or value == '':
-        result = full_enum
-    elif enum_type == 'slot_flags' and value == '0':
-        result = 0
-    else:
-        result = value
-
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        raise ValueError(f"YAML validation error in FS_FAT device: Invalid {enum_type} value '{result}'. Valid values: {VALID_SDMMC_ENUMS.get(enum_type, [])}")
-
-    return result
+    """Resolve a YAML SDMMC enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        if value is None or value == '':
+            return full_enum
+        return value
+    spec = _SDMMC_ENUMS.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
+        return full_enum if value is None or value == '' else value
+    prefixes, known = spec
+    extra = (0,) if enum_type == 'slot_flags' else ()
+    return resolve_idf_macro(value, full_enum, prefixes, known, enum_type, extra_allowed=extra)
 
 def get_includes() -> list:
     """Return list of required include headers for FS_FAT device"""
@@ -270,7 +239,11 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
         'struct_init': {
             'name': name,
             'mount_point': mount_point,
-            'frequency': sub_config.get('frequency', 'SDMMC_FREQ_HIGHSPEED') if sub_type == 'sdmmc' else 'SDMMC_FREQ_DEFAULT',
+            'frequency': get_enum_value(
+                sub_config.get('frequency'),
+                'SDMMC_FREQ_HIGHSPEED' if sub_type == 'sdmmc' else 'SDMMC_FREQ_DEFAULT',
+                'frequency',
+            ),
             'vfs_config': {
                 'format_if_mount_failed': format_if_mount_failed,
                 'max_files': max_files,

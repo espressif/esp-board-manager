@@ -5,6 +5,8 @@
  * See LICENSE file for details.
  */
 
+#include <stdbool.h>
+#include <stdlib.h>
 #include "esp_log.h"
 #include "periph_uart.h"
 
@@ -24,6 +26,7 @@ int periph_uart_init(void *cfg, int cfg_size, void **periph_handle)
     }
     periph_uart_config_t *uart_cfg = (periph_uart_config_t *)cfg;
 
+    bool driver_installed = false;
     esp_err_t ret = ESP_FAIL;
     if (uart_cfg->use_queue) {
         ret = uart_driver_install(uart_cfg->uart_num, uart_cfg->rx_buffer_size, uart_cfg->tx_buffer_size, uart_cfg->queue_size, &handle->uart_queue, uart_cfg->intr_alloc_flags);
@@ -34,6 +37,7 @@ int periph_uart_init(void *cfg, int cfg_size, void **periph_handle)
         ESP_LOGE(TAG, "Failed to install uart driver: %s", esp_err_to_name(ret));
         goto cleanup;
     }
+    driver_installed = true;
 
     ret = uart_param_config(uart_cfg->uart_num, &uart_cfg->uart_config);
     if (ret != ESP_OK) {
@@ -62,6 +66,12 @@ int periph_uart_init(void *cfg, int cfg_size, void **periph_handle)
     return 0;
 
 cleanup:
+    if (driver_installed) {
+        esp_err_t cleanup_ret = uart_driver_delete(uart_cfg->uart_num);
+        if (cleanup_ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to roll back uart driver: %s", esp_err_to_name(cleanup_ret));
+        }
+    }
     free(handle);
     return -1;
 }

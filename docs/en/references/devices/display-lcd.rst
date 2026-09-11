@@ -391,7 +391,12 @@ DSI Full Fields
         dpi_config:
           virtual_channel: 0                           # Virtual channel number (default: 0)
           dpi_clk_src: MIPI_DSI_DPI_CLK_SRC_DEFAULT    # DPI clock source (default)
-          # Refer to `soc_periph_mipi_dsi_dpi_clk_src_t` for valid values
+          # Valid values (chip-dependent, see soc_periph_mipi_dsi_dpi_clk_src_t):
+          # - MIPI_DSI_DPI_CLK_SRC_DEFAULT
+          # - MIPI_DSI_DPI_CLK_SRC_XTAL
+          # - MIPI_DSI_DPI_CLK_SRC_APLL
+          # - MIPI_DSI_DPI_CLK_SRC_PLL_F160M
+          # - MIPI_DSI_DPI_CLK_SRC_PLL_F240M
           dpi_clock_freq_mhz: 48                       # [TO_BE_CONFIRMED] DPI pixel clock MHz from panel budget
           pixel_format: LCD_COLOR_PIXEL_FORMAT_RGB565  # [TO_BE_CONFIRMED] Pixel format that used by the MIPI LCD device (default: RGB565)
           # Valid values
@@ -589,6 +594,12 @@ RGB Full Fields
         # esp_lcd_rgb_panel_config_t fields
         rgb_panel_config:
           clk_src: LCD_CLK_SRC_DEFAULT      # RGB LCD peripheral clock source (lcd_clock_source_t)
+          # Valid values (chip-dependent):
+          # - LCD_CLK_SRC_DEFAULT
+          # - LCD_CLK_SRC_PLL160M
+          # - LCD_CLK_SRC_PLL240M
+          # - LCD_CLK_SRC_XTAL
+          # - LCD_CLK_SRC_APLL
           data_width: 16                    # Number of RGB data lines wired to the panel, e.g. 8/16/18/24
           # IDF v6+: in/out color formats are emitted into esp_lcd_rgb_panel_config_t.
           # IDF v5.x: bits_per_pixel is emitted instead.
@@ -684,6 +695,12 @@ RGB + 3-wire SPI Full Fields
         # esp_lcd_rgb_panel_config_t fields for the RGB pixel data interface.
         rgb_panel_config:
           clk_src: LCD_CLK_SRC_DEFAULT      # RGB LCD peripheral clock source (lcd_clock_source_t)
+          # Valid values (chip-dependent):
+          # - LCD_CLK_SRC_DEFAULT
+          # - LCD_CLK_SRC_PLL160M
+          # - LCD_CLK_SRC_PLL240M
+          # - LCD_CLK_SRC_XTAL
+          # - LCD_CLK_SRC_APLL
           data_width: 16                    # Number of RGB data lines wired to the panel, e.g., 8/16/18/24
           in_color_format: LCD_COLOR_FMT_RGB565   # IDF v6+: frame buffer storage format consumed by RGB driver
           out_color_format: LCD_COLOR_FMT_RGB565  # IDF v6+: on-wire RGB format expected by the panel
@@ -766,6 +783,14 @@ PARLIO Full Fields
           data_width: 1                       # [TO_BE_CONFIRMED] 1 (SPI) or 8 (I80); must match wiring
           pclk_hz: 40000000                   # [TO_BE_CONFIRMED] Frequency of pixel clock
           clk_src: PARLIO_CLK_SRC_DEFAULT     # Clock source for the Parlio peripheral (parlio_clock_source_t)
+          # Valid values (chip-dependent):
+          # - PARLIO_CLK_SRC_DEFAULT
+          # - PARLIO_CLK_SRC_XTAL
+          # - PARLIO_CLK_SRC_PLL_F96M
+          # - PARLIO_CLK_SRC_PLL_F160M
+          # - PARLIO_CLK_SRC_PLL_F240M
+          # - PARLIO_CLK_SRC_RC_FAST
+          # - PARLIO_CLK_SRC_EXTERNAL
           max_transfer_bytes: 11360           # [TO_BE_CONFIRMED] >= largest color transfer; too small breaks DMA path
           dma_burst_size: 32                  # DMA burst size, in bytes
           trans_queue_depth: 10               # Transaction queue size; larger queue, higher throughput

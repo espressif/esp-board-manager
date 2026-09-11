@@ -110,20 +110,33 @@ int periph_mcpwm_deinit(void *periph_handle)
     }
 
     periph_mcpwm_handle_t *handle = (periph_mcpwm_handle_t *)periph_handle;
-    esp_err_t err;
+    esp_err_t err = ESP_OK;
+    esp_err_t first_err = ESP_OK;
     if (handle->generator) {
         // Delete components in reverse order
         err = mcpwm_del_generator(handle->generator);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Call to mcpwm_del_generator failed: %s", esp_err_to_name(err));
+            if (first_err == ESP_OK) {
+                first_err = err;
+            }
+        } else {
+            handle->generator = NULL;
         }
     }
 
     // Delete all comparators
     for (int i = 0; i < handle->num_comparators; i++) {
-        err = mcpwm_del_comparator(handle->comparators[i]);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Del comparator[%d] failed: %s", i, esp_err_to_name(err));
+        if (handle->comparators[i]) {
+            err = mcpwm_del_comparator(handle->comparators[i]);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Del comparator[%d] failed: %s", i, esp_err_to_name(err));
+                if (first_err == ESP_OK) {
+                    first_err = err;
+                }
+            } else {
+                handle->comparators[i] = NULL;
+            }
         }
     }
 
@@ -131,6 +144,11 @@ int periph_mcpwm_deinit(void *periph_handle)
         err = mcpwm_del_operator(handle->operator);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Call to mcpwm_del_operator failed: %s", esp_err_to_name(err));
+            if (first_err == ESP_OK) {
+                first_err = err;
+            }
+        } else {
+            handle->operator= NULL;
         }
     }
 
@@ -138,9 +156,17 @@ int periph_mcpwm_deinit(void *periph_handle)
         err = mcpwm_del_timer(handle->timer);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Call to mcpwm_del_timer failed: %s", esp_err_to_name(err));
+            if (first_err == ESP_OK) {
+                first_err = err;
+            }
+        } else {
+            handle->timer = NULL;
         }
     }
 
+    if (first_err != ESP_OK) {
+        return first_err;
+    }
     free(handle);
     ESP_LOGI(TAG, "MCPWM peripheral deinitialized successfully");
     return 0;

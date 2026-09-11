@@ -351,3 +351,37 @@ esp_err_t test_dev_camera()
 
     return ESP_OK;
 }
+
+esp_err_t test_dev_camera_deinit_busy(void)
+{
+    dev_camera_handle_t *camera_handle = NULL;
+    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CAMERA, (void **)&camera_handle);
+    if (ret != ESP_OK || camera_handle == NULL || camera_handle->dev_path == NULL) {
+        ESP_LOGE(TAG, "Failed to get camera device");
+        return ret != ESP_OK ? ret : ESP_FAIL;
+    }
+
+    int fd = open(camera_handle->dev_path, O_RDONLY);
+    if (fd < 0) {
+        ESP_LOGE(TAG, "failed to open device");
+        return ESP_FAIL;
+    }
+
+    ret = esp_board_manager_deinit_device_by_name(BMGR_TEST_NAME_CAMERA);
+    if (ret == ESP_OK) {
+        ESP_LOGE(TAG, "Camera deinit succeeded while video device is still open");
+        close(fd);
+        return ESP_FAIL;
+    }
+
+    dev_camera_handle_t *kept_handle = NULL;
+    esp_err_t get_ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CAMERA, (void **)&kept_handle);
+    close(fd);
+    if (get_ret != ESP_OK || kept_handle == NULL) {
+        ESP_LOGE(TAG, "Camera handle was released after failed deinit");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Camera deinit correctly failed while video device is open");
+    return ESP_OK;
+}

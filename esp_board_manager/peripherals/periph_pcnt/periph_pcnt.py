@@ -4,69 +4,28 @@
 # See LICENSE file for details.
 
 # PCNT peripheral config parser
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.soc_capability_query import current_soc
+
+KNOWN_PCNT_EDGE_ACTION = frozenset((
+    'PCNT_CHANNEL_EDGE_ACTION_HOLD',
+    'PCNT_CHANNEL_EDGE_ACTION_INCREASE',
+    'PCNT_CHANNEL_EDGE_ACTION_DECREASE',
+))
+KNOWN_PCNT_LEVEL_ACTION = frozenset((
+    'PCNT_CHANNEL_LEVEL_ACTION_KEEP',
+    'PCNT_CHANNEL_LEVEL_ACTION_INVERSE',
+    'PCNT_CHANNEL_LEVEL_ACTION_HOLD',
+))
 
 VERSION = 'v1.0.0'
 
-# Define valid PCNT configuration values
-VALID_PCNT_CHANNEL_EDGE_ACTIONS = [
-    'PCNT_CHANNEL_EDGE_ACTION_HOLD',
-    'PCNT_CHANNEL_EDGE_ACTION_INCREASE',
-    'PCNT_CHANNEL_EDGE_ACTION_DECREASE'
-]
 
-VALID_PCNT_CHANNEL_LEVEL_ACTIONS = [
-    'PCNT_CHANNEL_LEVEL_ACTION_KEEP',
-    'PCNT_CHANNEL_LEVEL_ACTION_INVERSE',
-    'PCNT_CHANNEL_LEVEL_ACTION_HOLD'
-]
+def get_enum_value(value: str, default_value: str, enum_type: str, prefixes, known) -> str:
+    return resolve_idf_macro(value, default_value, prefixes, known, enum_type)
 
 # SOC constants (adjust based on actual SOC)
 SOC_PCNT_THRES_POINT_PER_UNIT = 5
-
-def validate_enum_value(value: str, enum_type: str, valid_values: list) -> bool:
-    """Validate if the enum value is within the valid range.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum for error messages
-        valid_values: List of valid values
-
-    Returns:
-        True if valid, False otherwise
-    """
-    if value not in valid_values:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'   File: board_peripherals.yaml')
-        print(f'   📋 Peripheral: PCNT configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {valid_values}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-    return True
-
-def get_enum_value(value: str, default_value: str, enum_type: str, valid_values: list) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        default_value: The default value to use if value is not provided
-        enum_type: The type of enum for validation
-        valid_values: List of valid values
-
-    Returns:
-        The enum value to use
-    """
-    if not value:
-        result = default_value
-    else:
-        result = value
-
-    # Validate the enum value
-    if not validate_enum_value(result, enum_type, valid_values):
-        raise ValueError(f"YAML validation error in PCNT peripheral: Invalid {enum_type} value '{result}'. Valid values: {valid_values}")
-
-    return result
 
 def get_includes() -> list:
     """Return list of required include headers for PCNT"""
@@ -143,25 +102,29 @@ def parse_pcnt_channel_list(channel_list: list) -> list:
             channel_config.get('pos_act'),
             'PCNT_CHANNEL_EDGE_ACTION_INCREASE',
             'PCNT positive edge action',
-            VALID_PCNT_CHANNEL_EDGE_ACTIONS
+            ('PCNT_CHANNEL_EDGE_ACTION_',),
+            KNOWN_PCNT_EDGE_ACTION,
         )
         neg_act = get_enum_value(
             channel_config.get('neg_act'),
             'PCNT_CHANNEL_EDGE_ACTION_DECREASE',
             'PCNT negative edge action',
-            VALID_PCNT_CHANNEL_EDGE_ACTIONS
+            ('PCNT_CHANNEL_EDGE_ACTION_',),
+            KNOWN_PCNT_EDGE_ACTION,
         )
         high_act = get_enum_value(
             channel_config.get('high_act'),
             'PCNT_CHANNEL_LEVEL_ACTION_KEEP',
             'PCNT high level action',
-            VALID_PCNT_CHANNEL_LEVEL_ACTIONS
+            ('PCNT_CHANNEL_LEVEL_ACTION_',),
+            KNOWN_PCNT_LEVEL_ACTION,
         )
         low_act = get_enum_value(
             channel_config.get('low_act'),
             'PCNT_CHANNEL_LEVEL_ACTION_KEEP',
             'PCNT low level action',
-            VALID_PCNT_CHANNEL_LEVEL_ACTIONS
+            ('PCNT_CHANNEL_LEVEL_ACTION_',),
+            KNOWN_PCNT_LEVEL_ACTION,
         )
 
         parsed_channels.append({

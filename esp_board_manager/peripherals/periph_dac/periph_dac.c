@@ -73,39 +73,40 @@ int periph_dac_deinit(void *periph_handle)
     err = esp_board_periph_get_name_by_handle(periph_handle, &periph_name);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get periph name: %s", esp_err_to_name(err));
-        goto cleanup;
+        return -1;
     }
     periph_dac_config_t *cfg = NULL;
     err = esp_board_periph_get_config(periph_name, (void **)&cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get config: %s", esp_err_to_name(err));
-        goto cleanup;
+        return -1;
     }
     if (cfg->role == ESP_BOARD_PERIPH_ROLE_ONESHOT) {
         err = dac_oneshot_del_channel(handle->oneshot);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "DAC oneshot channel deinitialized successfully");
+            handle->oneshot = NULL;
         }
     } else if (cfg->role == ESP_BOARD_PERIPH_ROLE_CONTINUOUS) {
         err = dac_continuous_del_channels(handle->continuous);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "DAC continuous channels deinitialized successfully");
+            handle->continuous = NULL;
         }
     } else if (cfg->role == ESP_BOARD_PERIPH_ROLE_COSINE) {
         err = dac_cosine_del_channel(handle->cosine);
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "DAC cosine channel deinitialized successfully");
+            handle->cosine = NULL;
         }
     } else {
         ESP_LOGE(TAG, "Invalid DAC role: %d", cfg->role);
-        goto cleanup;
+        return -1;
     }
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "DAC deinitialization failed: %s", esp_err_to_name(err));
-        goto cleanup;
+        return -1;
     }
-    return 0;
-cleanup:
     free(handle);
-    return -1;
+    return 0;
 }

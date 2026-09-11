@@ -88,10 +88,17 @@ Analog Comparator Unit — Full Fields
         # - ANA_CMPR_CROSS_POS: Trigger on positive crossing (source > reference)
         # - ANA_CMPR_CROSS_NEG: Trigger on negative crossing (source < reference)
         # - ANA_CMPR_CROSS_ANY: Trigger on both positive and negative crossing
+        # - ANA_CMPR_CROSS_DISABLE: Disable crossing interrupt
 
         # Clock source (default: ANA_CMPR_CLK_SRC_DEFAULT)
         clk_src: ANA_CMPR_CLK_SRC_DEFAULT
-        # Please check the 'soc_periph_ana_cmpr_clk_src_t' in 'soc/clk_tree_defs.h' for valid values
+        # Valid values (chip-dependent, see soc_periph_ana_cmpr_clk_src_t):
+        # - ANA_CMPR_CLK_SRC_DEFAULT
+        # - ANA_CMPR_CLK_SRC_XTAL
+        # - ANA_CMPR_CLK_SRC_RC_FAST
+        # - ANA_CMPR_CLK_SRC_PLL_F48M
+        # - ANA_CMPR_CLK_SRC_PLL_F80M
+        # - ANA_CMPR_CLK_SRC_REF_F80M
 
         # Interrupt priority (default: 0)
         # If set to 0, the driver will automatically select a relative low priority (1,2,3)
@@ -138,8 +145,8 @@ Notes
 
 - The current parser only accepts ``unit: 0``.
 - ``ref_src`` only accepts ``ANA_CMPR_REF_SRC_INTERNAL`` or ``ANA_CMPR_REF_SRC_EXTERNAL``.
-- ``cross_type`` only accepts ``ANA_CMPR_CROSS_POS``, ``ANA_CMPR_CROSS_NEG``, or ``ANA_CMPR_CROSS_ANY``.
-- ``clk_src`` currently only accepts ``ANA_CMPR_CLK_SRC_DEFAULT``.
+- ``cross_type`` accepts ``ANA_CMPR_CROSS_POS``, ``ANA_CMPR_CROSS_NEG``, ``ANA_CMPR_CROSS_ANY``, or ``ANA_CMPR_CROSS_DISABLE``.
+- ``clk_src`` values are chip-dependent; see the YAML comments above. Unknown names with the ``ANA_CMPR_CLK_SRC_`` prefix are passed through.
 - The internal reference voltage, debounce, and event callbacks must be configured in application code and must not be written into the ``anacmpr`` peripheral ``config``.
 - After modifying the analog comparator peripheral configuration, re-run ``idf.py bmgr -b <board>``.
 

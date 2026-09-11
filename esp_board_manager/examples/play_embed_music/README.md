@@ -42,7 +42,7 @@ The WAV file is built into the application using ESP-IDF [embedded binary data](
 
 ### Default IDF Branch
 
-This example supports IDF release/v5.4 (>= v5.4.3) and release/v5.5 (>= v5.5.2).
+This example supports IDF release/v5.4 (>= v5.4.4), release/v5.5 (>= v5.5.3), and release/v6.0 and later.
 
 ### Hardware Required
 

@@ -90,22 +90,27 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Define valid enum values based on ESP-IDF camera driver
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_CAM_DATA_WIDTH = frozenset((
+    'CAM_CTLR_DATA_WIDTH_8',
+    'CAM_CTLR_DATA_WIDTH_10',
+    'CAM_CTLR_DATA_WIDTH_12',
+    'CAM_CTLR_DATA_WIDTH_16',
+))
+KNOWN_CAM_SPI_INTF = frozenset((
+    'ESP_CAM_CTLR_SPI_CAM_INTF_SPI',
+    'ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO',
+))
+KNOWN_CAM_SPI_IO_MODE = frozenset((
+    'ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT',
+    'ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT',
+))
+
 VALID_ENUMS = {
-    'data_width': [
-        'CAM_CTLR_DATA_WIDTH_8',
-        'CAM_CTLR_DATA_WIDTH_10',
-        'CAM_CTLR_DATA_WIDTH_12',
-        'CAM_CTLR_DATA_WIDTH_16'
-    ],
-    'spi_cam_intf': [
-        'ESP_CAM_CTLR_SPI_CAM_INTF_SPI',
-        'ESP_CAM_CTLR_SPI_CAM_INTF_PARLIO',
-    ],
-    'spi_cam_io_mode': [
-        'ESP_CAM_CTLR_SPI_CAM_IO_MODE_1BIT',
-        'ESP_CAM_CTLR_SPI_CAM_IO_MODE_2BIT',
-    ],
+    'data_width': ( ('CAM_CTLR_DATA_WIDTH_',), KNOWN_CAM_DATA_WIDTH ),
+    'spi_cam_intf': ( ('ESP_CAM_CTLR_SPI_CAM_INTF_',), KNOWN_CAM_SPI_INTF ),
+    'spi_cam_io_mode': ( ('ESP_CAM_CTLR_SPI_CAM_IO_MODE_',), KNOWN_CAM_SPI_IO_MODE ),
 }
 
 def get_includes() -> list:
@@ -114,52 +119,16 @@ def get_includes() -> list:
         'dev_camera.h'
     ]
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range for ESP-IDF camera driver.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (data_width, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    if enum_type not in VALID_ENUMS:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
-        return True  # Allow unknown types to pass
-
-    if value not in VALID_ENUMS[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'   File: board_devices.yaml')
-        print(f'   📋 Device: camera configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {VALID_ENUMS[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
-
 def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        full_enum: The complete ESP-IDF enum value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
-
-    Returns:
-        The enum value to use
-    """
-    if not value:
-        result = full_enum
-    else:
-        result = value
-
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        raise ValueError(f"YAML validation error in camera device: Invalid {enum_type} value '{result}'. Valid values: {VALID_ENUMS.get(enum_type, [])}")
-
-    return result
+    """Resolve a YAML camera enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        return value if value else full_enum
+    spec = VALID_ENUMS.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
+        return value if value else full_enum
+    prefixes, known = spec
+    return resolve_idf_macro(value, full_enum, prefixes, known, enum_type)
 
 def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     """Parse camera device configuration from YAML to C structure"""

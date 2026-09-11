@@ -85,6 +85,7 @@ PWM 输出完整字段
         # LEDC timer (default: LEDC_TIMER_0)
         timer_sel: "LEDC_TIMER_0"
         # Valid values: 0-3 or "LEDC_TIMER_0" to "LEDC_TIMER_3"
+        # Do not use LEDC_TIMER_N_BIT here; that belongs to duty_resolution.
 
         # PWM frequency in Hz (default: 4000)
         freq_hz: 4000                  # [TO_BE_CONFIRMED] PWM frequency in Hz

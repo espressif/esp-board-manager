@@ -159,53 +159,18 @@ Official Development Boards (``espressif/esp_boards``)
      - Hardware platform for Thread and Zigbee border-router development.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :hidden:
    :titlesonly:
 
-   esp32_c3_lcdkit
-   esp32_c3_lyra
-   esp32_lyrat_4_3
-   esp32_lyrat_mini_1_1
-   esp32_p4_eye
-   esp32_p4_function_ev_board
-   esp32_s31_function_coreboard_1
-   esp32_s31_korvo_1
-   esp32_s3_box_3
-   esp32_s3_box_lite
-   esp32_s3_eye
-   esp32_s3_korvo_1
-   esp32_s3_korvo_2_3
-   esp32_s3_lcd_ev_board
-   esp_sensairshuttle
-   esp_vocat_1_0
-   esp_vocat_1_2
-   esp32_c3_aws_expresslink_devkit
-   esp32_c3_devkit_rust_1
-   esp32_c3_devkit_rust_2
-   esp32_c3_devkitc_02
-   esp32_c3_devkitm_1
-   esp32_c5_devkitc_1
-   esp32_c6_devkitc_1
-   esp32_c6_devkitm_1
-   esp32_devkitc
-   esp32_devkitm_1
-   esp32_ethernet_kit
-   esp32_h2_devkitm_1
-   esp32_lcdkit
-   esp32_meshkit_sense
-   esp32_p4x_c5_function_ev
-   esp32_pico_devkitm_2
-   esp32_pico_kit
-   esp32_pico_kit_1
-   esp32_s3_devkitc_1
-   esp32_s3_devkitm_1
-   esp32_s3_usb_otg
-   esp32_sense_kit
-   esp32_vaquita_dspg
-   esp_dualkey
-   esp_mosaico
-   esp_thread_border_router
+   official_esp32
+   official_esp32_c3
+   official_esp32_c5
+   official_esp32_c6
+   official_esp32_h2
+   official_esp32_p4
+   official_esp32_s3
+   official_esp32_s31
 
 Partner and Community Boards (``espressif/esp_friends_boards``)
 ---------------------------------------------------------------
@@ -240,17 +205,14 @@ Partner and Community Boards (``espressif/esp_friends_boards``)
      - ESP32-S3 robotic interaction board.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :hidden:
    :titlesonly:
 
-   esp_hi
-   esp32_c5_spot
-   esp32_s3_box_2
-   esp32_s3_korvo_2l
-   esp_Ditto
-   esp_wrover_kit
-   esp_sparkbot
+   partner_esp32
+   partner_esp32_c3
+   partner_esp32_c5
+   partner_esp32_s3
 
 M5Stack Boards (``espressif/m5stack_boards``)
 ----------------------------------------------

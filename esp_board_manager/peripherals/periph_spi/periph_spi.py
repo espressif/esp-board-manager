@@ -18,10 +18,15 @@ PERIPH_SPI_IO_LIST = [
     'data7_io_num',
 ]
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.idf_version import get_idf_version
+
+KNOWN_SPI_HOST = frozenset(('SPI1_HOST', 'SPI2_HOST', 'SPI3_HOST'))
+KNOWN_INTR_CPU_AFFINITY = frozenset((
+    'ESP_INTR_CPU_AFFINITY_AUTO',
+    'ESP_INTR_CPU_AFFINITY_0',
+    'ESP_INTR_CPU_AFFINITY_1',
+))
 
 IDF_VERSION_WITH_SPI_DMA_BURST_SIZE = (6, 1, 0)
 
@@ -55,17 +60,21 @@ def parse(name: str, config: dict) -> dict:
 
         # Handle both numeric and enum string values
         if isinstance(spi_port, int):
-            if 0 <= spi_port <= 2:
-                spi_port_enum = f'SPI{spi_port + 1}_HOST'
-            else:
-                raise ValueError(f'Invalid SPI port number: {spi_port}. Must be 0-2.')
+            if spi_port < 0:
+                raise ValueError(f'Invalid SPI port number: {spi_port}. Must be >= 0.')
+            spi_port_enum = f'SPI{spi_port + 1}_HOST'
         elif isinstance(spi_port, str):
-            valid_ports = ['SPI1_HOST', 'SPI2_HOST', 'SPI3_HOST']
-            if spi_port not in valid_ports:
-                raise ValueError(f'Invalid SPI port: {spi_port}. Valid ports: {valid_ports}')
             spi_port_enum = spi_port
         else:
             raise ValueError(f'Invalid SPI port type: {type(spi_port)}. Must be int or str.')
+        spi_port_enum = resolve_idf_macro(
+            spi_port_enum,
+            default='SPI1_HOST',
+            prefixes=('SPI',),
+            known=KNOWN_SPI_HOST,
+            field_name='spi_port',
+            pattern=r'^SPI[0-9]+_HOST$',
+        )
 
         # spi_bus_config already obtained above
 
@@ -150,11 +159,13 @@ def parse(name: str, config: dict) -> dict:
         if not isinstance(flags, int):
             raise ValueError(f'Invalid flags: {flags}. Must be int.')
 
-        # Parse ISR CPU affinity
-        isr_cpu_id = spi_bus_config.get('isr_cpu_id', 'ESP_INTR_CPU_AFFINITY_AUTO')
-        valid_isr_cpu_ids = ['ESP_INTR_CPU_AFFINITY_AUTO', 'ESP_INTR_CPU_AFFINITY_0', 'ESP_INTR_CPU_AFFINITY_1']
-        if isr_cpu_id not in valid_isr_cpu_ids:
-            raise ValueError(f'Invalid isr_cpu_id: {isr_cpu_id}. Valid values: {valid_isr_cpu_ids}')
+        isr_cpu_id = resolve_idf_macro(
+            spi_bus_config.get('isr_cpu_id', 'ESP_INTR_CPU_AFFINITY_AUTO'),
+            default='ESP_INTR_CPU_AFFINITY_AUTO',
+            prefixes=('ESP_INTR_CPU_AFFINITY_',),
+            known=KNOWN_INTR_CPU_AFFINITY,
+            field_name='isr_cpu_id',
+        )
 
         # Parse interrupt flags
         intr_flags = spi_bus_config.get('intr_flags', 0)

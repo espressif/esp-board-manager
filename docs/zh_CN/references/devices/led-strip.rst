@@ -126,6 +126,14 @@ RMT 灯带完整字段
         # led_strip_rmt_config_t fields
         rmt:
           clk_src: RMT_CLK_SRC_DEFAULT     # RMT clock source (rmt_clock_source_t)
+          # Valid values (chip-dependent):
+          # - RMT_CLK_SRC_DEFAULT
+          # - RMT_CLK_SRC_APB
+          # - RMT_CLK_SRC_XTAL
+          # - RMT_CLK_SRC_RC_FAST
+          # - RMT_CLK_SRC_REF_TICK
+          # - RMT_CLK_SRC_PLL_F80M
+          # - RMT_CLK_SRC_REF_F80M
           resolution_hz: 10000000          # RMT tick resolution in Hz; 0 lets driver use default 10MHz
           mem_block_symbols: 0             # RMT symbols per channel block; 0 lets driver choose default size
           with_dma: false                  # Use DMA for RMT transmission when target supports it
@@ -161,6 +169,17 @@ SPI 灯带完整字段
         # led_strip_spi_config_t fields; the led_strip driver initializes this SPI bus internally.
         spi:
           clk_src: SPI_CLK_SRC_DEFAULT     # SPI clock source (spi_clock_source_t)
+          # Valid values (chip-dependent):
+          # - SPI_CLK_SRC_DEFAULT
+          # - SPI_CLK_SRC_APB
+          # - SPI_CLK_SRC_XTAL
+          # - SPI_CLK_SRC_RC_FAST
+          # - SPI_CLK_SRC_PLL_F40M
+          # - SPI_CLK_SRC_PLL_F48M
+          # - SPI_CLK_SRC_PLL_F80M
+          # - SPI_CLK_SRC_PLL_F160M
+          # - SPI_CLK_SRC_SPLL
+          # - SPI_CLK_SRC_BBPLL
           spi_bus: SPI2_HOST               # SPI host used by led_strip driver; must not conflict with another initialized SPI bus
           with_dma: true                   # Use DMA for SPI transmission when target supports it
 

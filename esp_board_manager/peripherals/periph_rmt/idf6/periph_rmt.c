@@ -84,6 +84,9 @@ int periph_rmt_deinit(void *periph_handle)
         }
         handle->channel = NULL;
     }
-    free(handle);
-    return 0;
+    if (handle->channel == NULL) {
+        free(handle);
+        return 0;
+    }
+    return -1;
 }

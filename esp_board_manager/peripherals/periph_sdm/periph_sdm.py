@@ -10,11 +10,17 @@ PERIPH_SDM_IO_LIST = [
     'gpio_num',
 ]
 
-import sys
-
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.idf_version import get_idf_version
+
+KNOWN_SDM_CLK_SRC = frozenset((
+    'SDM_CLK_SRC_DEFAULT',
+    'SDM_CLK_SRC_APB',
+    'SDM_CLK_SRC_XTAL',
+    'SDM_CLK_SRC_PLL_F48M',
+    'SDM_CLK_SRC_PLL_F80M',
+    'SDM_CLK_SRC_REF_F80M',
+))
 
 def get_includes() -> list:
     """Return list of required include headers for SDM peripheral"""
@@ -42,7 +48,13 @@ def parse(name: str, config: dict) -> dict:
             raise ValueError(f'Invalid GPIO pin number: {gpio_num}. Must be >= 0.')
 
         # Get clock source with validation
-        clk_src = cfg.get('clk_src', 'SDM_CLK_SRC_DEFAULT')
+        clk_src = resolve_idf_macro(
+            cfg.get('clk_src', 'SDM_CLK_SRC_DEFAULT'),
+            default='SDM_CLK_SRC_DEFAULT',
+            prefixes=('SDM_CLK_SRC_',),
+            known=KNOWN_SDM_CLK_SRC,
+            field_name='clk_src',
+        )
 
         # Get sample rate with validation
         sample_rate_hz = cfg.get('sample_rate_hz', 1000000)

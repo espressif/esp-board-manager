@@ -41,7 +41,7 @@ Mount SD card → open WAV → `read_wav_header` → `esp_codec_dev_open` / `wri
 
 ### Default IDF Branch
 
-This example supports IDF release/v5.4 (>= v5.4.3) and release/v5.5 (>= v5.5.2).
+This example supports IDF release/v5.4 (>= v5.4.4), release/v5.5 (>= v5.5.3), and release/v6.0 and later.
 
 ### Hardware Required
 

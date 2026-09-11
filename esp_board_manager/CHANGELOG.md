@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.3
+
+### Modifications
+
+- Documented ESP-IDF support is now ``release/v5.4`` (minimum ``v5.4.4``), ``release/v5.5`` (minimum ``v5.5.3``), and ``release/v6.0`` and later.
+- CI now builds S3/P4 test apps on ``espressif/idf`` tags ``v5.4.4``, ``v5.5.5``, ``v6.0.3``, ``v6.1``, and ``latest``. ESP32-S31 is built on ``v6.1`` and ``latest``.
+- Board reference pages copied from esp-dev-kits now keep a short BMGR stub (sidebar entry, capabilities, and YAML path) and link to the official hardware user guide instead of duplicating the full text.
+- The board catalog sidebar now groups development boards by chip.
+- YAML IDF enumerator parsing now uses per-parser known lists (union of ESP-IDF v5.4, v5.5, v6.0, v6.1, and master names for that field) plus prefix passthrough via `resolve_idf_macro`. Names already in the local list are emitted silently; unknown names that still match the field prefix (for example `I2S_CLK_SRC_*`) warn and are written literally; values without the prefix fail `idf.py bmgr`. `mclk_multiple` still emits unknown positive integers as integers instead of inventing undefined macros.
+
+### Bug Fixes
+
+- **Camera (`dev_camera`)**: Last-ref deinit now propagates `esp_video` failure instead of returning success. DVP/CSI/SPI subtypes keep the device handle and BMGR-owned I2C/LDO/XCLK references until video deinit succeeds, so callers such as expansion-slot recovery do not release still-owned pins.
+- **I2S (`periph_i2s`)**: `mclk_multiple` values without a matching `I2S_MCLK_MULTIPLE_*` macro are now emitted as integers instead of inventing undefined macros such as `I2S_MCLK_MULTIPLE_960`.
+- **Peripheral lifecycle (`esp_board_periph`)**: Failed peripheral deinit now restores its reference count and retains the handle when the registered deinit callback fails.
+- **UART/SPI/GPIO/LEDC peripherals**: Initialization now rolls back resources acquired by a failed operation; LEDC deinitializes each channel before releasing its shared timer.
+- **I2S (`periph_i2s`)**: Runtime initialization now checks each `init`/`enable` result immediately so a TX clock-helper failure cannot be overwritten by a later RX success.
+- **ADC/DAC/RMT/MCPWM peripherals**: Failed driver delete/deinit operations now retain their wrappers so callers can retry cleanup safely.
+- **GPIO/LEDC controls and audio codec**: Failed device initialization releases acquired control references; custom power control always releases its references; codec auxiliary GPIO ownership is recorded before reset.
+- **Button/FAT/custom devices**: Device deinitialization now propagates subtype errors instead of reporting success after failed cleanup.
+
 ## 0.7.2
 
 ### Features

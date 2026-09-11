@@ -31,17 +31,17 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
         return -1;
     }
 
+    // Get GPIO peripheral config
+    periph_gpio_config_t *gpio_config = NULL;
+    esp_err_t config_ret = esp_board_periph_get_config(config->gpio_name, (void **)&gpio_config);
+    if (config_ret != ESP_OK || gpio_config == NULL) {
+        ESP_LOGE(TAG, "Failed to get GPIO peripheral config '%s': %s", config->gpio_name, esp_err_to_name(config_ret));
+        return config_ret != ESP_OK ? config_ret : ESP_ERR_INVALID_STATE;
+    }
+
     int ret = esp_board_periph_ref_handle(config->gpio_name, (void *)&gpio_handle);
     if (ret != 0) {
         ESP_LOGE(TAG, "Failed to get GPIO peripheral handle '%s': %d", config->gpio_name, ret);
-        return -1;
-    }
-
-    // Get GPIO peripheral config
-    periph_gpio_config_t gpio_config = {0};
-    esp_err_t config_ret = esp_board_periph_get_config(config->gpio_name, (void *)&gpio_config);
-    if (config_ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get GPIO peripheral config '%s': %s", config->gpio_name, esp_err_to_name(config_ret));
         return -1;
     }
 
@@ -49,7 +49,7 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
     esp_err_t err = gpio_set_level(gpio_handle->gpio_num, config->active_level);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set active level for GPIO %d: %s", gpio_handle->gpio_num, esp_err_to_name(err));
-        return err;
+        goto cleanup;
     }
 
     ESP_LOGI(TAG, "Initialized GPIO control device '%s': gpio=%d, set initial level:%d (active_level=%d, default_level=%d)",
@@ -58,6 +58,10 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
     // Store the GPIO handle for later use
     *device_handle = gpio_handle;
     return 0;
+
+cleanup:
+    esp_board_periph_unref_handle(config->gpio_name);
+    return err;
 }
 
 int dev_gpio_ctrl_deinit(void *device_handle)
@@ -67,18 +71,20 @@ int dev_gpio_ctrl_deinit(void *device_handle)
         return -1;
     }
 
-    dev_gpio_ctrl_config_t *cfg = NULL;
-    esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
-    if (cfg) {
-        esp_board_periph_unref_handle(cfg->gpio_name);
-    }
-
     // Cast back to GPIO handle type
     periph_gpio_handle_t *gpio_handle = (periph_gpio_handle_t *)device_handle;
     if (!gpio_handle) {
         ESP_LOGE(TAG, "Invalid GPIO handle");
         return -1;
     }
-    ESP_LOGI(TAG, "GPIO control device gpio %d deinitialized", gpio_handle->gpio_num);
+
+    dev_gpio_ctrl_config_t *cfg = NULL;
+    esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
+    int gpio_num = gpio_handle->gpio_num;
+    if (cfg) {
+        esp_board_periph_unref_handle(cfg->gpio_name);
+    }
+
+    ESP_LOGI(TAG, "GPIO control device gpio %d deinitialized", gpio_num);
     return 0;
 }

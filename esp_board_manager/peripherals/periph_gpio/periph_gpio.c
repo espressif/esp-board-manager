@@ -7,6 +7,8 @@
 
 #include "periph_gpio.h"
 #include "driver/gpio.h"
+#include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include "esp_log.h"
@@ -49,20 +51,30 @@ int periph_gpio_init(void *cfg, int cfg_size, void **periph_handle)
         return -1;
     }
     handle->gpio_num = gpio_num;
+    bool gpio_configured = false;
     esp_err_t err = gpio_config(&config);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "gpio_config failed on pin %llu: %d", config.pin_bit_mask, err);
+        free(handle);
         return -1;
     }
+    gpio_configured = true;
     // Set default level if it's an output pin
     if (config.mode == GPIO_MODE_OUTPUT || config.mode == GPIO_MODE_INPUT_OUTPUT ||
         config.mode == GPIO_MODE_OUTPUT_OD || config.mode == GPIO_MODE_INPUT_OUTPUT_OD) {
         err = gpio_set_level(handle->gpio_num, periph_cfg->default_level);
-        ESP_LOGI(TAG, "Initialize success, pin: %d, set the default level: %d", handle->gpio_num, periph_cfg->default_level);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "gpio_set_level failed: %d", err);
+            if (gpio_configured) {
+                esp_err_t reset_err = gpio_reset_pin(handle->gpio_num);
+                if (reset_err != ESP_OK) {
+                    ESP_LOGE(TAG, "gpio_reset_pin rollback failed: %d", reset_err);
+                }
+            }
+            free(handle);
             return -1;
         }
+        ESP_LOGI(TAG, "Initialize success, pin: %d, set the default level: %d", handle->gpio_num, periph_cfg->default_level);
     } else {
         ESP_LOGI(TAG, "Initialize success, pin: %d, default_level: %d", handle->gpio_num, periph_cfg->default_level);
     }

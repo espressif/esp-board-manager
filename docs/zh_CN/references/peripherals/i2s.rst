@@ -214,12 +214,18 @@ STD 模式完整字段
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
-        # Valid values:
+        # Valid values (chip-dependent, see i2s_clock_src_t):
         # - I2S_CLK_SRC_DEFAULT
         # - I2S_CLK_SRC_EXTERNAL
-        # - I2S_CLK_SRC_APB
-        # - I2S_CLK_SRC_PLL_F160M
-        # - I2S_CLK_SRC_PLL_F240M
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # External clock source frequency in Hz. Only takes effect when clk_src is
         # I2S_CLK_SRC_EXTERNAL; otherwise the ESP-IDF driver ignores it.
@@ -231,6 +237,7 @@ STD 模式完整字段
         # MCLK multiple (default: 256)
         mclk_multiple: 256
         # Valid values: 128, 192, 256, 384, 512, 576, 768, 1024, 1152
+        # Other positive integers are emitted as integers (not I2S_MCLK_MULTIPLE_*).
 
         # BCLK divider (default: 8). STD mode emits this field only on ESP-IDF >= 5.5.
         bclk_div: 8
@@ -317,6 +324,18 @@ TDM 模式完整字段
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # External clock source frequency in Hz. Only takes effect when clk_src is
         # I2S_CLK_SRC_EXTERNAL; otherwise the ESP-IDF driver ignores it.
@@ -405,6 +424,18 @@ PDM 输出完整字段
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # MCLK multiple (default: 256)
         mclk_multiple: 256
@@ -506,6 +537,18 @@ PDM 输入完整字段
 
         # Clock source (default: I2S_CLK_SRC_DEFAULT)
         clk_src: "I2S_CLK_SRC_DEFAULT"
+        # Valid values (chip-dependent, see i2s_clock_src_t):
+        # - I2S_CLK_SRC_DEFAULT
+        # - I2S_CLK_SRC_EXTERNAL
+        # - I2S_CLK_SRC_APLL
+        # - I2S_CLK_SRC_XTAL
+        # - I2S_CLK_SRC_XTAL_X2
+        # - I2S_CLK_SRC_RC_FAST
+        # - I2S_CLK_SRC_PLL_64M
+        # - I2S_CLK_SRC_PLL_96M
+        # - I2S_CLK_SRC_PLL_120M
+        # - I2S_CLK_SRC_PLL_160M
+        # - I2S_CLK_SRC_PLL_240M
 
         # MCLK multiple (default: 256)
         mclk_multiple: 256
@@ -626,6 +669,7 @@ PDM 输入完整字段
 
 - ``format`` 的方向需与设备用途一致：播放设备引用 ``std-out``、``tdm-out`` 或 ``pdm-out``，录音设备引用 ``std-in``、``tdm-in`` 或 ``pdm-in``。
 - 使用 24-bit 数据时，``mclk_multiple`` 需按 codec 与 ESP-IDF I2S 驱动的要求调整，模板中给出了可选倍数。
+- 当 YAML 中的 ``mclk_multiple`` 没有对应的 ``I2S_MCLK_MULTIPLE_*`` 宏时，生成器会输出整数，而不是拼出无法编译的宏名。
 - PDM RX 多线模式仅在支持该能力的目标上可用；PDM TX 双线模式不适用于 ESP32。
 - ``ext_clk_freq_hz`` 仅在选择外部时钟源时生效，输入时钟需满足 BCLK 需求。
 - 修改 I2S 外设配置后，需重新执行 ``idf.py bmgr -b <board>``。

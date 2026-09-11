@@ -67,10 +67,13 @@ int periph_rmt_deinit(void *periph_handle)
         esp_err_t err = rmt_del_channel(handle->channel);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "RMT channel del failed: %s", esp_err_to_name(err));
-            free(handle);
             return -1;
         }
+        handle->channel = NULL;
     }
-    free(handle);
-    return 0;
+    if (handle->channel == NULL) {
+        free(handle);
+        return 0;
+    }
+    return -1;
 }

@@ -6,6 +6,56 @@
 # UART device config parser
 VERSION = 'v1.0.0'
 
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_UART_DATA_BITS = frozenset((
+    'UART_DATA_5_BITS',
+    'UART_DATA_6_BITS',
+    'UART_DATA_7_BITS',
+    'UART_DATA_8_BITS',
+    'UART_DATA_BITS_MAX',
+))
+KNOWN_UART_PARITY = frozenset(('UART_PARITY_DISABLE', 'UART_PARITY_EVEN', 'UART_PARITY_ODD'))
+KNOWN_UART_STOP_BITS = frozenset((
+    'UART_STOP_BITS_1',
+    'UART_STOP_BITS_1_5',
+    'UART_STOP_BITS_2',
+    'UART_STOP_BITS_MAX',
+))
+KNOWN_UART_FLOW_CTRL = frozenset((
+    'UART_HW_FLOWCTRL_DISABLE',
+    'UART_HW_FLOWCTRL_RTS',
+    'UART_HW_FLOWCTRL_CTS',
+    'UART_HW_FLOWCTRL_CTS_RTS',
+    'UART_HW_FLOWCTRL_MAX',
+))
+KNOWN_UART_MODE = frozenset((
+    'UART_MODE_UART',
+    'UART_MODE_RS485_HALF_DUPLEX',
+    'UART_MODE_IRDA',
+    'UART_MODE_RS485_COLLISION_DETECT',
+    'UART_MODE_RS485_APP_CTRL',
+))
+KNOWN_UART_SCLK = frozenset((
+    'UART_SCLK_DEFAULT',
+    'UART_SCLK_APB',
+    'UART_SCLK_REF_TICK',
+    'UART_SCLK_RTC',
+    'UART_SCLK_XTAL',
+    'UART_SCLK_PLL_F40M',
+    'UART_SCLK_PLL_F48M',
+    'UART_SCLK_PLL_F80M',
+    'UART_SCLK_REF_F80M',
+))
+KNOWN_LP_UART_SCLK = frozenset((
+    'LP_UART_SCLK_DEFAULT',
+    'LP_UART_SCLK_RC_FAST',
+    'LP_UART_SCLK_XTAL',
+    'LP_UART_SCLK_XTAL_D2',
+    'LP_UART_SCLK_LP_FAST',
+    'LP_UART_SCLK_LP_PLL',
+))
+
 PERIPH_UART_IO_LIST = [
     'tx_io_num',
     'rx_io_num',
@@ -13,85 +63,27 @@ PERIPH_UART_IO_LIST = [
     'cts_io_num',
 ]
 
-# Define valid enum values for UART configuration
-VALID_UART_ENUMS = {
-    'data_bits': [
-        'UART_DATA_5_BITS',
-        'UART_DATA_6_BITS',
-        'UART_DATA_7_BITS',
-        'UART_DATA_8_BITS'
-    ],
-    'parity': [
-        'UART_PARITY_DISABLE',
-        'UART_PARITY_EVEN',
-        'UART_PARITY_ODD'
-    ],
-    'stop_bits': [
-        'UART_STOP_BITS_1',
-        'UART_STOP_BITS_1_5',
-        'UART_STOP_BITS_2'
-    ],
-    'flow_ctrl': [
-        'UART_HW_FLOWCTRL_DISABLE',
-        'UART_HW_FLOWCTRL_RTS',
-        'UART_HW_FLOWCTRL_CTS',
-        'UART_HW_FLOWCTRL_CTS_RTS'
-    ],
-    'uart_mode': [
-        'UART_MODE_UART',
-        'UART_MODE_RS485_HALF_DUPLEX',
-        'UART_MODE_IRDA',
-        'UART_MODE_RS485_COLLISION_DETECT',
-        'UART_MODE_RS485_APP_CTRL'
-    ]
+_UART_ENUMS = {
+    'data_bits': (('UART_DATA_',), KNOWN_UART_DATA_BITS),
+    'parity': (('UART_PARITY_',), KNOWN_UART_PARITY),
+    'stop_bits': (('UART_STOP_BITS_',), KNOWN_UART_STOP_BITS),
+    'flow_ctrl': (('UART_HW_FLOWCTRL_',), KNOWN_UART_FLOW_CTRL),
+    'uart_mode': (('UART_MODE_',), KNOWN_UART_MODE),
+    'source_clk': (('UART_SCLK_',), KNOWN_UART_SCLK),
+    'lp_source_clk': (('LP_UART_SCLK_',), KNOWN_LP_UART_SCLK),
 }
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (data_bits, parity, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    if enum_type not in VALID_UART_ENUMS:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for UART")
-        return True  # Allow unknown types to pass
-
-    if value not in VALID_UART_ENUMS[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'   File: board_peripherals.yaml')
-        print(f'   📋 Peripheral: UART configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {VALID_UART_ENUMS[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
 
 def get_enum_value(value: str, default_value: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        default_value: The default value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
-
-    Returns:
-        The enum value to use
-    """
-    if not value:
-        result = default_value
-    else:
-        result = value
-
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        raise ValueError(f"Invalid {enum_type} value '{value}'. Please use one of the valid enum values.")
-
-    return result
+    """Resolve a YAML UART enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        return value if value else default_value
+    spec = _UART_ENUMS.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for UART")
+        return value if value else default_value
+    prefixes, known = spec
+    return resolve_idf_macro(value, default_value, prefixes, known, enum_type)
 
 def get_includes() -> list:
     """Return list of required include headers for UART"""
@@ -119,13 +111,10 @@ def parse_uart_config(uart_config_dict: dict) -> dict:
         raise ValueError("YAML validation error in UART device: Cannot specify both 'source_clk' and 'lp_source_clk' in the union")
 
     if source_clk is not None:
-        # Use regular UART source clock
-        uart_config['source_clk'] = source_clk
+        uart_config['source_clk'] = get_enum_value(source_clk, 'UART_SCLK_DEFAULT', 'source_clk')
     elif lp_source_clk is not None:
-        # Use LP_UART source clock
-        uart_config['lp_source_clk'] = lp_source_clk
+        uart_config['lp_source_clk'] = get_enum_value(lp_source_clk, 'LP_UART_SCLK_DEFAULT', 'lp_source_clk')
     else:
-        # Default to regular UART source clock
         uart_config['source_clk'] = 'UART_SCLK_DEFAULT'
 
     # Handle nested flags structure with bitfields

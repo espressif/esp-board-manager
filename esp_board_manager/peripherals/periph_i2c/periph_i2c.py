@@ -11,35 +11,29 @@ PERIPH_I2C_IO_LIST = [
     'scl_io_num',
 ]
 
-import sys
 import re
 from typing import Optional, Tuple, Union
 
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.soc_capability_query import current_soc
 
-I2CPortValue = Union[int, str]
-
-VALID_I2C_PORT_MACROS = {
-    'I2C_NUM_0',
-    'I2C_NUM_1',
-    'LP_I2C_NUM_0',
-}
-
-VALID_I2C_CLK_SOURCE_MACROS = {
+KNOWN_I2C_PORT = frozenset(('I2C_NUM_0', 'I2C_NUM_1', 'LP_I2C_NUM_0'))
+KNOWN_I2C_CLK_SRC = frozenset((
     'I2C_CLK_SRC_DEFAULT',
     'I2C_CLK_SRC_APB',
     'I2C_CLK_SRC_REF_TICK',
     'I2C_CLK_SRC_XTAL',
     'I2C_CLK_SRC_RC_FAST',
+))
+KNOWN_LP_I2C_SCLK = frozenset((
     'LP_I2C_SCLK_DEFAULT',
     'LP_I2C_SCLK_LP_FAST',
     'LP_I2C_SCLK_XTAL_D2',
-}
-LP_I2C_CLK_SOURCE_MACROS = {
-    'LP_I2C_SCLK_DEFAULT',
-    'LP_I2C_SCLK_LP_FAST',
-    'LP_I2C_SCLK_XTAL_D2',
-}
+    'LP_I2C_SCLK_XTAL',
+    'LP_I2C_SCLK_LP_PLL',
+))
+
+I2CPortValue = Union[int, str]
 
 def get_includes() -> list:
     """Return list of required include headers for I2C peripheral"""
@@ -48,16 +42,6 @@ def get_includes() -> list:
         'driver/i2c_types.h',
         'hal/gpio_types.h'
     ]
-
-def _validate_macro_value(name: str, field: str, value: str, valid_values: set) -> str:
-    """Validate macro value against allowed macro list."""
-    if value not in valid_values:
-        raise ValueError(
-            f"Invalid {field} value '{value}' in I2C peripheral '{name}'. "
-            f'Valid values: {sorted(valid_values)}'
-        )
-    return value
-
 
 def _soc_i2c_port_limits() -> Tuple[Optional[int], Optional[int], Optional[int]]:
     """Return total, HP, and LP I2C port counts from the active SoC catalog."""
@@ -84,7 +68,7 @@ def _validate_i2c_port_macro(name: str, value: str) -> str:
                 f"Invalid port value '{value}' in I2C peripheral '{name}'. "
                 f'Valid regular I2C ports are I2C_NUM_0 ~ I2C_NUM_{max(hp - 1, 0)}.'
             )
-        return _validate_macro_value(name, 'port', value, VALID_I2C_PORT_MACROS)
+        return _resolve_i2c_port_macro(name, value)
 
     lp_match = re.fullmatch(r'LP_I2C_NUM_(\d+)', value)
     if lp_match:
@@ -96,7 +80,7 @@ def _validate_i2c_port_macro(name: str, value: str) -> str:
                 f"LP I2C port '{value}' in I2C peripheral '{name}' is not supported by the current SoC. "
                 f'Current SoC supports {lp} LP I2C port(s).'
             )
-        return _validate_macro_value(name, 'port', value, VALID_I2C_PORT_MACROS)
+        return _resolve_i2c_port_macro(name, value)
 
     raise ValueError(
         f"Invalid port value '{value}' in I2C peripheral '{name}'. "
@@ -148,6 +132,19 @@ def _parse_i2c_port(name: str, port_cfg) -> I2CPortValue:
     return _validate_i2c_port_macro(name, f'I2C_NUM_{port_cfg}')
 
 
+def _resolve_i2c_port_macro(name: str, value: str) -> str:
+    try:
+        return resolve_idf_macro(
+            value,
+            default='I2C_NUM_0',
+            prefixes=('I2C_NUM_', 'LP_I2C_NUM_'),
+            known=KNOWN_I2C_PORT,
+            field_name='port',
+        )
+    except ValueError as exc:
+        raise ValueError(f"Invalid port value '{value}' in I2C peripheral '{name}'. {exc}") from exc
+
+
 def _parse_i2c_clk_source(name: str, clk_cfg, i2c_port: I2CPortValue) -> str:
     """Parse and validate I2C clock source macro."""
     if clk_cfg is None or clk_cfg == '':
@@ -158,13 +155,22 @@ def _parse_i2c_clk_source(name: str, clk_cfg, i2c_port: I2CPortValue) -> str:
     if not isinstance(clk_cfg, str):
         raise ValueError(f"Invalid clk_source type '{type(clk_cfg).__name__}' in I2C peripheral '{name}'")
 
-    return _validate_macro_value(name, 'clk_source', clk_cfg.strip(), VALID_I2C_CLK_SOURCE_MACROS)
+    try:
+        return resolve_idf_macro(
+            clk_cfg.strip(),
+            default='I2C_CLK_SRC_DEFAULT',
+            prefixes=('I2C_CLK_SRC_', 'LP_I2C_SCLK_'),
+            known=KNOWN_I2C_CLK_SRC | KNOWN_LP_I2C_SCLK,
+            field_name='clk_source',
+        )
+    except ValueError as exc:
+        raise ValueError(f"Invalid clk_source in I2C peripheral '{name}'. {exc}") from exc
 
 
 def _validate_i2c_port_clk_source_combo(name: str, i2c_port: I2CPortValue, clk_source: str) -> None:
     """Validate that I2C port selection matches the chosen clock source family."""
     is_lp_port = isinstance(i2c_port, str) and i2c_port.startswith('LP_I2C_NUM_')
-    is_lp_clk = clk_source in LP_I2C_CLK_SOURCE_MACROS
+    is_lp_clk = clk_source.startswith('LP_I2C_SCLK_')
 
     if i2c_port == -1 and is_lp_clk:
         raise ValueError(

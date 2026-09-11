@@ -133,10 +133,15 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
         return -1;
     }
     periph_i2s_config_t *config = (periph_i2s_config_t *)cfg;
-    if (config->port >= SOC_I2S_NUM) {
+    if (config->port < 0 || config->port >= SOC_I2S_NUM) {
         ESP_LOGE(TAG, "Port number is invalid, %d", config->port);
         return -1;
     }
+    if (config->direction != I2S_DIR_TX && config->direction != I2S_DIR_RX) {
+        ESP_LOGE(TAG, "I2S[%d] Invalid direction: %d", config->port, config->direction);
+        return -1;
+    }
+
     esp_err_t err = ESP_OK;
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(config->port, config->role);
     chan_cfg.auto_clear = true;
@@ -150,12 +155,9 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
         }
     } else if (slot->chan_out == NULL && slot->chan_in == NULL) {
         /**
-         * NOTE
-         * For STD/TDM duplex use cases the clock may be driven by TX, so keep
-         * allocating the paired channel for compatibility with existing boards.
-         * PDM RX boards such as ESP32-P4-EYE work with an RX-only channel and
-         * should not expose an uninitialized paired TX handle to esp_codec_dev.
-         **/
+         * STD/TDM duplex boards clock RX from TX. Allocate both channels on the
+         * first init of an empty port. PDM RX stays RX-only above.
+         */
         err = i2s_new_channel(&chan_cfg, &slot->chan_out, &slot->chan_in);
     } else if (config->direction == I2S_DIR_RX && slot->chan_in == NULL) {
         err = i2s_new_channel(&chan_cfg, NULL, &slot->chan_in);
@@ -163,23 +165,42 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
         err = i2s_new_channel(&chan_cfg, &slot->chan_out, NULL);
     }
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "I2S[%d] new channel failed: %d", config->port, err);
+        ESP_LOGE(TAG, "I2S[%d] new channel failed: %s", config->port, esp_err_to_name(err));
         return -1;
     }
+
     if (config->mode == I2S_COMM_MODE_STD) {
         if (config->direction == I2S_DIR_TX && !slot->out_en) {
             err = i2s_channel_init_std_mode(slot->chan_out, &config->i2s_cfg.std);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_out);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->out_en = true;
         } else if (config->direction == I2S_DIR_RX && !slot->in_en) {
             /* TX enabled here is a clock helper only; do not mark out_owned. */
             if (slot->out_en == false) {
                 err = i2s_channel_init_std_mode(slot->chan_out, &config->i2s_cfg.std);
+                if (err != ESP_OK) {
+                    goto fail;
+                }
                 err = i2s_channel_enable(slot->chan_out);
+                if (err != ESP_OK) {
+                    goto fail;
+                }
                 slot->out_en = true;
             }
             err = i2s_channel_init_std_mode(slot->chan_in, &config->i2s_cfg.std);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_in);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->in_en = true;
         } else {
             ESP_LOGW(TAG, "I2S[%d] STD already enabled, tx:%p, rx:%p", config->port, slot->chan_out, slot->chan_in);
@@ -192,17 +213,35 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
     else if (config->mode == I2S_COMM_MODE_TDM) {
         if (config->direction == I2S_DIR_TX && !slot->out_en) {
             err = i2s_channel_init_tdm_mode(slot->chan_out, &config->i2s_cfg.tdm);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_out);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->out_en = true;
         } else if (config->direction == I2S_DIR_RX && !slot->in_en) {
             /* TX enabled here is a clock helper only; do not mark out_owned. */
             if (slot->out_en == false) {
                 err = i2s_channel_init_tdm_mode(slot->chan_out, &config->i2s_cfg.tdm);
+                if (err != ESP_OK) {
+                    goto fail;
+                }
                 err = i2s_channel_enable(slot->chan_out);
+                if (err != ESP_OK) {
+                    goto fail;
+                }
                 slot->out_en = true;
             }
             err = i2s_channel_init_tdm_mode(slot->chan_in, &config->i2s_cfg.tdm);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_in);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->in_en = true;
         } else {
             ESP_LOGW(TAG, "I2S[%d] TDM already enabled, tx:%p, rx:%p", config->port, slot->chan_out, slot->chan_in);
@@ -217,14 +256,26 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
         if (config->direction == I2S_DIR_TX && !slot->out_en) {
 #if CONFIG_SOC_I2S_SUPPORTS_PDM_TX
             err = i2s_channel_init_pdm_tx_mode(slot->chan_out, &config->i2s_cfg.pdm_tx);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_out);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->out_en = true;
             ESP_LOGI(TAG, "I2S[%d] PDM-TX, clk: %d, dout: %d", config->port, config->i2s_cfg.pdm_tx.gpio_cfg.clk, config->i2s_cfg.pdm_tx.gpio_cfg.dout);
 #endif  // CONFIG_SOC_I2S_SUPPORTS_PDM_TX
         } else if (config->direction == I2S_DIR_RX && !slot->in_en) {
 #if CONFIG_SOC_I2S_SUPPORTS_PDM_RX
             err = i2s_channel_init_pdm_rx_mode(slot->chan_in, &config->i2s_cfg.pdm_rx);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             err = i2s_channel_enable(slot->chan_in);
+            if (err != ESP_OK) {
+                goto fail;
+            }
             slot->in_en = true;
             ESP_LOGI(TAG, "I2S[%d] PDM-RX, clk: %d, din: %d", config->port, config->i2s_cfg.pdm_rx.gpio_cfg.clk, config->i2s_cfg.pdm_rx.gpio_cfg.din);
 #endif  // CONFIG_SOC_I2S_SUPPORTS_PDM_RX
@@ -235,32 +286,32 @@ int periph_i2s_init(void *cfg, int cfg_size, void **periph_handle)
 #endif  // CONFIG_SOC_I2S_SUPPORTS_PDM
     else {
         ESP_LOGE(TAG, "I2S[%d] Invalid mode: %d", config->port, config->mode);
-        return -1;
+        err = ESP_ERR_INVALID_ARG;
+        goto fail;
     }
-    if (err != ESP_OK) {
-        if (!slot->in_owned) {
-            periph_i2s_release_channel(&slot->chan_in, slot->in_en, "RX");
-            slot->in_en = false;
-        }
-        if (!slot->out_owned) {
-            periph_i2s_release_channel(&slot->chan_out, slot->out_en, "TX");
-            slot->out_en = false;
-        }
-        ESP_LOGE(TAG, "I2S[%d] initialize failed: %d", config->port, err);
-        return -1;
-    }
+
     if (config->direction == I2S_DIR_TX) {
         slot->out_owned = true;
         *periph_handle = slot->chan_out;
-    } else if (config->direction == I2S_DIR_RX) {
+    } else {
         slot->in_owned = true;
         *periph_handle = slot->chan_in;
-    } else {
-        ESP_LOGE(TAG, "I2S[%d] Invalid direction: %d", config->port, config->direction);
-        return -1;
     }
     ESP_LOGI(TAG, "I2S[%d] initialize success: %p", config->port, *periph_handle);
     return 0;
+
+fail:
+    /* Unowned directions were created by this call (or are an RX clock helper). */
+    if (!slot->in_owned) {
+        periph_i2s_release_channel(&slot->chan_in, slot->in_en, "RX");
+        slot->in_en = false;
+    }
+    if (!slot->out_owned) {
+        periph_i2s_release_channel(&slot->chan_out, slot->out_en, "TX");
+        slot->out_en = false;
+    }
+    ESP_LOGE(TAG, "I2S[%d] initialize failed: %s", config->port, esp_err_to_name(err));
+    return -1;
 }
 
 int periph_i2s_deinit(void *periph_handle)

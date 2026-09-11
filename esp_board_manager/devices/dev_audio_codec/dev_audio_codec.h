@@ -161,13 +161,15 @@ int dev_audio_codec_init(void *cfg, int cfg_size, void **device_handle);
  * @brief  Deinitialize the audio codec device
  *
  *         This function deinitializes the audio codec device and frees the allocated resources.
- *         It should be called when the device is no longer needed to prevent memory leaks.
+ *         On failure the handle is kept so deinit can be retried; successful
+ *         sub-resource deletes are not repeated.
  *
  * @param[in]  device_handle  Pointer to the device handle to be deinitialized
  *
  * @return
- *       - 0               On success
- *       - Negative_value  On failure
+ *       - 0      On success
+ *       - -1     If device_handle is NULL, or the codec config cannot be found
+ *       - other  First sub-resource delete error; the handle is kept for retry
  */
 int dev_audio_codec_deinit(void *device_handle);
 

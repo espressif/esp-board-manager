@@ -120,7 +120,14 @@ IDF 5 TX Channel Full Fields
         # Basic channel configuration
         gpio_num: 18                     # [IO] GPIO number used by RMT channel. Set to -1 if unused
         clk_src: RMT_CLK_SRC_DEFAULT     # Clock source of RMT channel, channels in same group must use same clock source
-                                          # Please check the 'rmt_clock_source_t' in 'driver/rmt_types.h' for valid values
+                                          # Valid values (chip-dependent, see rmt_clock_source_t in driver/rmt_types.h):
+                                          # - RMT_CLK_SRC_DEFAULT
+                                          # - RMT_CLK_SRC_APB
+                                          # - RMT_CLK_SRC_XTAL
+                                          # - RMT_CLK_SRC_RC_FAST
+                                          # - RMT_CLK_SRC_REF_TICK
+                                          # - RMT_CLK_SRC_PLL_F80M
+                                          # - RMT_CLK_SRC_REF_F80M
         resolution_hz: 10000000          # [TO_BE_CONFIRMED] Channel clock resolution, in Hz (10MHz = 0.1us precision)
         mem_block_symbols: 64            # Size of memory block in number of rmt_symbol_word_t (even number required)
                                           # In DMA mode: controls DMA buffer size
@@ -156,7 +163,14 @@ IDF 5 RX Channel Full Fields
         # Basic channel configuration
         gpio_num: 19                     # [IO] GPIO number used by RMT channel. Set to -1 if unused
         clk_src: RMT_CLK_SRC_DEFAULT     # Clock source of RMT channel, channels in same group must use same clock source
-                                          # Please check the 'rmt_clock_source_t' in 'driver/rmt_types.h' for valid values
+                                          # Valid values (chip-dependent, see rmt_clock_source_t in driver/rmt_types.h):
+                                          # - RMT_CLK_SRC_DEFAULT
+                                          # - RMT_CLK_SRC_APB
+                                          # - RMT_CLK_SRC_XTAL
+                                          # - RMT_CLK_SRC_RC_FAST
+                                          # - RMT_CLK_SRC_REF_TICK
+                                          # - RMT_CLK_SRC_PLL_F80M
+                                          # - RMT_CLK_SRC_REF_F80M
         resolution_hz: 1000000           # [TO_BE_CONFIRMED] Channel clock resolution, in Hz (1MHz = 1us precision, good for 38kHz IR)
         mem_block_symbols: 64            # Size of memory block in number of rmt_symbol_word_t (even number required)
                                           # In DMA mode: controls DMA buffer size
@@ -194,7 +208,14 @@ IDF 6 TX Channel Full Fields
         # Basic channel configuration
         gpio_num: 18                     # [IO] GPIO number used by RMT channel. Set to -1 if unused
         clk_src: RMT_CLK_SRC_DEFAULT     # Clock source of RMT channel, channels in same group must use same clock source
-                                          # Please check the 'rmt_clock_source_t' in 'driver/rmt_types.h' for valid values
+                                          # Valid values (chip-dependent, see rmt_clock_source_t in driver/rmt_types.h):
+                                          # - RMT_CLK_SRC_DEFAULT
+                                          # - RMT_CLK_SRC_APB
+                                          # - RMT_CLK_SRC_XTAL
+                                          # - RMT_CLK_SRC_RC_FAST
+                                          # - RMT_CLK_SRC_REF_TICK
+                                          # - RMT_CLK_SRC_PLL_F80M
+                                          # - RMT_CLK_SRC_REF_F80M
         resolution_hz: 10000000          # [TO_BE_CONFIRMED] Channel clock resolution, in Hz (10MHz = 0.1us precision)
         mem_block_symbols: 64            # Size of memory block in number of rmt_symbol_word_t (even number required)
                                           # In DMA mode: controls DMA buffer size
@@ -229,7 +250,14 @@ IDF 6 RX Channel Full Fields
         # Basic channel configuration
         gpio_num: 19                     # [IO] GPIO number used by RMT channel. Set to -1 if unused
         clk_src: RMT_CLK_SRC_DEFAULT     # Clock source of RMT channel, channels in same group must use same clock source
-                                          # Please check the 'rmt_clock_source_t' in 'driver/rmt_types.h' for valid values
+                                          # Valid values (chip-dependent, see rmt_clock_source_t in driver/rmt_types.h):
+                                          # - RMT_CLK_SRC_DEFAULT
+                                          # - RMT_CLK_SRC_APB
+                                          # - RMT_CLK_SRC_XTAL
+                                          # - RMT_CLK_SRC_RC_FAST
+                                          # - RMT_CLK_SRC_REF_TICK
+                                          # - RMT_CLK_SRC_PLL_F80M
+                                          # - RMT_CLK_SRC_REF_F80M
         resolution_hz: 1000000           # [TO_BE_CONFIRMED] Channel clock resolution, in Hz (1MHz = 1us precision, good for 38kHz IR)
         mem_block_symbols: 64            # Size of memory block in number of rmt_symbol_word_t (even number required)
                                           # In DMA mode: controls DMA buffer size
