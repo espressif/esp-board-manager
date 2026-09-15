@@ -50,7 +50,8 @@ def _validate_audio_codec_config_layout(device_name: str, device_config: dict) -
 def get_includes() -> list:
     """Return list of required include headers for audio codec device"""
     return [
-        'dev_audio_codec.h'
+        'dev_audio_codec.h',
+        'driver/i2c_master.h',
     ]
 
 def _parse_bool(value, default: bool) -> bool:

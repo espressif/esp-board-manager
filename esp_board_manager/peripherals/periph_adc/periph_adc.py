@@ -44,8 +44,9 @@ KNOWN_ADC_ULP_MODE = frozenset((
     'ADC_ULP_MODE_RISCV',
     'ADC_ULP_MODE_LP_CORE',
 ))
-KNOWN_ADC_RTC_CLK_SRC = frozenset(('ADC_RTC_CLK_SRC_DEFAULT', 'ADC_RTC_CLK_SRC_RC_FAST'))
-KNOWN_ADC_DIGI_CLK_SRC = frozenset((
+KNOWN_ADC_CLK_SRC = frozenset((
+    'ADC_RTC_CLK_SRC_DEFAULT',
+    'ADC_RTC_CLK_SRC_RC_FAST',
     'ADC_DIGI_CLK_SRC_DEFAULT',
     'ADC_DIGI_CLK_SRC_APB',
     'ADC_DIGI_CLK_SRC_APLL',
@@ -74,8 +75,7 @@ _ADC_ENUMS = {
     'ADC output format': (('ADC_DIGI_OUTPUT_',), KNOWN_ADC_FORMAT),
     'ADC conversion mode': (('ADC_CONV_',), KNOWN_ADC_CONV_MODE),
     'ADC ULP mode': (('ADC_ULP_MODE_',), KNOWN_ADC_ULP_MODE),
-    'ADC RTC clock source': (('ADC_RTC_CLK_SRC_',), KNOWN_ADC_RTC_CLK_SRC),
-    'ADC digital clock source': (('ADC_DIGI_CLK_SRC_',), KNOWN_ADC_DIGI_CLK_SRC),
+    'ADC clock source': (('ADC_RTC_CLK_SRC_', 'ADC_DIGI_CLK_SRC_'), KNOWN_ADC_CLK_SRC),
 }
 
 
@@ -92,7 +92,11 @@ def get_enum_value(value: str, default_value: str, enum_type: str, valid_values:
         return result
     spec = _ADC_ENUMS.get(enum_type)
     prefixes, known = spec if spec is not None else ((), frozenset(valid_values or ()))
-    extra = ('SOC_ADC_DIGI_MAX_BITWIDTH',) if enum_type == 'ADC bit width' else ()
+    extra = ()
+    if enum_type == 'ADC bit width':
+        extra = ('SOC_ADC_DIGI_MAX_BITWIDTH',)
+    elif enum_type == 'ADC clock source':
+        extra = (0,)
     return resolve_idf_macro(value, default_value, prefixes, known, enum_type, extra_allowed=extra)
 
 
@@ -258,8 +262,8 @@ def parse_adc_oneshot_config(oneshot_config: dict) -> dict:
         ),
         'clk_src': get_enum_value(
             oneshot_config.get('clk_src'),
-            'ADC_RTC_CLK_SRC_DEFAULT',
-            'ADC RTC clock source',
+            0,
+            'ADC clock source',
         ),
         'ulp_mode': get_enum_value(
             oneshot_config.get('ulp_mode'),

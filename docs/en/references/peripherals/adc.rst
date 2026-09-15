@@ -255,9 +255,13 @@ oneshot Full Fields
         # Use adc_oneshot_io_to_channel() and adc_oneshot_channel_to_io() to get the corresponding relationship between ADC channels and ADC IO.
         channel_id: 4                      # [TO_BE_CONFIRMED] ADC channel ID
 
-        # Clock source for ADC module.
-        # Please refer to soc/clk_tree_defs.h, see 'soc_periph_adc_digi_clk_src_t' for valid values
-        clk_src: ADC_RTC_CLK_SRC_DEFAULT
+        # Clock source for ADC oneshot unit (default: 0).
+        # Omit this field or set 0 to let the driver pick the chip default.
+        clk_src: 0
+        # Valid values (chip-dependent, see soc/clk_tree_defs.h):
+        # - 0 (driver-selected default; portable across chips)
+        # - ADC_RTC_CLK_SRC_*  (chips with RTC ADC control, e.g. ESP32 / S2 / S3 / P4)
+        # - ADC_DIGI_CLK_SRC_* (chips with digital ADC control, e.g. C3 / C6 / H2 / S31)
 
         # ULP mode selection. (default: ADC_ULP_MODE_DISABLE)
         ulp_mode: ADC_ULP_MODE_DISABLE
@@ -315,6 +319,7 @@ Notes
 - If ``pattern_num`` is explicitly configured, it must equal the number of valid entries in ``patterns`` or ``channel_list``.
 - ``conv_mode`` must match the ADC unit combination. Use ``ADC_CONV_SINGLE_UNIT_1`` for a single ``ADC_UNIT_1``, ``ADC_CONV_SINGLE_UNIT_2`` for a single ``ADC_UNIT_2``; mixed units cannot use single-unit conversion mode.
 - The mapping of ADC channels to GPIOs depends on the target chip. After modifying ADC peripheral configuration, re-run ``idf.py bmgr -b <board>``.
+- For oneshot ``clk_src``, omit the field or set it to ``0`` to let the ADC oneshot driver pick the chip default. Do not copy ``ADC_RTC_CLK_SRC_*`` onto chips that only provide ``ADC_DIGI_CLK_SRC_*``.
 
 .. _adc-debug:
 

@@ -1,0 +1,5 @@
+board: esp32p4_coverage
+chip: esp32p4
+version: 1.0.0
+description: CI compile-coverage board for esp32p4
+manufacturer: ESPRESSIF

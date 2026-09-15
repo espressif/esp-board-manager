@@ -1,4 +1,4 @@
-version: 0.7.3
+version: 0.7.3~1
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
