@@ -50,22 +50,27 @@ int dev_button_deinit(void *device_handle)
         ESP_LOGE(TAG, "Invalid parameters");
         return -1;
     }
+
     dev_button_config_t *cfg = NULL;
-    esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
-    if (cfg) {
-        const esp_board_entry_desc_t *desc = esp_board_entry_find_subtype_desc("button", cfg->sub_type);
-        if (desc && desc->deinit_func) {
-            int ret = desc->deinit_func(device_handle);
-            if (ret != 0) {
-                ESP_LOGE(TAG, "Sub device '%s' deinit failed with error: %d", cfg->sub_type, ret);
-            } else {
-                ESP_LOGI(TAG, "Sub device '%s' deinitialized successfully", cfg->sub_type);
-            }
-        } else {
-            ESP_LOGW(TAG, "No custom deinit function found for sub type '%s'", cfg->sub_type);
-        }
+    esp_err_t cfg_ret = esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
+    if (cfg_ret != ESP_OK || cfg == NULL) {
+        ESP_LOGE(TAG, "Failed to get button config for device handle");
+        return -1;
     }
-    return 0;
+
+    int ret = 0;
+    const esp_board_entry_desc_t *desc = esp_board_entry_find_subtype_desc("button", cfg->sub_type);
+    if (desc && desc->deinit_func) {
+        ret = desc->deinit_func(device_handle);
+        if (ret != 0) {
+            ESP_LOGE(TAG, "Sub device '%s' deinit failed with error: %d", cfg->sub_type, ret);
+        } else {
+            ESP_LOGI(TAG, "Sub device '%s' deinitialized successfully", cfg->sub_type);
+        }
+    } else {
+        ESP_LOGW(TAG, "No custom deinit function found for sub type '%s'", cfg->sub_type);
+    }
+    return ret;
 }
 
 static int dev_button_register_callback(void *handle, const void *cfg, int cfg_size, void *event_cb, void *user_data)

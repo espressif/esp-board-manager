@@ -112,7 +112,8 @@ HP I2C Master — Full Fields
         # Example values:
         #   I2C_CLK_SRC_DEFAULT, I2C_CLK_SRC_APB, I2C_CLK_SRC_XTAL,
         #   I2C_CLK_SRC_RC_FAST, I2C_CLK_SRC_REF_TICK,
-        #   LP_I2C_SCLK_DEFAULT, LP_I2C_SCLK_LP_FAST, LP_I2C_SCLK_XTAL_D2
+        #   LP_I2C_SCLK_DEFAULT, LP_I2C_SCLK_LP_FAST, LP_I2C_SCLK_XTAL_D2,
+        #   LP_I2C_SCLK_XTAL, LP_I2C_SCLK_LP_PLL
         clk_source: I2C_CLK_SRC_DEFAULT
 
         # I2C pins configuration

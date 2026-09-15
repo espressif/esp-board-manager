@@ -98,11 +98,11 @@ static esp_err_t configure_i2s_tx_aux_output(const dev_audio_codec_config_t *cod
         return ret;
     }
 
+    codec_handles->tx_aux_out_io = aux_io;
     ESP_RETURN_ON_ERROR(gpio_reset_pin(aux_io), TAG, "reset gpio failed");
     ESP_RETURN_ON_ERROR(gpio_set_direction(aux_io, GPIO_MODE_OUTPUT), TAG, "set direction failed");
     esp_rom_gpio_connect_out_signal(aux_io, out_sig, codec_cfg->i2s_cfg.tx_aux_out_invert ? 1 : 0, 0);
     ESP_RETURN_ON_ERROR(gpio_set_drive_capability(aux_io, GPIO_DRIVE_CAP_0), TAG, "set drive capability failed");
-    codec_handles->tx_aux_out_io = aux_io;
     ESP_LOGI(TAG, "Configured tx_aux_out_io:%d from i2s name:%s port:%d line:%u invert:%u out_sig:%d",
              aux_io, codec_cfg->i2s_cfg.name, i2s_periph_cfg->port, codec_cfg->i2s_cfg.tx_aux_out_line,
              codec_cfg->i2s_cfg.tx_aux_out_invert, out_sig);
@@ -464,11 +464,18 @@ int dev_audio_codec_deinit(void *device_handle)
         return -1;
     }
     dev_audio_codec_handles_t *codec_handles = (dev_audio_codec_handles_t *)device_handle;
+    int ret = 0;
 
     if (codec_handles->codec_dev) {
+        /* esp_codec_dev_delete() has no return value. */
         esp_codec_dev_delete(codec_handles->codec_dev);
         codec_handles->codec_dev = NULL;
     }
+    /* audio_codec_delete_*_if() always free the object, even if close() fails.
+     * NULL after the call, same as codec_dev. Do not retry delete or skip unref
+     * on the return value. Delete codec_if before ctrl_if/gpio_if because a live
+     * codec_if still uses them.
+     */
     if (codec_handles->codec_if) {
         audio_codec_delete_codec_if(codec_handles->codec_if);
         codec_handles->codec_if = NULL;
@@ -483,46 +490,53 @@ int dev_audio_codec_deinit(void *device_handle)
     }
     if (codec_handles->data_if) {
         audio_codec_delete_data_if(codec_handles->data_if);
+        codec_handles->data_if = NULL;
     }
     if (codec_handles->tx_aux_out_io >= 0) {
-        gpio_reset_pin((gpio_num_t)codec_handles->tx_aux_out_io);
+        ret = gpio_reset_pin((gpio_num_t)codec_handles->tx_aux_out_io);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to reset tx_aux_out_io %d: %s",
+                     codec_handles->tx_aux_out_io, esp_err_to_name(ret));
+            return ret;
+        }
         codec_handles->tx_aux_out_io = -1;
     }
 
     dev_audio_codec_config_t *cfg = NULL;
-    esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
-    if (cfg) {
-        if (strcmp(cfg->chip, "internal") != 0 &&
-            cfg->i2c_cfg.name != NULL && cfg->i2c_cfg.name[0] != '\0') {
-            esp_err_t ret = periph_i2c_clear_effective_addr_internal(cfg->name);
-            if (ret != ESP_OK && ret != ESP_ERR_NOT_FOUND) {
-                ESP_LOGW(TAG, "Failed to clear effective I2C addr for %s: %s", cfg->name, esp_err_to_name(ret));
-            }
-        }
-        if (cfg->data_if_type == DEV_AUDIO_CODEC_DATA_IF_TYPE_I2S &&
-            cfg->i2s_cfg.name != NULL && cfg->i2s_cfg.name[0] != '\0') {
-            int n = (cfg->adc_enabled ? 1 : 0) + (cfg->dac_enabled ? 1 : 0);
-            for (int ur = 0; ur < n; ur++) {
-                esp_board_periph_unref_handle(cfg->i2s_cfg.name);
-            }
-        }
-        if (cfg->data_if_type == DEV_AUDIO_CODEC_DATA_IF_TYPE_ADC &&
-            cfg->adc_data_cfg.periph_name != NULL && cfg->adc_data_cfg.periph_name[0] != '\0') {
-            esp_board_periph_unref_handle(cfg->adc_data_cfg.periph_name);
-        }
-        if (strcmp(cfg->chip, "internal") != 0 &&
-            cfg->i2c_cfg.name != NULL && cfg->i2c_cfg.name[0] != '\0') {
-            esp_board_periph_unref_handle(cfg->i2c_cfg.name);
-        }
-        if (cfg->pa_peripheral.name != NULL && cfg->pa_peripheral.name[0] != '\0') {
-            esp_board_periph_unref_handle(cfg->pa_peripheral.name);
-        }
-        if (cfg->reset_peripheral.name != NULL && cfg->reset_peripheral.name[0] != '\0') {
-            esp_board_periph_unref_handle(cfg->reset_peripheral.name);
+    ret = esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
+    if (ret != ESP_OK || cfg == NULL) {
+        ESP_LOGE(TAG, "Failed to get codec config for device handle");
+        return ret != ESP_OK ? ret : -1;
+    }
+    if (strcmp(cfg->chip, "internal") != 0 &&
+        cfg->i2c_cfg.name != NULL && cfg->i2c_cfg.name[0] != '\0') {
+        esp_err_t i2c_ret = periph_i2c_clear_effective_addr_internal(cfg->name);
+        if (i2c_ret != ESP_OK && i2c_ret != ESP_ERR_NOT_FOUND) {
+            ESP_LOGW(TAG, "Failed to clear effective I2C addr for %s: %s", cfg->name, esp_err_to_name(i2c_ret));
         }
     }
+    if (cfg->data_if_type == DEV_AUDIO_CODEC_DATA_IF_TYPE_I2S &&
+        cfg->i2s_cfg.name != NULL && cfg->i2s_cfg.name[0] != '\0') {
+        int n = (cfg->adc_enabled ? 1 : 0) + (cfg->dac_enabled ? 1 : 0);
+        for (int ur = 0; ur < n; ur++) {
+            esp_board_periph_unref_handle(cfg->i2s_cfg.name);
+        }
+    }
+    if (cfg->data_if_type == DEV_AUDIO_CODEC_DATA_IF_TYPE_ADC &&
+        cfg->adc_data_cfg.periph_name != NULL && cfg->adc_data_cfg.periph_name[0] != '\0') {
+        esp_board_periph_unref_handle(cfg->adc_data_cfg.periph_name);
+    }
+    if (strcmp(cfg->chip, "internal") != 0 &&
+        cfg->i2c_cfg.name != NULL && cfg->i2c_cfg.name[0] != '\0') {
+        esp_board_periph_unref_handle(cfg->i2c_cfg.name);
+    }
+    if (cfg->pa_peripheral.name != NULL && cfg->pa_peripheral.name[0] != '\0') {
+        esp_board_periph_unref_handle(cfg->pa_peripheral.name);
+    }
+    if (cfg->reset_peripheral.name != NULL && cfg->reset_peripheral.name[0] != '\0') {
+        esp_board_periph_unref_handle(cfg->reset_peripheral.name);
+    }
 
-    codec_handles->data_if = NULL;
     free(codec_handles);
     return 0;
 }

@@ -6,6 +6,7 @@
  */
 
 #pragma once
+
 #include "esp_board_periph.h"
 #include "driver/spi_master.h"
 #include "driver/spi_common.h"

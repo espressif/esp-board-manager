@@ -388,3 +388,90 @@ def test_i2s_gpios_use_soc_gpio_directions_and_allow_nc(bmgr_root, monkeypatch):
                 },
             },
         )
+
+
+def _parse_i2s_mclk(bmgr_root, format_name, mclk_multiple=None):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2s import periph_i2s as mod
+
+    config = {
+        'sample_rate_hz': 16000,
+        'pins': {
+            'bclk': 4,
+            'ws': 5,
+            'dout': 6,
+            'din': 7,
+            'clk': 4,
+        },
+    }
+    if mclk_multiple is not None:
+        config['mclk_multiple'] = mclk_multiple
+
+    result = mod.parse(
+        'i2s_audio',
+        {
+            'type': 'i2s',
+            'role': 'master',
+            'format': format_name,
+            'config': config,
+        },
+    )
+    i2s_cfg = result['struct_init']['i2s_cfg']
+    for key in ('std', 'tdm', 'pdm_tx', 'pdm_rx'):
+        if key in i2s_cfg:
+            return i2s_cfg[key]['clk_cfg']['mclk_multiple']
+    raise AssertionError(f'unexpected i2s_cfg keys: {list(i2s_cfg)}')
+
+
+@pytest.mark.parametrize('format_name', ['std-out', 'tdm-out', 'pdm-out', 'pdm-in'])
+def test_known_mclk_multiple_emits_idf_macro(bmgr_root, format_name):
+    assert _parse_i2s_mclk(bmgr_root, format_name, 256) == 'I2S_MCLK_MULTIPLE_256'
+
+
+@pytest.mark.parametrize('format_name', ['std-out', 'tdm-out', 'pdm-out', 'pdm-in'])
+def test_unknown_mclk_multiple_emits_integer_not_invented_macro(bmgr_root, format_name):
+    value = _parse_i2s_mclk(bmgr_root, format_name, 960)
+    assert value == 960
+    assert value != 'I2S_MCLK_MULTIPLE_960'
+
+
+def test_mclk_multiple_enum_string_is_kept(bmgr_root):
+    assert _parse_i2s_mclk(bmgr_root, 'std-out', 'I2S_MCLK_MULTIPLE_256') == 'I2S_MCLK_MULTIPLE_256'
+
+
+def test_default_mclk_multiple_emits_idf_macro(bmgr_root):
+    assert _parse_i2s_mclk(bmgr_root, 'std-out') == 'I2S_MCLK_MULTIPLE_256'
+
+
+def _parse_i2s_clk_src(bmgr_root, clk_src):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_i2s import periph_i2s as mod
+
+    result = mod.parse(
+        'i2s_audio',
+        {
+            'type': 'i2s',
+            'role': 'master',
+            'format': 'std-out',
+            'config': {
+                'sample_rate_hz': 16000,
+                'clk_src': clk_src,
+                'pins': {
+                    'bclk': 4,
+                    'ws': 5,
+                    'dout': 6,
+                    'din': 7,
+                },
+            },
+        },
+    )
+    return result['struct_init']['i2s_cfg']['std']['clk_cfg']['clk_src']
+
+
+def test_i2s_clk_src_apll_is_accepted(bmgr_root):
+    assert _parse_i2s_clk_src(bmgr_root, 'I2S_CLK_SRC_APLL') == 'I2S_CLK_SRC_APLL'
+
+
+def test_i2s_clk_src_unprefixed_value_is_rejected(bmgr_root):
+    with pytest.raises(ValueError, match='clk_src'):
+        _parse_i2s_clk_src(bmgr_root, 'apll')

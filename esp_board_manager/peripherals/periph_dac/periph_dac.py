@@ -6,7 +6,34 @@
 # DAC peripheral config parser
 VERSION = 'v1.0.0'
 
-import sys
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_DAC_CHANNEL = frozenset(('DAC_CHAN_0', 'DAC_CHAN_1', 'DAC_CHAN_MAX'))
+KNOWN_DAC_CHANNEL_MASK = frozenset((
+    'DAC_CHANNEL_MASK_CH0',
+    'DAC_CHANNEL_MASK_CH1',
+    'DAC_CHANNEL_MASK_ALL',
+))
+KNOWN_DAC_CHANNEL_MODE = frozenset(('DAC_CHANNEL_MODE_SIMUL', 'DAC_CHANNEL_MODE_ALTER'))
+KNOWN_DAC_COSINE_ATTEN = frozenset((
+    'DAC_COSINE_ATTEN_DEFAULT',
+    'DAC_COSINE_ATTEN_DB_0',
+    'DAC_COSINE_ATTEN_DB_6',
+    'DAC_COSINE_ATTEN_DB_12',
+    'DAC_COSINE_ATTEN_DB_18',
+))
+KNOWN_DAC_COSINE_PHASE = frozenset(('DAC_COSINE_PHASE_0', 'DAC_COSINE_PHASE_180'))
+KNOWN_DAC_DIGI_CLK_SRC = frozenset((
+    'DAC_DIGI_CLK_SRC_DEFAULT',
+    'DAC_DIGI_CLK_SRC_APB',
+    'DAC_DIGI_CLK_SRC_APLL',
+    'DAC_DIGI_CLK_SRC_PLLD2',
+    'DAC_DIGI_CLK_SRC_PLL_160M',
+))
+KNOWN_DAC_COSINE_CLK_SRC = frozenset((
+    'DAC_COSINE_CLK_SRC_DEFAULT',
+    'DAC_COSINE_CLK_SRC_RTC_FAST',
+))
 
 # Map string roles to enum values
 DAC_ROLE_MAP = {
@@ -15,98 +42,44 @@ DAC_ROLE_MAP = {
     'cosine': 'ESP_BOARD_PERIPH_ROLE_COSINE'
 }
 
+_DAC_ENUMS = {
+    'dac_channel': (('DAC_CHAN_',), KNOWN_DAC_CHANNEL),
+    'dac_channel_mask': (('DAC_CHANNEL_MASK_',), KNOWN_DAC_CHANNEL_MASK),
+    'dac_continuous_chan_mode': (('DAC_CHANNEL_MODE_',), KNOWN_DAC_CHANNEL_MODE),
+    'dac_cosine_atten': (('DAC_COSINE_ATTEN_',), KNOWN_DAC_COSINE_ATTEN),
+    'dac_cosine_phase': (('DAC_COSINE_PHASE_',), KNOWN_DAC_COSINE_PHASE),
+    'dac_digi_clk_src': (('DAC_DIGI_CLK_SRC_',), KNOWN_DAC_DIGI_CLK_SRC),
+    'dac_cosine_clk_src': (('DAC_COSINE_CLK_SRC_',), KNOWN_DAC_COSINE_CLK_SRC),
+}
+
+
+def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
+    """Resolve a YAML DAC enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        return value if value else full_enum
+    spec = _DAC_ENUMS.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
+        return value if value else full_enum
+    prefixes, known = spec
+    return resolve_idf_macro(value, full_enum, prefixes, known, enum_type)
+
+
+def _parse_dac_channel(channel) -> str:
+    if isinstance(channel, int):
+        if channel < 0:
+            raise ValueError(f'Invalid DAC channel number: {channel}. Must be >= 0.')
+        channel = f'DAC_CHAN_{channel}'
+    return get_enum_value(channel, 'DAC_CHAN_0', 'dac_channel')
+
 def get_includes() -> list:
     """Return list of required include headers for DAC peripheral"""
     return [
         'periph_dac.h'
     ]
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range for ESP-IDF DAC driver.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (dac_channel, dac_channel_mask, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    # Define valid enum values based on ESP-IDF DAC driver
-    valid_enums = {
-        'dac_channel': [
-            'DAC_CHAN_0',
-            'DAC_CHAN_1'
-        ],
-        'dac_channel_mask': [
-            'DAC_CHANNEL_MASK_CH0',
-            'DAC_CHANNEL_MASK_CH1',
-            'DAC_CHANNEL_MASK_ALL'
-        ],
-        'dac_continuous_chan_mode': [
-            'DAC_CHANNEL_MODE_SIMUL',
-            'DAC_CHANNEL_MODE_ALTER'
-        ],
-        'dac_cosine_atten': [
-            'DAC_COSINE_ATTEN_DEFAULT',
-            'DAC_COSINE_ATTEN_DB_0',
-            'DAC_COSINE_ATTEN_DB_6',
-            'DAC_COSINE_ATTEN_DB_12',
-            'DAC_COSINE_ATTEN_DB_18'
-        ],
-        'dac_cosine_phase': [
-            'DAC_COSINE_PHASE_0',
-            'DAC_COSINE_PHASE_180'
-        ]
-    }
-
-    if enum_type not in valid_enums:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
-        return True  # Allow unknown types to pass
-
-    if value not in valid_enums[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'      File: board_peripherals.yaml')
-        print(f'      Peripheral: DAC configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {valid_enums[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
-
-def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        full_enum: The complete ESP-IDF enum value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
-
-    Returns:
-        The enum value to use
-
-    Raises:
-        ValueError: If validation fails and the value is not empty
-    """
-    if not value:
-        result = full_enum
-    else:
-        result = value
-
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        # If validation fails and we have a non-empty value, raise an exception
-        if value:  # Only raise if user provided a value (not empty)
-            raise ValueError(f"Invalid {enum_type} value '{value}'. Please use one of the valid enum values.")
-        else:
-            # If no value provided, use default and show warning
-            print(f"⚠️  WARNING: Using default value '{full_enum}' due to validation failure")
-            result = full_enum
-
-    return result
-
 def parse(name: str, config: dict) -> dict:
-    """Parse DAC peripheral configuration.
+    """Parse DAC peripheral configuration from YAML.
 
     Args:
         name: Peripheral name (e.g. 'dac-0')
@@ -119,7 +92,6 @@ def parse(name: str, config: dict) -> dict:
     """
     try:
         # Get role type
-        print(config)
         role = config.get('role')
         if role is None:
             raise ValueError("Missing 'role' in DAC configuration")
@@ -136,9 +108,7 @@ def parse(name: str, config: dict) -> dict:
         config = config.get('config', {})
         if role == 'oneshot':
             # Parse oneshot configuration
-            channel = config.get('channel', 0)
-
-            channel_enum = f'DAC_CHAN_{channel}'
+            channel_enum = _parse_dac_channel(config.get('channel', 0))
             return {
                 'struct_type': 'periph_dac_config_t',
                 'struct_var': f'{name}_cfg',
@@ -157,7 +127,7 @@ def parse(name: str, config: dict) -> dict:
             buf_size = config.get('buf_size', 2048)
             freq_hz = config.get('freq_hz', 1000000)
             offset = config.get('offset', 0)
-            clk_src = config.get('clk_src', 'DAC_DIGI_CLK_SRC_DEFAULT')
+            clk_src = get_enum_value(config.get('clk_src'), 'DAC_DIGI_CLK_SRC_DEFAULT', 'dac_digi_clk_src')
             chan_mode = get_enum_value(config.get('chan_mode'), 'DAC_CHANNEL_MODE_SIMUL', 'dac_continuous_chan_mode')
 
             return {
@@ -179,11 +149,9 @@ def parse(name: str, config: dict) -> dict:
 
         else:  # cosine mode
             # Parse cosine configuration
-            channel = config.get('channel', 0)
-
-            channel_enum = f'DAC_CHAN_{channel}'
+            channel_enum = _parse_dac_channel(config.get('channel', 0))
             freq_hz = config.get('freq_hz', 1000)
-            clk_src = config.get('clk_src', 'DAC_COSINE_CLK_SRC_DEFAULT')
+            clk_src = get_enum_value(config.get('clk_src'), 'DAC_COSINE_CLK_SRC_DEFAULT', 'dac_cosine_clk_src')
 
             atten = get_enum_value(config.get('atten'), 'DAC_COSINE_ATTEN_DEFAULT', 'dac_cosine_atten')
             phase = get_enum_value(config.get('phase'), 'DAC_COSINE_PHASE_0', 'dac_cosine_phase')

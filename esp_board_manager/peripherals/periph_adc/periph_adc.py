@@ -9,6 +9,53 @@ VERSION = 'v1.0.0'
 import logging
 
 from generators.adc_channel_mapper import adc_channels_to_gpios, adc_patterns_to_gpios
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_ADC_UNIT = frozenset(('ADC_UNIT_1', 'ADC_UNIT_2'))
+KNOWN_ADC_ATTEN = frozenset((
+    'ADC_ATTEN_DB_0',
+    'ADC_ATTEN_DB_2_5',
+    'ADC_ATTEN_DB_6',
+    'ADC_ATTEN_DB_11',
+    'ADC_ATTEN_DB_12',
+))
+KNOWN_ADC_BITWIDTH = frozenset((
+    'ADC_BITWIDTH_DEFAULT',
+    'ADC_BITWIDTH_9',
+    'ADC_BITWIDTH_10',
+    'ADC_BITWIDTH_11',
+    'ADC_BITWIDTH_12',
+    'ADC_BITWIDTH_13',
+    'SOC_ADC_DIGI_MAX_BITWIDTH',
+))
+KNOWN_ADC_FORMAT = frozenset((
+    'ADC_DIGI_OUTPUT_FORMAT_TYPE1',
+    'ADC_DIGI_OUTPUT_FORMAT_TYPE2',
+))
+KNOWN_ADC_CONV_MODE = frozenset((
+    'ADC_CONV_SINGLE_UNIT_1',
+    'ADC_CONV_SINGLE_UNIT_2',
+    'ADC_CONV_BOTH_UNIT',
+    'ADC_CONV_ALTER_UNIT',
+))
+KNOWN_ADC_ULP_MODE = frozenset((
+    'ADC_ULP_MODE_DISABLE',
+    'ADC_ULP_MODE_FSM',
+    'ADC_ULP_MODE_RISCV',
+    'ADC_ULP_MODE_LP_CORE',
+))
+KNOWN_ADC_RTC_CLK_SRC = frozenset(('ADC_RTC_CLK_SRC_DEFAULT', 'ADC_RTC_CLK_SRC_RC_FAST'))
+KNOWN_ADC_DIGI_CLK_SRC = frozenset((
+    'ADC_DIGI_CLK_SRC_DEFAULT',
+    'ADC_DIGI_CLK_SRC_APB',
+    'ADC_DIGI_CLK_SRC_APLL',
+    'ADC_DIGI_CLK_SRC_XTAL',
+    'ADC_DIGI_CLK_SRC_RC_FAST',
+    'ADC_DIGI_CLK_SRC_PLL_F80M',
+    'ADC_DIGI_CLK_SRC_PLL_F96M',
+    'ADC_DIGI_CLK_SRC_PLL_F160M',
+    'ADC_DIGI_CLK_SRC_PLL_F240M',
+))
 
 logger = logging.getLogger(__name__)
 
@@ -19,103 +66,42 @@ ADC_ROLE_MAP = {
     'continuous': 'ESP_BOARD_PERIPH_ROLE_CONTINUOUS',
     'oneshot': 'ESP_BOARD_PERIPH_ROLE_ONESHOT'
 }
-VALID_ADC_UNITS = ['ADC_UNIT_1', 'ADC_UNIT_2']
-VALID_ADC_ATTEN = [
-    'ADC_ATTEN_DB_0',
-    'ADC_ATTEN_DB_2_5',
-    'ADC_ATTEN_DB_6',
-    'ADC_ATTEN_DB_12',
-    'ADC_ATTEN_DB_11'
-]
-VALID_ADC_BITWIDTH = [
-    'ADC_BITWIDTH_9',
-    'ADC_BITWIDTH_10',
-    'ADC_BITWIDTH_11',
-    'ADC_BITWIDTH_12',
-    'ADC_BITWIDTH_13',
-    'ADC_BITWIDTH_DEFAULT',
-    'SOC_ADC_DIGI_MAX_BITWIDTH'
-]
-VALID_ADC_FORMATS = [
-    'ADC_DIGI_OUTPUT_FORMAT_TYPE1',
-    'ADC_DIGI_OUTPUT_FORMAT_TYPE2'
-]
-VALID_ADC_CONV_MODES = [
-    'ADC_CONV_SINGLE_UNIT_1',
-    'ADC_CONV_SINGLE_UNIT_2',
-    'ADC_CONV_BOTH_UNIT',
-    'ADC_CONV_ALTER_UNIT'
-]
-VALID_ADC_ULP_MODES = [
-    'ADC_ULP_MODE_DISABLE',
-    'ADC_ULP_MODE_FSM',
-    'ADC_ULP_MODE_RISCV',
-    'ADC_ULP_MODE_LP_CORE'
-]
+
+_ADC_ENUMS = {
+    'ADC unit': (('ADC_UNIT_',), KNOWN_ADC_UNIT),
+    'ADC attenuation': (('ADC_ATTEN_',), KNOWN_ADC_ATTEN),
+    'ADC bit width': (('ADC_BITWIDTH_',), KNOWN_ADC_BITWIDTH),
+    'ADC output format': (('ADC_DIGI_OUTPUT_',), KNOWN_ADC_FORMAT),
+    'ADC conversion mode': (('ADC_CONV_',), KNOWN_ADC_CONV_MODE),
+    'ADC ULP mode': (('ADC_ULP_MODE_',), KNOWN_ADC_ULP_MODE),
+    'ADC RTC clock source': (('ADC_RTC_CLK_SRC_',), KNOWN_ADC_RTC_CLK_SRC),
+    'ADC digital clock source': (('ADC_DIGI_CLK_SRC_',), KNOWN_ADC_DIGI_CLK_SRC),
+}
+
 
 def get_adc_unit_value(value: str, default_value: str = 'ADC_UNIT_1', field_name: str = 'unit_id') -> str:
-    return get_enum_value(value, default_value, 'ADC unit', VALID_ADC_UNITS)
+    return get_enum_value(value, default_value, 'ADC unit')
 
-def validate_enum_value(value: str, enum_type: str, valid_values: list) -> bool:
-    """Validate if the enum value is within the valid range.
 
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum for error messages
-        valid_values: List of valid values
+def get_enum_value(value: str, default_value: str, enum_type: str, valid_values: list = None) -> str:
+    """Resolve a YAML ADC enumerator, passing through unknown prefixed macros."""
+    if enum_type == 'ADC role':
+        result = default_value if not value else value
+        if result not in VALID_ADC_ROLES:
+            raise ValueError(f"Invalid ADC role value '{value}'. Please use one of: {VALID_ADC_ROLES}")
+        return result
+    spec = _ADC_ENUMS.get(enum_type)
+    prefixes, known = spec if spec is not None else ((), frozenset(valid_values or ()))
+    extra = ('SOC_ADC_DIGI_MAX_BITWIDTH',) if enum_type == 'ADC bit width' else ()
+    return resolve_idf_macro(value, default_value, prefixes, known, enum_type, extra_allowed=extra)
 
-    Returns:
-        True if valid, False otherwise
-    """
-    if value not in valid_values:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'   File: board_peripherals.yaml')
-        print(f'   📋 Peripheral: ADC configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {valid_values}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-    return True
-
-def get_enum_value(value: str, default_value: str, enum_type: str, valid_values: list) -> str:
-    """Helper function to get enum value with validation.
-
-    Args:
-        value: The value from YAML config
-        default_value: The default value to use if value is not provided
-        enum_type: The type of enum for validation
-        valid_values: List of valid values
-
-    Returns:
-        The enum value to use
-    """
-    if not value:
-        result = default_value
-    else:
-        result = value
-
-    # Validate the enum value
-    if not validate_enum_value(result, enum_type, valid_values):
-        raise ValueError(f"Invalid {enum_type} value '{value}'. Please use one of the valid enum values.")
-
-    return result
 
 def get_adc_bit_width(value, default_value):
     """Get ADC bit width from YAML while preserving enum strings or numeric widths."""
     result = default_value if value is None else value
-
-    if isinstance(result, str):
-        if validate_enum_value(result, 'ADC bit width', VALID_ADC_BITWIDTH):
-            return result
-    elif isinstance(result, int) and not isinstance(result, bool) and result > 0:
+    if isinstance(result, int) and not isinstance(result, bool) and result > 0:
         return result
-    else:
-        validate_enum_value(result, 'ADC bit width', VALID_ADC_BITWIDTH)
-
-    raise ValueError(
-        f"Invalid ADC bit width value '{value}'. "
-        'Please use one of the valid enum values or a positive integer bit width.'
-    )
+    return get_enum_value(result, default_value, 'ADC bit width')
 
 def get_includes() -> list:
     """Return list of required include headers for ADC"""
@@ -149,7 +135,7 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
             parsed_patterns.append({
                 'unit': get_adc_unit_value(item.get('unit'), 'ADC_UNIT_1', 'patterns.unit'),
                 'channel': int(item.get('channel', -1)),
-                'atten': get_enum_value(item.get('atten'), 'ADC_ATTEN_DB_0', 'ADC attenuation', VALID_ADC_ATTEN),
+                'atten': get_enum_value(item.get('atten'), 'ADC_ATTEN_DB_0', 'ADC attenuation'),
                 'bit_width': get_adc_bit_width(item.get('bit_width'), 'ADC_BITWIDTH_DEFAULT'),
             })
     else:
@@ -177,7 +163,6 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
             conv_mode,
             'ADC_CONV_SINGLE_UNIT_1',
             'ADC conversion mode',
-            VALID_ADC_CONV_MODES
         )
     elif has_patterns:
         units = {item['unit'] for item in parsed_patterns}
@@ -229,8 +214,7 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
         'format': get_enum_value(
             continuous_config.get('format'),
             'ADC_DIGI_OUTPUT_FORMAT_TYPE2',
-            'ADC format',
-            VALID_ADC_FORMATS
+            'ADC output format',
         ),
         'conv_mode': conv_mode,
         'pattern_num': pattern_num,
@@ -256,7 +240,6 @@ def parse_adc_continuous_config(continuous_config: dict) -> dict:
                     continuous_config.get('atten'),
                     'ADC_ATTEN_DB_0',
                     'ADC attenuation',
-                    VALID_ADC_ATTEN
                 ),
                 'bit_width': get_adc_bit_width(continuous_config.get('bit_width'), 'SOC_ADC_DIGI_MAX_BITWIDTH'),
                 'channel_id': channel_id_array,
@@ -273,12 +256,15 @@ def parse_adc_oneshot_config(oneshot_config: dict) -> dict:
             'ADC_UNIT_1',
             'unit_id'
         ),
-        'clk_src': oneshot_config.get('clk_src', 'ADC_RTC_CLK_SRC_DEFAULT'),
+        'clk_src': get_enum_value(
+            oneshot_config.get('clk_src'),
+            'ADC_RTC_CLK_SRC_DEFAULT',
+            'ADC RTC clock source',
+        ),
         'ulp_mode': get_enum_value(
             oneshot_config.get('ulp_mode'),
             'ADC_ULP_MODE_DISABLE',
             'ADC ULP mode',
-            VALID_ADC_ULP_MODES
         )
     }
 
@@ -296,7 +282,6 @@ def parse_adc_oneshot_config(oneshot_config: dict) -> dict:
             oneshot_config.get('atten'),
             'ADC_ATTEN_DB_0',
             'ADC attenuation',
-            VALID_ADC_ATTEN
         ),
         'bitwidth': get_adc_bit_width(oneshot_config.get('bit_width'), 'SOC_ADC_DIGI_MAX_BITWIDTH')
     }
@@ -327,8 +312,7 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
         role = full_config.get('role')
         if role is None:
             raise ValueError("Missing ADC role for ADC device '{}'".format(name))
-        elif not validate_enum_value(role, 'ADC role', VALID_ADC_ROLES):
-            raise ValueError(f"Invalid ADC role '{role}' for ADC device '{name}'")
+        get_enum_value(role, role, 'ADC role')
 
         # Convert string role to enum value
         enum_role = ADC_ROLE_MAP.get(role)

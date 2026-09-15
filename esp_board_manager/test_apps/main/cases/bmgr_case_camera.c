@@ -79,6 +79,14 @@ static esp_err_t run_camera_capture(bmgr_test_context_t *ctx, int argc, char **a
     emit_camera_capture_summary(&summary);
     return ESP_OK;
 }
+
+static esp_err_t run_camera_deinit_busy(bmgr_test_context_t *ctx, int argc, char **argv)
+{
+    (void)ctx;
+    (void)argc;
+    (void)argv;
+    return test_dev_camera_deinit_busy();
+}
 #endif  /* CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT */
 
 #if defined(CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT) && defined(CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT)
@@ -107,6 +115,16 @@ void bmgr_register_camera_cases(void)
                 BMGR_TEST_RESOURCE_OPTIONAL(BMGR_TEST_NAME_FS_FAT),
             },
             .run = run_camera_capture,
+            .flags = BMGR_TEST_CASE_FLAG_NEEDS_BOARD,
+        },
+        {
+            .name = "camera.deinit_busy",
+            .group = "camera",
+            .help = "Fail last-ref camera deinit while the V4L2 path is still open",
+            .resources = {
+                BMGR_TEST_RESOURCE_REQUIRED(BMGR_TEST_NAME_CAMERA),
+            },
+            .run = run_camera_deinit_busy,
             .flags = BMGR_TEST_CASE_FLAG_NEEDS_BOARD,
         },
 #ifdef CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT

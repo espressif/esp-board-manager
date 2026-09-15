@@ -39,7 +39,99 @@ import sys
 
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.soc_capability_query import current_soc
+
+# Union of I2S enumerators from ESP-IDF v5.4 / v5.5 / v6.0 / v6.1 / master.
+KNOWN_I2S_CLK_SRC = frozenset((
+    'I2S_CLK_SRC_DEFAULT',
+    'I2S_CLK_SRC_EXTERNAL',
+    'I2S_CLK_SRC_APLL',
+    'I2S_CLK_SRC_XTAL',
+    'I2S_CLK_SRC_XTAL_X2',
+    'I2S_CLK_SRC_RC_FAST',
+    'I2S_CLK_SRC_PLL_64M',
+    'I2S_CLK_SRC_PLL_96M',
+    'I2S_CLK_SRC_PLL_120M',
+    'I2S_CLK_SRC_PLL_160M',
+    'I2S_CLK_SRC_PLL_240M',
+))
+KNOWN_I2S_SLOT_MODE = frozenset(('I2S_SLOT_MODE_MONO', 'I2S_SLOT_MODE_STEREO'))
+KNOWN_I2S_SLOT_BIT_WIDTH = frozenset((
+    'I2S_SLOT_BIT_WIDTH_AUTO',
+    'I2S_SLOT_BIT_WIDTH_8BIT',
+    'I2S_SLOT_BIT_WIDTH_16BIT',
+    'I2S_SLOT_BIT_WIDTH_24BIT',
+    'I2S_SLOT_BIT_WIDTH_32BIT',
+))
+KNOWN_I2S_DATA_BIT_WIDTH = frozenset((
+    'I2S_DATA_BIT_WIDTH_8BIT',
+    'I2S_DATA_BIT_WIDTH_16BIT',
+    'I2S_DATA_BIT_WIDTH_24BIT',
+    'I2S_DATA_BIT_WIDTH_32BIT',
+))
+KNOWN_I2S_STD_SLOT = frozenset(('I2S_STD_SLOT_LEFT', 'I2S_STD_SLOT_RIGHT', 'I2S_STD_SLOT_BOTH'))
+KNOWN_I2S_TDM_SLOT = frozenset(f'I2S_TDM_SLOT{i}' for i in range(16))
+KNOWN_I2S_MCLK_MULTIPLE = frozenset((
+    'I2S_MCLK_MULTIPLE_128',
+    'I2S_MCLK_MULTIPLE_192',
+    'I2S_MCLK_MULTIPLE_256',
+    'I2S_MCLK_MULTIPLE_384',
+    'I2S_MCLK_MULTIPLE_512',
+    'I2S_MCLK_MULTIPLE_576',
+    'I2S_MCLK_MULTIPLE_768',
+    'I2S_MCLK_MULTIPLE_1024',
+    'I2S_MCLK_MULTIPLE_1152',
+))
+KNOWN_I2S_PDM_DATA_FMT = frozenset(('I2S_PDM_DATA_FMT_PCM', 'I2S_PDM_DATA_FMT_RAW'))
+KNOWN_I2S_PDM_SIG_SCALE = frozenset((
+    'I2S_PDM_SIG_SCALING_DIV_2',
+    'I2S_PDM_SIG_SCALING_MUL_1',
+    'I2S_PDM_SIG_SCALING_MUL_2',
+    'I2S_PDM_SIG_SCALING_MUL_4',
+))
+KNOWN_I2S_PDM_TX_LINE_MODE = frozenset((
+    'I2S_PDM_TX_ONE_LINE_CODEC',
+    'I2S_PDM_TX_ONE_LINE_DAC',
+    'I2S_PDM_TX_TWO_LINE_DAC',
+))
+KNOWN_I2S_PDM_SLOT_MASK = frozenset((
+    'I2S_PDM_SLOT_LEFT',
+    'I2S_PDM_SLOT_RIGHT',
+    'I2S_PDM_SLOT_BOTH',
+    'I2S_PDM_RX_LINE0_SLOT_LEFT',
+    'I2S_PDM_RX_LINE0_SLOT_RIGHT',
+    'I2S_PDM_RX_LINE1_SLOT_LEFT',
+    'I2S_PDM_RX_LINE1_SLOT_RIGHT',
+    'I2S_PDM_RX_LINE2_SLOT_LEFT',
+    'I2S_PDM_RX_LINE2_SLOT_RIGHT',
+    'I2S_PDM_RX_LINE3_SLOT_LEFT',
+    'I2S_PDM_RX_LINE3_SLOT_RIGHT',
+    'I2S_PDM_LINE_SLOT_ALL',
+))
+KNOWN_I2S_PDM_DSR = frozenset(('I2S_PDM_DSR_8S', 'I2S_PDM_DSR_16S', 'I2S_PDM_DSR_MAX'))
+
+_MCLK_MULTIPLE_PREFIX = 'I2S_MCLK_MULTIPLE_'
+_DEFAULT_MCLK_MULTIPLE = 256
+_KNOWN_MCLK_MULTIPLE_MACROS = tuple(sorted(KNOWN_I2S_MCLK_MULTIPLE))
+_KNOWN_MCLK_MULTIPLES = tuple(
+    int(name[len(_MCLK_MULTIPLE_PREFIX):]) for name in _KNOWN_MCLK_MULTIPLE_MACROS
+)
+
+_I2S_ENUMS = {
+    'clk_src': (('I2S_CLK_SRC_',), KNOWN_I2S_CLK_SRC),
+    'slot_mode': (('I2S_SLOT_MODE_',), KNOWN_I2S_SLOT_MODE),
+    'slot_bit_width': (('I2S_SLOT_BIT_WIDTH_',), KNOWN_I2S_SLOT_BIT_WIDTH),
+    'std_slot_mask': (('I2S_STD_SLOT_',), KNOWN_I2S_STD_SLOT),
+    'tdm_slot_mask': (('I2S_TDM_SLOT',), KNOWN_I2S_TDM_SLOT),
+    'data_bit_width': (('I2S_DATA_BIT_WIDTH_',), KNOWN_I2S_DATA_BIT_WIDTH),
+    'pdm_data_fmt': (('I2S_PDM_DATA_FMT_',), KNOWN_I2S_PDM_DATA_FMT),
+    'pdm_sig_scale': (('I2S_PDM_SIG_SCALING_',), KNOWN_I2S_PDM_SIG_SCALE),
+    'pdm_line_mode': (('I2S_PDM_TX_',), KNOWN_I2S_PDM_TX_LINE_MODE),
+    'pdm_tx_line_mode': (('I2S_PDM_TX_',), KNOWN_I2S_PDM_TX_LINE_MODE),
+    'pdm_slot_mask': (('I2S_PDM_SLOT_', 'I2S_PDM_RX_', 'I2S_PDM_LINE_'), KNOWN_I2S_PDM_SLOT_MASK),
+    'pdm_dsr': (('I2S_PDM_DSR_',), KNOWN_I2S_PDM_DSR),
+}
 
 def get_includes() -> list:
     """Return list of required include headers for I2S peripheral"""
@@ -47,161 +139,63 @@ def get_includes() -> list:
         'periph_i2s.h',
     ]
 
-def validate_enum_value(value: str, enum_type: str) -> bool:
-    """Validate if the enum value is within the valid range for ESP-IDF I2S driver.
-
-    Args:
-        value: The enum value to validate
-        enum_type: The type of enum (clk_src, slot_mode, slot_mask, etc.)
-
-    Returns:
-        True if valid, False otherwise
-    """
-    # Define valid enum values based on ESP-IDF I2S driver
-    valid_enums = {
-        'clk_src': [
-            'I2S_CLK_SRC_DEFAULT',
-            'I2S_CLK_SRC_EXTERNAL',
-            'I2S_CLK_SRC_APB',
-            'I2S_CLK_SRC_PLL_F160M',
-            'I2S_CLK_SRC_PLL_F240M'
-        ],
-        'slot_mode': [
-            'I2S_SLOT_MODE_MONO',
-            'I2S_SLOT_MODE_STEREO'
-        ],
-        'slot_bit_width': [
-            'I2S_SLOT_BIT_WIDTH_AUTO',
-            'I2S_SLOT_BIT_WIDTH_8BIT',
-            'I2S_SLOT_BIT_WIDTH_16BIT',
-            'I2S_SLOT_BIT_WIDTH_24BIT',
-            'I2S_SLOT_BIT_WIDTH_32BIT'
-        ],
-        'std_slot_mask': [
-            'I2S_STD_SLOT_LEFT',
-            'I2S_STD_SLOT_RIGHT',
-            'I2S_STD_SLOT_BOTH'
-        ],
-        'tdm_slot_mask': [
-            'I2S_TDM_SLOT0',
-            'I2S_TDM_SLOT1',
-            'I2S_TDM_SLOT2',
-            'I2S_TDM_SLOT3',
-            'I2S_TDM_SLOT4',
-            'I2S_TDM_SLOT5',
-            'I2S_TDM_SLOT6',
-            'I2S_TDM_SLOT7',
-            'I2S_TDM_SLOT8',
-            'I2S_TDM_SLOT9',
-            'I2S_TDM_SLOT10',
-            'I2S_TDM_SLOT11',
-            'I2S_TDM_SLOT12',
-            'I2S_TDM_SLOT13',
-            'I2S_TDM_SLOT14',
-            'I2S_TDM_SLOT15'
-        ],
-        'data_bit_width': [
-            'I2S_DATA_BIT_WIDTH_8BIT',
-            'I2S_DATA_BIT_WIDTH_16BIT',
-            'I2S_DATA_BIT_WIDTH_24BIT',
-            'I2S_DATA_BIT_WIDTH_32BIT'
-        ],
-        'mclk_multiple': [
-            'I2S_MCLK_MULTIPLE_128',
-            'I2S_MCLK_MULTIPLE_192',
-            'I2S_MCLK_MULTIPLE_256',
-            'I2S_MCLK_MULTIPLE_384',
-            'I2S_MCLK_MULTIPLE_512',
-            'I2S_MCLK_MULTIPLE_576',
-            'I2S_MCLK_MULTIPLE_768',
-            'I2S_MCLK_MULTIPLE_1024',
-            'I2S_MCLK_MULTIPLE_1152'
-        ],
-        'pdm_data_fmt': [
-            'I2S_PDM_DATA_FMT_PCM',
-            'I2S_PDM_DATA_FMT_RAW'
-        ],
-        'pdm_sig_scale': [
-            'I2S_PDM_SIG_SCALING_DIV_2',
-            'I2S_PDM_SIG_SCALING_MUL_1',
-            'I2S_PDM_SIG_SCALING_MUL_2',
-            'I2S_PDM_SIG_SCALING_MUL_4'
-        ],
-        'pdm_line_mode': [
-            'I2S_PDM_TX_ONE_LINE_CODEC',
-            'I2S_PDM_TX_ONE_LINE_DAC',
-            'I2S_PDM_TX_TWO_LINE_DAC'
-        ],
-        'pdm_tx_line_mode': [
-            'I2S_PDM_TX_ONE_LINE_CODEC',
-            'I2S_PDM_TX_ONE_LINE_DAC',
-            'I2S_PDM_TX_TWO_LINE_DAC'
-        ],
-        'pdm_slot_mask': [
-            'I2S_PDM_SLOT_LEFT',
-            'I2S_PDM_SLOT_RIGHT',
-            'I2S_PDM_SLOT_BOTH',
-            'I2S_PDM_RX_LINE0_SLOT_LEFT',
-            'I2S_PDM_RX_LINE0_SLOT_RIGHT',
-            'I2S_PDM_RX_LINE1_SLOT_LEFT',
-            'I2S_PDM_RX_LINE1_SLOT_RIGHT',
-            'I2S_PDM_RX_LINE2_SLOT_LEFT',
-            'I2S_PDM_RX_LINE2_SLOT_RIGHT',
-            'I2S_PDM_RX_LINE3_SLOT_LEFT',
-            'I2S_PDM_RX_LINE3_SLOT_RIGHT',
-            'I2S_PDM_LINE_SLOT_ALL'
-        ],
-        'pdm_dsr': [
-            'I2S_PDM_DSR_8S',
-            'I2S_PDM_DSR_16S'
-        ]
-    }
-
-    if enum_type not in valid_enums:
-        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
-        return True  # Allow unknown types to pass
-
-    if value not in valid_enums[enum_type]:
-        print(f"❌ YAML VALIDATION ERROR: Invalid {enum_type} value '{value}'!")
-        print(f'      File: board_peripherals.yaml')
-        print(f'      Peripheral: I2S configuration')
-        print(f"   ❌ Invalid value: '{value}'")
-        print(f'   ✅ Valid values: {valid_enums[enum_type]}')
-        print(f'   ℹ️ Please use one of the valid enum values listed above')
-        return False
-
-    return True
-
 def get_enum_value(value: str, full_enum: str, enum_type: str = None) -> str:
-    """Helper function to get enum value with validation.
+    """Resolve a YAML I2S enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        return value if value else full_enum
+    spec = _I2S_ENUMS.get(enum_type)
+    if spec is None:
+        print(f"⚠️  WARNING: Unknown enum type '{enum_type}' for validation")
+        return value if value else full_enum
+    prefixes, known = spec
+    return resolve_idf_macro(value, full_enum, prefixes, known, enum_type)
 
-    Args:
-        value: The value from YAML config
-        full_enum: The complete ESP-IDF enum value to use if value is not provided
-        enum_type: The type of enum for validation (optional)
 
-    Returns:
-        The enum value to use
+def format_mclk_multiple(value, default=_DEFAULT_MCLK_MULTIPLE):
+    """Format YAML ``mclk_multiple`` into a compile-safe C initializer.
 
-    Raises:
-        ValueError: If validation fails and the value is not empty
+    Known ESP-IDF enum values are emitted as ``I2S_MCLK_MULTIPLE_<n>``.
+    Unknown numeric values (for example 960) are emitted as the integer itself
+    so generated C still compiles instead of inventing an undefined macro.
     """
-    if not value:
-        result = full_enum
-    else:
-        result = value
+    if value is None or value == '':
+        value = default
 
-    # Validate the enum value if enum_type is provided
-    if enum_type and not validate_enum_value(result, enum_type):
-        # If validation fails and we have a non-empty value, raise an exception
-        if value:  # Only raise if user provided a value (not empty)
-            raise ValueError(f"Invalid {enum_type} value '{value}'. Please use one of the valid enum values.")
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped in _KNOWN_MCLK_MULTIPLE_MACROS:
+            return stripped
+        if stripped.startswith(_MCLK_MULTIPLE_PREFIX):
+            suffix = stripped[len(_MCLK_MULTIPLE_PREFIX):]
+            if suffix.isdigit():
+                value = int(suffix)
+            else:
+                raise ValueError(
+                    f"Invalid mclk_multiple '{value}'. Use a number or a known I2S_MCLK_MULTIPLE_* value."
+                )
+        elif stripped.isdigit():
+            value = int(stripped)
         else:
-            # If no value provided, use default and show warning
-            print(f"⚠️  WARNING: Using default value '{full_enum}' due to validation failure")
-            result = full_enum
+            raise ValueError(
+                f"Invalid mclk_multiple '{value}'. Use a number or a known I2S_MCLK_MULTIPLE_* value."
+            )
 
-    return result
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(
+            f"Invalid mclk_multiple '{value}'. Use a number or a known I2S_MCLK_MULTIPLE_* value."
+        )
+    if value <= 0:
+        raise ValueError(f"Invalid mclk_multiple '{value}'. Value must be a positive integer.")
+
+    if value in _KNOWN_MCLK_MULTIPLES:
+        return f'{_MCLK_MULTIPLE_PREFIX}{value}'
+
+    print(
+        f'⚠️  WARNING: mclk_multiple {value} has no I2S_MCLK_MULTIPLE_* macro; '
+        'emitting the integer value'
+    )
+    return value
+
 
 def parse_i2s_format(format_str: str) -> dict:
     """Parse I2S format string into configuration values.
@@ -667,7 +661,7 @@ def parse(name: str, config: dict) -> dict:
             # Clock config — ``ext_clk_freq_hz`` depends on HW layout; ``bclk_div`` depends on IDF version.
             sr = int(cfg.get('sample_rate_hz', 48000))
             clk_src = get_enum_value(cfg.get('clk_src'), 'I2S_CLK_SRC_DEFAULT', 'clk_src')
-            mclk_mul = 'I2S_MCLK_MULTIPLE_' + str(cfg.get('mclk_multiple', 256))
+            mclk_mul = format_mclk_multiple(cfg.get('mclk_multiple'))
             clk_cfg = {
                 'sample_rate_hz': sr,
                 'clk_src': clk_src,
@@ -704,7 +698,7 @@ def parse(name: str, config: dict) -> dict:
                     'sample_rate_hz': int(cfg.get('sample_rate_hz', 48000)),
                     'clk_src': get_enum_value(cfg.get('clk_src'), 'I2S_CLK_SRC_DEFAULT', 'clk_src'),
                     'ext_clk_freq_hz': int(cfg.get('ext_clk_freq_hz', 0)),  # Only used when clk_src is EXTERNAL
-                    'mclk_multiple': 'I2S_MCLK_MULTIPLE_' + str(cfg.get('mclk_multiple', 256)),
+                    'mclk_multiple': format_mclk_multiple(cfg.get('mclk_multiple')),
                     'bclk_div': int(cfg.get('bclk_div', 8))
                 },
                 # Slot config
@@ -743,7 +737,7 @@ def parse(name: str, config: dict) -> dict:
                 pdm_tx_clk_cfg = {
                     'sample_rate_hz': int(cfg.get('sample_rate_hz', 48000)),
                     'clk_src': get_enum_value(cfg.get('clk_src'), 'I2S_CLK_SRC_DEFAULT', 'clk_src'),
-                    'mclk_multiple': 'I2S_MCLK_MULTIPLE_' + str(cfg.get('mclk_multiple', 256)),
+                    'mclk_multiple': format_mclk_multiple(cfg.get('mclk_multiple')),
                     'up_sample_fp': int(cfg.get('up_sample_fp', 960)),
                     'up_sample_fs': int(cfg.get('up_sample_fs', 480)),
                     'bclk_div': int(cfg.get('bclk_div', 8))
@@ -772,7 +766,7 @@ def parse(name: str, config: dict) -> dict:
                 pdm_rx_clk_cfg = {
                     'sample_rate_hz': int(cfg.get('sample_rate_hz', 48000)),
                     'clk_src': get_enum_value(cfg.get('clk_src'), 'I2S_CLK_SRC_DEFAULT', 'clk_src'),
-                    'mclk_multiple': 'I2S_MCLK_MULTIPLE_' + str(cfg.get('mclk_multiple', 256)),
+                    'mclk_multiple': format_mclk_multiple(cfg.get('mclk_multiple')),
                     'dn_sample_mode': get_enum_value(cfg.get('dn_sample_mode'), 'I2S_PDM_DSR_8S', 'pdm_dsr'),
                     'bclk_div': int(cfg.get('bclk_div', 8))
                 }

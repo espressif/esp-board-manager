@@ -1,7 +1,14 @@
 # IDF images to test against. Add or remove tags here to update every board group.
 .idf_image_matrix: &idf_image_matrix
   - "espressif/idf:v5.4.4"
-  - "espressif/idf:v5.5.4"
+  - "espressif/idf:v5.5.5"
+  - "espressif/idf:v6.0.3"
+  - "espressif/idf:v6.1"
+  - "espressif/idf:latest"
+
+# ESP32-S31 is available from IDF v6.1 onward.
+.idf_s31_image_matrix: &idf_s31_image_matrix
+  - "espressif/idf:v6.1"
   - "espressif/idf:latest"
 
 build_test_apps:
@@ -16,10 +23,13 @@ build_test_apps:
       - IDF_IMAGE: *idf_image_matrix
         BOARD: ["esp32_p4_function_ev_board"]
         IDF_TARGET: ["esp32p4"]
+      - IDF_IMAGE: *idf_s31_image_matrix
+        BOARD: ["esp32_s31_function_coreboard_1"]
+        IDF_TARGET: ["esp32s31"]
   script:
     - idf.py --version
     - python -c "from importlib.metadata import version; print('esp-bmgr-assist', version('esp-bmgr-assist'))"
     - cd esp_board_manager/test_apps
     - mkdir -p "logs/${BOARD}"
     - idf.py bmgr -b "${BOARD}" 2>&1 | tee "logs/${BOARD}/bmgr.log"
-    - SDKCONFIG_DEFAULTS="components/gen_bmgr_codes/board_manager.defaults;sdkconfig.defaults" idf-build-apps build --paths . --target "${IDF_TARGET}" --parallel-count 1 --parallel-index 1
+    - SDKCONFIG_DEFAULTS="sdkconfig.defaults;components/gen_bmgr_codes/board_manager.defaults" idf-build-apps build --paths . --target "${IDF_TARGET}" --parallel-count 1 --parallel-index 1

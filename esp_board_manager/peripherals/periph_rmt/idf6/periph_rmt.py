@@ -11,11 +11,18 @@ PERIPH_RMT_IO_LIST = {
     'rx': ['gpio_num'],
 }
 
-import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
-
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.logger import get_logger
+
+KNOWN_RMT_CLK_SRC = frozenset((
+    'RMT_CLK_SRC_DEFAULT',
+    'RMT_CLK_SRC_APB',
+    'RMT_CLK_SRC_XTAL',
+    'RMT_CLK_SRC_RC_FAST',
+    'RMT_CLK_SRC_REF_TICK',
+    'RMT_CLK_SRC_PLL_F80M',
+    'RMT_CLK_SRC_REF_F80M',
+))
 logger = get_logger('periph_rmt')
 
 # Map string roles to enum values
@@ -50,7 +57,13 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
 
         tx_config = {
             'gpio_num': int(tx_cfg.get('gpio_num', -1)),
-            'clk_src': tx_cfg.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+            'clk_src': resolve_idf_macro(
+                tx_cfg.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+                default='RMT_CLK_SRC_DEFAULT',
+                prefixes=('RMT_CLK_SRC_',),
+                known=KNOWN_RMT_CLK_SRC,
+                field_name='clk_src',
+            ),
             'resolution_hz': int(tx_cfg.get('resolution_hz', 10000000)),
             'mem_block_symbols': int(tx_cfg.get('mem_block_symbols', 64)),
             'trans_queue_depth': int(tx_cfg.get('trans_queue_depth', 4)),
@@ -81,7 +94,13 @@ def parse(name: str, full_config: dict, peripherals_dict=None) -> dict:
 
         rx_config = {
             'gpio_num': int(rx_cfg.get('gpio_num', -1)),
-            'clk_src': rx_cfg.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+            'clk_src': resolve_idf_macro(
+                rx_cfg.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+                default='RMT_CLK_SRC_DEFAULT',
+                prefixes=('RMT_CLK_SRC_',),
+                known=KNOWN_RMT_CLK_SRC,
+                field_name='clk_src',
+            ),
             'resolution_hz': int(rx_cfg.get('resolution_hz', 1000000)),
             'mem_block_symbols': int(rx_cfg.get('mem_block_symbols', 64)),
             'intr_priority': int(rx_cfg.get('intr_priority', 1)),

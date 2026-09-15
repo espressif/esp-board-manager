@@ -6,11 +6,26 @@
 # GPIO peripheral config parser
 VERSION = 'v1.0.0'
 
-import sys
 import re
 
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generators'))
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_GPIO_MODE = frozenset((
+    'GPIO_MODE_DISABLE',
+    'GPIO_MODE_INPUT',
+    'GPIO_MODE_OUTPUT',
+    'GPIO_MODE_OUTPUT_OD',
+    'GPIO_MODE_INPUT_OUTPUT',
+    'GPIO_MODE_INPUT_OUTPUT_OD',
+))
+KNOWN_GPIO_INTR = frozenset((
+    'GPIO_INTR_DISABLE',
+    'GPIO_INTR_POSEDGE',
+    'GPIO_INTR_NEGEDGE',
+    'GPIO_INTR_ANYEDGE',
+    'GPIO_INTR_LOW_LEVEL',
+    'GPIO_INTR_HIGH_LEVEL',
+))
 
 PIN_BIT_MASK_RE = re.compile(r'BIT64\((\d+)\)')
 
@@ -43,13 +58,13 @@ def parse(name: str, config: dict) -> dict:
         pin_bit_mask = f'BIT64({pin})'
 
         # Get GPIO mode with validation
-        mode = cfg.get('mode', 'GPIO_MODE_INPUT')
-        valid_modes = [
-            'GPIO_MODE_INPUT', 'GPIO_MODE_OUTPUT', 'GPIO_MODE_INPUT_OUTPUT',
-            'GPIO_MODE_OUTPUT_OD', 'GPIO_MODE_INPUT_OUTPUT_OD'
-        ]
-        if mode not in valid_modes:
-            raise ValueError(f'Invalid GPIO mode: {mode}. Valid modes: {valid_modes}')
+        mode = resolve_idf_macro(
+            cfg.get('mode', 'GPIO_MODE_INPUT'),
+            default='GPIO_MODE_INPUT',
+            prefixes=('GPIO_MODE_',),
+            known=KNOWN_GPIO_MODE,
+            field_name='mode',
+        )
 
         # Get pull-up/down configuration with validation
         pull_up = cfg.get('pull_up', False)
@@ -63,13 +78,13 @@ def parse(name: str, config: dict) -> dict:
         pull_down_en = 'GPIO_PULLDOWN_ENABLE' if pull_down else 'GPIO_PULLDOWN_DISABLE'
 
         # Get interrupt type with validation
-        intr_type = cfg.get('intr_type', 'GPIO_INTR_DISABLE')
-        valid_intr_types = [
-            'GPIO_INTR_DISABLE', 'GPIO_INTR_POSEDGE', 'GPIO_INTR_NEGEDGE',
-            'GPIO_INTR_ANYEDGE', 'GPIO_INTR_LOW_LEVEL', 'GPIO_INTR_HIGH_LEVEL'
-        ]
-        if intr_type not in valid_intr_types:
-            raise ValueError(f'Invalid interrupt type: {intr_type}. Valid types: {valid_intr_types}')
+        intr_type = resolve_idf_macro(
+            cfg.get('intr_type', 'GPIO_INTR_DISABLE'),
+            default='GPIO_INTR_DISABLE',
+            prefixes=('GPIO_INTR_',),
+            known=KNOWN_GPIO_INTR,
+            field_name='intr_type',
+        )
 
         # Get default level with validation
         default_level = cfg.get('default_level', 0)

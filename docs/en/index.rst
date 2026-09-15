@@ -27,9 +27,9 @@ Key benefits:
 Supported ESP-IDF Versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ESP-IDF ``release/v5.4``, minimum ``v5.4.3``.
-- ESP-IDF ``release/v5.5``, minimum ``v5.5.2``.
-- ESP-IDF ``master``.
+- ESP-IDF ``release/v5.4``, minimum ``v5.4.4``.
+- ESP-IDF ``release/v5.5``, minimum ``v5.5.3``.
+- ESP-IDF ``release/v6.0`` and later.
 
 .. toctree::
    :maxdepth: 3

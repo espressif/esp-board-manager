@@ -120,6 +120,7 @@ GPIO Input / Output / Input-Output — Full Fields
         # GPIO mode (default: GPIO_MODE_INPUT)
         mode: "GPIO_MODE_INPUT"  # [TO_BE_CONFIRMED] GPIO mode
         # Valid modes:
+        # - GPIO_MODE_DISABLE
         # - GPIO_MODE_INPUT
         # - GPIO_MODE_OUTPUT
         # - GPIO_MODE_INPUT_OUTPUT

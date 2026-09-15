@@ -141,15 +141,16 @@ int dev_camera_sub_csi_deinit(void *device_handle)
 
     ESP_LOGI(TAG, "Deinitializing CSI camera...");
 
-    if (priv_handle->xclk_handle) {
-        esp_cam_sensor_xclk_stop(priv_handle->xclk_handle);
-        esp_cam_sensor_xclk_free(priv_handle->xclk_handle);
-    }
-
     // Deinitialize only the CSI camera resources and ISP video node when enabled.
     esp_err_t ret = esp_video_deinit_with_flags(dev_camera_csi_video_flags());
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to deinitialize CSI camera: %s", esp_err_to_name(ret));
+        return -1;
+    }
+
+    if (priv_handle->xclk_handle) {
+        esp_cam_sensor_xclk_stop(priv_handle->xclk_handle);
+        esp_cam_sensor_xclk_free(priv_handle->xclk_handle);
     }
 
     dev_camera_config_t *cfg = NULL;
@@ -161,7 +162,7 @@ int dev_camera_sub_csi_deinit(void *device_handle)
         }
     }
     free(priv_handle);
-    return ret == ESP_OK ? 0 : -1;
+    return 0;
 }
 
 ESP_BOARD_SUBTYPE_ENTRY_IMPLEMENT(camera, csi, dev_camera_sub_csi_init, dev_camera_sub_csi_deinit);

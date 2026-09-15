@@ -44,23 +44,25 @@ int dev_custom_deinit(void *device_handle)
         ESP_LOGE(TAG, "Invalid device handle");
         return -1;
     }
+
     // First, try to find the device handle in g_esp_board_device_handles
     const esp_board_device_handle_t *board_device = esp_board_device_find_by_handle(device_handle);
     if (board_device == NULL) {
         ESP_LOGE(TAG, "Device handle[%p] not found, deinit failed", device_handle);
         return -1;
     }
+
+    int ret = 0;
     const esp_board_entry_desc_t *desc = esp_board_entry_find_desc(board_device->name);
     if (desc && desc->deinit_func) {
-        int ret = desc->deinit_func(device_handle);
+        ret = desc->deinit_func(device_handle);
         if (ret != 0) {
             ESP_LOGE(TAG, "Custom device '%s' deinit failed with error: %d", board_device->name, ret);
-            // Continue with cleanup even if deinit failed
         } else {
             ESP_LOGI(TAG, "Custom device '%s' deinitialized successfully", board_device->name);
         }
     } else {
         ESP_LOGW(TAG, "No custom deinit function found for device '%s'", board_device->name);
     }
-    return 0;
+    return ret;
 }

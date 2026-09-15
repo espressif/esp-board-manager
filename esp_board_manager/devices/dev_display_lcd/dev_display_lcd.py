@@ -8,7 +8,32 @@ VERSION = 'v1.0.0'
 
 import logging
 
+from generators.utils.idf_enum import resolve_idf_macro
 from generators.utils.idf_version import get_idf_version
+
+KNOWN_LCD_CLK_SRC = frozenset((
+    'LCD_CLK_SRC_DEFAULT',
+    'LCD_CLK_SRC_PLL160M',
+    'LCD_CLK_SRC_PLL240M',
+    'LCD_CLK_SRC_XTAL',
+    'LCD_CLK_SRC_APLL',
+))
+KNOWN_MIPI_DSI_DPI_CLK_SRC = frozenset((
+    'MIPI_DSI_DPI_CLK_SRC_DEFAULT',
+    'MIPI_DSI_DPI_CLK_SRC_XTAL',
+    'MIPI_DSI_DPI_CLK_SRC_APLL',
+    'MIPI_DSI_DPI_CLK_SRC_PLL_F160M',
+    'MIPI_DSI_DPI_CLK_SRC_PLL_F240M',
+))
+KNOWN_PARLIO_CLK_SRC = frozenset((
+    'PARLIO_CLK_SRC_DEFAULT',
+    'PARLIO_CLK_SRC_XTAL',
+    'PARLIO_CLK_SRC_PLL_F96M',
+    'PARLIO_CLK_SRC_PLL_F160M',
+    'PARLIO_CLK_SRC_PLL_F240M',
+    'PARLIO_CLK_SRC_RC_FAST',
+    'PARLIO_CLK_SRC_EXTERNAL',
+))
 
 logger = logging.getLogger(__name__)
 
@@ -330,7 +355,13 @@ def parse_dsi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
 
     dpi_config_parsed = {
         'virtual_channel': dpi_config.get('virtual_channel', 0),
-        'dpi_clk_src': dpi_config.get('dpi_clk_src', 'MIPI_DSI_DPI_CLK_SRC_DEFAULT'),
+        'dpi_clk_src': resolve_idf_macro(
+            dpi_config.get('dpi_clk_src', 'MIPI_DSI_DPI_CLK_SRC_DEFAULT'),
+            default='MIPI_DSI_DPI_CLK_SRC_DEFAULT',
+            prefixes=('MIPI_DSI_DPI_CLK_SRC_',),
+            known=KNOWN_MIPI_DSI_DPI_CLK_SRC,
+            field_name='dpi_clk_src',
+        ),
         'dpi_clock_freq_mhz': dpi_config.get('dpi_clock_freq_mhz', 48),
         'in_color_format': in_color_format_val,
         'out_color_format': out_color_format_val,
@@ -519,7 +550,13 @@ def parse_parlio_sub_config(full_config: dict = None, peripherals_dict=None) -> 
         'data_gpio_nums': data_nums,
         'data_width': int(io.get('data_width', 1)),
         'pclk_hz': int(io.get('pclk_hz', 40000000)),
-        'clk_src': io.get('clk_src', 'PARLIO_CLK_SRC_DEFAULT'),
+        'clk_src': resolve_idf_macro(
+            io.get('clk_src', 'PARLIO_CLK_SRC_DEFAULT'),
+            default='PARLIO_CLK_SRC_DEFAULT',
+            prefixes=('PARLIO_CLK_SRC_',),
+            known=KNOWN_PARLIO_CLK_SRC,
+            field_name='clk_src',
+        ),
         'max_transfer_bytes': max_transfer,
         'dma_burst_size': int(io.get('dma_burst_size', 32)),
         'trans_queue_depth': int(io.get('trans_queue_depth', 10)),
@@ -578,7 +615,13 @@ def parse_rgb_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     ))
 
     panel_config = {
-        'clk_src': rgb_config.get('clk_src', 'LCD_CLK_SRC_DEFAULT'),
+        'clk_src': resolve_idf_macro(
+            rgb_config.get('clk_src', 'LCD_CLK_SRC_DEFAULT'),
+            default='LCD_CLK_SRC_DEFAULT',
+            prefixes=('LCD_CLK_SRC_',),
+            known=KNOWN_LCD_CLK_SRC,
+            field_name='clk_src',
+        ),
         'timings': {
             'pclk_hz': int(timings.get('pclk_hz', rgb_config.get('pclk_hz', 18000000))),
             'h_res': int(timings.get('h_res', sub_config.get('x_max', 800))),
@@ -697,7 +740,14 @@ def parse_i80_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
     bus_config_parsed = {
         'dc_gpio_num': bus_config.get('dc_gpio_num', -1),
         'wr_gpio_num': bus_config.get('wr_gpio_num', -1),
-        'clk_src': bus_config.get('clk_src', 'LCD_CLK_SRC_DEFAULT'),
+        'clk_src': resolve_idf_macro(
+            bus_config.get('clk_src', 'LCD_CLK_SRC_DEFAULT'),
+            default='LCD_CLK_SRC_DEFAULT',
+            prefixes=('LCD_CLK_SRC_',),
+            known=KNOWN_LCD_CLK_SRC,
+            field_name='clk_src',
+            extra_allowed=(0,),
+        ),
         'data_gpio_nums': bus_config.get('data_gpio_nums', [-1] * 8),
         'bus_width': bus_config.get('bus_width', 8),
         'max_transfer_bytes': bus_config.get('max_transfer_bytes', 4092),

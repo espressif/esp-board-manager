@@ -167,14 +167,14 @@ int periph_adc_deinit(void *periph_handle)
     esp_err_t err = esp_board_periph_get_name_by_handle(periph_handle, &periph_name);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get periph name: %s", esp_err_to_name(err));
-        goto cleanup;
+        return -1;
     }
 
     periph_adc_config_t *cfg = NULL;
     err = esp_board_periph_get_config(periph_name, (void **)&cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get config: %s", esp_err_to_name(err));
-        goto cleanup;
+        return -1;
     }
 
     if (cfg->role == ESP_BOARD_PERIPH_ROLE_CONTINUOUS) {
@@ -182,25 +182,24 @@ int periph_adc_deinit(void *periph_handle)
         err = adc_continuous_deinit(continuous_handle);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to deinit continuous_handle failed: %s", esp_err_to_name(err));
-            goto cleanup;
+            return -1;
         }
+        handle->continuous = NULL;
     } else if (cfg->role == ESP_BOARD_PERIPH_ROLE_ONESHOT) {
         adc_oneshot_unit_handle_t oneshot_handle = handle->oneshot;
         err = adc_oneshot_del_unit(oneshot_handle);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to del oneshot_handle: %s", esp_err_to_name(err));
-            goto cleanup;
+            return -1;
         }
+        handle->oneshot = NULL;
     } else {
         ESP_LOGW(TAG, "Unknown role on deinit: %d", cfg->role);
+        return -1;
     }
 
     ESP_LOGI(TAG, "Deinitialize periph_adc role=%d", cfg->role);
 
     free(handle);
     return 0;
-
-cleanup:
-    free(handle);
-    return -1;
 }

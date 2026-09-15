@@ -321,6 +321,7 @@ Notes
 -----
 
 - The current device template comment states that configuring multiple cameras on the same board is not yet supported.
+- Last-reference deinit returns an error if ``esp_video`` cannot fully tear down the camera, for example when a V4L2 path is still open. In that case the device handle and Board Manager owned I2C, LDO, and XCLK references remain valid.
 - The ``i2c`` peripheral only provides the SCCB control handle; DVP, CSI, or SPI data lines are declared in the ``camera`` device configuration.
 - When ``spi`` mode uses ``ESP_CAM_SENSOR_XCLK_LEDC``, the template requires enabling ``CONFIG_CAMERA_XCLK_USE_LEDC``.
 - After modifying the camera device, I2C peripheral, or LDO peripheral configuration, re-run ``idf.py bmgr -b <board>``.

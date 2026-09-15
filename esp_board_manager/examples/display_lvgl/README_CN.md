@@ -10,7 +10,7 @@
 
 ### 默认 IDF 分支
 
-本例程仅支持 IDF release/v5.5 (>=5.5.2) 及 IDF release/v5.4 (>=5.4.3) 分支。
+本例程支持 IDF release/v5.4（>= v5.4.4）、release/v5.5（>= v5.5.3）以及 release/v6.0 及更新分支。
 
 ### 硬件要求
 

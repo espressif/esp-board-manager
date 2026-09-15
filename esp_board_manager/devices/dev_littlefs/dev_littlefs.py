@@ -32,54 +32,45 @@ DEV_LITTLEFS_IO_LIST = {
     ],
 }
 
-VALID_SDMMC_ENUMS = {
-    'slot': [
-        'SDMMC_HOST_SLOT_0',
-        'SDMMC_HOST_SLOT_1',
-        'SDMMC_HOST_SLOT_2',
-    ],
-    'frequency': [
-        'SDMMC_FREQ_DEFAULT',
-        'SDMMC_FREQ_HIGHSPEED',
-        'SDMMC_FREQ_PROBING',
-        'SDMMC_FREQ_52M',
-        'SDMMC_FREQ_26M',
-        'SDMMC_FREQ_DDR50',
-        'SDMMC_FREQ_SDR50',
-    ],
-    'slot_flags': [
-        0,
-        'SDMMC_SLOT_FLAG_INTERNAL_PULLUP',
-        'SDMMC_SLOT_FLAG_WP_ACTIVE_HIGH',
-        'SDMMC_SLOT_FLAG_UHS1',
-    ],
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_SDMMC_SLOT = frozenset((
+    'SDMMC_HOST_SLOT_0',
+    'SDMMC_HOST_SLOT_1',
+))
+KNOWN_SDMMC_FREQ = frozenset((
+    'SDMMC_FREQ_DEFAULT',
+    'SDMMC_FREQ_HIGHSPEED',
+    'SDMMC_FREQ_PROBING',
+    'SDMMC_FREQ_26M',
+    'SDMMC_FREQ_52M',
+    'SDMMC_FREQ_DDR50',
+    'SDMMC_FREQ_SDR50',
+    'SDMMC_FREQ_SDR104',
+))
+KNOWN_SDMMC_SLOT_FLAG = frozenset((
+    'SDMMC_SLOT_FLAG_INTERNAL_PULLUP',
+    'SDMMC_SLOT_FLAG_WP_ACTIVE_HIGH',
+    'SDMMC_SLOT_FLAG_UHS1',
+))
+
+_SDMMC_ENUMS = {
+    'slot': (('SDMMC_HOST_SLOT_',), KNOWN_SDMMC_SLOT),
+    'frequency': (('SDMMC_FREQ_',), KNOWN_SDMMC_FREQ),
+    'slot_flags': (('SDMMC_SLOT_FLAG_',), KNOWN_SDMMC_SLOT_FLAG),
 }
 
 
-def validate_enum_value(value, enum_type: str) -> bool:
-    """Validate ESP-IDF SDMMC enum values used by LittleFS SD backends."""
-    if enum_type not in VALID_SDMMC_ENUMS:
-        return True
-    if value not in VALID_SDMMC_ENUMS[enum_type]:
-        raise ValueError(
-            f"YAML validation error in LittleFS device: Invalid {enum_type} value '{value}'. "
-            f'Valid values: {VALID_SDMMC_ENUMS.get(enum_type, [])}'
-        )
-    return True
-
-
 def get_enum_value(value, default_value, enum_type: str = None):
-    """Return YAML enum value or default value after validation."""
-    if value is None or value == '':
-        result = default_value
-    elif enum_type == 'slot_flags' and value == '0':
-        result = 0
-    else:
-        result = value
-
-    if enum_type:
-        validate_enum_value(result, enum_type)
-    return result
+    """Resolve a YAML SDMMC enumerator, passing through unknown prefixed macros."""
+    if not enum_type:
+        return default_value if value is None or value == '' else value
+    spec = _SDMMC_ENUMS.get(enum_type)
+    if spec is None:
+        return default_value if value is None or value == '' else value
+    prefixes, known = spec
+    extra = (0,) if enum_type == 'slot_flags' else ()
+    return resolve_idf_macro(value, default_value, prefixes, known, enum_type, extra_allowed=extra)
 
 
 def get_includes() -> list:

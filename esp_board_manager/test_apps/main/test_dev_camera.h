@@ -14,6 +14,7 @@ extern "C" {
 #endif  /* __cplusplus */
 
 esp_err_t test_dev_camera(void);
+esp_err_t test_dev_camera_deinit_busy(void);
 
 #ifdef __cplusplus
 }

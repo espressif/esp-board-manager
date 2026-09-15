@@ -50,20 +50,20 @@ int dev_camera_deinit(void *device_handle)
     }
     dev_camera_config_t *cfg = NULL;
     esp_board_device_get_config_by_handle(device_handle, (void **)&cfg);
-    if (cfg) {
-        const esp_board_entry_desc_t *desc = esp_board_entry_find_subtype_desc("camera", cfg->sub_type);
-        if (desc && desc->deinit_func) {
-            int ret = desc->deinit_func(device_handle);
-            if (ret != 0) {
-                ESP_LOGE(TAG, "Sub device '%s' deinit failed with error: %d", cfg->sub_type, ret);
-                // Continue with cleanup even if deinit failed
-            } else {
-                ESP_LOGI(TAG, "Sub device '%s' deinitialized successfully", cfg->sub_type);
-            }
-        } else {
-            ESP_LOGW(TAG, "No deinit function found for sub type '%s'", cfg->sub_type);
-        }
+    if (cfg == NULL) {
+        ESP_LOGE(TAG, "Failed to get camera config");
+        return -1;
     }
-    device_handle = NULL;
+    const esp_board_entry_desc_t *desc = esp_board_entry_find_subtype_desc("camera", cfg->sub_type);
+    if (desc == NULL || desc->deinit_func == NULL) {
+        ESP_LOGE(TAG, "No deinit function found for sub type '%s'", cfg->sub_type);
+        return -1;
+    }
+    int ret = desc->deinit_func(device_handle);
+    if (ret != 0) {
+        ESP_LOGE(TAG, "Sub device '%s' deinit failed with error: %d", cfg->sub_type, ret);
+        return ret;
+    }
+    ESP_LOGI(TAG, "Sub device '%s' deinitialized successfully", cfg->sub_type);
     return 0;
 }

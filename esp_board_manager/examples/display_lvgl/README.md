@@ -10,7 +10,7 @@ This example demonstrates how to use the `esp_board_manager` with LVGL on suppor
 
 ### Default IDF Branch
 
-This example supports IDF release/v5.5 (>=5.5.2) and IDF release/v5.4 (>=5.4.3) branches.
+This example supports IDF release/v5.4 (>= v5.4.4), release/v5.5 (>= v5.5.3), and release/v6.0 and later.
 
 ### Hardware Required
 

@@ -79,6 +79,7 @@ int dev_camera_sub_spi_deinit(void *device_handle)
     esp_err_t ret = esp_video_deinit_with_flags(ESP_VIDEO_INIT_FLAGS_SPI);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "esp_video_deinit failed: %s", esp_err_to_name(ret));
+        return -1;
     }
 
     dev_camera_config_t *cfg = NULL;
@@ -87,7 +88,7 @@ int dev_camera_sub_spi_deinit(void *device_handle)
         esp_board_periph_unref_handle(cfg->sub_cfg.spi.i2c_name);
     }
     free(handle);
-    return ret == ESP_OK ? 0 : -1;
+    return 0;
 #endif  /* !CONFIG_ESP_VIDEO_ENABLE_SPI_VIDEO_DEVICE */
 }
 

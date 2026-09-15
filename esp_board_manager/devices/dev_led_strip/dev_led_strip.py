@@ -6,6 +6,31 @@
 # LED strip device config parser
 VERSION = 'v1.0.0'
 
+from generators.utils.idf_enum import resolve_idf_macro
+
+KNOWN_SPI_HOST = frozenset(('SPI1_HOST', 'SPI2_HOST', 'SPI3_HOST'))
+KNOWN_SPI_CLK_SRC = frozenset((
+    'SPI_CLK_SRC_DEFAULT',
+    'SPI_CLK_SRC_APB',
+    'SPI_CLK_SRC_XTAL',
+    'SPI_CLK_SRC_RC_FAST',
+    'SPI_CLK_SRC_PLL_F40M',
+    'SPI_CLK_SRC_PLL_F48M',
+    'SPI_CLK_SRC_PLL_F80M',
+    'SPI_CLK_SRC_PLL_F160M',
+    'SPI_CLK_SRC_SPLL',
+    'SPI_CLK_SRC_BBPLL',
+))
+KNOWN_RMT_CLK_SRC = frozenset((
+    'RMT_CLK_SRC_DEFAULT',
+    'RMT_CLK_SRC_APB',
+    'RMT_CLK_SRC_XTAL',
+    'RMT_CLK_SRC_RC_FAST',
+    'RMT_CLK_SRC_REF_TICK',
+    'RMT_CLK_SRC_PLL_F80M',
+    'RMT_CLK_SRC_REF_F80M',
+))
+
 VALID_SUB_TYPES = ['rmt', 'spi']
 
 DEV_LED_STRIP_IO_LIST = [
@@ -38,7 +63,13 @@ def _parse_rmt_sub_config(config: dict) -> dict:
     rmt_config = config.get('rmt', config.get('rmt_config', {}))
     return {
         'rmt_config': {
-            'clk_src': rmt_config.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+            'clk_src': resolve_idf_macro(
+                rmt_config.get('clk_src', 'RMT_CLK_SRC_DEFAULT'),
+                default='RMT_CLK_SRC_DEFAULT',
+                prefixes=('RMT_CLK_SRC_',),
+                known=KNOWN_RMT_CLK_SRC,
+                field_name='clk_src',
+            ),
             'resolution_hz': int(rmt_config.get('resolution_hz', 10000000)),
             'mem_block_symbols': int(rmt_config.get('mem_block_symbols', 0)),
             'flags': {
@@ -53,8 +84,21 @@ def _parse_spi_sub_config(config: dict) -> dict:
     spi_config = config.get('spi', config.get('spi_config', {}))
     return {
         'spi_config': {
-            'clk_src': spi_config.get('clk_src', 'SPI_CLK_SRC_DEFAULT'),
-            'spi_bus': spi_config.get('spi_bus', 'SPI2_HOST'),
+            'clk_src': resolve_idf_macro(
+                spi_config.get('clk_src', 'SPI_CLK_SRC_DEFAULT'),
+                default='SPI_CLK_SRC_DEFAULT',
+                prefixes=('SPI_CLK_SRC_',),
+                known=KNOWN_SPI_CLK_SRC,
+                field_name='clk_src',
+            ),
+            'spi_bus': resolve_idf_macro(
+                spi_config.get('spi_bus', 'SPI2_HOST'),
+                default='SPI2_HOST',
+                prefixes=('SPI',),
+                known=KNOWN_SPI_HOST,
+                field_name='spi_bus',
+                pattern=r'^SPI[0-9]+_HOST$',
+            ),
             'flags': {
                 'with_dma': spi_config.get('with_dma', spi_config.get('flags', {}).get('with_dma', True)),
             },
