@@ -255,9 +255,13 @@ oneshot 完整字段
         # Use adc_oneshot_io_to_channel() and adc_oneshot_channel_to_io() to get the corresponding relationship between ADC channels and ADC IO.
         channel_id: 4                      # [TO_BE_CONFIRMED] ADC channel ID
 
-        # Clock source for ADC module.
-        # Please refer to soc/clk_tree_defs.h, see 'soc_periph_adc_digi_clk_src_t' for valid values
-        clk_src: ADC_RTC_CLK_SRC_DEFAULT
+        # Clock source for ADC oneshot unit (default: 0).
+        # Omit this field or set 0 to let the driver pick the chip default.
+        clk_src: 0
+        # Valid values (chip-dependent, see soc/clk_tree_defs.h):
+        # - 0 (driver-selected default; portable across chips)
+        # - ADC_RTC_CLK_SRC_*  (chips with RTC ADC control, e.g. ESP32 / S2 / S3 / P4)
+        # - ADC_DIGI_CLK_SRC_* (chips with digital ADC control, e.g. C3 / C6 / H2 / S31)
 
         # ULP mode selection. (default: ADC_ULP_MODE_DISABLE)
         ulp_mode: ADC_ULP_MODE_DISABLE
@@ -315,6 +319,7 @@ oneshot 完整字段
 - ``pattern_num`` 若显式配置，必须等于 ``patterns`` 或 ``channel_list`` 的有效条目数。
 - ``conv_mode`` 需要和 ADC unit 组合匹配。单一 ``ADC_UNIT_1`` 使用 ``ADC_CONV_SINGLE_UNIT_1``，单一 ``ADC_UNIT_2`` 使用 ``ADC_CONV_SINGLE_UNIT_2``，混合 unit 不能使用 single-unit conversion mode。
 - ADC channel 到 GPIO 的映射按目标芯片确定；修改 ADC 外设配置后，需要重新执行 ``idf.py bmgr -b <board>``。
+- oneshot 的 ``clk_src`` 省略或设为 ``0`` 时，由 ADC oneshot 驱动选择当前芯片的默认时钟。不要把 ``ADC_RTC_CLK_SRC_*`` 复制到仅提供 ``ADC_DIGI_CLK_SRC_*`` 的芯片上。
 
 .. _adc-debug:
 

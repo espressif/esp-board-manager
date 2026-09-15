@@ -126,9 +126,13 @@
     # Use adc_oneshot_io_to_channel() and adc_oneshot_channel_to_io() to get the corresponding relationship between ADC channels and ADC IO.
     channel_id: 4                      # [TO_BE_CONFIRMED] ADC channel ID
 
-    # Clock source for ADC module.
-    # Please refer to soc/clk_tree_defs.h, see 'soc_periph_adc_digi_clk_src_t' for valid values
-    clk_src: ADC_RTC_CLK_SRC_DEFAULT
+    # Clock source for ADC oneshot unit (default: 0).
+    # Omit this field or set 0 to let the driver pick the chip default.
+    clk_src: 0
+    # Valid values (chip-dependent, see soc/clk_tree_defs.h):
+    # - 0 (driver-selected default; portable across chips)
+    # - ADC_RTC_CLK_SRC_*  (chips with RTC ADC control, e.g. ESP32 / S2 / S3 / P4)
+    # - ADC_DIGI_CLK_SRC_* (chips with digital ADC control, e.g. C3 / C6 / H2 / S31)
 
     # ULP mode selection. (default: ADC_ULP_MODE_DISABLE)
     ulp_mode: ADC_ULP_MODE_DISABLE

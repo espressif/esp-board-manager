@@ -10,6 +10,7 @@
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
 #include "esp_adc/adc_continuous.h"
+#include "driver/i2c_master.h"
 
 #define BOARD_CODEC_ADC_PATT_LEN_MAX  16
 

@@ -1,0 +1,5 @@
+board: esp32c3_coverage
+chip: esp32c3
+version: 1.0.0
+description: CI compile-coverage board for esp32c3
+manufacturer: ESPRESSIF

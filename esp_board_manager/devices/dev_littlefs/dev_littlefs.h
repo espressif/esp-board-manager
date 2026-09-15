@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include "esp_littlefs.h"
 #include "driver/sdmmc_host.h"
+#include "sdmmc_cmd.h"
 
 #ifdef __cplusplus
 extern "C" {

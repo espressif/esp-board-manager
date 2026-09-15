@@ -1,0 +1,5 @@
+board: esp32_coverage
+chip: esp32
+version: 1.0.0
+description: CI compile-coverage board for esp32
+manufacturer: ESPRESSIF

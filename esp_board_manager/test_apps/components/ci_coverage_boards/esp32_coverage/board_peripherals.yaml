@@ -1,0 +1,177 @@
+peripherals:
+- name: gpio_monitor
+  type: gpio
+  role: io
+  config:
+    pin: 33
+    mode: GPIO_MODE_INPUT
+    pull_up: true
+    pull_down: false
+    intr_type: GPIO_INTR_DISABLE
+    default_level: 0
+- name: gpio_pa_control
+  type: gpio
+  role: io
+  config:
+    pin: 32
+    mode: GPIO_MODE_OUTPUT
+    pull_up: false
+    pull_down: false
+    intr_type: GPIO_INTR_DISABLE
+    default_level: 0
+- name: gpio_button
+  type: gpio
+  role: io
+  config:
+    pin: 27
+    mode: GPIO_MODE_INPUT
+    pull_up: true
+    pull_down: false
+    intr_type: GPIO_INTR_DISABLE
+    default_level: 0
+- name: gpio_power
+  type: gpio
+  role: io
+  config:
+    pin: 26
+    mode: GPIO_MODE_OUTPUT
+    pull_up: false
+    pull_down: false
+    intr_type: GPIO_INTR_DISABLE
+    default_level: 0
+- name: i2c_master
+  type: i2c
+  role: master
+  config:
+    port: I2C_NUM_0
+    pins:
+      sda: 25
+      scl: 23
+    enable_internal_pullup: true
+- name: i2s_audio_out
+  type: i2s
+  role: master
+  format: std-out
+  config:
+    port: 0
+    sample_rate_hz: 48000
+    clk_src: I2S_CLK_SRC_DEFAULT
+    data_bit_width: 16
+    pins:
+      mclk: -1
+      bclk: 22
+      ws: 21
+      dout: 20
+      din: -1
+- name: i2s_audio_in
+  type: i2s
+  role: master
+  format: std-in
+  config:
+    port: 0
+    sample_rate_hz: 48000
+    clk_src: I2S_CLK_SRC_DEFAULT
+    data_bit_width: 16
+    pins:
+      mclk: -1
+      bclk: 22
+      ws: 21
+      dout: -1
+      din: 19
+- name: i2s_pdm_out
+  type: i2s
+  role: master
+  format: pdm-out
+  config:
+    port: 1
+    sample_rate_hz: 16000
+    clk_src: I2S_CLK_SRC_DEFAULT
+    pins:
+      clk: -1
+      dout: 18
+- name: spi_master
+  type: spi
+  config:
+    spi_bus_config:
+      spi_port: SPI2_HOST
+      mosi_io_num: 17
+      miso_io_num: 16
+      sclk_io_num: 15
+- name: uart_1
+  type: uart
+  config:
+    uart_num: 1
+    tx_io_num: 14
+    rx_io_num: 13
+- name: adc_oneshot
+  type: adc
+  role: oneshot
+  config:
+    unit_id: ADC_UNIT_1
+    channel_id: 0
+    atten: ADC_ATTEN_DB_12
+    bit_width: ADC_BITWIDTH_DEFAULT
+- name: adc_continuous
+  type: adc
+  role: continuous
+  config:
+    unit_id: ADC_UNIT_1
+    channel_list:
+    - 0
+    atten: ADC_ATTEN_DB_12
+    bit_width: SOC_ADC_DIGI_MAX_BITWIDTH
+    sample_freq_hz: 20000
+    max_store_buf_size: 1024
+    conv_frame_size: 256
+- name: ledc_backlight
+  type: ledc
+  config:
+    gpio_num: 12
+    channel: LEDC_CHANNEL_0
+    timer_sel: LEDC_TIMER_0
+    speed_mode: LEDC_LOW_SPEED_MODE
+- name: rmt_tx
+  type: rmt
+  role: tx
+  config:
+    gpio_num: 5
+    clk_src: RMT_CLK_SRC_DEFAULT
+    resolution_hz: 10000000
+    mem_block_symbols: 64
+    trans_queue_depth: 4
+- name: sdm
+  type: sdm
+  config:
+    gpio_num: 4
+    clk_src: SDM_CLK_SRC_DEFAULT
+    sample_rate_hz: 1000000
+- name: dac_channel_0
+  type: dac
+  role: oneshot
+  config:
+    channel: 0
+- name: mcpwm_group_0
+  type: mcpwm
+  config:
+    timer_config:
+      group_id: 0
+    operator_config:
+      group_id: 0
+    comparator_configs:
+    - comparator: 0
+    generator_config:
+      gpio_num: 3
+- name: pcnt_unit
+  type: pcnt
+  config:
+    unit_config:
+      low_limit: -100
+      high_limit: 100
+    channel_count: 1
+    channel_list:
+    - channel: 0
+      channel_config:
+        edge_gpio_num: -1
+        level_gpio_num: -1
+      pos_act: PCNT_CHANNEL_EDGE_ACTION_INCREASE
+      neg_act: PCNT_CHANNEL_EDGE_ACTION_HOLD

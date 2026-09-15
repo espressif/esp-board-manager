@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.3~1
+
+### Bug Fixes
+
+- **Audio codec (`dev_audio_codec`)**: Generated device config now includes ``driver/i2c_master.h`` so ``I2C_NUM_*`` is defined on boards that have a codec but no LCD/touch.
+- **LittleFS (`dev_littlefs`)**: The public handle header now includes ``sdmmc_cmd.h`` so ``sdmmc_card_t`` / ``sdmmc_host_t`` are visible on chips without ``SOC_SDMMC_HOST_SUPPORTED``. Flash-only LittleFS boards such as ESP32-C3 no longer fail to compile.
+- **ADC (`periph_adc`)**: Oneshot ``clk_src`` now defaults to ``0`` so the driver selects the chip default. Copying ``ADC_RTC_CLK_SRC_*`` onto chips that only provide ``ADC_DIGI_CLK_SRC_*`` no longer fails to compile. ``ADC_RTC_CLK_SRC_*`` and ``ADC_DIGI_CLK_SRC_*`` remain accepted.
+
+### Modifications
+
+- Added synthetic coverage boards (``esp32_coverage``, ``esp32s3_coverage``, ``esp32c3_coverage``, ``esp32p4_coverage``, ``esp32s31_coverage``) to the test-app CI matrix.
+
 ## 0.7.3
 
 ### Modifications

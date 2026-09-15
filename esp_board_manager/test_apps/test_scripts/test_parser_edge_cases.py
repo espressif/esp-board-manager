@@ -110,6 +110,70 @@ def test_adc_oneshot_accepts_numeric_bit_width(bmgr_root):
     assert chan_cfg['bitwidth'] == 17
 
 
+@pytest.mark.parametrize(
+    'clk_src',
+    ['ADC_RTC_CLK_SRC_DEFAULT', 'ADC_DIGI_CLK_SRC_DEFAULT'],
+)
+def test_adc_oneshot_accepts_rtc_and_digital_clock_sources(bmgr_root, clk_src):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    result = mod.parse(
+        'adc_oneshot',
+        {
+            'role': 'oneshot',
+            'config': {
+                'unit_id': 'ADC_UNIT_1',
+                'channel_id': 0,
+                'clk_src': clk_src,
+            },
+        },
+    )
+
+    unit_cfg = result['struct_init']['cfg']['oneshot']['unit_cfg']
+    assert unit_cfg['clk_src'] == clk_src
+
+
+def test_adc_oneshot_uses_driver_selected_default_clock_source(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    result = mod.parse(
+        'adc_oneshot',
+        {
+            'role': 'oneshot',
+            'config': {
+                'unit_id': 'ADC_UNIT_1',
+                'channel_id': 0,
+            },
+        },
+    )
+
+    unit_cfg = result['struct_init']['cfg']['oneshot']['unit_cfg']
+    assert unit_cfg['clk_src'] == 0
+
+
+@pytest.mark.parametrize('clk_src', [0, '0'])
+def test_adc_oneshot_accepts_numeric_zero_clock_source(bmgr_root, clk_src):
+    sys.path.insert(0, str(bmgr_root))
+    from peripherals.periph_adc import periph_adc as mod
+
+    result = mod.parse(
+        'adc_oneshot',
+        {
+            'role': 'oneshot',
+            'config': {
+                'unit_id': 'ADC_UNIT_1',
+                'channel_id': 0,
+                'clk_src': clk_src,
+            },
+        },
+    )
+
+    unit_cfg = result['struct_init']['cfg']['oneshot']['unit_cfg']
+    assert unit_cfg['clk_src'] == 0
+
+
 @pytest.mark.parametrize('bit_width', [True, -1])
 def test_adc_oneshot_rejects_invalid_numeric_bit_width(bmgr_root, bit_width):
     sys.path.insert(0, str(bmgr_root))
