@@ -3,12 +3,12 @@ ESP32-S31-Korvo-1 V1.1
 
 :link_to_translation:`en:[English]`
 
-面向智能音频和人机交互的多媒体开发板。板载能力包括：双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头、microSD、WS2812、GPIO Boot 按键。
+面向智能音频和人机交互的多媒体开发板。板载能力包括：双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头（OV3660 / SC101IOT）、microSD、WS2812、GPIO Boot 按键。
 
 板载能力
 --------
 
-* 双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头、microSD、WS2812、GPIO Boot 按键
+* 双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头（OV3660 / SC101IOT）、microSD、WS2812、GPIO Boot 按键
 
 硬件用户指南
 ------------
@@ -19,3 +19,5 @@ BMGR 配置
 ---------
 
 板级配置目录为 ``esp_boards/esp32_s31_korvo_1``。
+
+板级默认 sdkconfig 同时启用 ``CONFIG_CAMERA_OV3660`` 和 ``CONFIG_CAMERA_SC101IOT``。同一 DVP 接口可装配其中一种模组，由 ``esp_video`` 自动探测。

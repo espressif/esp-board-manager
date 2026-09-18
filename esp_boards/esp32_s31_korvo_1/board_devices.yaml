@@ -216,16 +216,18 @@ devices:
     peripherals:
       - ledc_name: ledc_camera_xclk
 
-  # The OV3660 needs a stable external XCLK before the generic DVP device probes it.
+  # Wait for XCLK, then optionally soft-reset OV3660 over 16-bit SCCB.
+  # SC101IOT uses 7-bit address 0x68 and paging 8-bit SCCB, so a NACK at 0x3C
+  # is expected when that module is populated; DVP auto-detect still runs.
   - name: camera_sensor_bringup
     type: custom
     depends_on:
       - camera_xclk
     config:
       i2c_name: i2c_master
-      sccb_addr: 60
-      reset_reg: 12296
-      reset_value: 130
+      sccb_addr: 0x3C          # OV3660 7-bit SCCB address
+      reset_reg: 0x3008        # OV3660 SYSTEM_CTROL0
+      reset_value: 0x82        # OV3660 software reset
       xclk_stable_ms: 50
       reset_delay_ms: 20
       sccb_freq_hz: 200000
@@ -234,6 +236,7 @@ devices:
       - name: i2c_master
 
   # DVP camera interface. SCCB shares i2c_master with audio/touch.
+  # Auto-detect covers OV3660 (0x3C) and SC101IOT (0x68).
   - name: camera
     type: camera
     version: default

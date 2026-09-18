@@ -309,7 +309,7 @@ Code Reference
 Board-level Reference
 ---------------------
 
-- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: ``dvp`` camera configuration.
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``: ``dvp`` camera configuration with OV3660 and SC101IOT auto-detect.
 - ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``: ``dvp`` camera configuration.
 - ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``: ``csi`` camera configuration.
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``: ``i2c`` and ``ldo`` peripherals used by the ``csi`` camera.

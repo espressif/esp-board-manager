@@ -55,10 +55,16 @@ static int camera_sensor_bringup_init(void *config, int config_size,
     i2c_master_dev_handle_t sensor_handle = NULL;
     ret = i2c_master_bus_add_device(i2c_handle, &sensor_config, &sensor_handle);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add OV3660 SCCB device: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to add camera SCCB device at 0x%02x: %s",
+                 (unsigned)cfg->sccb_addr, esp_err_to_name(ret));
         goto unref_i2c;
     }
 
+    /**
+     * Optional OV3660 16-bit SCCB soft reset (SYSTEM_CTROL0 / 0x3008).
+     * This board also accepts SC101IOT at 0x68 with paging 8-bit SCCB, so a NACK
+     * here is expected and must not block DVP auto-detect.
+     */
     const uint8_t soft_reset[] = {
         (uint8_t)(cfg->reset_reg >> 8),
         (uint8_t)cfg->reset_reg,
@@ -67,15 +73,15 @@ static int camera_sensor_bringup_init(void *config, int config_size,
     ret = i2c_master_transmit(sensor_handle, soft_reset, sizeof(soft_reset),
                               cfg->timeout_ms);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to reset OV3660 over SCCB: %s", esp_err_to_name(ret));
+        ESP_LOGI(TAG, "OV3660 not detected at 0x%02x, skip software reset",
+                 (unsigned)cfg->sccb_addr);
+        ret = ESP_OK;
     }
 
     esp_err_t remove_ret = i2c_master_bus_rm_device(sensor_handle);
-    if (ret == ESP_OK && remove_ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to remove OV3660 SCCB device: %s", esp_err_to_name(remove_ret));
+    if (remove_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to remove camera SCCB device: %s", esp_err_to_name(remove_ret));
         ret = remove_ret;
-    }
-    if (ret != ESP_OK) {
         goto unref_i2c;
     }
 
@@ -92,7 +98,7 @@ static int camera_sensor_bringup_init(void *config, int config_size,
 
     handle->i2c_name = cfg->i2c_name;
     *device_handle = handle;
-    ESP_LOGI(TAG, "OV3660 XCLK settled and SCCB soft reset completed");
+    ESP_LOGI(TAG, "Camera XCLK settled; optional OV3660 SCCB soft reset finished");
     return ESP_OK;
 
 unref_i2c:

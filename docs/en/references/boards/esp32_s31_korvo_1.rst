@@ -3,12 +3,12 @@ ESP32-S31-Korvo-1 V1.1
 
 :link_to_translation:`zh_CN:[中文]`
 
-Multimedia board for smart audio and HMI. Onboard capabilities include: Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera, microSD, WS2812, GPIO boot button.
+Multimedia board for smart audio and HMI. Onboard capabilities include: Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera (OV3660 / SC101IOT), microSD, WS2812, GPIO boot button.
 
 Onboard Capabilities
 --------------------
 
-* Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera, microSD, WS2812, GPIO boot button
+* Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera (OV3660 / SC101IOT), microSD, WS2812, GPIO boot button
 
 Hardware User Guide
 -------------------
@@ -19,3 +19,5 @@ BMGR Configuration
 ------------------
 
 The board definition is in ``esp_boards/esp32_s31_korvo_1``.
+
+The board default sdkconfig enables both ``CONFIG_CAMERA_OV3660`` and ``CONFIG_CAMERA_SC101IOT``. Either module can be populated on the same DVP connector; ``esp_video`` auto-detects it at runtime.

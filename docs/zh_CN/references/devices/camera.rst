@@ -309,7 +309,7 @@ SPI 相机完整字段
 板级参考
 ------------
 
-- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：``dvp`` 摄像头配置。
+- ``esp_boards/esp32_s31_korvo_1/board_devices.yaml``：``dvp`` 摄像头配置，支持 OV3660 与 SC101IOT 自动探测。
 - ``esp_boards/esp32_s3_korvo_2_3/board_devices.yaml``：``dvp`` 摄像头配置。
 - ``esp_boards/esp32_p4_function_ev_board/board_devices.yaml``：``csi`` 摄像头配置。
 - ``esp_boards/esp32_p4_function_ev_board/board_peripherals.yaml``：``csi`` 摄像头使用的 ``i2c`` 和 ``ldo`` 外设。

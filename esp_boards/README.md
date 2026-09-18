@@ -25,7 +25,7 @@ Versions `0.6.0` and later of this component require `espressif/esp_board_manage
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip | Knob |
 |---|---|---|---|---|---|---|---|---|---|
 | ESP32-S31-Function-CoreBoard-1 | ESP32-S31 | ES8311 (DAC + ADC) | - | - | - | - | GPIO button | WS2812 (rmt) | - |
-| ESP32-S31-Korvo-1 | ESP32-S31 | ES8389 (DAC + ADC) | SDMMC | RGB LCD (rgb) | GT1151 (i2c) | Camera (dvp) | GPIO button + ADC button | WS2812 (rmt) | - |
+| ESP32-S31-Korvo-1 | ESP32-S31 | ES8389 (DAC + ADC) | SDMMC | RGB LCD (rgb) | GT1151 (i2c) | OV3660/SC101IOT (dvp) | GPIO button + ADC button | WS2812 (rmt) | - |
 | ESP-Mosaico | ESP32-S31 | ES8311 (DAC + ADC) | - | CO5300 (spi) | CST9217 (i2c) | - | GPIO button | - | - |
 
 ### ESP32-P4
