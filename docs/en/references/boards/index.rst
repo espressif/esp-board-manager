@@ -50,7 +50,7 @@ Official Development Boards (``espressif/esp_boards``)
      - ES8311, microphone, speaker interface, WS2812, GPIO boot button
      - Board for connected AIoT prototyping.
    * - :doc:`ESP32-S31-Korvo-1 <esp32_s31_korvo_1>`
-     - Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera, microSD, WS2812, GPIO boot button
+     - Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera (OV3660 / SC101IOT), microSD, WS2812, GPIO boot button
      - Multimedia board for smart audio and HMI.
    * - :doc:`ESP32-S3-BOX-3 <esp32_s3_box_3>`
      - ES8311, ES7210, ST77916 LCD, touch, microSD, GPIO boot button

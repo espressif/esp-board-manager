@@ -25,7 +25,7 @@ ESP Board Manager 的乐鑫官方板卡定义组件。
 | 板子名称 | 芯片 | 音频 | SD 卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 | 旋钮 |
 |---|---|---|---|---|---|---|---|---|---|
 | ESP32-S31-Function-CoreBoard-1 | ESP32-S31 | ES8311 (DAC + ADC) | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
-| ESP32-S31-Korvo-1 | ESP32-S31 | ES8389 (DAC + ADC) | SDMMC | RGB LCD (rgb) | GT1151 (i2c) | 摄像头 (dvp) | GPIO 按键 + ADC 按键 | WS2812 (rmt) | - |
+| ESP32-S31-Korvo-1 | ESP32-S31 | ES8389 (DAC + ADC) | SDMMC | RGB LCD (rgb) | GT1151 (i2c) | OV3660/SC101IOT (dvp) | GPIO 按键 + ADC 按键 | WS2812 (rmt) | - |
 | ESP-Mosaico | ESP32-S31 | ES8311 (DAC + ADC) | - | CO5300 (spi) | CST9217 (i2c) | - | GPIO 按键 | - | - |
 
 ### ESP32-P4

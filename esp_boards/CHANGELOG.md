@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1~1
+
+### Features
+
+- Enabled SC101IOT DVP auto-detect on **ESP32-S31-Korvo-1** alongside OV3660.
+
+### Bug Fixes
+
+- Made the OV3660 SCCB soft-reset in **ESP32-S31-Korvo-1** camera bring-up non-fatal so a populated SC101IOT module can still be detected.
+
 ## 0.6.1
 
 ### Features

@@ -50,7 +50,7 @@
      - ES8311、麦克风、扬声器接口、WS2812、GPIO Boot 按键
      - 面向联网 AIoT 原型验证的开发板。
    * - :doc:`ESP32-S31-Korvo-1 <esp32_s31_korvo_1>`
-     - 双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头、microSD、WS2812、GPIO Boot 按键
+     - 双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头（OV3660 / SC101IOT）、microSD、WS2812、GPIO Boot 按键
      - 面向智能音频和人机交互的多媒体开发板。
    * - :doc:`ESP32-S3-BOX-3 <esp32_s3_box_3>`
      - ES8311、ES7210、ST77916 LCD、触摸、microSD、GPIO Boot 按键
