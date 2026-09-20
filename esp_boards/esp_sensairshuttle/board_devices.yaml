@@ -51,14 +51,19 @@ devices:
       - adc_name: adc_audio_in
 
   - name: display_lcd
-    chip: st7789
+    # Hardware: ST7789P3. esp_lcd_panel_st7789.c has no vendor_config, so use ili9341;
+    # init cmds in setup_device.c.
+    chip: ili9341
     type: display_lcd
     sub_type: spi
     version: default
     power_ctrl_device: lcd_power_ctrl
+    dependencies:
+      espressif/esp_lcd_ili9341: "^2.0.0"
     config:
       invert_color: true
-      need_reset: false
+      # Preserve the validated dev-kits reset stage; no GPIO means software reset.
+      need_reset: true
       swap_xy: false
       mirror_x: false
       mirror_y: false
@@ -67,20 +72,26 @@ devices:
       io_spi_config:
         cs_gpio_num: 25
         dc_gpio_num: 26
-        spi_mode: 0
-        pclk_hz: 17000000
+        spi_mode: 3
+        pclk_hz: 20000000
         trans_queue_depth: 10
         lcd_cmd_bits: 8
         lcd_param_bits: 8
+        flags:
+          sio_mode: true
       lcd_panel_config:
         reset_gpio_num: -1
+        flags:
+          reset_active_high: true
         rgb_ele_order: LCD_RGB_ELEMENT_ORDER_RGB
-        data_endian: LCD_RGB_DATA_ENDIAN_BIG
+        data_endian: LCD_RGB_DATA_ENDIAN_LITTLE
         bits_per_pixel: 16
+        vendor_config: NULL
     peripherals:
       - spi_name: spi_display
 
   - name: lcd_touch
+    # Hardware: CST816T, supported by the CST816S component.
     chip: cst816s
     type: lcd_touch
     sub_type: i2c

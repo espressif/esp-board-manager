@@ -10,6 +10,7 @@
 #include "driver/i2c_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#if CONFIG_ESP_BOARD_DEV_CUSTOM_SUPPORT && __has_include("gen_board_device_custom.h")
 #include "dev_custom.h"
 #include "esp_board_periph.h"
 #include "gen_board_device_custom.h"
@@ -220,3 +221,4 @@ static int bmi270_sensor_deinit(void *device_handle)
 
 CUSTOM_DEVICE_IMPLEMENT(bmi270_sensor, bmi270_sensor_init, bmi270_sensor_deinit);
 #endif  /* defined(HAS_BMI270) && defined(HAS_I2C_BUS) */
+#endif  /* CONFIG_ESP_BOARD_DEV_CUSTOM_SUPPORT */
