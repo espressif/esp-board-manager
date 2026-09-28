@@ -391,6 +391,11 @@ External Codec Chip
           ref_dac_ch: 0
           real_adc_data_ch: 0
 
+        # Direct mapping to audio_codec_cfg_t.int_cfg. The codec driver owns IRQ GPIO setup and ISR.
+        int_cfg:
+          int_pin: -1             # -1: no host IRQ pin; 0 is a valid GPIO number
+          int_active_high: false  # true: interrupt asserted high; false: asserted low
+
         # adc_channel_mask/dac_channel_mask are esp_codec_dev_open() sample-info settings.
         # *_init_gain requires post-open set_in_gain()/set_out_vol(); AEC, EQ and ALC need a separate
         # runtime processing lifecycle. They are intentionally outside dev_audio_codec initialization.

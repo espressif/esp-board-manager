@@ -1,0 +1,7 @@
+version: "1.0"
+description: >-
+  Verify that init_skip set via an amend fragment is emitted on a peripheral
+  that exists on the base board (gpio_boot_button). The peripheral stays in
+  the generated descriptor so it can still be initialized by name.
+apply:
+  - skip_gpio_boot.yaml

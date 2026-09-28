@@ -115,11 +115,15 @@ If `esp-bmgr-assist` is installed, it will automatically discover this local com
 
 ESP Board Manager supports IDF action extension, providing seamless integration with the ESP-IDF build system. Use **`idf.py bmgr`** with the same options as before; **`idf.py gen-bmgr-config`** remains available as a legacy alias. Do not combine `bmgr` and `gen-bmgr-config` in one `idf.py` line, and always pass the board with **`-b`** (board names are not accepted as a bare extra argument after the action).
 
-You can use the `-l` option to verify that the component path configuration is correct and print available boards:
+You can use the `-l` option to verify that the component path configuration is correct and print available boards. An optional filter matches `chip` from `board_info.yaml` or a board-component name (full `espressif/esp_boards` or short `esp_boards`):
 
 ```bash
 # List all available boards
 idf.py bmgr -l
+
+# List boards for one chip or one board component
+idf.py bmgr -l esp32s3
+idf.py bmgr -l esp_boards
 ```
 
 By default, ESP Board Manager scans boards from:
@@ -128,6 +132,8 @@ By default, ESP Board Manager scans boards from:
 - The project `components/` directory, which takes priority over `managed_components` when the same board name exists in both places
 - Board components specified in `main/idf_component.yml`, including local board components specified through `override_path/path`
 - The directory specified by `-c`
+
+Auto-amend also searches the default scan paths (including project `components/`, managed board components, and `-c` paths) for a directory named after the selected board that contains `board_amend.yaml`. Therefore, placing an overlay at `components/board_overlays/<board_name>/` lets `idf.py bmgr -b <board_name>` apply it automatically without `-c`. Use `-c <overlay_root>` when the overlay root is outside those scan paths. The directory must contain `board_amend.yaml` and must not also be a complete board directory.
 
 Then select your target board by name or index:
 
@@ -336,9 +342,8 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 -b, --board BOARD                # Board name, index, or board directory path
 -c, --customer-path PATH         # Custom boards directory (supports one or more paths)
 -a, --amend DIR                  # Apply an amend directory on top of the selected board (must contain board_amend.yaml)
--l, --list-boards                # List all available boards and exit
+-l, --list-boards [FILTER]       # List boards. Optional FILTER matches chip or component
 -n, --new-board ARG              # Create a new board (idf.py action only)
-[BOARD]                          # Specify board name or index directly (standalone script only)
 ```
 
 **Generation Modes:**
@@ -367,6 +372,11 @@ Use **`idf.py bmgr`** (preferred) or **`idf.py gen-bmgr-config`** (legacy) with 
 ```bash
 # List available boards
 idf.py bmgr -l
+idf.py bmgr -l esp32s3
+idf.py bmgr -l esp_boards
+
+# Multiple -c roots; source labels use <root basename>/<relative parent>, or filter by the last segment
+idf.py bmgr -c "./boards_a;./boards_b" -l espressif
 
 # Specify board (name or index)
 idf.py bmgr -b esp_vocat_1_0
@@ -374,6 +384,7 @@ idf.py bmgr -b 1
 
 # Use custom board
 idf.py bmgr -b my_board -c /path/to/custom/boards
+idf.py bmgr -c ./boards -b esp32_S3_DevKitC_1
 
 # Apply an amend on top of an existing board (the directory must contain board_amend.yaml)
 idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
@@ -404,6 +415,8 @@ You can also use the standalone script directly in the esp_board_manager directo
 ```bash
 # List available boards
 python gen_bmgr_config_codes.py -l
+python gen_bmgr_config_codes.py -l esp32s3
+python gen_bmgr_config_codes.py -l esp_boards
 
 # Specify board with -b option (name or index)
 python gen_bmgr_config_codes.py -b esp_vocat_1_0
@@ -459,6 +472,30 @@ ESP Board Manager uses `gen_bmgr_config_codes.py` for code generation, which han
 `esp_board_manager` supports modular customization of your own development board. For specific usage methods, please refer to: [Creating a Board Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/index.html)
 
 `esp_board_manager` provides the online configuration tool [ESP Board Manager](https://board-manager.espressif.com/), which allows you to create board configurations and export board configuration files directly in your browser. For details, see [Create a Board Using the Web Tool](https://preview-docs.espressif.com/projects/esp-board-manager/en/feat-bmgr_0_6_0/create-board/web-create.html).
+
+## Configuration Extensions and Runtime Overrides
+
+BMGR supports the following configuration mechanisms:
+
+- **Generation-time configuration extensions (amend)**: use `apply:` to merge configuration fragments, override existing fields, add devices or peripherals, and include sources and build configuration. Amend supports project customization, sub-board adaptation, and reuse of functional modules across boards. The merged result is determined during generation.
+- **Multi-revision configuration (board revisions)**: use `board_revisions:` to generate the base configuration and revision-specific differences so they coexist in one firmware image. Board code selects and applies a revision at runtime.
+- **Runtime overrides**: use `override_config` / `set_ops` to override existing resource config/ops. Writable descriptor tables can maintain runtime resource nodes.
+
+See [Configuration Extensions and Runtime Overrides](https://docs.espressif.com/projects/esp-board-manager/en/latest/programming-guide/config-overrides.html) for mechanism selection and usage scenarios.
+
+### Runtime Override Layers
+
+Effective device and peripheral config / ops use the priority **YAML-generated configuration < BOARD < APP**:
+
+- **APP** calls `override_config` / `set_ops` / `restore_config` / `restore_ops` explicitly.
+- **BOARD** comes from override APIs called by a board `esp_board_runtime_pre_init()` strong definition; the manager runs that hook automatically during the first prepare. The hook can apply overrides and initialize resources as needed. If it returns an error, it must deinitialize any hardware resources it created first. One strong definition per final app; two fail at link. Prepare / init must run from a FreeRTOS task.
+- Multi-revision configuration `board_revisions` defines revision differences at generation time. At runtime, the hook calls generated `gen_board_revision_apply_<name>()` to update the base descriptor tables; this is not a BOARD override. If a revision is declared but not applied, BMGR continues to use the base configuration. `<name>` is the revision key under `board_revisions`.
+- `override_config` is a top-level `memcpy`; nested pointers still alias caller memory. Copy the current descriptor config, change fields, then override.
+- `deinit` does not clear BOARD or APP overrides. `restore_config` / `restore_ops` clear the corresponding APP override and fall back to a BOARD override or the current descriptor config, and to matching type/role operations respectively. Restore does not undo a revision apply or descriptor edits. BOARD overrides are cleared on hook rollback only when they are not used by active resources.
+- While `ref_count != 0`, further override / set_ops / restore on that name returns `ESP_ERR_INVALID_STATE`. Before init, repeats replace. After deinit to 0, edits are allowed again.
+- Legacy / deprecated APIs: `esp_board_periph_init_custom` and `esp_board_manager_register_device_handle`. Use `set_ops` / the board pre-init hook for supported customization.
+
+Full details: [Runtime Lifecycle](https://docs.espressif.com/projects/esp-board-manager/en/latest/programming-guide/runtime-lifecycle.html) and [Advanced Runtime](https://docs.espressif.com/projects/esp-board-manager/en/latest/programming-guide/advanced-runtime.html).
 
 ## Roadmap
 

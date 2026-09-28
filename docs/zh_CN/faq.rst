@@ -180,7 +180,9 @@ undefined reference to g_esp_board_*
 
 **版本关系**
 
-- ``esp_boards 0.6.0``、``esp_friends_boards 0.6.0`` 和 ``m5stack_boards 0.6.0`` 及更新的版本要求配合 ``esp_board_manager >=0.7.1`` 使用。
+- ``esp_boards 0.6.0`` 至 ``0.6.2`` 由于使用语义化外设引用，要求配合 ``esp_board_manager >=0.7.1`` 使用。
+- ``esp_friends_boards 0.6.x`` 和 ``m5stack_boards 0.6.x`` 由于使用语义化外设引用，要求配合 ``esp_board_manager >=0.7.1`` 使用。
+- ``esp_boards 0.7.x`` 中的板卡可能使用 peripheral ``init_skip``，要求配合 ``esp_board_manager >=0.7.4`` 使用。BMGR 0.7.4 依赖 ``esp_boards ~0.7.0``；约束为 ``~0.6.0`` 的旧版 BMGR 不会自动解析到该版本。
 - ``esp_boards 0.5.4``、``esp_friends_boards 0.5.3`` 和 ``m5stack_boards 0.5.4`` 要求配合 ``esp_board_manager >=0.7.0`` 使用。
 
 运行时阶段
@@ -219,7 +221,7 @@ undefined reference to g_esp_board_*
 **可能原因**
 
 - 当前开发板未启用该设备或外设，YAML 中未声明。
-- ``init_skip: true`` 导致 BMGR 自动初始化阶段跳过该设备。
+- ``init_skip: true`` 导致 BMGR 自动初始化阶段跳过该设备或外设。
 - :cpp:func:`esp_board_manager_init` 未成功执行（先前有报错或返回 ESP_FAIL）。
 - ``name`` 拼写错误，与 YAML 中不一致。
 
@@ -227,7 +229,7 @@ undefined reference to g_esp_board_*
 
 1. 启动后调用 :cpp:func:`esp_board_manager_print`，确认期望的设备与外设均已正确登记并初始化。
 2. 查看启动日志，确认 :cpp:func:`esp_board_manager_init` 是否返回成功；任何 device 初始化失败都会留下错误日志。
-3. 对显式声明 ``init_skip: true`` 的设备，需在业务时机调用 :cpp:func:`esp_board_manager_init_device_by_name` 后才能获取句柄。
+3. 对显式声明 ``init_skip: true`` 的设备，需在业务时机调用 :cpp:func:`esp_board_manager_init_device_by_name` 后才能获取句柄。对 ``init_skip: true`` 的外设，需调用 :cpp:func:`esp_board_periph_init`，或初始化引用该外设的设备。
 
 设备功能异常（电源 / 复位 / 时序）
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

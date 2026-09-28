@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1~1
+
+### Bug Fixes
+
+- Removed duplicated PSRAM options from the M5Stack CoreS3 board sdkconfig defaults.
+
 ## 0.6.1
 
 ### Features

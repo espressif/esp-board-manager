@@ -579,6 +579,10 @@ def _parse_codec_init_configs(device_name: str, device_config: dict, pa_peripher
     sys_input = _parse_codec_cfg_map(device_name, device_config, 'sys_cfg')
     adc_input = _parse_codec_cfg_map(device_name, device_config, 'adc_cfg')
     dac_input = _parse_codec_cfg_map(device_name, device_config, 'dac_cfg')
+    int_input = _parse_codec_cfg_map(device_name, device_config, 'int_cfg')
+    int_pin = int_input.get('int_pin', -1)
+    if isinstance(int_pin, bool) or not isinstance(int_pin, int) or not -1 <= int_pin <= 32767:
+        raise ValueError(f'Audio codec device {device_name} int_cfg.int_pin must be an integer from -1 to 32767')
 
     legacy_mclk_enabled = _parse_bool(device_config.get('mclk_enabled', False), False)
     codec_sys_cfg = {
@@ -610,8 +614,12 @@ def _parse_codec_init_configs(device_name: str, device_config: dict, pa_peripher
         'reset_pin': reset_peripheral['port'],
         'reset_active_low': reset_peripheral_cfg['active_level'] != 1,
     }
+    codec_int_cfg = {
+        'int_pin': int_pin,
+        'int_active_high': _parse_bool(int_input.get('int_active_high', False), False),
+    }
     return (pa_peripheral, reset_peripheral, codec_sys_cfg, codec_adc_cfg,
-            codec_dac_cfg, codec_pa_cfg, codec_reset_cfg)
+            codec_dac_cfg, codec_pa_cfg, codec_reset_cfg, codec_int_cfg)
 
 
 def parse(name: str, config: dict, peripherals_dict=None) -> dict:
@@ -667,7 +675,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     )
 
     (pa_peripheral, reset_peripheral, codec_sys_cfg, codec_adc_cfg,
-     codec_dac_cfg, codec_pa_cfg, codec_reset_cfg) = _parse_codec_init_configs(
+     codec_dac_cfg, codec_pa_cfg, codec_reset_cfg, codec_int_cfg) = _parse_codec_init_configs(
          name, device_config, pa_cfg, reset_cfg)
 
     # Parse metadata if provided
@@ -694,6 +702,7 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
             'codec_dac_cfg': codec_dac_cfg,
             'codec_pa_cfg': codec_pa_cfg,
             'codec_reset_cfg': codec_reset_cfg,
+            'codec_int_cfg': codec_int_cfg,
             'metadata': metadata,
             'metadata_size': metadata_size,
         }
@@ -703,10 +712,18 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
 
 def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: dict) -> dict:
     chip_name = context.get('chip')
-    adc_cfg = parse_result.get('struct_init', {}).get('adc_data_cfg', {})
+    struct_init = parse_result.get('struct_init', {})
+    int_cfg = struct_init.get('codec_int_cfg', {})
+    io = {}
+    if isinstance(int_cfg, dict):
+        int_pin = int_cfg.get('int_pin', -1)
+        if isinstance(int_pin, int) and not isinstance(int_pin, bool) and int_pin >= 0:
+            io['int_pin'] = int_pin
+
+    adc_cfg = struct_init.get('adc_data_cfg', {})
 
     if adc_cfg.get('periph_name'):
-        return {'io': {}}
+        return {'io': io}
 
     cfg_mode = adc_cfg.get('cfg_mode')
     cfg = adc_cfg.get('cfg', {})
@@ -714,7 +731,7 @@ def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: d
     if cfg_mode == 'BOARD_CODEC_ADC_CFG_MODE_PATTERN':
         patterns = cfg.get('patterns', [])
         if not patterns:
-            return {'io': {}}
+            return {'io': io}
         try:
             mapped_channels = adc_patterns_to_gpios(chip_name, patterns)
         except FileNotFoundError as e:
@@ -724,17 +741,14 @@ def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: d
                 chip_name,
                 e,
             )
-            return {'io': {}}
-        return {
-            'io': {
-                'channel': mapped_channels,
-            }
-        }
+            return {'io': io}
+        io['channel'] = mapped_channels
+        return {'io': io}
 
     single_unit_cfg = cfg.get('single_unit', {})
     channels = single_unit_cfg.get('channel_id', [])
     if not channels:
-        return {'io': {}}
+        return {'io': io}
 
     try:
         mapped_channels = adc_channels_to_gpios(
@@ -749,10 +763,7 @@ def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: d
             chip_name,
             e,
         )
-        return {'io': {}}
+        return {'io': io}
 
-    return {
-        'io': {
-            'channel_id': mapped_channels,
-        }
-    }
+    io['channel_id'] = mapped_channels
+    return {'io': io}

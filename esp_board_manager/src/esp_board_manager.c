@@ -12,17 +12,41 @@
 #include "esp_board_periph.h"
 #include "esp_board_manager_err.h"
 #include "esp_board_find_utils.h"
+#include "esp_board_runtime_state.h"
 
 static const char *TAG = "BOARD_MANAGER";
 
+#ifndef ESP_BOARD_LEGACY_API_WARN
+#define ESP_BOARD_LEGACY_API_WARN  1
+#endif  /* ESP_BOARD_LEGACY_API_WARN */
+
 extern const esp_board_info_t g_esp_board_info;
-extern const esp_board_device_desc_t g_esp_board_devices[];
+extern ESP_BOARD_TABLE_CONST esp_board_device_desc_t g_esp_board_devices[];
 extern esp_board_device_handle_t g_esp_board_device_handles[];
-extern const esp_board_periph_desc_t g_esp_board_peripherals[];
+extern ESP_BOARD_TABLE_CONST esp_board_periph_desc_t g_esp_board_peripherals[];
 extern esp_board_periph_entry_t g_esp_board_periph_handles[];
 
 /* Manager state */
 static bool s_manager_initialized = false;
+
+#if ESP_BOARD_LEGACY_API_WARN
+static void warn_legacy_register_device_handle_once(void)
+{
+    static bool s_warned;
+    if (!s_warned) {
+        s_warned = true;
+        ESP_LOGW(TAG, "esp_board_manager_register_device_handle is legacy: splices a "
+                      "caller-owned handle into the generated list and bypasses "
+                      "descriptor/APP/BOARD layers; use esp_board_device_set_ops for "
+                      "existing devices");
+    }
+}
+#endif  /* ESP_BOARD_LEGACY_API_WARN */
+
+esp_err_t esp_board_manager_prepare(void)
+{
+    return esp_board_runtime_prepare();
+}
 
 esp_err_t esp_board_manager_init(void)
 {
@@ -31,8 +55,22 @@ esp_err_t esp_board_manager_init(void)
         return ESP_BOARD_ERR_MANAGER_ALREADY_INIT;
     }
 
+    esp_err_t ret = esp_board_manager_prepare();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Board manager prepare failed");
+        return ret;
+    }
+
+#if defined(CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES) && CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES
+    ret = esp_board_runtime_preflight();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Board manager runtime preflight failed");
+        return ret;
+    }
+#endif  /* defined(CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES) && CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES */
+
     /* Initialize all peripherals first */
-    esp_err_t ret = esp_board_periph_init_all();
+    ret = esp_board_periph_init_all();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize all peripherals");
         return ret;
@@ -81,6 +119,9 @@ esp_err_t esp_board_manager_get_device_handle(const char *dev_name, void **devic
 
 bool esp_board_manager_check_name(const char *name)
 {
+    if (esp_board_runtime_prepare() != ESP_OK) {
+        return false;
+    }
     return esp_board_find_device_desc(name) != NULL || esp_board_find_periph_desc(name) != NULL;
 }
 
@@ -111,13 +152,16 @@ esp_err_t esp_board_manager_register_device_handle(esp_board_device_handle_t *re
 {
     ESP_BOARD_RETURN_ON_FALSE(reg_handle, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid args");
 
+#if ESP_BOARD_LEGACY_API_WARN
+    warn_legacy_register_device_handle_once();
+#endif  /* ESP_BOARD_LEGACY_API_WARN */
+
     /* Check reg_handle validity */
     ESP_BOARD_RETURN_ON_FALSE(reg_handle->name && reg_handle->type, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid name or type");
     ESP_BOARD_RETURN_ON_FALSE(reg_handle->init && reg_handle->deinit, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Init/deinit function missing");
     ESP_BOARD_RETURN_ON_FALSE(reg_handle->device_handle == NULL, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Device handle is NULL");
 
-    /* Insert reg_handle into g_esp_board_device_handles list */
-    /* Since g_esp_board_device_handles is an array, we need to find the last element */
+    /* Legacy: splice into generated list; do not create a runtime sidecar */
     esp_board_device_handle_t *current = &g_esp_board_device_handles[0];
     while (current->next && current->next->name) {
         current = current->next;
@@ -226,7 +270,7 @@ esp_err_t esp_board_manager_deinit(void)
         return ret;
     }
 
-    esp_board_device_restore_all_configs();
+    /* Keep BOARD/APP overrides and prepare state across deinit. */
     s_manager_initialized = false;
     ESP_LOGI(TAG, "Board manager deinitialized");
     return ESP_OK;

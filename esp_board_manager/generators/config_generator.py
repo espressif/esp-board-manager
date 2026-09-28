@@ -42,6 +42,134 @@ class BoardDirectory:
     path: str
     source: str
     source_type: str
+    chip: Optional[str] = None
+
+
+class UnknownBoardListFilterError(ValueError):
+    """Raised when ``idf.py bmgr -l FILTER`` does not match chip or component tokens."""
+
+
+class AmbiguousBoardSelectorError(ValueError):
+    """Raised when a qualified ``-b`` selector matches more than one record."""
+
+
+def records_in_scan_order(board_infos: Dict[str, BoardDirectory]) -> List[BoardDirectory]:
+    return list(board_infos.values())
+
+
+def select_last_named_board(board_infos: Dict[str, BoardDirectory], board_name: str) -> Optional[BoardDirectory]:
+    matches = [info for info in records_in_scan_order(board_infos) if info.name == board_name]
+    return matches[-1] if matches else None
+
+
+def _board_sort_key(info: BoardDirectory) -> Tuple[int, str, str]:
+    source_type_order = {'component': 0, 'customer': 1}
+    return (
+        source_type_order.get(info.source_type, 9),
+        info.source.lower(),
+        info.name.lower(),
+    )
+
+
+def indexed_board_infos(board_infos: Dict[str, BoardDirectory]) -> List[Tuple[int, BoardDirectory]]:
+    """Assign 1-based global indices from the unfiltered list-view order."""
+    ordered = sorted(board_infos.values(), key=_board_sort_key)
+    return list(enumerate(ordered, start=1))
+
+
+def _filter_tokens(info: BoardDirectory) -> List[str]:
+    tokens = []
+    if info.chip:
+        tokens.append(info.chip.lower())
+    if info.source:
+        source = info.source.lower()
+        tokens.append(source)
+        tokens.append(source.rsplit('/', 1)[-1])
+    if info.source_type == 'customer':
+        tokens.append('customer')
+    return tokens
+
+
+def board_matches_list_filter(info: BoardDirectory, filter_text: str) -> bool:
+    needle = filter_text.strip().lower()
+    return needle in _filter_tokens(info)
+
+
+def filter_indexed_boards(
+    indexed_boards: List[Tuple[int, BoardDirectory]],
+    filter_text: str,
+) -> List[Tuple[int, BoardDirectory]]:
+    needle = filter_text.strip().lower()
+    chips = sorted({
+        info.chip
+        for _, info in indexed_boards
+        if info.chip
+    }, key=str.lower)
+    components = sorted({
+        info.source
+        for _, info in indexed_boards
+        if info.source
+    }, key=str.lower)
+    known = {token for _, info in indexed_boards for token in _filter_tokens(info)}
+    if needle not in known:
+        chip_text = ', '.join(chips) if chips else '(none)'
+        component_text = ', '.join(components) if components else '(none)'
+        raise UnknownBoardListFilterError(
+            f'Unknown board list filter "{filter_text}".\n'
+            f'Available chips: {chip_text}\n'
+            f'Available components: {component_text}'
+        )
+    return [
+        (idx, info)
+        for idx, info in indexed_boards
+        if board_matches_list_filter(info, filter_text)
+    ]
+
+
+def format_list_boards_header(matched_count: int, filter_text: Optional[str], global_total: int) -> str:
+    if filter_text:
+        return (
+            f'Found {matched_count} matching board(s) '
+            f'(filter: {filter_text}, global total: {global_total})'
+        )
+    return f'Found {matched_count} board(s):'
+
+
+def build_list_board_output(
+    board_infos: Dict[str, BoardDirectory],
+    filter_text: Optional[str] = None,
+    project_root: Optional[str] = None,
+) -> Tuple[str, List[str]]:
+    """Build the list-boards header and grouped lines, applying an optional filter."""
+    indexed = indexed_board_infos(board_infos)
+    global_total = len(indexed)
+    needle = filter_text.strip() if filter_text else None
+    if needle:
+        indexed = filter_indexed_boards(indexed, needle)
+    header = format_list_boards_header(len(indexed), needle, global_total)
+    return header, format_board_groups(indexed, project_root=project_root)
+
+
+def _read_board_chip(board_path: str) -> Optional[str]:
+    """Read optional ``chip`` from ``board_info.yaml``. Missing chip is not an error."""
+    board_info_path = os.path.join(board_path, 'board_info.yaml')
+    board_info = load_yaml_safe(board_info_path)
+    if not isinstance(board_info, dict) or not board_info:
+        return None
+    chip = board_info.get('chip')
+    if chip is None:
+        return None
+    chip_text = str(chip).strip()
+    return chip_text or None
+
+
+def _board_record_key(board_path: str) -> str:
+    return str(Path(board_path).resolve())
+
+
+def _resolved_log_path(path) -> str:
+    """Return an absolute, resolved path for user-visible logs."""
+    return str(Path(path).resolve())
 
 
 @dataclass(frozen=True)
@@ -57,54 +185,97 @@ class AutoAmendDirectory:
     source: str
 
 
-def format_board_groups(board_infos: Dict[str, BoardDirectory]) -> List[str]:
-    """Format discovered boards for CLI list output."""
-    if not board_infos:
+def _customer_root_from_record(info: BoardDirectory) -> Optional[Path]:
+    """Recover the ``-c`` root from ``path`` and ``source`` without a new field."""
+    if info.source_type != 'customer' or not info.source:
+        return None
+    board = Path(info.path)
+    source_parts = info.source.split('/')
+    relative_parent = Path(*source_parts[1:]) if len(source_parts) > 1 else Path('.')
+    if relative_parent == Path('.'):
+        if len(source_parts) == 1 and source_parts[0] == board.name:
+            return board
+        return board.parent
+    depth = len(relative_parent.parts)
+    if depth >= len(board.parents):
+        return None
+    return board.parents[depth]
+
+
+def _customer_group_label(
+    source: str,
+    entries: List[Tuple[int, BoardDirectory]],
+    project_root: Optional[str],
+) -> Dict[str, str]:
+    """Map resolved customer root -> display label. Suffix appears only on collisions."""
+    roots = []
+    for _, info in entries:
+        root = _customer_root_from_record(info)
+        if root is not None and root not in roots:
+            roots.append(root)
+    labels = {}
+    collide = len(roots) > 1
+    for root in roots:
+        if not collide:
+            labels[str(root)] = source
+            continue
+        if project_root:
+            suffix = Path(os.path.relpath(root, project_root)).as_posix()
+        else:
+            suffix = root.as_posix()
+        labels[str(root)] = f'{source} ({suffix})'
+    return labels
+
+
+def format_board_groups(
+    indexed_boards: List[Tuple[int, BoardDirectory]],
+    project_root: Optional[str] = None,
+) -> List[str]:
+    """Format discovered boards for CLI list output using provided global indices."""
+    if not indexed_boards:
         return []
 
-    source_type_order = {'component': 0, 'customer': 1}
-    ordered_infos = sorted(
-        board_infos.values(),
-        key=lambda info: (
-            source_type_order.get(info.source_type, 9),
-            info.source.lower(),
-            info.name.lower(),
-        ),
-    )
-
-    groups: Dict[Tuple[str, str], List[str]] = {}
-    for info in ordered_infos:
-        groups.setdefault((info.source_type, info.source), []).append(info.name)
+    ordered = sorted(indexed_boards, key=lambda item: _board_sort_key(item[1]))
+    groups: Dict[Tuple[str, str], List[Tuple[int, BoardDirectory]]] = {}
+    for idx, info in ordered:
+        groups.setdefault((info.source_type, info.source), []).append((idx, info))
 
     lines: List[str] = []
-    board_idx = 1
-
     component_groups = [
-        (source, names)
-        for (source_type, source), names in groups.items()
+        (source, entries)
+        for (source_type, source), entries in groups.items()
         if source_type == 'component'
     ]
     if component_groups:
         lines.append('Board Components:')
-        for source, names in component_groups:
+        for source, entries in component_groups:
             lines.append(f'  {source}:')
-            for board_name in names:
-                lines.append(f'    [{board_idx}] {board_name}')
-                board_idx += 1
+            for idx, info in entries:
+                lines.append(f'    [{idx}] {info.name}')
             lines.append('')
 
     customer_groups = [
-        (source, names)
-        for (source_type, source), names in groups.items()
+        (source, entries)
+        for (source_type, source), entries in groups.items()
         if source_type == 'customer'
     ]
     if customer_groups:
         lines.append('Customer Boards:')
-        for _source, names in customer_groups:
-            for board_name in names:
-                lines.append(f'  [{board_idx}] {board_name}')
-                board_idx += 1
-        lines.append('')
+        for source, entries in customer_groups:
+            labels = _customer_group_label(source, entries, project_root)
+            by_root: Dict[str, List[Tuple[int, BoardDirectory]]] = {}
+            for idx, info in entries:
+                root = _customer_root_from_record(info)
+                root_key = str(root) if root is not None else ''
+                by_root.setdefault(root_key, []).append((idx, info))
+            for root_key, root_entries in by_root.items():
+                label = labels.get(root_key, source)
+                lines.append(f'  {label}:')
+                for idx, info in root_entries:
+                    lines.append(f'    [{idx}] {info.name}')
+                lines.append('')
+        if lines and lines[-1] == '':
+            lines.pop()
 
     return lines
 
@@ -245,6 +416,25 @@ class ConfigGenerator(LoggerMixin):
                 return f'{namespace}/{component}'
         return name
 
+    def _customer_source_name(self, customer_root: str, board_path: str) -> str:
+        """Build the list/filter source for one customer board.
+
+        ``<root-basename>`` when the board sits directly in the ``-c`` root.
+        ``<root-basename>/<relative-parent>`` when it sits deeper.
+        """
+        root = Path(customer_root).resolve()
+        board = Path(board_path).resolve()
+        if root == board:
+            return root.name
+        try:
+            relative_parent = board.parent.relative_to(root)
+        except ValueError:
+            # A customer board may be a symlink to a directory outside -c.
+            return root.name
+        if relative_parent == Path('.'):
+            return root.name
+        return f'{root.name}/{relative_parent.as_posix()}'
+
     def _source_for_board_path(self, board_path: str, customer_path: Optional[str] = None) -> Tuple[str, str]:
         """Infer board source type and display name from a discovered board path."""
         path = Path(board_path).resolve()
@@ -275,27 +465,32 @@ class ConfigGenerator(LoggerMixin):
         source_type: str,
         source: str,
     ) -> None:
-        """Add a board to the scan result, preserving later-source override priority."""
-        board_path_abs = str(Path(board_path).resolve())
-        existing = boards.get(board_name)
-        if existing:
-            self.logger.warning(
-                f'⚠️  Duplicate board "{board_name}" from {board_path_abs} overrides '
-                f'previous board from {existing.path}'
-            )
-        boards[board_name] = BoardDirectory(
+        """Add a board record keyed by resolved path.
+
+        Scan insertion order is the priority order. A later record with the same
+        board name does not replace an earlier record. Recording the same path
+        again moves that entry to the end, retaining the later scan priority.
+        """
+        board_path_abs = _board_record_key(board_path)
+        # Reinsert repeated paths so a later scan source retains its priority.
+        boards.pop(board_path_abs, None)
+        boards[board_path_abs] = BoardDirectory(
             name=board_name,
             path=board_path_abs,
             source=source,
             source_type=source_type,
+            chip=_read_board_chip(board_path_abs),
         )
+        if boards[board_path_abs].chip is None:
+            self.logger.debug(f'   Board "{board_name}" has no chip in board_info.yaml')
 
     def scan_board_directories(self, board_customer_path: Optional[str] = None) -> Dict[str, BoardDirectory]:
         """Scan all board directories and return them with source metadata.
 
-        Returns a dict mapping board name to :class:`BoardDirectory`. Callers that only
-        need the path can read ``info.path``; callers that need to group or order by
-        origin can read ``info.source`` / ``info.source_type``.
+        Returns a dict keyed by the board directory's resolved path. Same board names
+        from different directories are all kept; insertion order is scan priority.
+        Callers that need the path read ``info.path``; grouping uses ``info.source``
+        and ``info.source_type``. A bare board name selects the last scanned match.
         """
         all_boards: Dict[str, BoardDirectory] = {}
 
@@ -305,13 +500,13 @@ class ConfigGenerator(LoggerMixin):
         if project_root:
             managed_components_dir = os.path.join(project_root, 'managed_components')
             if os.path.exists(managed_components_dir):
-                self.logger.info(f'   Scanning managed components boards: {managed_components_dir}')
+                self.logger.info(f'   Scanning managed components boards: {_resolved_log_path(managed_components_dir)}')
                 try:
                     for d in os.listdir(managed_components_dir):
                         subdir_path = os.path.join(managed_components_dir, d)
                         if os.path.isdir(subdir_path) and 'boards' in d:
                             source = self._component_name_from_path(Path(d))
-                            self.logger.info(f'     Found potential board component in managed_components: {d}')
+                            self.logger.debug(f'     Found potential board component in managed_components: {d}')
 
                             if self._is_board_directory(subdir_path):
                                 board_name = d
@@ -345,7 +540,7 @@ class ConfigGenerator(LoggerMixin):
             components_dir = os.path.join(project_root, 'components')
 
             if os.path.exists(components_dir):
-                self.logger.info(f'   Scanning component boards (recursive): {components_dir}')
+                self.logger.info(f'   Scanning component boards: {_resolved_log_path(components_dir)}')
                 component_boards = self._scan_all_directories_for_board_infos(
                     components_dir,
                     'component',
@@ -368,10 +563,10 @@ class ConfigGenerator(LoggerMixin):
                 )
 
             if override_entries:
-                self.logger.info('   Scanning main idf_component local overrides (board-named deps only)')
+                self.logger.info('   Scanning board components:')
             mgr_root = self.root_dir.resolve()
             for dep_name, abs_p in override_entries:
-                abs_path = str(abs_p)
+                abs_path = _resolved_log_path(abs_p)
                 try:
                     if abs_p.resolve() == mgr_root:
                         self.logger.debug(
@@ -403,17 +598,20 @@ class ConfigGenerator(LoggerMixin):
                         self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
 
         # 3. Scan customer boards directories if provided. ``board_customer_path``
-        #    may be a single path or a ';'-separated list; each entry is scanned
-        #    in order (later entries override earlier ones for duplicate names).
+        #    may be a single path or a ';'-separated list. Each entry is scanned in
+        #    order. Same names are kept; a bare board name selects the last match.
         customer_paths = parse_customer_paths(board_customer_path, self.get_project_root())
         if customer_paths:
             for customer_path in customer_paths:
-                self.logger.info(f'Scanning customer boards: {customer_path}')
+                self.logger.info(f'Scanning customer boards: {_resolved_log_path(customer_path)}')
                 if os.path.exists(customer_path):
                     if self._is_board_directory(customer_path):
                         board_name = os.path.basename(customer_path)
                         if self.is_valid_board_name(board_name):
-                            self._record_board_directory(all_boards, board_name, customer_path, 'customer', 'customer')
+                            source_name = self._customer_source_name(customer_path, customer_path)
+                            self._record_board_directory(
+                                all_boards, board_name, customer_path, 'customer', source_name
+                            )
                             self.logger.debug(f'Found single board: {board_name}')
                         else:
                             self.logger.warning(
@@ -425,10 +623,13 @@ class ConfigGenerator(LoggerMixin):
                             'customer',
                             max_depth=3,
                             source='customer',
-                            source_name='customer',
+                            source_name=None,
                         )
                         for info in customer_boards.values():
-                            self._record_board_directory(all_boards, info.name, info.path, info.source_type, info.source)
+                            source_name = self._customer_source_name(customer_path, info.path)
+                            self._record_board_directory(
+                                all_boards, info.name, info.path, 'customer', source_name
+                            )
                 else:
                     self.logger.warning(f'⚠️  Warning: Customer boards path does not exist: {customer_path}')
         else:
@@ -438,15 +639,7 @@ class ConfigGenerator(LoggerMixin):
 
     def sorted_board_infos(self, board_infos: Dict[str, BoardDirectory]) -> List[BoardDirectory]:
         """Return board infos in the same deterministic order used by the CLI list view."""
-        source_type_order = {'component': 0, 'customer': 1}
-        return sorted(
-            board_infos.values(),
-            key=lambda info: (
-                source_type_order.get(info.source_type, 9),
-                info.source.lower(),
-                info.name.lower(),
-            ),
-        )
+        return sorted(board_infos.values(), key=_board_sort_key)
 
     def ordered_board_names(self, board_customer_path: Optional[str] = None) -> List[str]:
         """Return board names in list-view order."""
@@ -578,7 +771,7 @@ class ConfigGenerator(LoggerMixin):
             return board_dirs
 
         if depth == 0:
-            self.logger.info(f'Scanning all directories in {dir_name} path: {root_dir}')
+            self.logger.debug(f'Scanning all directories in {dir_name} path: {_resolved_log_path(root_dir)}')
 
         try:
             for d in os.listdir(root_dir):
@@ -592,11 +785,11 @@ class ConfigGenerator(LoggerMixin):
                         source_type, inferred_source = self._source_for_board_path(board_path)
                         info = BoardDirectory(
                             name=d,
-                            path=str(Path(board_path).resolve()),
+                            path=_board_record_key(board_path),
                             source=source_name or inferred_source,
                             source_type=source or source_type,
                         )
-                        board_dirs[d] = info
+                        board_dirs[info.path] = info
                         self.logger.debug(f'Found valid board in {dir_name}: {d}')
                     else:
                         self.logger.warning(
@@ -662,7 +855,7 @@ class ConfigGenerator(LoggerMixin):
             depth=depth,
             max_depth=max_depth,
         )
-        return {name: info.path for name, info in infos.items()}
+        return {info.path: info.path for info in infos.values()}
 
     def _is_board_directory(self, path: str) -> bool:
         """
@@ -756,12 +949,20 @@ class ConfigGenerator(LoggerMixin):
 
     def find_board_config_files(self, board_name: str, all_boards: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
         """Find board_peripherals.yaml and board_devices.yaml for the selected board"""
-        if board_name not in all_boards:
-            self.logger.error(f"Board '{board_name}' not found in any boards directory")
-            self.logger.error(f'Available boards: {list(all_boards.keys())}')
-            return None, None
+        board_info = all_boards.get(board_name)
+        if board_info is None and all_boards:
+            sample = next(iter(all_boards.values()))
+            if isinstance(sample, BoardDirectory):
+                board_info = select_last_named_board(all_boards, board_name)
 
-        board_info = all_boards[board_name]
+        if board_info is None:
+            self.logger.error(f"Board '{board_name}' not found in any boards directory")
+            if all_boards and isinstance(next(iter(all_boards.values())), BoardDirectory):
+                available = sorted({info.name for info in all_boards.values()})
+            else:
+                available = list(all_boards.keys())
+            self.logger.error(f'Available boards: {available}')
+            return None, None
         board_path = board_info.path if isinstance(board_info, BoardDirectory) else board_info
         periph_yaml_path = os.path.join(board_path, 'board_peripherals.yaml')
         dev_yaml_path = os.path.join(board_path, 'board_devices.yaml')
@@ -775,7 +976,7 @@ class ConfigGenerator(LoggerMixin):
             return None, None
 
         self.logger.debug(f"   Using board configuration files for '{board_name}':")
-        self.logger.info(f'   Peripherals: {periph_yaml_path}')
-        self.logger.info(f'   Devices: {dev_yaml_path}')
+        self.logger.debug(f'   Peripherals: {_resolved_log_path(periph_yaml_path)}')
+        self.logger.debug(f'   Devices: {_resolved_log_path(dev_yaml_path)}')
 
         return periph_yaml_path, dev_yaml_path

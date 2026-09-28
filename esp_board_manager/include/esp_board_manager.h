@@ -31,11 +31,50 @@ typedef struct esp_board_info {
 extern const esp_board_info_t g_esp_board_info;
 
 /**
+ * @brief  Board runtime pre-init hook
+ *
+ *         Weak default returns ESP_OK. A final application may provide exactly
+ *         one strong definition to apply BOARD-layer overrides before any
+ *         peripheral or device handle is created. Multiple strong definitions
+ *         fail at link time; there is no function-pointer registry.
+ *
+ *         Prepare/init must be called from a task; during the hook only that
+ *         task may call override/set_ops. The hook may edit writable descriptor/
+ *         handle tables, apply generated board revisions, call override_config /
+ *         set_ops, and initialize temporary resources needed for hardware
+ *         detection. Resources created by the hook must be deinitialized before
+ *         returning an error; prepare rollback restores table state but does not
+ *         release hardware resources.
+ *
+ * @return
+ *       - ESP_OK  On success
+ *       - Others  Propagated to esp_board_manager_prepare()
+ */
+esp_err_t esp_board_runtime_pre_init(void);
+
+/**
+ * @brief  Prepare board runtime overrides
+ *
+ *         Runs the pre-init hook once when unprepared. Idempotent after success.
+ *         A nested call from the prepare-owner task is an idempotent no-op;
+ *         calls from other tasks while preparing are rejected. Calls before a
+ *         FreeRTOS task exists are also rejected. Single device/peripheral init calls this
+ *         before creating a handle so the hook cannot be skipped.
+ *
+ * @return
+ *       - ESP_OK                 On success or already prepared
+ *       - ESP_ERR_INVALID_STATE  If called by a non-owner task while preparing,
+ *                                or without a current task
+ *       - Others                 Error codes from the pre-init hook
+ */
+esp_err_t esp_board_manager_prepare(void);
+
+/**
  * @brief  Initialize the board manager
  *
- *         Initializes all peripherals first, then all devices. If device initialization
- *         fails, peripherals are deinitialized to maintain consistency. The manager
- *         can only be initialized once
+ *         Runs prepare and descriptor preflight, then initializes all peripherals
+ *         first, then all devices. If device initialization fails, peripherals are
+ *         deinitialized to maintain consistency. The manager can only be initialized once
  *
  * @note  Device initialization strictly follows the order defined in board_devices.yaml
  *         Peripheral initialization strictly follows the order defined in board_peripherals.yaml
@@ -143,9 +182,14 @@ esp_err_t esp_board_manager_get_periph_config(const char *periph_name, void **co
 esp_err_t esp_board_manager_get_board_info(esp_board_info_t *board_info);
 
 /**
- * @brief  Register a user defined device handle
- *         The user can initialize the device handle manually and register it with the board manager
- *         After that, the application can access it through the board manager APIs
+ * @brief  Register a user-defined device handle (legacy)
+ *
+ *         Legacy ABI: splices a caller-owned handle node into the generated device
+ *         handle list. It bypasses the descriptor table and APP/BOARD sidecar layers
+ *         (no effective config/ops, no sidecar entry). For an existing device name,
+ *         change init/deinit with :c:func:`esp_board_device_set_ops`. Do not inject
+ *         unknown devices through this function; new devices must go through the
+ *         descriptor/generator path.
  *
  * @param[in]  reg_handle  Pointer to the device handle to register
  *
@@ -153,7 +197,8 @@ esp_err_t esp_board_manager_get_board_info(esp_board_info_t *board_info);
  *       - ESP_OK                             On success
  *       - ESP_BOARD_ERR_MANAGER_INVALID_ARG  If reg_handle is NULL
  */
-esp_err_t esp_board_manager_register_device_handle(esp_board_device_handle_t *reg_handle);
+esp_err_t esp_board_manager_register_device_handle(esp_board_device_handle_t *reg_handle)
+    __attribute__((deprecated("Use esp_board_device_set_ops for existing devices")));
 
 /**
  * @brief  Initialize a specific device by name
@@ -212,9 +257,9 @@ esp_err_t esp_board_manager_print_board_info(void);
 /**
  * @brief  Deinitialize the board manager
  *
- *         Deinitializes all devices first, then all peripherals. This ensures
- *         proper cleanup order and prevents resource leaks. The manager state
- *         is reset to allow re-initialization
+ *         Deinitializes all devices first, then all peripherals. This destroys
+ *         driver handles only; BOARD/APP overrides and prepare state are kept.
+ *         The manager init flag is cleared so init may run again.
  *
  * @return
  *       - ESP_OK                          On success

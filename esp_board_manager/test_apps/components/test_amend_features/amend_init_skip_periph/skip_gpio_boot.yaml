@@ -1,0 +1,7 @@
+version: 1.0.0
+# Mark the base board's gpio_boot_button peripheral as init_skip so
+# periph_init_all does not claim the pin. The amend's field-level merge
+# injects init_skip: true onto the base peripheral entry.
+peripherals:
+  - name: gpio_boot_button
+    init_skip: true

@@ -59,7 +59,14 @@ def test_idf_extension_registers_bmgr_action(bmgr_root):
     assert 'gen-bmgr-config' in actions['actions']
     assert 'bmgr' in actions['actions']
     bmgr_action = actions['actions']['bmgr']
-    assert 'arguments' not in bmgr_action
+    assert bmgr_action['arguments'] == [
+        {
+            'names': ['list_filter'],
+            'required': False,
+        }
+    ]
+    gen_action = actions['actions']['gen-bmgr-config']
+    assert gen_action['arguments'] == bmgr_action['arguments']
     custom_option = next(
         option for option in actions['actions']['bmgr']['options']
         if '--customer-path' in option['names']
@@ -169,6 +176,47 @@ def test_idf_extension_rejects_positional_board_value_misuse(
         assert expected_message in message
     finally:
         sys.argv = original_argv
+
+
+def test_idf_extension_allows_list_filter_positional_with_list_flag(
+    bmgr_root, monkeypatch, capsys
+):
+    sys.path.insert(0, str(bmgr_root))
+    import idf_ext
+
+    actions = idf_ext.action_extensions({}, str(bmgr_root / 'test_apps'))
+    monkeypatch.setattr(sys, 'argv', ['idf.py', 'bmgr', '-l', 'esp_boards'])
+    callback = actions['actions']['bmgr']['callback']
+
+    callback(
+        'bmgr',
+        None,
+        SimpleNamespace(project_dir=str(bmgr_root / 'test_apps')),
+        list_boards=True,
+        list_filter='esp_boards',
+    )
+
+    out = capsys.readouterr().out
+    assert 'positional argument' not in out
+    assert 'espressif/esp_boards:' in out
+
+
+def test_idf_extension_rejects_filter_token_when_not_listing(bmgr_root, monkeypatch):
+    sys.path.insert(0, str(bmgr_root))
+    import idf_ext
+
+    actions = idf_ext.action_extensions({}, str(bmgr_root / 'test_apps'))
+    monkeypatch.setattr(sys, 'argv', ['idf.py', 'bmgr', '-b', 'my_board', 'build'])
+    callback = actions['actions']['bmgr']['callback']
+
+    with pytest.raises(idf_ext.FatalError, match='run other idf.py actions separately'):
+        callback(
+            'bmgr',
+            None,
+            SimpleNamespace(project_dir=str(bmgr_root / 'test_apps')),
+            board='my_board',
+            list_filter='build',
+        )
 
 
 def test_component_cmake_loads_without_gen_bmgr_codes(bmgr_root, tmp_path):
@@ -293,7 +341,7 @@ def test_bmgr_resolves_component_board_using_project_dir_when_cwd_differs(
 
     assert recorded['board_name'] == 'my_proj_board'
     assert recorded['cwd'] == str(project_root.resolve())
-    assert recorded['cached_boards']['my_proj_board'].path == str(board_dir.resolve())
+    assert recorded['cached_boards'][str(board_dir.resolve())].path == str(board_dir.resolve())
 
 
 def test_bmgr_resolves_relative_customer_path_from_project_dir_when_cwd_differs(
@@ -336,4 +384,4 @@ def test_bmgr_resolves_relative_customer_path_from_project_dir_when_cwd_differs(
 
     assert recorded['board_name'] == 'rel_board'
     assert recorded['board_customer_path'] == str(customer_root.resolve())
-    assert recorded['cached_boards']['rel_board'].path == str(board_dir.resolve())
+    assert recorded['cached_boards'][str(board_dir.resolve())].path == str(board_dir.resolve())

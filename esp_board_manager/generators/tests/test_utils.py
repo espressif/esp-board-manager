@@ -26,7 +26,11 @@ from generators.utils.yaml_utils import (
     load_yaml_mapping_from_text,
     BoardConfigYamlError,
 )
-from generators.utils.config_utils import apply_device_overrides, apply_peripheral_list_overrides
+from generators.utils.config_utils import (
+    apply_device_overrides,
+    apply_peripheral_list_overrides,
+    apply_peripheral_overrides,
+)
 from generators.settings import BoardManagerConfig
 
 
@@ -434,6 +438,46 @@ class TestYamlUtils(unittest.TestCase):
             ['gpio_boot', 'gpio_extra'],
         )
         self.assertEqual(merged_devices[1]['name'], 'custom_sensor')
+
+    def test_device_peripheral_binding_override_replaces_matching_role(self):
+        class Logger:
+            def warning(self, msg):
+                raise AssertionError(msg)
+
+            def debug(self, msg):
+                pass
+
+        base_peripherals = [
+            {'i2c_name': 'i2c_master', 'frequency': 100000},
+            {'i2s_name': 'i2s_audio'},
+        ]
+        overrides = [
+            {'i2c_name': 'i2c_subboard'},
+            {'gpio_name': 'gpio_reset', 'active_level': 0},
+        ]
+
+        merged = apply_peripheral_overrides(base_peripherals, overrides, Logger(), 'camera')
+
+        self.assertEqual(merged, [
+            {'i2c_name': 'i2c_subboard', 'frequency': 100000},
+            {'i2s_name': 'i2s_audio'},
+            {'gpio_name': 'gpio_reset', 'active_level': 0},
+        ])
+
+    def test_device_peripheral_legacy_name_merge_remains_unchanged(self):
+        class Logger:
+            def warning(self, msg):
+                raise AssertionError(msg)
+
+            def debug(self, msg):
+                pass
+
+        base_peripherals = [{'name': 'i2c_master', 'frequency': 100000}]
+        overrides = [{'name': 'i2c_master', 'frequency': 400000}]
+
+        merged = apply_peripheral_overrides(base_peripherals, overrides, Logger(), 'legacy_device')
+
+        self.assertEqual(merged, [{'name': 'i2c_master', 'frequency': 400000}])
 
 
 class TestBoardManagerConfig(unittest.TestCase):

@@ -1,0 +1,20 @@
+
+menu "USB HS Console Config"
+
+    config USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
+        bool "Enable custom USB CDC auto-download reset"
+        depends on TINYUSB_CDC_ENABLED
+        depends on !ESP_CONSOLE_USB_CDC
+        default n
+        help
+            Enable USB-Serial/JTAG-compatible DTR/RTS reset handling for the
+            custom USB CDC console.
+
+    config USB_HS_CONSOLE_USB_CDC_AUTO_INIT
+        bool "Automatically initialize custom USB CDC console"
+        depends on TINYUSB_CDC_ENABLED
+        depends on !ESP_CONSOLE_USB_CDC
+        default n
+        help
+            Initialize the custom USB CDC console before app_main() starts.
+endmenu

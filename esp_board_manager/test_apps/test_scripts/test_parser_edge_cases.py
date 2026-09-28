@@ -2543,6 +2543,60 @@ def test_audio_codec_without_pa_uses_disabled_pin_sentinel(bmgr_root):
     assert result['struct_init']['codec_pa_cfg']['pa_pin'] == -1
 
 
+@pytest.mark.parametrize(
+    ('int_cfg', 'expected'),
+    [
+        ({}, {'int_pin': -1, 'int_active_high': False}),
+        ({'int_pin': -1, 'int_active_high': True}, {'int_pin': -1, 'int_active_high': True}),
+        ({'int_pin': 0, 'int_active_high': True}, {'int_pin': 0, 'int_active_high': True}),
+        ({'int_pin': 21}, {'int_pin': 21, 'int_active_high': False}),
+    ],
+)
+def test_audio_codec_passes_interrupt_config_without_peripheral(bmgr_root, int_cfg, expected):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    result = mod.parse(
+        'audio_codec',
+        {'type': 'audio_codec', 'chip': 'es8311', 'config': {'int_cfg': int_cfg}},
+    )
+
+    assert result['struct_init']['codec_int_cfg'] == expected
+
+
+@pytest.mark.parametrize('int_pin', [-2, 32768, True, '21'])
+def test_audio_codec_rejects_invalid_interrupt_pin(bmgr_root, int_pin):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with pytest.raises(ValueError, match='int_cfg.int_pin'):
+        mod.parse(
+            'audio_codec',
+            {'type': 'audio_codec', 'chip': 'es8311', 'config': {'int_cfg': {'int_pin': int_pin}}},
+        )
+
+
+def test_audio_codec_runtime_forwards_interrupt_config(bmgr_root):
+    header = (bmgr_root / 'devices/dev_audio_codec/dev_audio_codec.h').read_text(encoding='utf-8')
+    source = (bmgr_root / 'devices/dev_audio_codec/dev_audio_codec.c').read_text(encoding='utf-8')
+
+    assert 'audio_hw_int_cfg_t' in header
+    assert '.int_cfg = codec_cfg->codec_int_cfg,' in source
+
+
+def test_audio_codec_interrupt_config_renders_c_initializer(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+    from generators.config_generator import ConfigGenerator
+
+    result = mod.parse('audio_codec', {'type': 'audio_codec', 'chip': 'es8311'})
+    initializer = '\n'.join(ConfigGenerator(bmgr_root).dict_to_c_initializer(result['struct_init']))
+
+    assert '.codec_int_cfg = {' in initializer
+    assert '.int_pin = -1,' in initializer
+    assert '.int_active_high = false,' in initializer
+
+
 def test_internal_audio_codec_accepts_explicit_adc_name(bmgr_root):
     from types import SimpleNamespace
 

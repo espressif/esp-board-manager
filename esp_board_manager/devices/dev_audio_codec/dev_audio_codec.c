@@ -378,6 +378,7 @@ int dev_audio_codec_init(void *cfg, int cfg_size, void **device_handle)
             .dac_cfg = codec_cfg->codec_dac_cfg,
             .pa_cfg = codec_cfg->codec_pa_cfg,
             .reset_cfg = codec_cfg->codec_reset_cfg,
+            .int_cfg = codec_cfg->codec_int_cfg,
         };
         codec_handles->codec_if = audio_codec_new(codec_name, &codec_init_cfg, sizeof(codec_init_cfg));
         if (codec_handles->codec_if == NULL) {

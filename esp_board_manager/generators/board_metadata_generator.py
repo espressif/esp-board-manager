@@ -543,6 +543,7 @@ class BoardMetadataGenerator:
         chip_name: str,
         device_artifacts: List[Dict[str, Any]],
         peripheral_artifacts: List[Dict[str, Any]],
+        board_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         self._io_conflict_warnings = []
 
@@ -567,13 +568,16 @@ class BoardMetadataGenerator:
 
         self._warn_duplicate_io_records(device_io_records + peripheral_io_records)
 
-        return {
+        metadata = {
             'version': 1,
             'board': board_name,
             'chip': chip_name,
             'devices': devices,
             'peripherals': peripherals,
         }
+        if board_path:
+            metadata['board_path'] = str(Path(board_path).resolve())
+        return metadata
 
     def write_metadata_file(
         self,
@@ -582,12 +586,14 @@ class BoardMetadataGenerator:
         chip_name: str,
         device_artifacts: List[Dict[str, Any]],
         peripheral_artifacts: List[Dict[str, Any]],
+        board_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         metadata = self.generate_metadata_dict(
             board_name=board_name,
             chip_name=chip_name,
             device_artifacts=device_artifacts,
             peripheral_artifacts=peripheral_artifacts,
+            board_path=board_path,
         )
         self.validate_metadata_io(metadata)
 

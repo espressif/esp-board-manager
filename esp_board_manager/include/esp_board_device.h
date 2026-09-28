@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "esp_board_manager_err.h"
+#include "esp_board_manager_defs.h"
 #include "esp_board_extra_func_entry.h"
 
 #ifdef __cplusplus
@@ -64,8 +65,8 @@ typedef struct esp_board_device_handle {
     const char                     *type;           /*!< Device type */
     void                           *device_handle;  /*!< Device-specific handle */
     uint8_t                         ref_count;      /*!< Reference count */
-    esp_board_device_init_func      init;           /*!< Device initialization function */
-    esp_board_device_deinit_func    deinit;         /*!< Device deinitialization function */
+    esp_board_device_init_func      init;           /*!< Generated default init (fallback ops) */
+    esp_board_device_deinit_func    deinit;         /*!< Generated default deinit (fallback ops) */
 } esp_board_device_handle_t;
 
 /**
@@ -82,6 +83,8 @@ typedef struct esp_board_device_handle {
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If name is NULL
  *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device descriptor or handle not found
  *       - ESP_BOARD_ERR_DEVICE_NO_INIT      If no init function is available
+ *       - ESP_ERR_INVALID_STATE             If the runtime already marks this device initialized
+ *       - ESP_ERR_INVALID_SIZE              If effective config size differs from the descriptor
  *       - Others                            Error codes from device-specific initialization
  */
 esp_err_t esp_board_device_init(const char *name);
@@ -105,7 +108,10 @@ esp_err_t esp_board_device_get_handle(const char *name, void **device_handle);
 /**
  * @brief  Get device configuration by name
  *
- *         Retrieves the configuration for a given device name
+ *         Retrieves the effective configuration for a given device name. The
+ *         returned pointer is owned by BMGR and may be invalidated by the next
+ *         override or restore operation for this device; copy it if it must be
+ *         retained across those operations.
  *
  * @param[in]   name    Device name
  * @param[out]  config  Pointer to store the configuration
@@ -134,35 +140,25 @@ esp_err_t esp_board_device_get_config(const char *name, void **config);
 esp_err_t esp_board_device_get_config_by_handle(void *device_handle, void **config);
 
 /**
- * @brief  Override a device configuration at runtime
+ * @brief  Override a device configuration at runtime (APP layer)
  *
- *         This function stores a shallow copy of the provided configuration in RAM
- *         and uses it for future get_config, init, and callback_register calls.
- *         Pointer fields inside the configuration are not deep-copied; the caller
- *         must keep any referenced memory valid until restore_config is called.
- *
- *         This API stores the provided byte buffer as-is and forwards the exact
- *         pointer and config_size to future init and callback_register calls.
- *         The framework does not require config_size to match the generated
- *         descriptor size, which allows device-specific alternate config layouts.
- *         Whether a particular device implementation accepts that alternate size
- *         is determined by the device driver itself.
- *
- *         For same-layout overrides, the recommended usage pattern is to fetch the
- *         current config, copy it by value, modify only the desired fields, then
- *         set the override.
- *
- *         If the device has already been initialized, the new configuration will
- *         not affect the running instance immediately. Deinitialize and initialize
- *         the device again to apply the new configuration to the driver.
+ *         Stores a top-level byte copy of config for future get_config, init, and
+ *         callback_register. Nested pointers inside the struct are not deep-copied;
+ *         the caller must keep referenced memory valid until restore_config. Size
+ *         need not match the generated descriptor; a mismatch logs a warning and
+ *         still copies config_size bytes, but esp_board_device_init() rejects a
+ *         mismatched effective size with ESP_ERR_INVALID_SIZE. Repeated calls
+ *         replace the previous APP copy. Rejected while this device's ref_count
+ *         is non-zero or it is marked initialized.
  *
  * @param[in]  name         Device name
  * @param[in]  config       Pointer to the new configuration
- * @param[in]  config_size  Size of the configuration structure
+ * @param[in]  config_size  Size of the configuration to copy
  *
  * @return
  *       - ESP_OK                              On success
  *       - ESP_ERR_NO_MEM                      If memory allocation fails
+ *       - ESP_ERR_INVALID_STATE               If the device is already initialized
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG    If name/config is NULL or config_size is 0
  *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND      If device is not found
  *       - ESP_BOARD_ERR_DEVICE_NOT_SUPPORTED  If device has no generated configuration
@@ -170,18 +166,21 @@ esp_err_t esp_board_device_get_config_by_handle(void *device_handle, void **conf
 esp_err_t esp_board_device_override_config(const char *name, const void *config, uint16_t config_size);
 
 /**
- * @brief  Restore the generated configuration for a device
+ * @brief  Restore APP-layer configuration for a device
  *
- *         Removes the RAM override created by esp_board_device_override_config() and
- *         restores the generated read-only configuration for future operations.
- *         This function does not deinitialize the device automatically.
+ *         Clears only the APP config copy. BOARD override remains if present;
+ *         otherwise effective config falls back to generated. Does not change ops.
+ *         Rejected while this device's ref_count is non-zero or it is marked
+ *         initialized.
  *
  * @param[in]  name  Device name
  *
  * @return
  *       - ESP_OK                            On success
- *       - ESP_ERR_NOT_FOUND                 If no runtime override exists for the device
+ *       - ESP_ERR_NOT_FOUND                 If no APP config override exists
+ *       - ESP_ERR_INVALID_STATE             If the device is already initialized
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If name is NULL
+ *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device is not found
  */
 esp_err_t esp_board_device_restore_config(const char *name);
 
@@ -205,10 +204,11 @@ esp_err_t esp_board_device_restore_config(const char *name);
 esp_err_t esp_board_device_get_i2c_effective_addr(const char *device_name, uint16_t *addr);
 
 /**
- * @brief  Set device initialization and deinitialization functions
+ * @brief  Set per-name device init/deinit ops (APP layer)
  *
- *         Associates custom init and deinit functions with a device. This allows
- *         runtime configuration of device behavior
+ *         Does not modify the generated handle init/deinit table. Repeated calls
+ *         replace the previous APP ops. Rejected while ref_count is non-zero or
+ *         the device is marked initialized.
  *
  * @param[in]  name    Device name
  * @param[in]  init    Initialization function pointer
@@ -216,10 +216,31 @@ esp_err_t esp_board_device_get_i2c_effective_addr(const char *device_name, uint1
  *
  * @return
  *       - ESP_OK                            On success
+ *       - ESP_ERR_NO_MEM                    If memory allocation fails
+ *       - ESP_ERR_INVALID_STATE             If the device is already initialized
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If any parameter is NULL
- *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device handle not found
+ *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device is not found
  */
 esp_err_t esp_board_device_set_ops(const char *name, esp_board_device_init_func init, esp_board_device_deinit_func deinit);
+
+/**
+ * @brief  Restore APP-layer ops for a device
+ *
+ *         Clears only APP ops. BOARD ops remain if present; otherwise effective
+ *         ops fall back to the generated handle init/deinit. Does not change
+ *         config. Rejected while this device's ref_count is non-zero or it is
+ *         marked initialized.
+ *
+ * @param[in]  name  Device name
+ *
+ * @return
+ *       - ESP_OK                            On success
+ *       - ESP_ERR_NOT_FOUND                 If no APP ops override exists
+ *       - ESP_ERR_INVALID_STATE             If the device is already initialized
+ *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If name is NULL
+ *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device is not found
+ */
+esp_err_t esp_board_device_restore_ops(const char *name);
 
 /**
  * @brief  Deinitialize a device by name

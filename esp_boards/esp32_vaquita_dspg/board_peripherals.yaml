@@ -55,11 +55,12 @@ peripherals:
                     # see "Not modeled" — it is not an ES8311 capture path
 
   # Boot button. Schematic net: Boot_IO0 -> GPIO0 via R12.
-  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
-  # the I2S audio interface.
+  # GPIO0 is also the I2S MCLK pin. Skip auto-init so init_all does not
+  # claim GPIO0 while I2S audio is in use.
   - name: gpio_boot_button
     type: gpio
     role: io
+    init_skip: true
     config:
       pin: 0
       mode: GPIO_MODE_INPUT

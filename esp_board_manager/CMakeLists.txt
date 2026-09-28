@@ -17,6 +17,8 @@ idf_component_register(
         "src/esp_board_manager.c"
         "src/esp_board_periph.c"
         "src/esp_board_device.c"
+        "src/esp_board_runtime_state.c"
+        "src/esp_board_runtime_pre_init.c"
         "src/esp_board_manager_err.c"
         ${PERIPH_SRCS}  # Add peripheral sources
         ${DEVICE_SRCS}  # Add device sources
@@ -28,6 +30,7 @@ idf_component_register(
         ${PERIPH_INCLUDES}  # Add peripheral includes
         ${DEVICE_INCLUDES}  # Add device includes
     REQUIRES
+        freertos
         driver
         esp_common
         fatfs
@@ -44,6 +47,7 @@ idf_component_register(
         esp_driver_mcpwm
         esp_driver_pcnt
         esp_driver_sdm
+        efuse
     LDFRAGMENTS
         "linker.lf"
     WHOLE_ARCHIVE

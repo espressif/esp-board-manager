@@ -70,6 +70,44 @@ class TestBoardPeripheralsYaml(unittest.TestCase):
         finally:
             Path(path).unlink(missing_ok=True)
 
+    def _write_gpio_yaml(self, extra_fields: str = '') -> str:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
+        ) as f:
+            f.write(
+                'peripherals:\n'
+                '  - name: gpio_boot_button\n'
+                '    type: gpio\n'
+                f'{extra_fields}'
+                '    config:\n'
+                '      pin: 0\n'
+                '      mode: GPIO_MODE_INPUT\n'
+            )
+            return f.name
+
+    def test_init_skip_true_is_kept(self):
+        path = self._write_gpio_yaml('    init_skip: true\n')
+        try:
+            pp = PeripheralParser(BMGR_ROOT)
+            parsed, _, _ = pp.parse_peripherals_yaml(path)
+            self.assertTrue(parsed['gpio_boot_button']['init_skip'])
+            legacy = pp.parse_peripherals_yaml_legacy(path)
+            self.assertEqual(len(legacy), 1)
+            self.assertTrue(legacy[0].init_skip)
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_init_skip_defaults_false(self):
+        path = self._write_gpio_yaml()
+        try:
+            pp = PeripheralParser(BMGR_ROOT)
+            parsed, _, _ = pp.parse_peripherals_yaml(path)
+            self.assertFalse(parsed['gpio_boot_button']['init_skip'])
+            legacy = pp.parse_peripherals_yaml_legacy(path)
+            self.assertFalse(legacy[0].init_skip)
+        finally:
+            Path(path).unlink(missing_ok=True)
+
 
 class TestBoardDevicesYaml(unittest.TestCase):
     """board_devices.yaml — empty / no devices allowed; syntax error aborts."""

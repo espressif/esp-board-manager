@@ -81,6 +81,7 @@ board_peripherals.yaml
        version: <version>
        role: <role>
        format: <format_string>
+       init_skip: false
        config: <configuration>
 
 .. list-table::
@@ -111,6 +112,10 @@ board_peripherals.yaml
      - string
      - 条件必填
      - 数据格式声明，仅在部分外设需要（当前仅 I2S 使用，例如 ``std-out``、``tdm-in``、``pdm-out``）。取值见外设参考。
+   * - ``init_skip``
+     - bool
+     - 可选
+     - 默认 ``false``。为 ``true`` 时，:cpp:func:`esp_board_manager_init` / :cpp:func:`esp_board_periph_init_all` 不会初始化该外设。需要时再调用 :cpp:func:`esp_board_periph_init`，或初始化引用它的设备。详见 :doc:`/programming-guide/runtime-lifecycle`。
    * - ``config``
      - mapping
      - 必填
@@ -227,11 +232,13 @@ sdkconfig.defaults.board 与 Kconfig.projbuild
 board_amend.yaml
 ----------------------------------------
 
-``board_amend.yaml`` 是 amend（overlay）目录的清单文件。它不属于板目录本身，而是放在独立的 overlay 目录中，用于在不修改原开发板的前提下，为目标开发板叠加或覆盖配置。
+``board_amend.yaml`` 可用于生成期配置扩展（amend）或多版本配置（\ ``board_revisions``\ ）。两种用途使用不同的清单字段。
 
-清单通过 ``apply:`` 显式列出要叠加的片段，可包含 ``board_devices.yaml`` / ``board_peripherals.yaml`` 片段、``sdkconfig.defaults.board``、``Kconfig.projbuild`` 以及 ``.c`` 源文件；只有列在 ``apply:`` 中的文件才会参与合并。
+用于生成期配置扩展（amend）时，通过 ``apply:`` 显式列出要合并的片段，用于定制配置、适配子板或追加可复用模块。清单可包含 ``board_devices.yaml`` / ``board_peripherals.yaml`` 片段、``sdkconfig.defaults.board``、``Kconfig.projbuild`` 以及 ``.c`` 源文件；只有列在 ``apply:`` 中的文件才会参与合并。
 
 该 overlay 目录通过 ``-a/--amend`` 显式指定，或由 auto-amend 按板名自动发现。amend 的目录结构、``apply:`` 语义、覆盖规则与用法示例见 :doc:`/create-board/amend`。
+
+完整开发板目录根下的 ``board_amend.yaml`` 只声明 ``board_revisions:``，不声明 ``apply:``，用于生成多版本配置。基础配置和各版本差异在同一固件中共存，由板级代码在运行时选择应用。独立 amend 目录的 ``apply:`` 仍可扩展基础配置及所有版本。多版本配置的用法见 :ref:`board-revisions-runtime`。
 
 板级 C 扩展函数与 custom 自定义设备
 --------------------------------------------------
@@ -277,6 +284,7 @@ YAML 描述总线、引脚、时序参数和组件依赖，但不会替代芯片
 
 ``setup_device.c`` 是板级扩展函数的推荐文件名。BMGR 会递归扫描开发板目录中的 C、C++ 和汇编源文件，并将其加入生成组件；因此扩展函数也可以放在其他参与扫描的板级源文件中。
 
+无法用第二份 YAML 板级描述表达的硬件版本，可在板级源文件（常见为 ``setup_device.c``）中实现 :cpp:func:`esp_board_runtime_pre_init`。manager 在首次准备板级资源时自动调用该 hook；hook 可以修改可写表、调用 ``override_config`` / ``set_ops``，也可以初始化临时资源。hook 必须自行反初始化失败路径上已创建的硬件资源；prepare 的表与覆盖回滚不会自动释放硬件。详见 :doc:`/programming-guide/runtime-lifecycle` 与 :doc:`/programming-guide/advanced-runtime`。
 
 为便于下游工程通过 ``-a/--amend`` 替换开发板的默认行为，或通过 ``gen_skip`` 关闭某个设备，板级源码应遵循以下写法：
 

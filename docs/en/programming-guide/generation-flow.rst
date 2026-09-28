@@ -8,7 +8,7 @@ Before compilation, BMGR parses the board's YAML description into a set of expli
 When running ``idf.py bmgr -b <board>``, BMGR performs the following steps in order:
 
 1. Scans board directories, collecting candidate boards from the default directory, custom directory, and component directories.
-2. Determines the currently selected board based on the command-line arguments (name or index).
+2. Determines the currently selected board based on the command-line arguments (name or index). ``-c "path_a;path_b"`` scans each root in order; a bare ``-b board_name`` selects the last scanned match. ``-l`` lists every same-named board and groups customer boards by ``<root-basename>`` or ``<root-basename>/<relative-parent>``; when several ``-c`` roots share a source label, the list header appends the root path relative to the project (that suffix is not a filter token). Use ``-b INDEX``, ``-b source/board_name``, or ``-b /path/to/board`` to pick a specific record; BMGR errors instead of guessing when a qualified name still matches more than one board.
 3. Locates the board's ``board_peripherals.yaml``, ``board_devices.yaml``, ``board_info.yaml``, ``sdkconfig.defaults.board``, and ``Kconfig.projbuild``.
 4. Parses peripherals and devices, generating corresponding configuration structures, handle tables, and board-level metadata.
 5. Validates the selected board configuration, including SoC capabilities, hardware limits, I/O validity, and I/O conflicts.

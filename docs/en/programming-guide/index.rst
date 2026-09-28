@@ -13,5 +13,6 @@ This chapter explains the working model of BMGR: how board-level YAML is transfo
    board-directory
    yaml-rules
    generation-flow
+   config-overrides
    runtime-lifecycle
    advanced-runtime

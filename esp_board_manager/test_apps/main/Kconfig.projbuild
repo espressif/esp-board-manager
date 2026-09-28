@@ -1,5 +1,14 @@
 menu "Board Manager Test App"
 
+    config BMGR_TEST_RUNTIME_C_NODES
+        bool "Enable S31 runtime C-node bring-up case"
+        depends on IDF_TARGET_ESP32S31 && ESP_BOARD_MANAGER_WRITABLE_TABLES
+        default n
+        help
+            Adds test-only prepare hooks for C-defined device/peripheral
+            additions, removals and replacements. Reserve one extra device
+            and peripheral table entry for the add case.
+
     menu "Device/Peripheral name overrides"
         comment "Override the names the test cases initialize and look up."
         comment "Leave at the default to use the conventional board manager name."

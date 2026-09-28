@@ -121,6 +121,38 @@ def test_amend_gen_skip_drops_base_device(bmgr_root, tmp_path):
     )
 
 
+def _periph_desc_block(content: str, name: str) -> str:
+    marker = f'.name = "{name}",'
+    idx = content.find(marker)
+    assert idx >= 0, f'{name} not found in generated peripherals:\n{content}'
+    start = content.rfind('{', 0, idx)
+    end = content.find('},', idx)
+    assert start >= 0 and end > start, f'could not bound descriptor for {name}'
+    return content[start:end]
+
+
+def test_amend_peripheral_init_skip_emitted_in_generated_c(bmgr_root, tmp_path):
+    """Setting ``init_skip: true`` on a base peripheral must emit
+    ``.init_skip = true`` in the generated descriptor. Other peripherals
+    stay at the default ``false``. The descriptor remains generated so
+    ``esp_board_periph_init(name)`` can still initialize it later.
+    """
+    gen_dir, _ = _run_fixture_board(
+        bmgr_root, tmp_path,
+        'test_apps/components/test_amend_features/amend_init_skip_periph',
+    )
+
+    periph_content = (gen_dir / 'gen_board_periph_config.c').read_text(encoding='utf-8')
+    skipped = _periph_desc_block(periph_content, 'gpio_boot_button')
+    kept = _periph_desc_block(periph_content, 'gpio_status_led')
+    assert '.init_skip = true' in skipped, (
+        f'gpio_boot_button must skip auto-init, got:\n{skipped}'
+    )
+    assert '.init_skip = false' in kept, (
+        f'gpio_status_led must keep default auto-init, got:\n{kept}'
+    )
+
+
 def test_amend_basic_yaml_merge(bmgr_root, tmp_path):
     """Single-YAML amend tweaks an existing peripheral's pin/default_level."""
     gen_dir, _ = _run_fixture_board(

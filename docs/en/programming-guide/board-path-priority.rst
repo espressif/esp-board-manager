@@ -23,7 +23,15 @@ Run ``idf.py bmgr -l`` to list all boards recognized in the current project alon
 
 .. note::
 
-   The output order of ``idf.py bmgr -l`` depends on the board sources visible to the current project, dependency versions, and custom board paths. Board lists and indexes shown in documentation or examples are for reference only. Use the actual output from the current project when selecting a board. In CI scripts, use the board name directly instead of a list index.
+   The output order of ``idf.py bmgr -l`` depends on the board sources visible to the current project, dependency versions, and custom board paths. Board lists and indexes shown in documentation or examples are for reference only. Use the actual output from the current project when selecting a board. In CI scripts, use the board name directly instead of a list index. When same-named boards exist, a bare board name passed to ``-b`` selects the highest-priority match (the last scanned record of that name).
+
+Listing and Selecting Boards
+------------------------------
+
+- ``-c "path_a;path_b"`` scans each root in order. A bare ``-b board_name`` selects the last scanned board with that name.
+- ``-l`` lists every same-named board. Customer groups are labeled ``<root-basename>`` or ``<root-basename>/<relative-parent>``.
+- When several ``-c`` roots produce the same source label, the list header appends the root path relative to the project. That suffix is not a filter token.
+- ``-b INDEX``, ``-b source/board_name``, and ``-b /path/to/board`` select a specific record. If a qualified name still matches more than one board, BMGR reports an error instead of guessing.
 
 Selecting a Board by Name: ``-b <name>``
 -----------------------------------------

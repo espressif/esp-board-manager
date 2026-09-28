@@ -81,6 +81,7 @@ The basic structure of a peripheral entry:
        version: <version>
        role: <role>
        format: <format_string>
+       init_skip: false
        config: <configuration>
 
 .. list-table::
@@ -111,6 +112,10 @@ The basic structure of a peripheral entry:
      - string
      - Conditional
      - Data format declaration; required only for certain peripherals (currently only I2S, for example ``std-out``, ``tdm-in``, ``pdm-out``). See the peripheral reference for valid values.
+   * - ``init_skip``
+     - bool
+     - No
+     - Defaults to ``false``. When ``true``, :cpp:func:`esp_board_manager_init` / :cpp:func:`esp_board_periph_init_all` does not initialize this peripheral. Call :cpp:func:`esp_board_periph_init` later, or initialize a device that references it. See :doc:`/programming-guide/runtime-lifecycle`.
    * - ``config``
      - mapping
      - Yes
@@ -227,11 +232,14 @@ For how these two files are merged during generation, their override precedence,
 ``board_amend.yaml``
 --------------------
 
-``board_amend.yaml`` is the manifest file of an amend (overlay) directory. It is not part of the board directory itself; it lives in a separate overlay directory and is used to append to or override a target board's configuration without modifying the original board.
+``board_amend.yaml`` can describe generation-time configuration extensions (amend) or multi-revision configuration (``board_revisions``). The two uses have different manifest fields.
 
-The manifest explicitly lists the fragments to overlay under ``apply:``, which may include ``board_devices.yaml`` / ``board_peripherals.yaml`` fragments, ``sdkconfig.defaults.board``, ``Kconfig.projbuild``, and ``.c`` source files; only files listed under ``apply:`` participate in the merge.
+
+When the ``board_amend.yaml`` used for generation-time configuration extensions (amend), the ``apply:`` field explicitly lists the fragments to be merged, allowing users to customize configurations, adapt sub-boards, or add reusable modules. It may include ``board_devices.yaml`` / ``board_peripherals.yaml`` fragments, ``sdkconfig.defaults.board``, ``Kconfig.projbuild``, and ``.c`` source files; only files listed under ``apply:`` participate in the merge.
 
 The overlay directory is selected explicitly with ``-a/--amend`` or discovered automatically by name via auto-amend. For the amend directory structure, ``apply:`` semantics, override rules, and usage examples, see :doc:`/create-board/amend`.
+
+The ``board_amend.yaml`` at the root of a full board directory declares only ``board_revisions:``, not ``apply:``, to generate multi-revision configuration. The base configuration and revision-specific differences coexist in one firmware image, and board code selects and applies a revision at runtime. The ``apply:`` list in a separate amend directory can still extend the base and all revisions. See :ref:`board-revisions-runtime` for multi-revision configuration.
 
 Board-Level C Extension Functions and ``custom`` Devices
 --------------------------------------------------------
@@ -276,6 +284,8 @@ Factory functions entered through a fixed function signature must have external 
 ``dependencies`` only adds the chip-driver component to the build; it does not generate these functions. A factory function must call the chip-driver API corresponding to the YAML ``chip`` and ``dependencies``.
 
 ``setup_device.c`` is the recommended filename for board-level extension functions. BMGR recursively scans C, C++, and assembly source files in the board directory and adds them to the generated component, so an extension function can also reside in another scanned board source file.
+
+Hardware revisions that cannot be expressed as a second YAML board may implement :cpp:func:`esp_board_runtime_pre_init` in board sources (often ``setup_device.c``). The manager runs that hook during the first prepare. The hook may edit writable tables, call ``override_config`` / ``set_ops``, and initialize temporary resources. It must deinitialize hardware resources it created on a failure path; prepare rollback of tables and overrides does not automatically release hardware. See :doc:`/programming-guide/runtime-lifecycle` and :doc:`/programming-guide/advanced-runtime`.
 
 To allow downstream projects to override the board's default behavior via ``-a/--amend``, or to disable a device with ``gen_skip``, board-level source should follow these conventions:
 

@@ -132,3 +132,42 @@ class TestListWithOtherOptions:
         result = run_bmgr_cmd(['-l', '-c', 'NONE'])
         assert result.returncode == 0
         assert 'Board Components:' in result.stdout
+
+
+class TestListBoardsFilter:
+    """Optional -l FILTER matches chip or component and keeps global indices."""
+
+    def test_filter_by_chip_keeps_global_indices(self, run_bmgr_cmd):
+        full = run_bmgr_cmd(['-l'])
+        filtered = run_bmgr_cmd(['-l', 'esp32s3'])
+        assert filtered.returncode == 0
+        assert 'filter: esp32s3' in filtered.stdout
+        assert 'global total:' in filtered.stdout
+
+        full_entries = dict(re.findall(r'\[(\d+)\]\s+(\S+)', full.stdout))
+        filtered_entries = dict(re.findall(r'\[(\d+)\]\s+(\S+)', filtered.stdout))
+        assert filtered_entries
+        for idx, name in filtered_entries.items():
+            assert full_entries[idx] == name
+
+    def test_filter_by_component_short_name(self, run_bmgr_cmd):
+        result = run_bmgr_cmd(['-l', 'esp_boards'])
+        assert result.returncode == 0
+        assert 'espressif/esp_boards:' in result.stdout
+        assert 'espressif/m5stack_boards:' not in result.stdout
+
+    def test_unknown_filter_fails(self, run_bmgr_cmd):
+        result = run_bmgr_cmd(['-l', 'esp32s33'], check=False)
+        assert result.returncode != 0
+        combined = result.stdout + result.stderr
+        assert 'Unknown board list filter' in combined
+        assert 'Available chips:' in combined
+
+    def test_filtered_global_index_selects_same_board(self, run_bmgr_cmd):
+        listed = run_bmgr_cmd(['-l', 'esp32s3'])
+        match = re.search(r'\[(\d+)\]\s+(\S+)', listed.stdout)
+        assert match
+        idx, name = match.group(1), match.group(2)
+        selected = run_bmgr_cmd(['-b', idx, '--kconfig-only'])
+        assert selected.returncode == 0
+        assert name in selected.stdout

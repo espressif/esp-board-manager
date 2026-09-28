@@ -1,9 +1,9 @@
-使用 -a/--amend
+生成期配置扩展（amend）
 ==========================================================================
 
 :link_to_translation:`en:[English]`
 
-在已有开发板上做少量差异（例如修改某个引脚、替换触摸芯片）或是需要追加开发板默认未包含的设备时，无需复制整份开发板目录。准备一个 **amend 目录**，其中放置一份 ``board_amend.yaml`` 清单，再通过 ``-a/--amend <dir>`` 在生成时将变更打补丁到已选开发板之上：
+生成期配置扩展（amend）将配置片段合并到所选开发板的基础配置中，用于修改已有字段、追加设备或外设，以及引入源码和构建配置。它可用于项目配置定制、子板适配和跨开发板复用功能模块，无需复制整份开发板目录。准备一个 **amend 目录**，其中放置 ``board_amend.yaml`` 清单，再通过 ``-a/--amend <dir>`` 在生成时合并所需片段：
 
 .. code-block:: bash
 
@@ -16,7 +16,7 @@
 
 ``-a`` 接受绝对路径或相对路径；相对路径以当前工作目录（``cwd``）为基准。 **若 amend 目录放在所选开发板目录下，也可以只传入子目录名，BMGR 会在该开发板目录内查找对应子目录。**
 
-同一主板的不同子板、屏幕模组或小范围硬件变体，建议统一放在该开发板目录下（例如 ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``），使用时只传入子目录名，不受工程所在路径的影响。
+同一主板的不同子板、屏幕模组或小范围硬件版本，建议统一放在该开发板目录下（例如 ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``），使用时只传入子目录名，不受工程所在路径的影响。
 
 .. note::
 
@@ -56,6 +56,11 @@ amend 根下的文件（包括 ``sdkconfig.defaults.board``、``Kconfig.projbuil
 
 无论哪种写法，均不支持目录项。子目录下的文件必须按文件名完整展开列出（``pack/extra.yaml``，而非 ``pack``）。
 
+多版本配置与运行时选择
+--------------------------------------------------
+
+amend 的合并结果在生成时确定。如果需要让同一板卡的多份硬件版本配置在同一固件中共存，可使用多版本配置（\ ``board_revisions``\ ）：在完整板目录中维护各版本的 YAML 差异，在 ``pre-init`` hook 函数中识别硬件版本并调用生成的 apply API。具体用法见 :ref:`board-revisions-runtime`。
+
 YAML 片段合并规则
 ----------------------
 
@@ -91,6 +96,8 @@ YAML 片段合并规则
 ------------------
 
 ``apply:`` 支持相对路径，以 ``board_amend.yaml`` 所在目录为基准，可以跳出 amend 目录引用工程其他位置的文件。利用这个特性，可以将通用的外设和设备配置拆成独立的 YAML 与源码片段，集中存放在共享目录下，再由不同开发板的 amend 按需引用。这相当于用可复用的功能模块组合出完整的板级配置。
+
+实际示例可参考 `心率检测示例中的 MAX30102 模块 <https://github.com/espressif/esp-health/tree/main/esp_health/examples/heart_rate_detect/components/amend/max30102>`_。该 amend 引用传感器 YAML、驱动和初始化源码，复用目标板已有的 I2C 总线，并追加 INT GPIO 与自定义设备；接入其他开发板时需调整实际接线和总线绑定。
 
 例如将气体传感器的适配拆成独立片段，放在工程共享目录：
 
@@ -133,7 +140,24 @@ YAML 片段合并规则
 
 除了显式 ``-a``，BMGR 还支持\ **按开发板名自动发现并应用 amend**\ 。在扫描路径下（包括 ``-c/--customer-path`` 指定的目录），若存在一个\ **目录名与所选开发板同名、包含** ``board_amend.yaml`` **、且本身不是完整开发板目录**\ 的目录，BMGR 会自动把它作为该板的 amend 应用，无需传 ``-a``。
 
-约定的目录结构为 ``<扫描根>/<开发板名>/board_amend.yaml``：
+约定的目录结构为 ``<扫描根>/<开发板名>/board_amend.yaml``。如果 overlay 放在工程默认扫描的 ``components/`` 下，例如 ``components/board_overlays/``，只需选择开发板即可，无需 ``-c``：
+
+.. code-block:: text
+
+   components/
+     board_overlays/
+       esp32_s3_box_3/
+         board_amend.yaml
+         box_tweak.yaml
+       esp32_p4_function_ev_board/
+         board_amend.yaml
+         p4_tweak.yaml
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3
+
+如果 overlay 根目录位于工程默认扫描路径之外，则通过 ``-c`` 指定该根目录：
 
 .. code-block:: text
 
@@ -179,7 +203,14 @@ YAML 片段合并规则
      esp32_s3_box_3/board_amend.yaml                # box 专属补丁
      esp32_p4_function_ev_board/board_amend.yaml    # p4 专属补丁
 
-然后所有开发板使用\ **相同**\ 的命令，只改 ``-b`` 的板名，``-c`` 始终指向同一个 overlay 根，BMGR 会按板名自动匹配并应用对应的 amend：
+然后所有开发板使用\ **相同**\ 的命令，只改 ``-b`` 的板名。overlay 放在 ``components/`` 下时，无需 ``-c``；放在其他扫描根之外时，``-c`` 始终指向同一个 overlay 根。BMGR 会按板名自动匹配并应用对应的 amend：
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3
+   idf.py bmgr -b esp32_p4_function_ev_board
+
+若使用外部 overlay 根，则命令为：
 
 .. code-block:: bash
 

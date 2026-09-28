@@ -1,14 +1,27 @@
-# Devices Configuration for ESP-Mosaico
+# Devices Configuration for ESP-Mosaico v1.0
 #
-# Source: ESP-Mosaico user guide (esp-dev-kits)
+# Pin values here are the v1.0 layout. v1.2 changes are declared in
+# board_revision_diff_v1_2.yaml. Codec 3V3 is gated by GPIO56 on v1.0 only.
+#
+# Source: ESP-Mosaico user guide (esp-dev-kits) and esp-mosaico-bsp.
 # Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s31/esp-mosaico/user_guide.html
 # Reference: https://dl.espressif.com/AE/SCH_SCH_ESP-Mosaico_CoreBoard_V1_0_2026-08-18.pdf
 #
 # Audio: one physical ES8311 (mono codec) behind an NS4150B PA, split into
 # audio_dac / audio_adc per the dev_audio_codec model (same I2C address,
-# same I2S port). Codec 3V3 is gated by GPIO56 (audio_power).
+# same I2S port).
 #
 devices:
+  # Type-C USB HS CDC console. init_skip: the component wraps app_main and
+  # calls bsp_usb_console_init() before the application starts.
+  - name: usb_hs_console
+    type: custom
+    version: default
+    init_skip: true
+    dependencies:
+      usb_hs_console:
+        path: "${BOARD_PATH}/usb_hs_console"
+
   # ---------- Codec power gate ----------
   - name: audio_power
     type: power_ctrl
@@ -88,11 +101,18 @@ devices:
         address: 0x32
         frequency: 400000
 
+  # CO5300 3V3 rail. Active-low on GPIO60; the panel has no backlight GPIO.
+  - name: lcd_power_ctrl
+    type: power_ctrl
+    sub_type: custom
+
   # ---------- 480x480 CO5300 AMOLED panel (QSPI) ----------
   - name: display_lcd
     chip: co5300
     type: display_lcd
     sub_type: spi
+    power_ctrl_device: lcd_power_ctrl
+    depends_on: lcd_power_ctrl
     version: default
     dependencies:
       espressif/esp_lcd_co5300: "*"
@@ -109,7 +129,7 @@ devices:
         flags:
           quad_mode: true
       lcd_panel_config:
-        reset_gpio_num: 42
+        reset_gpio_num: 42      # v1.0. v1.2 hook swaps this with SPI SCLK (44)
         bits_per_pixel: 16
         vendor_config: NULL
     peripherals:
@@ -179,3 +199,38 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_boot_button
+
+  # Left-slot DVP camera. The module has no EEPROM address-select pin;
+  # GPIO14 is data bit 4. The official driver accepts the left slot only.
+  # SCCB uses the v1.0 main I2C bus; v1.2 binds it to i2c_subboard.
+  # GPIO33 shares a pad with USB Serial/JTAG, and GPIO34 controls the module
+  # flash LED; board_runtime.c handles both during camera init/deinit.
+  - name: camera
+    type: camera
+    sub_type: dvp
+    version: default
+    init_skip: true
+    power_ctrl_device: lcd_power_ctrl
+    depends_on: lcd_power_ctrl
+    config:
+      dvp_config:
+        reset_io: 53
+        pwdn_io: 48
+        vsync_io: 55
+        data_width: CAM_CTLR_DATA_WIDTH_8
+        de_io: 19
+        pclk_io: 17
+        xclk_io: -1
+        xclk_freq: 0
+        data_io:
+          data_io_0: 16
+          data_io_1: 15
+          data_io_2: 33
+          data_io_3: 4
+          data_io_4: 14
+          data_io_5: 12
+          data_io_6: 18
+          data_io_7: 13
+    peripherals:
+      - i2c_name: i2c_master
+        frequency: 100000

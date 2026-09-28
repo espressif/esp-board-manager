@@ -450,7 +450,7 @@ class PeripheralSchemaValidator(LoggerMixin):
         """
         issues = []
         allowed_fields = {
-            'name', 'type', 'config', 'role', 'format', 'version', 'gen_skip'
+            'name', 'type', 'config', 'role', 'format', 'version', 'gen_skip', 'init_skip'
         }
 
         for key in periph_dict.keys():

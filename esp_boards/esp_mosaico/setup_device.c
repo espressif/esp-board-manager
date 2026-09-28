@@ -51,7 +51,7 @@
 #endif  /* __has_include(<esp_lcd_touch_cst9217.h>) */
 #include "esp_log.h"
 
-static const char *TAG = "ESP_MOSAICO_SETUP_DEVICE";
+static const char *TAG = "ESP_MOSAICO_SETUP";
 
 #if defined(HAS_CO5300)
 __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel)

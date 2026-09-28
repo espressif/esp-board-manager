@@ -1,0 +1,5 @@
+version: "1.0"
+description: ESP-Mosaico hardware revisions
+board_revisions:
+  v1_2:
+    - board_revision_diff_v1_2.yaml

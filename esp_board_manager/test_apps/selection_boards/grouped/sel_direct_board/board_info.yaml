@@ -1,0 +1,4 @@
+board: sel_direct_board
+chip: esp32c3
+version: 1.0.0
+description: Empty board for selection listing tests
