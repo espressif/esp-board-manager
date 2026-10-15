@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0~1
+
+### Bug Fixes
+
+- Removed camera sensor format, gain, statistics, and IPA configuration defaults from board sdkconfig defaults, retaining sensor enable and auto-detection options so applications can select their own camera settings.
+- `esp32_s3_korvo_2_3` now uses the SC101IOT driver default of UYVY 1280x720 at 15 fps; applications requiring UYVY 640x480 at 15 fps must enable and select that mode explicitly.
+
 ## 0.7.0
 
 ### Features
