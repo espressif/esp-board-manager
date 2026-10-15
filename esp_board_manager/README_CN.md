@@ -113,11 +113,15 @@ espressif/esp_board_manager:
 
 ESP Board Manager 支持 IDF action 扩展，提供与 ESP-IDF 构建系统的无缝集成。请优先使用 **`idf.py bmgr`**，选项与此前一致；**`idf.py gen-bmgr-config`** 仍可作为兼容别名。请勿在同一行 `idf.py` 中混用 `bmgr` 与 `gen-bmgr-config`，且板子名称或索引须通过 **`-b`** 传入（不能作为 action 后的裸参数）。
 
-您可以使用列表选项验证组件路径配置是否正确，并打印可用的板子：
+您可以使用列表选项验证组件路径配置是否正确，并打印可用的板子。可选过滤词匹配 `board_info.yaml` 中的 `chip`，或板卡组件名（完整名 `espressif/esp_boards` 或短名 `esp_boards`）：
 
 ```bash
 # 列出所有可用板子
 idf.py bmgr -l
+
+# 按 chip 或板卡组件筛选
+idf.py bmgr -l esp32s3
+idf.py bmgr -l esp_boards
 ```
 
 默认会从以下路径自动扫描开发板：
@@ -126,6 +130,8 @@ idf.py bmgr -l
 - 工程 `components/` 目录；同名时优先于 `managed_components`
 - `main/idf_component.yml` 文件中指定的板子组件，包括通过 `override_path/path` 指定的本地板子组件
 - `-c` 指定的目录
+
+Auto-amend 也会在默认扫描路径（包括工程 `components/`、managed board 组件和 `-c` 路径）中查找与所选板名同名且包含 `board_amend.yaml` 的目录。因此，将 overlay 放在 `components/board_overlays/<板名>/` 后，执行 `idf.py bmgr -b <板名>` 即可自动应用，无需 `-c`。overlay 根位于这些扫描路径之外时，再用 `-c <overlay根目录>` 指定。目录需包含 `board_amend.yaml`，且不能同时是完整开发板目录。
 
 然后通过名称或索引选择您的目标板子：
 
@@ -335,9 +341,8 @@ void app_main(void)
 -b, --board BOARD                # 板子名称、索引或板子目录路径
 -c, --customer-path PATH         # 自定义板子目录（单个或多个）
 -a, --amend DIR                  # 在已选板子之上应用一份 amend 目录（必须包含 board_amend.yaml）
--l, --list-boards                # 列出所有可用板子并退出
+-l, --list-boards [FILTER]       # 列出板子。可选 FILTER 匹配 chip 或板卡组件名
 -n, --new-board ARG              # 创建新板子（仅 idf.py action 支持）
-[BOARD]                          # 直接使用板子名称或索引（仅独立脚本支持）
 ```
 
 **生成模式：**
@@ -369,6 +374,11 @@ void app_main(void)
 ```bash
 # 列出可用板子
 idf.py bmgr -l
+idf.py bmgr -l esp32s3
+idf.py bmgr -l esp_boards
+
+# 多个 -c 根目录；来源标签为 <根目录名>/<相对父目录>，也可按末段筛选
+idf.py bmgr -c "./boards_a;./boards_b" -l espressif
 
 # 指定板子（名称或索引）
 idf.py bmgr -b esp_vocat_1_0
@@ -376,6 +386,7 @@ idf.py bmgr -b 1
 
 # 使用自定义板子
 idf.py bmgr -b my_board -c /path/to/custom/boards
+idf.py bmgr -c ./boards -b esp32_S3_DevKitC_1
 
 # 基于已有板子做局部覆盖或扩展（amend 目录里必须有 board_amend.yaml）
 idf.py bmgr -b esp32_s3_korvo_2_3 -a path/to/my_amend
@@ -406,6 +417,8 @@ idf.py bmgr -x
 ```bash
 # 列出可用板子
 python gen_bmgr_config_codes.py -l
+python gen_bmgr_config_codes.py -l esp32s3
+python gen_bmgr_config_codes.py -l esp_boards
 
 # 使用 -b 选项指定板子（名称或索引）
 python gen_bmgr_config_codes.py -b esp_vocat_1_0
@@ -461,6 +474,30 @@ ESP Board Manager 使用 `gen_bmgr_config_codes.py` 进行代码生成，它在�
 `esp_board_manager` 支持模块化定制自己的开发板，具体的使用方法请参考：[创建开发板指南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/create-board/index.html)
 
 `esp_board_manager` 提供了在线配置工具 [乐鑫板卡管理器](https://board-manager.espressif.com/)，可以在浏览器中创建开发板配置、导出板卡配置文件，具体用法请参考：[使用网页创建开发板](https://preview-docs.espressif.com/projects/esp-board-manager/zh_CN/feat-bmgr_0_6_0/create-board/web-create.html)
+
+## 配置扩展与运行时覆盖
+
+BMGR 支持以下配置机制：
+
+- **生成期配置扩展（amend）**：通过 `apply:` 合并配置片段，覆盖已有字段、追加设备或外设，并引入源码和构建配置。可用于项目配置定制、子板适配和跨开发板复用功能模块，合并结果在生成时确定。
+- **多版本配置（board revisions）**：通过 `board_revisions:` 生成基础配置和各版本差异，在同一固件中共存，由板级代码在运行时选择应用。
+- **运行时覆盖**：通过 `override_config` / `set_ops` 覆盖已有资源的 config/ops；需要维护运行时资源节点时，可使用可写 descriptor 表。
+
+机制选择与使用场景见[配置扩展与运行时覆盖](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/programming-guide/config-overrides.html)。
+
+### 运行时覆盖分层
+
+设备与外设的有效 config / ops 优先级为 **YAML 生成配置 < BOARD < APP**：
+
+- **APP** 显式调用 `override_config` / `set_ops` / `restore_config` / `restore_ops`。
+- **BOARD** 来自板级 `esp_board_runtime_pre_init()` 强实现中的覆盖 API；manager 在首次 prepare 时自动调用。hook 可应用覆盖并按需要初始化资源；若返回失败，必须先自行反初始化创建的硬件资源。最终应用只能有一个强定义，两个会链接失败。prepare / init 须在 FreeRTOS 任务中运行。
+- 多版本配置 `board_revisions` 在生成期定义版本差异，运行时由 hook 调用生成的 `gen_board_revision_apply_<name>()` 更新基础 descriptor 表，不属于 BOARD 覆盖层。仅声明 revision 而未调用 apply 时，继续使用 base 配置；`<name>` 是 `board_revisions` 下的版本键。
+- `override_config` 是顶层 `memcpy`；嵌套指针仍指向调用方内存。先复制当前 descriptor 配置、改字段，再 override。
+- `deinit` 不清 BOARD 或 APP 覆盖。`restore_config` / `restore_ops` 只清对应的 APP 覆盖，分别回退到 BOARD 覆盖或当前 descriptor 配置、匹配的类型/角色操作。恢复不会撤销 revision apply 或 descriptor 修改。仅 hook 失败回滚时清除未被活动资源使用的 BOARD 覆盖。
+- 目标名称 `ref_count != 0` 时，再对该名称 override / set_ops / restore 返回 `ESP_ERR_INVALID_STATE`。尚未 init 时重复调用替换；deinit 到 0 后可再改。
+- 遗留 / 弃用 API：`esp_board_periph_init_custom` 与 `esp_board_manager_register_device_handle`。支持的定制场景请使用 `set_ops` 或板级 pre-init hook。
+
+完整说明见：[运行时生命周期](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/programming-guide/runtime-lifecycle.html) 与 [进阶运行时能力](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/programming-guide/advanced-runtime.html)。
 
 ## 路线图
 

@@ -1,0 +1,46 @@
+version: 1.0.0
+
+peripherals:
+  - name: i2c_master
+    config:
+      pins: {sda: 56, scl: 3}
+
+  - name: i2c_subboard
+    type: i2c
+    role: master
+    config:
+      port: 1
+      pins: {sda: 0, scl: 1}
+
+  - name: spi_display
+    config:
+      spi_bus_config: {sclk_io_num: 42}
+
+  - name: gpio_power_audio
+    unused: true
+
+  - name: gpio_status_led
+    unused: true
+
+devices:
+  - name: camera
+    depends_on: lcd_power_ctrl
+    peripherals:
+      - i2c_name: i2c_subboard
+
+  - name: audio_power
+    unused: true
+
+  - name: status_led
+    unused: true
+
+  - name: audio_dac
+    power_ctrl_device: null
+
+  - name: audio_adc
+    power_ctrl_device: null
+
+  - name: display_lcd
+    depends_on: lcd_power_ctrl
+    config:
+      lcd_panel_config: {reset_gpio_num: 44}

@@ -773,7 +773,7 @@ class SDKConfigManager(LoggerMixin):
                 with open(kconfig_in_path, 'r', encoding='utf-8') as f:
                     for line in f:
                         m = re.match(r'^\s*config\s+(ESP_BOARD_[A-Z0-9_]+)\s*$', line)
-                        if m:
+                        if m and m.group(1) != 'ESP_BOARD_MANAGER_WRITABLE_TABLES':
                             symbols.add(m.group(1))
             except Exception as e:
                 self.logger.warning(f'⚠️  Failed to parse Kconfig.in for symbols: {e}')
@@ -788,7 +788,7 @@ class SDKConfigManager(LoggerMixin):
                 with open(projbuild_path, 'r', encoding='utf-8') as f:
                     for line in f:
                         m = re.match(r'^\s*config\s+(ESP_BOARD_[A-Z0-9_]+)\s*$', line)
-                        if m:
+                        if m and m.group(1) != 'ESP_BOARD_MANAGER_WRITABLE_TABLES':
                             symbols.add(m.group(1))
             except Exception as e:
                 self.logger.warning(f'⚠️  Failed to parse Kconfig.projbuild for symbols: {e}')

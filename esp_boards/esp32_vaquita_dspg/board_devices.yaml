@@ -13,12 +13,14 @@
 #
 devices:
   # Boot button. Schematic net: Boot_IO0 -> GPIO0 via R12.
-  # GPIO0 is also the I2S MCLK pin. Do not use this button together with
-  # the I2S audio interface.
+  # GPIO0 is also the I2S MCLK pin. Skip auto-init so init_all does not
+  # claim GPIO0 while I2S audio is in use. Init this device by name only
+  # when the I2S audio interface is unused.
   - name: boot_button
     type: button
     sub_type: gpio
     version: default
+    init_skip: true
     config:
       active_level: 0
       enable_power_save: false

@@ -26,6 +26,7 @@ be listed explicitly. See ``docs/zh_CN/create-board/amend.rst`` for the full spe
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -86,6 +87,8 @@ class AmendPlan:
     fragments: List[AmendFragment] = field(default_factory=list)
     description: str = ''                        # manifest-level documentation
     version: str = ''                            # manifest schema version string
+    board_revisions: Dict[str, List['AmendFragment']] = field(default_factory=dict)
+    revision_name: Optional[str] = None
 
     # ------------------------------------------------------------------ helpers
     def yaml_fragments(self) -> List[AmendFragment]:
@@ -328,11 +331,7 @@ def load_amend_manifest(amend_dir: Path) -> Dict[str, Any]:
 
     data = _load_manifest_data(manifest_path)
 
-    apply_list = data.get('apply')
-    if apply_list is None:
-        raise AmendError(
-            f"Amend manifest {manifest_path} is missing required 'apply' list"
-        )
+    apply_list = data.get('apply', [])
     if not isinstance(apply_list, list):
         raise AmendError(
             f"Amend manifest {manifest_path}: 'apply' must be a list, "
@@ -349,6 +348,24 @@ def load_amend_manifest(amend_dir: Path) -> Dict[str, Any]:
             raise AmendError(
                 f'Amend manifest {manifest_path}: apply[{idx}] must be a non-empty string'
             )
+
+    board_revisions = data.get('board_revisions', {})
+    if board_revisions is None:
+        board_revisions = {}
+    if not isinstance(board_revisions, dict):
+        raise AmendError(f"Amend manifest {manifest_path}: 'board_revisions' must be a mapping")
+    if not apply_list and not board_revisions:
+        raise AmendError(f"Amend manifest {manifest_path} must define 'apply' or 'board_revisions'")
+    for name, items in board_revisions.items():
+        if not isinstance(name, str) or name == 'base' or not re.fullmatch(r'[a-z0-9_]+', name):
+            raise AmendError(f'Amend manifest {manifest_path}: invalid revision name {name!r}')
+        if not isinstance(items, list) or not items:
+            raise AmendError(f'Amend manifest {manifest_path}: board_revisions.{name} must be a non-empty list')
+        for index, item in enumerate(items):
+            if not isinstance(item, str) or not item.strip():
+                raise AmendError(
+                    f'Amend manifest {manifest_path}: board_revisions.{name}[{index}] must be a non-empty string'
+                )
 
     # Optional fields - light validation only.
     version = data.get('version', '')
@@ -369,6 +386,8 @@ def build_amend_plan(
     amend_dir: Path,
     *,
     project_root: Optional[Path] = None,
+    allow_board_revisions: bool = False,
+    board_manifest: bool = False,
 ) -> AmendPlan:
     """Load the manifest and resolve every fragment into an :class:`AmendPlan`.
 
@@ -394,6 +413,16 @@ def build_amend_plan(
     manifest_path = amend_dir / MANIFEST_FILENAME
 
     manifest_data = load_amend_manifest(amend_dir)
+    if manifest_data.get('board_revisions') and not allow_board_revisions:
+        raise AmendError(
+            f"Application amend manifest {manifest_path} cannot declare 'board_revisions'; "
+            'board_revisions are supported only by the selected board manifest'
+        )
+    if board_manifest and manifest_data.get('apply'):
+        raise AmendError(
+            f"Board manifest {manifest_path} cannot declare 'apply'; "
+            'put board-level YAML directly in the board configuration files'
+        )
 
     plan = AmendPlan(
         amend_dir=amend_dir,
@@ -430,6 +459,12 @@ def build_amend_plan(
             fragment.yaml_data = _load_yaml_fragment(
                 resolved, item_index=idx, raw_item=raw_item
             )
+            for section in ('devices', 'peripherals'):
+                for resource in fragment.yaml_data.get(section, []) or []:
+                    if isinstance(resource, dict) and 'unused' in resource:
+                        raise AmendError(
+                            f'Application amend file {resolved}: unused is supported only in board revisions'
+                        )
 
         _check_portability(
             raw_item=raw_item,
@@ -448,7 +483,50 @@ def build_amend_plan(
             seen_resolved[key] = idx
         plan.fragments.append(fragment)
 
-    _warn_unreferenced_special_files(plan)
+    for revision_name, raw_items in (manifest_data.get('board_revisions') or {}).items():
+        revision_fragments = []
+        for idx, raw_item in enumerate(raw_items):
+            resolved = _resolve_item_path(raw_item, amend_dir)
+            if not resolved.is_file() or resolved.suffix.lower() not in YAML_SUFFIXES:
+                raise AmendError(
+                    f'Board revision {revision_name} item {raw_item!r} must resolve to an existing YAML file'
+                )
+            fragment = AmendFragment(
+                kind=KIND_YAML,
+                resolved_path=resolved,
+                raw_item=raw_item,
+                item_index=idx,
+                yaml_data=_load_yaml_fragment(resolved, item_index=idx, raw_item=raw_item),
+            )
+            # Validate revision-specific resource presence independently of gen_skip.
+            for section in ('devices', 'peripherals'):
+                for resource in fragment.yaml_data.get(section, []) or []:
+                    if not isinstance(resource, dict):
+                        continue
+                    if 'gen_skip' in resource:
+                        raise AmendError(
+                            f'Board revision {revision_name} file {resolved}: '
+                            f'{section} {resource.get("name")!r} gen_skip is not supported; use unused'
+                        )
+                    if 'unused' not in resource:
+                        continue
+                    unused = resource['unused']
+                    if not isinstance(unused, bool):
+                        raise AmendError(
+                            f'Board revision {revision_name} file {resolved}: '
+                            f'{section} {resource.get("name")!r} unused must be a boolean'
+                        )
+            _check_portability(
+                raw_item=raw_item,
+                resolved_path=resolved,
+                amend_dir=amend_dir,
+                project_root=project_root_path,
+            )
+            revision_fragments.append(fragment)
+        plan.board_revisions[revision_name] = revision_fragments
+
+    if not board_manifest:
+        _warn_unreferenced_special_files(plan)
 
     return plan
 
@@ -529,6 +607,38 @@ def merge_amend_plans(
     return merged
 
 
+def build_revision_overlay_plan(
+    revision_name: str,
+    board_plan: AmendPlan,
+    application_plan: Optional[AmendPlan],
+) -> AmendPlan:
+    """Return the YAML overlay for one board revision plus application amendments."""
+    if revision_name not in board_plan.board_revisions:
+        raise AmendError(f'Unknown board revision: {revision_name}')
+
+    fragments = list(board_plan.board_revisions[revision_name])
+    if application_plan is not None:
+        fragments.extend(application_plan.fragments)
+
+    return AmendPlan(
+        amend_dir=board_plan.amend_dir,
+        manifest_path=board_plan.manifest_path,
+        fragments=[
+            AmendFragment(
+                kind=fragment.kind,
+                resolved_path=fragment.resolved_path,
+                raw_item=fragment.raw_item,
+                item_index=index,
+                yaml_data=fragment.yaml_data,
+            )
+            for index, fragment in enumerate(fragments)
+        ],
+        revision_name=revision_name,
+        description=f'board revision {revision_name} with application amend',
+        version=board_plan.version,
+    )
+
+
 # ---------------------------------------------------------------------------
 # YAML merging
 # ---------------------------------------------------------------------------
@@ -599,6 +709,18 @@ def apply_amend_plan_to_yaml(
                 f'   amend applied {frag.resolved_path} '
                 f'(apply[{frag.item_index}]) onto {base_path or "<base>"}'
             )
+
+    if plan.revision_name is not None:
+        # Presence is evaluated after all overlays. Application gen_skip cannot
+        # restore a resource that this hardware revision does not use.
+        for section in ('devices', 'peripherals'):
+            if section in base_data:
+                base_data[section] = [
+                    resource for resource in base_data[section]
+                    if not resource.get('unused', False)
+                ]
+                for resource in base_data[section]:
+                    resource.pop('unused', None)
 
     return base_data
 

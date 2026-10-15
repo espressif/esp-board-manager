@@ -152,8 +152,20 @@ class InjectorTests(unittest.TestCase):
         self.assertIn('-a', names)
         self.assertIn('--amend', names)
         self.assertIn('--skip-sdkconfig-check', names)
+        self.assertIn('-w', names)
+        self.assertIn('--writable', names)
+        self.assertIn('--skip-soc-capability-check', names)
         self.assertNotIn('-o', names)
         self.assertNotIn('--override', names)
+        self.assertEqual(
+            bmgr_placeholder_ext.BMGR_PLACEHOLDER_ARGUMENTS,
+            [
+                {
+                    'names': ['list_filter'],
+                    'required': False,
+                }
+            ],
+        )
 
     def test_placeholder_ext_defines_preflight_level_global_option(self) -> None:
         names = []

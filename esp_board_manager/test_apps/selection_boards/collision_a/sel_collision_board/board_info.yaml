@@ -1,0 +1,4 @@
+board: sel_collision_board
+chip: esp32s3
+version: 1.0.0
+description: Empty board for selection listing tests

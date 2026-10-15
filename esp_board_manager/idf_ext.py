@@ -31,7 +31,12 @@ current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
 from gen_bmgr_config_codes import BoardConfigGenerator, board_directory_from_path, resolve_board_name_or_index
-from generators.config_generator import format_board_groups
+from generators.config_generator import (
+    AmbiguousBoardSelectorError,
+    BoardDirectory,
+    UnknownBoardListFilterError,
+    build_list_board_output,
+)
 from generators.utils.file_utils import (
     ensure_existing_directory,
     normalize_project_dir,
@@ -111,11 +116,13 @@ class BmgrCommandArgs:
     peripherals_only: bool
     devices_only: bool
     kconfig_only: bool
+    writable: bool
     skip_sdkconfig_check: bool
     skip_soc_capability_check: bool
     log_level: str
     clean: bool
     new_board: Optional[str]
+    list_filter: Optional[str] = None
 
 
 BMGR_OPTIONS_REQUIRING_VALUE = frozenset({
@@ -319,7 +326,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             from generators import get_config_generator
             cfg_gen = get_config_generator()(current_dir, project_dir=project_dir)
             all_boards = cfg_gen.scan_board_directories()
-            board_names = set(all_boards.keys())
+            board_names = {info.name for info in all_boards.values()}
         except Exception:
             board_names = set()
 
@@ -445,11 +452,13 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             peripherals_only=kwargs.get('peripherals_only', False),
             devices_only=kwargs.get('devices_only', False),
             kconfig_only=kwargs.get('kconfig_only', False),
+            writable=kwargs.get('writable', False),
             skip_sdkconfig_check=kwargs.get('skip_sdkconfig_check', False),
             skip_soc_capability_check=kwargs.get('skip_soc_capability_check', False),
             log_level=kwargs.get('log_level', 'INFO'),
             clean=kwargs.get('clean', False),
             new_board=kwargs.get('new_board'),
+            list_filter=kwargs.get('list_filter'),
         )
 
     def _set_bmgr_log_level(log_level: str) -> None:
@@ -540,23 +549,36 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
 
         print('✅ Clean operation completed successfully!')
 
-    def _print_grouped_boards(generator: BoardConfigGenerator, customer_path: Optional[str]) -> None:
+    def _print_grouped_boards(
+        generator: BoardConfigGenerator,
+        customer_path: Optional[str],
+        list_filter: Optional[str] = None,
+    ) -> None:
         board_infos = generator.config_generator.scan_board_directories(customer_path)
         if not board_infos:
             print('⚠️  No boards found!')
             return
 
-        print(f'✅ Found {len(board_infos)} board(s):')
+        try:
+            header, lines = build_list_board_output(
+                board_infos,
+                list_filter,
+                generator.config_generator.get_project_root(),
+            )
+        except UnknownBoardListFilterError as e:
+            raise FatalError(str(e))
+
+        print(f'✅ {header}')
         print()
 
-        for line in format_board_groups(board_infos):
+        for line in lines:
             print(f'ℹ️  {line}' if line and not line.startswith(' ') else line)
 
     def _run_list_boards_command(generator: BoardConfigGenerator, command_args: BmgrCommandArgs) -> None:
         print('ESP Board Manager - Board Listing')
         print('=' * 40)
 
-        _print_grouped_boards(generator, command_args.board_customer_path)
+        _print_grouped_boards(generator, command_args.board_customer_path, command_args.list_filter)
         print('✅ Board listing completed!')
 
     def _resolve_requested_board(generator: BoardConfigGenerator, command_args: BmgrCommandArgs) -> Optional[Dict[str, 'BoardDirectory']]:
@@ -567,23 +589,29 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         direct_info = board_directory_from_path(generator, command_args.board_name)
         if direct_info is not None:
             command_args.board_name = direct_info.name
+            generator.selected_board_info = direct_info
             print(f'ℹ️  Resolved board: {direct_info.name}')
-            return {direct_info.name: direct_info}
+            return {direct_info.path: direct_info}
 
         all_boards = generator.config_generator.scan_board_directories(command_args.board_customer_path)
-        resolved_board = resolve_board_name_or_index(
-            command_args.board_name,
-            all_boards,
-            generator,
-            command_args.board_customer_path,
-        )
+        try:
+            resolved_board = resolve_board_name_or_index(
+                command_args.board_name,
+                all_boards,
+                generator,
+                command_args.board_customer_path,
+            )
+        except AmbiguousBoardSelectorError as exc:
+            raise ValueError(str(exc))
         if resolved_board is None:
             if command_args.board_name.isdigit():
                 raise ValueError(f'Board index {command_args.board_name} is out of range (1-{len(all_boards)})')
-            raise ValueError(f'Board "{command_args.board_name}" not found\nAvailable boards: {sorted(all_boards.keys())}')
+            available = sorted({info.name for info in all_boards.values()})
+            raise ValueError(f'Board "{command_args.board_name}" not found\nAvailable boards: {available}')
 
-        command_args.board_name = resolved_board
-        print(f'ℹ️  Resolved board: {resolved_board}')
+        command_args.board_name = resolved_board.name
+        generator.selected_board_info = resolved_board
+        print(f'ℹ️  Resolved board: {resolved_board.name}')
         return all_boards
 
     def _run_generator_command(generator: BoardConfigGenerator, command_args: BmgrCommandArgs, project_dir: str) -> None:
@@ -691,30 +719,51 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
     def esp_bmgr_command_callback(target_name: str, ctx, args, **kwargs) -> None:
         """Shared entry for ``bmgr`` and ``gen-bmgr-config`` (only ``target_name`` differs for help / argv scan)."""
         project_dir = _resolve_project_dir({}, getattr(args, 'project_dir', project_path if project_path else os.getcwd()))
+        list_boards = bool(kwargs.get('list_boards'))
         positional_token = _find_positional_argument_after_command(list(sys.argv), target_name)
-        positional_board = _get_positional_board_candidate(positional_token, project_dir)
-        if kwargs.get('board') is None and positional_board is not None:
-            raise FatalError(
-                f'[Board Manager] Board value "{positional_board}" was passed as a positional argument. '
-                'Use "idf.py bmgr -b <board>" or "idf.py gen-bmgr-config -b <board>".'
-            )
+        list_filter = kwargs.get('list_filter')
+        if list_boards:
+            if not list_filter:
+                list_filter = positional_token
+            kwargs['list_filter'] = list_filter
+        else:
+            positional_board = _get_positional_board_candidate(positional_token, project_dir)
+            if kwargs.get('board') is None and positional_board is not None:
+                raise FatalError(
+                    f'[Board Manager] Board value "{positional_board}" was passed as a positional argument. '
+                    'Use "idf.py bmgr -b <board>" or "idf.py gen-bmgr-config -b <board>".'
+                )
+            if kwargs.get('list_filter'):
+                raise FatalError(
+                    f'[Board Manager] Unexpected positional argument "{kwargs["list_filter"]}". '
+                    'Use --list-boards <filter> to filter boards; run other idf.py actions separately.'
+                )
         _run_bmgr_gen(target_name, ctx, args, **kwargs)
 
     # Define command options
     gen_bmgr_config_options = [
         {
             'names': ['-l', '--list-boards'],
-            'help': 'List all available boards and exit',
+            'help': (
+                'List boards and exit. Optional FILTER matches chip, full source, '
+                'the last source segment, or the compatibility word customer'
+            ),
             'is_flag': True,
         },
         {
             'names': ['-b', '--board'],
-            'help': 'Specify board name, index number, or directory path (absolute or relative)',
+            'help': (
+                'Board name, global index, source/board_name, or board directory path '
+                '(absolute or relative)'
+            ),
             'type': str,
         },
         {
             'names': ['-c', '--customer-path'],
-            'help': 'Path to custom boards directory (Leave unset to skip)',
+            'help': (
+                "Custom boards path(s), ';'-separated; later paths win for duplicate board names "
+                '(leave unset to skip)'
+            ),
             'type': str,
         },
         {
@@ -752,6 +801,11 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             'is_flag': True,
         },
         {
+            'names': ['-w', '--writable'],
+            'help': 'Generate writable descriptor tables for C-defined runtime nodes',
+            'is_flag': True,
+        },
+        {
             'names': ['--skip-sdkconfig-check'],
             'help': (
                 'Skip CONFIG_IDF_TARGET and ESP_BOARD_* sdkconfig preflight warnings in idf_ext '
@@ -772,6 +826,13 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         },
     ]
 
+    gen_bmgr_config_arguments = [
+        {
+            'names': ['list_filter'],
+            'required': False,
+        }
+    ]
+
     # Define the actions
     esp_actions = {
         'version': '1',
@@ -782,6 +843,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             'bmgr': {
                 'callback': esp_bmgr_command_callback,
                 'options': gen_bmgr_config_options,
+                'arguments': gen_bmgr_config_arguments,
                 'short_help': 'Run ESP Board Manager',
                 'help': """Run ESP Board Manager.
 
@@ -792,12 +854,18 @@ Usage:
 
     idf.py bmgr -l                                # List all available boards
 
+    idf.py bmgr -l esp32s3                        # List boards for one chip
+
+    idf.py bmgr -l esp_boards                     # List boards from one component
+
     idf.py bmgr -x                                # Clean generated files created by Board Manager
 
     idf.py bmgr -n xxx_board                      # Create a new board in components directory
 
-Notes:When using idf.py, you must use the -b option to specify the board.
-For positional argument support, run the script directly:
+Notes:When using idf.py, use -b to select a board (name, index, source/board_name,
+or board directory path). Under -l, an optional positional FILTER matches chip,
+source, or customer and is not a board selection.
+For positional board selection, run the script directly:
     python gen_bmgr_config_codes.py <board>
 
 For more examples, see the README.md file.""",
@@ -805,6 +873,7 @@ For more examples, see the README.md file.""",
             'gen-bmgr-config': {
                 'callback': esp_bmgr_command_callback,
                 'options': gen_bmgr_config_options,
+                'arguments': gen_bmgr_config_arguments,
                 'short_help': 'Generate ESP Board Manager configuration files',
                 'help': """Generate ESP Board Manager configuration files for board peripherals and devices.
 
@@ -818,12 +887,18 @@ Usage:
 
     idf.py gen-bmgr-config -l                     # List all available boards
 
+    idf.py gen-bmgr-config -l esp32s3             # List boards for one chip
+
+    idf.py gen-bmgr-config -l esp_boards          # List boards from one component
+
     idf.py gen-bmgr-config -x                     # Clean generated files created by gen-bmgr-config
 
     idf.py gen-bmgr-config -n xxx_board           # Create a new board in components directory
 
-Note: When using idf.py, you must use the -b option to specify the board.
-For positional argument support, run the script directly:
+Note: When using idf.py, use -b to select a board (name, index, source/board_name,
+or board directory path). Under -l, an optional positional FILTER matches chip,
+source, or customer and is not a board selection.
+For positional board selection, run the script directly:
     python gen_bmgr_config_codes.py <board>
 
 For more examples, see the README.md file.""",

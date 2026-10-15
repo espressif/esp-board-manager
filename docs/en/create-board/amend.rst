@@ -1,9 +1,9 @@
-Using -a/--amend
-================
+Generation-time Configuration Extensions (amend)
+================================================
 
 :link_to_translation:`zh_CN:[中文]`
 
-When making minor differences on an existing board (such as modifying a pin or replacing a touch chip) or adding devices not included by default, there is no need to copy the entire board directory. Prepare an **amend directory** containing a ``board_amend.yaml`` manifest, then apply changes as patches on top of the selected board during generation using ``-a/--amend <dir>``:
+Generation-time configuration extensions (amend) merge configuration fragments into the selected board's base configuration to change existing fields, add devices or peripherals, and include sources and build configuration. Amend supports project customization, sub-board adaptation, and reuse of functional modules across boards without copying the full board directory. Prepare an **amend directory** containing a ``board_amend.yaml`` manifest, then use ``-a/--amend <dir>`` to merge the selected fragments during generation:
 
 .. code-block:: bash
 
@@ -16,7 +16,7 @@ When making minor differences on an existing board (such as modifying a pin or r
 
 ``-a`` accepts absolute or relative paths; relative paths are resolved from the current working directory (``cwd``). **If the amend directory is placed under the selected board directory, only the subdirectory name needs to be passed, and BMGR will look for the corresponding subdirectory inside that board directory.**
 
-Different sub-boards, screen modules, or minor hardware variants of the same main board are recommended to be placed uniformly under that board's subdirectory (for example, ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``); only the subdirectory name needs to be passed when using it, and it is not affected by the project path.
+Different sub-boards, screen modules, or minor hardware revisions of the same main board are recommended to be placed uniformly under that board's subdirectory (for example, ``esp_boards/esp32_s3_lcd_ev_board/sub_board_800_480_lcd/``); only the subdirectory name needs to be passed when using it, and it is not affected by the project path.
 
 .. note::
 
@@ -56,6 +56,11 @@ Supported path formats for each entry in ``apply:``:
 
 Regardless of the format, directory entries are not supported. Files in subdirectories must be listed with their full filenames expanded (``pack/extra.yaml``, not ``pack``).
 
+Multi-revision Configuration and Runtime Selection
+--------------------------------------------------
+
+The merged amend result is determined during generation. To keep configuration for multiple hardware revisions of the same board in one firmware image, use multi-revision configuration (``board_revisions``). Maintain revision-specific YAML differences in the full board directory, detect the hardware revision in the ``pre-init`` hook, and call the generated apply API. See :ref:`board-revisions-runtime` for details.
+
 YAML Fragment Merge Rules
 -------------------------
 
@@ -91,6 +96,8 @@ Cross-Board Module Reuse
 ------------------------
 
 ``apply:`` supports relative paths, resolved from the directory containing ``board_amend.yaml``, allowing references to files outside the amend directory at other locations in the project. Using this feature, common peripheral and device configurations can be split into independent YAML and source code fragments, stored centrally in a shared directory, and then referenced on demand by different boards' amend files—effectively assembling a complete board-level configuration from reusable feature modules.
+
+The `MAX30102 module in the heart-rate detection example <https://github.com/espressif/esp-health/tree/main/esp_health/examples/heart_rate_detect/components/amend/max30102>`_ provides a working example. Its amend references sensor YAML, driver sources, and initialization sources, reuses an existing I2C bus on the target board, and adds an INT GPIO and a custom device. Adjust wiring and bus bindings when using it with another board.
 
 For example, to split the gas sensor adaptation into an independent fragment and place it in the project shared directory:
 
@@ -133,11 +140,28 @@ Auto-amend
 
 Besides the explicit ``-a``, BMGR can **auto-discover and apply an amend by board name**. Under the scan paths (including directories given via ``-c/--customer-path``), if there is a directory **whose name matches the selected board, contains** ``board_amend.yaml`` **, and is not itself a complete board directory**, BMGR applies it as that board's amend automatically, without ``-a``.
 
-The expected layout is ``<scan_root>/<board_name>/board_amend.yaml``:
+The expected layout is ``<scan_root>/<board_name>/board_amend.yaml``. If the overlay is under the project's default-scanned ``components/`` directory, such as ``components/board_overlays/``, select the board without ``-c``:
 
 .. code-block:: text
 
-   board_overlays/                       # point -c here
+   components/
+     board_overlays/
+       esp32_s3_box_3/
+         board_amend.yaml
+         box_tweak.yaml
+       esp32_p4_function_ev_board/
+         board_amend.yaml
+         p4_tweak.yaml
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3
+
+If the overlay root is outside the project's default scan paths, pass it with ``-c``:
+
+.. code-block:: text
+
+   board_overlays/                       # pass this root with -c
      esp32_s3_box_3/
        board_amend.yaml
        box_tweak.yaml
@@ -179,7 +203,14 @@ When each board needs its own patch, the old approach required a different ``-a`
      esp32_s3_box_3/board_amend.yaml                # box-specific patch
      esp32_p4_function_ev_board/board_amend.yaml    # p4-specific patch
 
-Then all boards use the **exact same** command, changing only the ``-b`` board name while ``-c`` always points to the same overlay root; BMGR matches and applies the right amend by board name:
+Then all boards use the **same** command, changing only the ``-b`` board name. Overlays under ``components/`` need no ``-c``; for an external overlay root, ``-c`` always points to that same root. BMGR matches and applies the amend by board name:
+
+.. code-block:: bash
+
+   idf.py bmgr -b esp32_s3_box_3
+   idf.py bmgr -b esp32_p4_function_ev_board
+
+For an external overlay root, use:
 
 .. code-block:: bash
 

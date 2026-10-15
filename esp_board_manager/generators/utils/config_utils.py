@@ -84,7 +84,8 @@ def apply_named_list_overrides(
 def apply_peripheral_overrides(base_periphs: List, override_periphs: List, logger, device_name: str) -> List:
     """
     Apply override configurations to peripheral configurations within a device.
-    Matches peripherals by 'name' field; appends new peripheral references.
+    Matches named references by ``name`` and explicit bindings by their ``*_name`` field.
+    Unmatched references are appended.
     """
     def update_existing(base_periph: dict, override_periph: dict) -> None:
         for key, value in override_periph.items():
@@ -92,14 +93,42 @@ def apply_peripheral_overrides(base_periphs: List, override_periphs: List, logge
                 continue
             base_periph[key] = value
 
-    return apply_named_list_overrides(
-        base_periphs,
-        override_periphs,
-        logger,
-        item_label='peripheral',
-        update_existing=update_existing,
-        context=f"for device '{device_name}'",
-    )
+    def binding_fields(periph: dict) -> set:
+        fields = {key for key in periph if key.endswith('_name')}
+        binding_role = periph.get('_binding_role')
+        if binding_role:
+            fields.add(f'{binding_role}_name')
+        return fields
+
+    context = f"for device '{device_name}'"
+    for override_periph in override_periphs:
+        if not isinstance(override_periph, dict):
+            logger.warning(f'⚠️  Override peripheral {context} is not a dict, skipping: {override_periph}')
+            continue
+
+        override_name = override_periph.get('name')
+        override_bindings = binding_fields(override_periph)
+        match = None
+
+        for base_periph in base_periphs:
+            if not isinstance(base_periph, dict):
+                continue
+            same_name = override_name is not None and base_periph.get('name') == override_name
+            same_binding = bool(override_bindings & binding_fields(base_periph))
+            if same_name or same_binding:
+                match = base_periph
+                break
+
+        if match is not None:
+            update_existing(match, override_periph)
+            logger.debug(f'   Applied overrides to peripheral {context}')
+        elif override_name is not None or override_bindings:
+            base_periphs.append(override_periph)
+            logger.debug(f'   Added peripheral reference {context}')
+        else:
+            logger.warning(f'⚠️  Override peripheral {context} has neither a name nor a binding field, skipping')
+
+    return base_periphs
 
 
 def apply_device_overrides(base_devices: List[dict], override_devices: List[dict], logger) -> List[dict]:

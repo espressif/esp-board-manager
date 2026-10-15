@@ -12,6 +12,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from generators.utils import soc_capability_query as query
 
 
+@pytest.fixture(autouse=True)
+def reset_soc_query_context():
+    query.clear_soc_capabilities()
+    yield
+    query.clear_soc_capabilities()
+
+
 def _write_catalog(root: Path) -> Path:
     catalog_dir = root / 'soc_capability_catalog'
     catalog_dir.mkdir()

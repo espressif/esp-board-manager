@@ -283,3 +283,41 @@ def test_audio_codec_adc_metadata_skips_io_when_adc_channel_map_is_missing(bmgr_
     )
 
     assert 'io' not in metadata['devices']['audio_adc']
+
+
+def test_audio_codec_interrupt_pin_is_included_in_io_metadata(bmgr_root):
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+    from generators.board_metadata_generator import BoardMetadataGenerator
+
+    def _generate(int_pin):
+        result = mod.parse(
+            'codec',
+            {
+                'type': 'audio_codec',
+                'chip': 'es8311',
+                'peripherals': [],
+                'config': {'int_cfg': {'int_pin': int_pin}},
+            },
+        )
+        return BoardMetadataGenerator().generate_metadata_dict(
+            board_name='unit_test_board',
+            chip_name='esp32s3',
+            device_artifacts=[
+                {
+                    'name': 'codec',
+                    'type': 'audio_codec',
+                    'sub_type': None,
+                    'peripherals': [],
+                    'dependencies': {},
+                    'raw': {},
+                    'result': result,
+                    'parse_func': mod.parse,
+                }
+            ],
+            peripheral_artifacts=[],
+        )
+
+    assert _generate(17)['devices']['codec']['io'] == {'int_pin': 17}
+    assert _generate(0)['devices']['codec']['io'] == {'int_pin': 0}
+    assert 'io' not in _generate(-1)['devices']['codec']

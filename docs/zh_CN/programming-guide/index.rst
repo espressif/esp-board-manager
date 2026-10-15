@@ -13,5 +13,6 @@ BMGR 设计原理
    board-directory
    yaml-rules
    generation-flow
+   config-overrides
    runtime-lifecycle
    advanced-runtime

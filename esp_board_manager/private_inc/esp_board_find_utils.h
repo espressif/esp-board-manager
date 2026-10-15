@@ -18,17 +18,17 @@ extern "C" {
 #endif  /* __cplusplus */
 
 /* External references to global arrays */
-extern const esp_board_device_desc_t g_esp_board_devices[];
+extern ESP_BOARD_TABLE_CONST esp_board_device_desc_t g_esp_board_devices[];
 extern esp_board_device_handle_t g_esp_board_device_handles[];
-extern const esp_board_periph_desc_t g_esp_board_peripherals[];
+extern ESP_BOARD_TABLE_CONST esp_board_periph_desc_t g_esp_board_peripherals[];
 extern esp_board_periph_entry_t g_esp_board_periph_handles[];
 
 /**
- * @brief  Release every pending device configuration override
+ * @brief  Release every pending device APP-layer configuration override
  *
- *         Internal helper used by the board manager deinit path to drop all
- *         override nodes installed via esp_board_device_override_config().
- *         Not part of the public API.
+ *         Internal helper that clears APP config for each generated device name.
+ *         Does not clear BOARD layers or ops. Not part of the public API.
+ *         Manager deinit does not call this; overrides persist across deinit.
  */
 void esp_board_device_restore_all_configs(void);
 

@@ -7,6 +7,12 @@
 
 #pragma once
 
+#if defined(CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES) && CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES
+#define ESP_BOARD_TABLE_CONST
+#else
+#define ESP_BOARD_TABLE_CONST  const
+#endif  /* defined(CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES) && CONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES */
+
 #ifdef __cplusplus
 extern "C" {
 #endif  /* __cplusplus */
@@ -141,6 +147,17 @@ static const char *role_names_map[] __attribute__((unused)) = {
 #define ESP_BOARD_PERIPH_NAME_ANACMPR                 "anacmpr_unit_0"          /*!< Analog Comparator peripheral name */
 #define ESP_BOARD_PERIPH_NAME_LDO_MIPI                "ldo_mipi"                /*!< LDO for MIPI peripheral name */
 #define ESP_BOARD_PERIPH_NAME_DSI_DISPLAY             "dsi_display"             /*!< DSI display peripheral name */
+
+/**
+ * @brief  Compile-time switch for one-shot legacy API warnings
+ *
+ *         When 1 (default), the first call to each legacy function logs one
+ *         ``ESP_LOGW``. Set to 0 (for example ``-DESP_BOARD_LEGACY_API_WARN=0``)
+ *         to omit the warning code.
+ */
+#ifndef ESP_BOARD_LEGACY_API_WARN
+#define ESP_BOARD_LEGACY_API_WARN  1
+#endif  /* ESP_BOARD_LEGACY_API_WARN */
 
 #ifdef __cplusplus
 }

@@ -38,7 +38,16 @@ from generators.utils.file_utils import (
 )
 from generators import get_config_generator, get_sdkconfig_manager, get_dependency_manager, get_source_scanner
 from generators.parser_loader import load_parsers
-from generators.config_generator import BoardDirectory, format_board_groups
+from generators.config_generator import (
+    AmbiguousBoardSelectorError,
+    BoardDirectory,
+    UnknownBoardListFilterError,
+    build_list_board_output,
+    indexed_board_infos,
+    select_last_named_board,
+    _read_board_chip,
+    _resolved_log_path,
+)
 from generators.peripheral_parser import PeripheralParser
 from generators.device_parser import DeviceParser
 from generators.name_validator import parse_component_name
@@ -67,6 +76,7 @@ from generators.amend import (
     AmendPlan,
     MANIFEST_FILENAME as AMEND_MANIFEST_FILENAME,
     build_amend_plan,
+    build_revision_overlay_plan,
     merge_amend_plans,
 )
 
@@ -111,6 +121,11 @@ class BoardConfigGenerator(LoggerMixin):
         self.amend_dir_raw = amend_dir          # Original CLI string (may be relative)
         self.amend_dir: Optional[Path] = None   # Absolute, normalized after resolve_amend_plan()
         self.amend_plan: Optional[AmendPlan] = None
+        self.board_amend_plan: Optional[AmendPlan] = None
+        self.active_revision: Optional[str] = None
+        self.writable_tables_enabled = False
+        self.descriptor_device_table_max_num = 0
+        self.descriptor_periph_table_max_num = 0
         # Customer (-c) path(s); may be a ';'-separated list. Stored so auto-amend
         # scanning (resolve_amend_plan) can reuse the same customer roots.
         self.board_customer_path: Optional[str] = None
@@ -185,6 +200,31 @@ class BoardConfigGenerator(LoggerMixin):
         ``self.amend_plan`` stays ``None``); ``False`` on any amend error.
         """
         project_root = Path(self.project_dir) if self.project_dir else None
+
+        self.board_amend_plan = None
+        if board_path:
+            board_manifest = Path(board_path) / AMEND_MANIFEST_FILENAME
+            if board_manifest.is_file():
+                try:
+                    with board_manifest.open(encoding='utf-8') as manifest_file:
+                        manifest_data = yaml.safe_load(manifest_file) or {}
+                    if isinstance(manifest_data, dict) and 'board_revisions' in manifest_data:
+                        self.board_amend_plan = build_amend_plan(
+                            Path(board_path),
+                            project_root=project_root,
+                            allow_board_revisions=True,
+                            board_manifest=True,
+                        )
+                except AmendError as exc:
+                    self.logger.error(f'❌ Board revision manifest error in {board_path}: {exc}')
+                    return False
+                except (OSError, yaml.YAMLError) as exc:
+                    self.logger.error(f'❌ Cannot read board revision manifest {board_manifest}: {exc}')
+                    return False
+                if self.board_amend_plan:
+                    self.logger.info(
+                        f'ℹ️  Board revisions: {", ".join(self.board_amend_plan.board_revisions)}'
+                    )
 
         auto_plans: List[AmendPlan] = []
         if not _env_flag_true('ESP_BOARD_MANAGER_DISABLE_AUTO_AMEND'):
@@ -281,8 +321,10 @@ class BoardConfigGenerator(LoggerMixin):
 
         # Determine the root directory for all GMF Board Manager resources
         # Use script directory as root directory
-        self.root_dir = script_dir
+        self.root_dir = Path(script_dir).resolve()
         self.logger.info(f'ℹ️  Using script directory as root directory: {self.root_dir}')
+        if self.project_dir:
+            self.logger.info(f'ℹ️  Using project directory: {Path(self.project_dir).resolve()}')
 
         # All paths are now relative to root_dir
         self.peripherals_dir = self.root_dir / 'peripherals'
@@ -543,7 +585,7 @@ class BoardConfigGenerator(LoggerMixin):
 
             # Write unified Kconfig file using the root directory
             kconfig_path = self.gen_codes_dir / 'Kconfig.in'
-            self.logger.info(f'✅ Writing Kconfig file to: {kconfig_path}')
+            self.logger.debug(f'✅ Writing Kconfig file to: {_resolved_log_path(kconfig_path)}')
 
             # Ensure gen_codes directory exists
             kconfig_path.parent.mkdir(parents=True, exist_ok=True)
@@ -618,19 +660,39 @@ class BoardConfigGenerator(LoggerMixin):
             kconfig_content += f'\n\n# --- {label} Kconfig.projbuild: {kconfig_path} ---\n'
             kconfig_content += extra_content
             kconfig_content += '\n'
-            # The board's own Kconfig.projbuild stays at info; amend-supplied ones
-            # are summarized by the amend report and logged here at debug only.
-            if label == 'Board':
-                self.logger.info(f'✅ Appended {label} Kconfig.projbuild from {kconfig_path}')
-            else:
-                self.logger.debug(f'   Appended {label} Kconfig.projbuild from {kconfig_path}')
+            self.logger.debug(f'   Appended {label} Kconfig.projbuild from {_resolved_log_path(kconfig_path)}')
+
+        if getattr(self, 'writable_tables_enabled', False):
+            kconfig_content += (
+                '\n\nconfig ESP_BOARD_MANAGER_WRITABLE_TABLES\n'
+                '    bool\n'
+                '    default y\n'
+            )
+        device_limit = max(1, int(getattr(self, 'descriptor_device_table_max_num', 1)))
+        periph_limit = max(1, int(getattr(self, 'descriptor_periph_table_max_num', 1)))
+        device_prompt = ' "Maximum device table entries"' if self.writable_tables_enabled else ''
+        periph_prompt = ' "Maximum peripheral table entries"' if self.writable_tables_enabled else ''
+        device_range = f'    range {device_limit} {max(4096, device_limit)}\n' if self.writable_tables_enabled else ''
+        periph_range = f'    range {periph_limit} {max(4096, periph_limit)}\n' if self.writable_tables_enabled else ''
+        kconfig_content += (
+            '\n\nconfig ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM\n'
+            f'    int{device_prompt}\n'
+            f'{device_range}'
+            f'    default {device_limit}\n'
+            '\nconfig ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM\n'
+            f'    int{periph_prompt}\n'
+            f'{periph_range}'
+            f'    default {periph_limit}\n'
+        )
 
         # Write the file
         os.makedirs(gen_bmgr_codes_dir, exist_ok=True)
         with open(kconfig_projbuild_path, 'w', encoding='utf-8') as f:
             f.write(kconfig_content)
 
-        self.logger.info(f'✅ Generated selected-board Kconfig.projbuild at: {kconfig_projbuild_path}')
+        self.logger.debug(
+            f'✅ Generated selected-board Kconfig.projbuild at: {_resolved_log_path(kconfig_projbuild_path)}'
+        )
         return True
 
     def _role_to_enum(self, role_str: str) -> str:
@@ -670,7 +732,16 @@ class BoardConfigGenerator(LoggerMixin):
         self._valid_periph_roles = roles
         return roles
 
-    def write_periph_c(self, generated_peripherals, periph_parsers, out_path: str):
+    def write_periph_c(
+        self,
+        generated_peripherals,
+        periph_parsers,
+        out_path: str,
+        *,
+        table_name: str = 'g_esp_board_peripherals',
+        writable_table: bool = False,
+        isolated_entries: bool = False,
+    ):
         """Write peripheral configuration C file"""
         # Ensure output directory exists
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
@@ -700,7 +771,12 @@ class BoardConfigGenerator(LoggerMixin):
             if not generated_peripherals:
                 # Write descriptor array with NULL sentinel when empty
                 f.write('// Peripheral descriptor array (empty - no peripherals defined)\n')
-                f.write('const esp_board_periph_desc_t g_esp_board_peripherals[] = {\n')
+                qualifier = (
+                    'ESP_BOARD_TABLE_CONST '
+                    if writable_table and table_name == 'g_esp_board_peripherals'
+                    else ('' if writable_table else 'const ')
+                )
+                f.write(f'{qualifier}esp_board_periph_desc_t {table_name}[] = {{\n')
                 f.write('    {\n')
                 f.write('        .next = NULL,\n')
                 f.write('        .name = NULL,\n')
@@ -710,6 +786,7 @@ class BoardConfigGenerator(LoggerMixin):
                 f.write('        .cfg = NULL,\n')
                 f.write('        .cfg_size = 0,\n')
                 f.write('        .id = 0,\n')
+                f.write('        .init_skip = false,\n')
                 f.write('    },\n')
                 f.write('};\n')
                 return
@@ -728,11 +805,22 @@ class BoardConfigGenerator(LoggerMixin):
 
             # Write descriptor array
             f.write('// Peripheral descriptor array\n')
-            f.write('const esp_board_periph_desc_t g_esp_board_peripherals[] = {\n')
+            qualifier = (
+                'ESP_BOARD_TABLE_CONST '
+                if writable_table and table_name == 'g_esp_board_peripherals'
+                else ('' if writable_table else 'const ')
+            )
+            f.write(f'{qualifier}esp_board_periph_desc_t {table_name}[] = {{\n')
             N = len(generated_peripherals)
             for i, (p, _) in enumerate(generated_peripherals):
-                if i < N - 1:
-                    next_str = f'&g_esp_board_peripherals[{i+1}]'
+                if isolated_entries:
+                    annotation = getattr(self, '_revision_peripheral_annotations', {}).get(p.name)
+                    if annotation:
+                        f.write(f'    // {annotation}\n')
+                if isolated_entries:
+                    next_str = 'NULL'
+                elif i < N - 1:
+                    next_str = f'&{table_name}[{i+1}]'
                 else:
                     next_str = 'NULL'
                 struct_var = 'esp_bmgr_' + p.name.replace('-', '_') + '_cfg'
@@ -749,7 +837,10 @@ class BoardConfigGenerator(LoggerMixin):
                 f.write(f'        .cfg = &{struct_var},\n')
                 f.write(f'        .cfg_size = sizeof({struct_var}),\n')
                 f.write(f'        .id = 0,\n')
+                f.write(f'        .init_skip = {str(getattr(p, "init_skip", False)).lower()},\n')
                 f.write('    },\n')
+            if isolated_entries and not generated_peripherals:
+                f.write('    { .next = NULL, .name = NULL },\n')
             f.write('};\n')
 
     def write_device_custom_h(self, device_structs, devices, out_path: str):
@@ -784,7 +875,19 @@ class BoardConfigGenerator(LoggerMixin):
                 f.write(s['struct_definition'])
                 f.write('\n\n')
 
-    def write_device_c(self, device_structs, devices, device_parsers, extra_configs, extra_includes, out_path: str):
+    def write_device_c(
+        self,
+        device_structs,
+        devices,
+        device_parsers,
+        extra_configs,
+        extra_includes,
+        out_path: str,
+        *,
+        table_name: str = 'g_esp_board_devices',
+        writable_table: bool = False,
+        isolated_entries: bool = False,
+    ):
         """Write device configuration C file with custom structures and extra configurations"""
         # Ensure output directory exists
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
@@ -840,7 +943,12 @@ class BoardConfigGenerator(LoggerMixin):
             if not devices:
                 # Write descriptor array with NULL sentinel when empty
                 f.write('// Device descriptor array (empty - no devices defined)\n')
-                f.write('const esp_board_device_desc_t g_esp_board_devices[] = {\n')
+                qualifier = (
+                    'ESP_BOARD_TABLE_CONST '
+                    if writable_table and table_name == 'g_esp_board_devices'
+                    else ('' if writable_table else 'const ')
+                )
+                f.write(f'{qualifier}esp_board_device_desc_t {table_name}[] = {{\n')
                 f.write('    {\n')
                 f.write('        .next = NULL,\n')
                 f.write('        .name = NULL,\n')
@@ -884,11 +992,22 @@ class BoardConfigGenerator(LoggerMixin):
                     f.write('};\n')
             f.write('\n')
 
-            f.write('const esp_board_device_desc_t g_esp_board_devices[] = {\n')
+            qualifier = (
+                'ESP_BOARD_TABLE_CONST '
+                if writable_table and table_name == 'g_esp_board_devices'
+                else ('' if writable_table else 'const ')
+            )
+            f.write(f'{qualifier}esp_board_device_desc_t {table_name}[] = {{\n')
             N = len(devices)
             for i, d in enumerate(devices):
-                if i < N - 1:
-                    next_str = f'&g_esp_board_devices[{i+1}]'
+                if isolated_entries:
+                    annotation = getattr(self, '_revision_device_annotations', {}).get(d.name)
+                    if annotation:
+                        f.write(f'    // {annotation}\n')
+                if isolated_entries:
+                    next_str = 'NULL'
+                elif i < N - 1:
+                    next_str = f'&{table_name}[{i+1}]'
                 else:
                     next_str = 'NULL'
                 struct_var = 'esp_bmgr_' + d.name.replace('-', '_') + '_cfg'
@@ -925,6 +1044,8 @@ class BoardConfigGenerator(LoggerMixin):
                 f.write(f'        .depends_on = {dep_var},\n')
                 f.write(f'        .depends_on_num = {depends_on_num},\n')
                 f.write('    },\n')
+            if isolated_entries and not devices:
+                f.write('    { .next = NULL, .name = NULL },\n')
             f.write('};\n')
 
     def write_periph_handles(self, peripherals, periph_parsers, out_path: str):
@@ -1086,6 +1207,93 @@ class BoardConfigGenerator(LoggerMixin):
             f.write(f'    .manufacturer = "{manufacturer}",\n')
             f.write('};\n')
 
+    def _peripheral_revision_entries(self, generated_peripherals):
+        if self.active_revision is None:
+            self._base_generated_peripherals = generated_peripherals
+            self._revision_peripheral_annotations = {}
+            return generated_peripherals
+
+        base_by_name = {p.name: (p, result) for p, result in self._base_generated_peripherals}
+        changed = []
+        annotations = {}
+        for peripheral, result in generated_peripherals:
+            base = base_by_name.get(peripheral.name)
+            if base is None:
+                changed.append((peripheral, result))
+                annotations[peripheral.name] = 'append'
+                continue
+            base_peripheral, base_result = base
+            different_fields = []
+            for field_name, base_value, revision_value in (
+                ('type', base_peripheral.type, peripheral.type),
+                ('role', base_peripheral.role, peripheral.role),
+                ('format', base_peripheral.format, peripheral.format),
+                ('init_skip', getattr(base_peripheral, 'init_skip', False),
+                 getattr(peripheral, 'init_skip', False)),
+                ('cfg', base_result, result),
+            ):
+                if base_value != revision_value:
+                    different_fields.append(field_name)
+            if different_fields:
+                changed.append((peripheral, result))
+                annotations[peripheral.name] = 'replace, differs: ' + ', '.join(different_fields)
+        self._revision_peripheral_annotations = annotations
+        return changed
+
+    def _device_revision_entries(self, device_structs, devices):
+        if self.active_revision is None:
+            self._base_device_entries = list(zip(devices, device_structs))
+            self._revision_device_annotations = {}
+            self._base_custom_structs = {
+                device.name: result.get('struct_definition')
+                for device, result in self._base_device_entries
+                if result.get('struct_definition')
+            }
+            return devices, device_structs
+
+        base_by_name = {device.name: (device, result) for device, result in self._base_device_entries}
+        changed_devices = []
+        changed_structs = []
+        annotations = {}
+        for device, result in zip(devices, device_structs):
+            custom_definition = result.get('struct_definition')
+            if custom_definition and self._base_custom_structs.get(device.name) != custom_definition:
+                raise ValueError(
+                    f"Custom device '{device.name}' changes its generated structure in revision "
+                    f"'{self.active_revision}'"
+                )
+            base = base_by_name.get(device.name)
+            if base is None:
+                changed_devices.append(device)
+                changed_structs.append(result)
+                annotations[device.name] = 'append'
+                continue
+            base_device, base_result = base
+            different_fields = []
+            for field_name, base_value, revision_value in (
+                ('type', base_device.type, device.type),
+                ('sub_type', getattr(base_device, 'sub_type', None), getattr(device, 'sub_type', None)),
+                ('chip', getattr(base_device, 'chip', None), getattr(device, 'chip', None)),
+                ('init_skip', getattr(base_device, 'init_skip', False), getattr(device, 'init_skip', False)),
+                ('power_ctrl_device', getattr(base_device, 'power_ctrl_device', None),
+                 getattr(device, 'power_ctrl_device', None)),
+                ('depends_on', getattr(base_device, 'depends_on', None), getattr(device, 'depends_on', None)),
+                ('cfg', base_result, result),
+            ):
+                if base_value != revision_value:
+                    different_fields.append(field_name)
+            if different_fields:
+                if device.type != base_device.type:
+                    raise ValueError(
+                        f"Device '{device.name}' changes type from '{base_device.type}' to "
+                        f"'{device.type}' in revision '{self.active_revision}'; use a different name"
+                    )
+                changed_devices.append(device)
+                changed_structs.append(result)
+                annotations[device.name] = 'replace, differs: ' + ', '.join(different_fields)
+        self._revision_device_annotations = annotations
+        return changed_devices, changed_structs
+
     def process_peripherals(self, periph_yaml_path: str) -> tuple:
         """Process peripherals from YAML and generate C configuration files, returns peripherals dict, name map, and types"""
         self.logger.debug('   Parsing peripheral YAML file...')
@@ -1095,6 +1303,7 @@ class BoardConfigGenerator(LoggerMixin):
         # Flatten the list of peripherals to handle nested lists
         self.logger.debug('   📋 Flattening peripheral configurations...')
         flattened_peripherals = self.peripheral_parser.flatten_peripherals(peripherals)
+        self._last_peripherals = flattened_peripherals
 
         # Create a mapping from original names to parsed names
         periph_name_map = {}
@@ -1178,8 +1387,30 @@ class BoardConfigGenerator(LoggerMixin):
         project_root = self.get_effective_project_dir()
         gen_bmgr_codes_dir = self._get_gen_bmgr_codes_dir(project_root)
         os.makedirs(gen_bmgr_codes_dir, exist_ok=True)
-        self.write_periph_c(generated_peripherals, periph_parsers, out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_periph_config.c'))
-        self.write_periph_handles(flattened_peripherals, periph_parsers, out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_periph_handles.c'))
+        self._last_generated_peripherals = generated_peripherals
+        self._last_peripheral_parsers = periph_parsers
+        generated_output = self._peripheral_revision_entries(generated_peripherals)
+        self._last_revision_peripheral_names = {item.name for item, _ in generated_output}
+        self._last_peripheral_delta_num = len(generated_output)
+        revision_suffix = f'_{self.active_revision}' if self.active_revision else ''
+        table_name = (
+            f'g_esp_board_revision_{self.active_revision}_peripherals'
+            if self.active_revision else 'g_esp_board_peripherals'
+        )
+        self.write_periph_c(
+            generated_output,
+            periph_parsers,
+            out_path=os.path.join(gen_bmgr_codes_dir, f'gen_board_periph_config{revision_suffix}.c'),
+            table_name=table_name,
+            writable_table=bool(self.active_revision) or self.writable_tables_enabled,
+            isolated_entries=bool(self.active_revision),
+        )
+        if self.active_revision is None:
+            self.write_periph_handles(
+                flattened_peripherals,
+                periph_parsers,
+                out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_periph_handles.c'),
+            )
 
         return peripherals_dict, periph_name_map, peripheral_types
 
@@ -1201,6 +1432,7 @@ class BoardConfigGenerator(LoggerMixin):
             raise  # Re-raise the exception to stop the generation process
 
         # Parse device names
+        self._last_devices = devices
         self.logger.debug('   Processing device names...')
         for d in devices:
             try:
@@ -1331,16 +1563,367 @@ class BoardConfigGenerator(LoggerMixin):
         project_root = self.get_effective_project_dir()
         gen_bmgr_codes_dir = self._get_gen_bmgr_codes_dir(project_root)
         os.makedirs(gen_bmgr_codes_dir, exist_ok=True)
-        # Generate custom device structure header first
-        self.write_device_custom_h(device_structs, devices, out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_device_custom.h'))
-        self.write_device_c(device_structs, devices, device_parsers, extra_configs, extra_includes, out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_device_config.c'))
-        self.write_device_handles(devices, device_parsers, out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_device_handles.c'))
+        self._last_device_structs = device_structs
+        self._last_device_parsers = device_parsers
+        devices_output, device_structs_output = self._device_revision_entries(device_structs, devices)
+        self._last_revision_device_names = {item.name for item in devices_output}
+        self._last_device_delta_num = len(devices_output)
+        revision_suffix = f'_{self.active_revision}' if self.active_revision else ''
+        table_name = (
+            f'g_esp_board_revision_{self.active_revision}_devices'
+            if self.active_revision else 'g_esp_board_devices'
+        )
+        if self.active_revision is None:
+            self.write_device_custom_h(
+                device_structs,
+                devices,
+                out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_device_custom.h'),
+            )
+        self.write_device_c(
+            device_structs_output,
+            devices_output,
+            device_parsers,
+            extra_configs,
+            extra_includes,
+            out_path=os.path.join(gen_bmgr_codes_dir, f'gen_board_device_config{revision_suffix}.c'),
+            table_name=table_name,
+            writable_table=bool(self.active_revision) or self.writable_tables_enabled,
+            isolated_entries=bool(self.active_revision),
+        )
+        if self.active_revision is None:
+            self.write_device_handles(
+                devices,
+                device_parsers,
+                out_path=os.path.join(gen_bmgr_codes_dir, 'gen_board_device_handles.c'),
+            )
 
         # Validate that extra_dev configurations are used in device configs
         self.logger.debug('   ✅ Validating extra device configurations...')
         self.dependency_manager.validate_extra_dev_usage(extra_configs, devices)
 
         return device_types, device_subtypes
+
+    def _generate_board_revisions(self, periph_yaml_path, dev_yaml_path, board_path,
+                                 base_peripherals, base_devices, extra_configs, extra_includes,
+                                 device_types, device_subtypes, peripheral_types):
+        board_plan = self.board_amend_plan
+        if board_plan is None or not board_plan.board_revisions:
+            return device_types, device_subtypes, peripheral_types
+
+        if getattr(self, 'generation_mode', None) in ('devices_only', 'peripherals_only'):
+            raise ValueError('Board revisions require full device and peripheral generation')
+
+        application_plan = self.amend_plan
+        revision_states = []
+        revision_dependencies = {}
+        all_peripherals = {peripheral.name: peripheral for peripheral in base_peripherals}
+        all_peripheral_variants = list(base_peripherals)
+        all_devices = {device.name: device for device in base_devices}
+        base_peripheral_names = set(all_peripherals)
+        base_device_names = set(all_devices)
+
+        self._reject_application_amend_revision_only_names(
+            periph_yaml_path, dev_yaml_path, board_plan, application_plan
+        )
+
+        try:
+            for revision_name in board_plan.board_revisions:
+                self.active_revision = revision_name
+                self.amend_plan = build_revision_overlay_plan(
+                    revision_name, board_plan, application_plan
+                )
+                revision_peripherals, revision_name_map, revision_peripheral_types = self.process_peripherals(
+                    periph_yaml_path
+                )
+                revision_device_types, revision_subtypes = self.process_devices(
+                    dev_yaml_path,
+                    revision_peripherals,
+                    revision_name_map,
+                    board_path,
+                    extra_configs,
+                    extra_includes,
+                )
+                if dev_yaml_path:
+                    for component, version in self.dependency_manager.extract_device_dependencies(
+                            dev_yaml_path, amend_plan=self.amend_plan).items():
+                        if component in revision_dependencies and revision_dependencies[component] != version:
+                            raise ValueError(
+                                f"Conflicting dependency '{component}' in board revisions: "
+                                f"'{revision_dependencies[component]}' vs '{version}'"
+                            )
+                        revision_dependencies[component] = version
+                full_revision_peripherals = list(self._last_peripherals)
+                full_revision_devices = list(self._last_devices)
+                all_peripheral_variants.extend(full_revision_peripherals)
+                full_periph_names = {peripheral.name for peripheral in full_revision_peripherals}
+                full_device_names = {device.name for device in full_revision_devices}
+                duplicate_names = full_periph_names & full_device_names
+                if duplicate_names:
+                    raise ValueError(
+                        f"Device and peripheral names must be distinct in revision '{revision_name}': "
+                        + ', '.join(sorted(duplicate_names))
+                    )
+
+                for device in full_revision_devices:
+                    existing = all_devices.get(device.name)
+                    if existing is not None and existing.type != device.type:
+                        raise ValueError(
+                            f"Device '{device.name}' changes type from '{existing.type}' to "
+                            f"'{device.type}' in revision '{revision_name}'; use a different name"
+                        )
+                    all_devices[device.name] = device
+                for peripheral in full_revision_peripherals:
+                    all_peripherals[peripheral.name] = peripheral
+
+                device_types.update(revision_device_types)
+                peripheral_types.update(revision_peripheral_types)
+                for device_type, subtypes in revision_subtypes.items():
+                    device_subtypes.setdefault(device_type, set()).update(subtypes)
+
+                revision_states.append({
+                    'name': revision_name,
+                    'device_names': full_device_names,
+                    'peripheral_names': full_periph_names,
+                    'changed_device_names': set(getattr(self, '_last_revision_device_names', set())),
+                    'changed_peripheral_names': set(getattr(self, '_last_revision_peripheral_names', set())),
+                    'device_delta_num': getattr(self, '_last_device_delta_num', 0),
+                    'peripheral_delta_num': getattr(self, '_last_peripheral_delta_num', 0),
+                })
+        finally:
+            self.active_revision = None
+            self.amend_plan = application_plan
+
+        gen_dir = self._get_gen_bmgr_codes_dir(self.get_effective_project_dir())
+        periph_parsers = self._last_peripheral_parsers
+        device_parsers = self._last_device_parsers
+        self.write_periph_handles(
+            all_peripheral_variants,
+            periph_parsers,
+            os.path.join(gen_dir, 'gen_board_periph_handles.c'),
+        )
+        self.write_device_handles(
+            list(all_devices.values()),
+            device_parsers,
+            os.path.join(gen_dir, 'gen_board_device_handles.c'),
+        )
+        self.descriptor_device_table_max_num = len(all_devices)
+        self.descriptor_periph_table_max_num = len(all_peripherals)
+        self._write_revision_apply_files(
+            gen_dir,
+            revision_states,
+            base_device_names,
+            base_peripheral_names,
+            set(all_devices),
+            set(all_peripherals),
+        )
+        universe_device_names = base_device_names | set(all_devices)
+        universe_peripheral_names = base_peripheral_names | set(all_peripherals)
+        for index, revision in enumerate(revision_states):
+            removed_devices = universe_device_names - revision['device_names']
+            removed_peripherals = universe_peripheral_names - revision['peripheral_names']
+            if not (revision['changed_device_names'] or revision['changed_peripheral_names']
+                    or removed_devices or removed_peripherals):
+                self.logger.warning(
+                    f"⚠️  Board revision '{revision['name']}' produces no generated differences"
+                )
+            for other in revision_states[index + 1:]:
+                overlaps = sorted(
+                    (revision['changed_device_names'] & other['changed_device_names'])
+                    | (revision['changed_peripheral_names'] & other['changed_peripheral_names'])
+                )
+                if overlaps:
+                    self.logger.warning(
+                        f"⚠️  Board revisions '{revision['name']}' and '{other['name']}' both replace "
+                        f"{', '.join(overlaps)}; applying both may overwrite earlier changes"
+                    )
+        self._last_revision_dependencies = revision_dependencies
+        return device_types, device_subtypes, peripheral_types
+
+    @staticmethod
+    def _reject_application_amend_revision_only_names(
+        periph_yaml_path, dev_yaml_path, board_plan, application_plan
+    ):
+        if application_plan is None:
+            return
+
+        def names_in_yaml(path):
+            try:
+                with open(path, encoding='utf-8') as source:
+                    data = yaml.safe_load(source) or {}
+            except (OSError, yaml.YAMLError):
+                return {'devices': set(), 'peripherals': set()}
+            return {
+                kind: {
+                    item.get('name') for item in data.get(kind, []) or []
+                    if isinstance(item, dict) and isinstance(item.get('name'), str)
+                }
+                for kind in ('devices', 'peripherals')
+            }
+
+        base_names = {
+            'devices': set(),
+            'peripherals': set(),
+        }
+        for path in (dev_yaml_path, periph_yaml_path):
+            for kind, names in names_in_yaml(path).items():
+                base_names[kind].update(names)
+
+        revision_only = {'devices': set(), 'peripherals': set()}
+        for fragments in board_plan.board_revisions.values():
+            for fragment in fragments:
+                data = fragment.yaml_data or {}
+                for kind in revision_only:
+                    for item in data.get(kind, []) or []:
+                        if isinstance(item, dict) and isinstance(item.get('name'), str):
+                            if item['name'] not in base_names[kind] and item.get('unused') is not True:
+                                revision_only[kind].add(item['name'])
+
+        conflicts = []
+        for fragment in application_plan.yaml_fragments():
+            data = fragment.yaml_data or {}
+            for kind in revision_only:
+                conflicts.extend(
+                    f"{kind[:-1]} '{item['name']}'"
+                    for item in data.get(kind, []) or []
+                    if isinstance(item, dict)
+                    and item.get('name') in revision_only[kind]
+                )
+        if conflicts:
+            raise ValueError(
+                'Application apply: cannot modify revision-only names: '
+                + ', '.join(sorted(set(conflicts)))
+                + '; put those changes in the board revision fragment'
+            )
+
+    def _write_revision_apply_files(self, gen_dir, board_revisions, base_device_names,
+                                   base_peripheral_names, all_device_names,
+                                   all_peripheral_names):
+        header_path = Path(gen_dir) / 'gen_board_revisions.h'
+        header_lines = [
+            self.get_license_header('Auto-generated board revision declarations'),
+            '#pragma once\n',
+            '#include "esp_err.h"\n',
+            '#include "esp_board_device.h"\n',
+            '#include "esp_board_periph.h"\n\n',
+        ]
+        for revision in board_revisions:
+            name = revision['name']
+            upper_name = name.upper()
+            header_lines.extend([
+                f'#define ESP_BOARD_VARIANT_{upper_name}_DEVICE_NUM {revision["device_delta_num"]}\n',
+                f'#define ESP_BOARD_VARIANT_{upper_name}_PERIPH_NUM {revision["peripheral_delta_num"]}\n',
+                f'extern esp_board_device_desc_t g_esp_board_revision_{name}_devices[];\n',
+                f'extern esp_board_periph_desc_t g_esp_board_revision_{name}_peripherals[];\n',
+                f'esp_err_t gen_board_revision_apply_{name}(void);\n\n',
+            ])
+        header_lines.extend([
+            f'#define ESP_BOARD_DEVICE_TABLE_MAX_NUM {len(all_device_names)}\n',
+            f'#define ESP_BOARD_PERIPH_TABLE_MAX_NUM {len(all_peripheral_names)}\n',
+        ])
+        header_path.write_text(''.join(header_lines), encoding='utf-8')
+
+        universe_device_names = base_device_names | all_device_names
+        universe_peripheral_names = base_peripheral_names | all_peripheral_names
+        for revision in board_revisions:
+            name = revision['name']
+            removed_devices = sorted(universe_device_names - revision['device_names'])
+            removed_peripherals = sorted(universe_peripheral_names - revision['peripheral_names'])
+            source = self.get_license_header(f'Auto-generated board revision {name}')
+            source += (
+                '#include <stddef.h>\n'
+                '#include <string.h>\n'
+                '#include "sdkconfig.h"\n'
+                '#include "esp_err.h"\n'
+                '#include "gen_board_revisions.h"\n'
+                '#include "esp_board_manager_defs.h"\n\n'
+                'extern ESP_BOARD_TABLE_CONST esp_board_device_desc_t g_esp_board_devices[];\n'
+                'extern ESP_BOARD_TABLE_CONST esp_board_periph_desc_t g_esp_board_peripherals[];\n\n'
+            )
+            source += self._revision_table_helpers('device', 'esp_board_device_desc_t', 'g_esp_board_devices')
+            source += self._revision_table_helpers('periph', 'esp_board_periph_desc_t', 'g_esp_board_peripherals')
+            source += f'static const char *const s_removed_devices_{name}[] = {{\n'
+            source += ''.join(f'    "{item}",\n' for item in removed_devices) or '    NULL,\n'
+            source += '};\n'
+            source += f'static const char *const s_removed_peripherals_{name}[] = {{\n'
+            source += ''.join(f'    "{item}",\n' for item in removed_peripherals) or '    NULL,\n'
+            source += '};\n'
+            source += f'\nesp_err_t gen_board_revision_apply_{name}(void)\n{{\n'
+            source += '    esp_err_t ret = ESP_OK;\n'
+            source += f'    for (size_t i = 0; i < {len(removed_devices)}; ++i) {{\n'
+            source += f'        ret = revision_device_unlink(s_removed_devices_{name}[i]);\n        if (ret != ESP_OK) {{\n            return ret;\n        }}\n    }}\n'
+            source += f'    for (size_t i = 0; i < {len(removed_peripherals)}; ++i) {{\n'
+            source += f'        ret = revision_periph_unlink(s_removed_peripherals_{name}[i]);\n        if (ret != ESP_OK) {{\n            return ret;\n        }}\n    }}\n'
+            source += f'    for (size_t i = 0; i < ESP_BOARD_VARIANT_{name.upper()}_PERIPH_NUM; ++i) {{\n'
+            source += f'        ret = revision_periph_replace_or_append(&g_esp_board_revision_{name}_peripherals[i]);\n        if (ret != ESP_OK) {{\n            return ret;\n        }}\n    }}\n'
+            source += f'    for (size_t i = 0; i < ESP_BOARD_VARIANT_{name.upper()}_DEVICE_NUM; ++i) {{\n'
+            source += f'        ret = revision_device_replace_or_append(&g_esp_board_revision_{name}_devices[i]);\n        if (ret != ESP_OK) {{\n            return ret;\n        }}\n    }}\n'
+            source += '    return ESP_OK;\n}\n'
+            (Path(gen_dir) / f'gen_board_revision_{name}.c').write_text(source, encoding='utf-8')
+
+    @staticmethod
+    def _revision_table_helpers(kind, descriptor_type, table_name):
+        prefix = 'device' if kind == 'device' else 'periph'
+        table_limit = ('CONFIG_ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM'
+                       if kind == 'device' else 'CONFIG_ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM')
+        return f'''static {descriptor_type} *revision_{prefix}_head(void)
+{{
+    return ({descriptor_type} *){table_name};
+}}
+
+static esp_err_t revision_{prefix}_unlink(const char *name)
+{{
+    {descriptor_type} *previous = NULL;
+    {descriptor_type} *entry = revision_{prefix}_head();
+    for (size_t i = 0; i < {table_limit}; ++i) {{
+        if (entry == NULL || entry->name == NULL) {{
+            return ESP_OK;
+        }}
+        if (strcmp(entry->name, name) == 0) {{
+            if (previous) {{
+                previous->next = entry->next;
+            }} else if (entry->next) {{
+                *entry = *entry->next;
+            }} else {{
+                entry->name = NULL;
+            }}
+            return ESP_OK;
+        }}
+        previous = entry;
+        entry = ({descriptor_type} *)entry->next;
+    }}
+    return entry && entry->name ? ESP_ERR_INVALID_STATE : ESP_OK;
+}}
+
+static esp_err_t revision_{prefix}_replace_or_append({descriptor_type} *source)
+{{
+    {descriptor_type} *entry = revision_{prefix}_head();
+    {descriptor_type} *tail = NULL;
+    for (size_t i = 0; i < {table_limit}; ++i) {{
+        if (entry == NULL) {{
+            if (tail == NULL) {{
+                return ESP_ERR_INVALID_STATE;
+            }}
+            tail->next = source;
+            return ESP_OK;
+        }}
+        if (entry->name == NULL) {{
+            *entry = *source;
+            entry->next = NULL;
+            return ESP_OK;
+        }}
+        if (strcmp(entry->name, source->name) == 0) {{
+            const {descriptor_type} *next = entry->next;
+            *entry = *source;
+            entry->next = next;
+            return ESP_OK;
+        }}
+        tail = entry;
+        entry = ({descriptor_type} *)entry->next;
+    }}
+    return ESP_ERR_INVALID_STATE;
+}}
+
+'''
 
     def _get_gen_bmgr_codes_dir(self, project_root: str) -> str:
         """Get the gen_bmgr_codes directory path"""
@@ -1391,7 +1974,7 @@ class BoardConfigGenerator(LoggerMixin):
         value = os.environ.get('ESP_BOARD_MANAGER_SKIP_SOC_CAPABILITY_CHECK', '')
         return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
-    def write_board_metadata(self, board_name: str, chip_name: str, out_path: str) -> dict:
+    def write_board_metadata(self, board_name: str, chip_name: str, out_path: str, board_path: str = None) -> dict:
         """Write unified board metadata YAML."""
         return self.metadata_generator.write_metadata_file(
             output_path=out_path,
@@ -1399,6 +1982,7 @@ class BoardConfigGenerator(LoggerMixin):
             chip_name=chip_name,
             device_artifacts=self._last_device_metadata_artifacts,
             peripheral_artifacts=self._last_peripheral_metadata_artifacts,
+            board_path=board_path,
         )
 
     def _delete_files_by_extension(self, gen_bmgr_codes_dir: str, extensions: Optional[tuple]) -> List[str]:
@@ -1604,6 +2188,16 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
 
         return None
 
+    def get_current_board_path(self, project_root: str) -> Optional[str]:
+        """Read the resolved board path from generated metadata when available."""
+        metadata_path = os.path.join(self._get_gen_bmgr_codes_dir(project_root), 'gen_board_metadata.yaml')
+        try:
+            data = yaml.safe_load(Path(metadata_path).read_text(encoding='utf-8')) or {}
+            path = data.get('board_path') if isinstance(data, dict) else None
+            return str(Path(path).resolve()) if path else None
+        except (OSError, yaml.YAMLError, TypeError):
+            return None
+
     def get_version_info(self):
         """Get version information including component version, git commit ID and date, and generation time"""
         import subprocess
@@ -1664,6 +2258,12 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         return version_info
 
     def run(self, args, cached_boards=None):
+        self.writable_tables_enabled = bool(getattr(args, 'writable', False))
+        self.generation_mode = (
+            'devices_only' if args.devices_only else
+            'peripherals_only' if args.peripherals_only else
+            'full'
+        )
         """Run the complete 8-step board configuration generation process
 
         Args:
@@ -1716,11 +2316,13 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             self.logger.error('   Each board directory must contain a Kconfig file')
             return False
 
-        self.logger.info(f'✅ Found {len(all_boards)} boards: {list(all_boards.keys())}')
+        self.logger.info(f'✅ Found {len(all_boards)} board(s).')
+        self.logger.debug(f'   Boards: {list(all_boards.keys())}')
 
         # 2. Get selected board from sdkconfig or command line
         self.logger.info('⚙️  Step 2/8: Reading board selection...')
 
+        current_board_path = self.get_current_board_path(project_root) if project_root else None
         if args.board_name:
             selected_board = args.board_name
             self.logger.info(f'✅ Using board from command line: {selected_board}')
@@ -1728,12 +2330,23 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             selected_board = self.config_generator.get_selected_board_from_sdkconfig()
             self.logger.info(f'✅ Selected board from sdkconfig: {selected_board}')
 
-        selected_info = all_boards.get(selected_board)
+        selected_info = getattr(self, 'selected_board_info', None)
+        if selected_info is None or selected_info.name != selected_board:
+            selected_info = None
+            # When the board comes from sdkconfig, keep the exact selected
+            # directory across duplicate names. An explicit bare -b name keeps
+            # the documented last-scanned-name selection behavior.
+            if not args.board_name and current_board_path:
+                candidate = all_boards.get(current_board_path)
+                if candidate is not None and candidate.name == selected_board:
+                    selected_info = candidate
+            if selected_info is None:
+                selected_info = select_last_named_board(all_boards, selected_board)
         board_path = board_directory_path(selected_info)
 
         # Display board information
         if board_path:
-            self.logger.info(f'✅ Board path: {board_path}')
+            self.logger.info(f'✅ Board path: {_resolved_log_path(board_path)}')
             # Check for board name consistency (moved from scan phase)
             self.config_generator.check_board_name_consistency(board_path, selected_board)
         else:
@@ -1750,6 +2363,49 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         # does not destroy the last good output.
         if not self.resolve_amend_plan(selected_board, board_path):
             return False
+        self.writable_tables_enabled = self.writable_tables_enabled or bool(
+            self.board_amend_plan and self.board_amend_plan.board_revisions
+        )
+
+        # Validate the effective names before clearing the previous generated output.
+        if isinstance(selected_info, BoardDirectory):
+            periph_yaml_path, dev_yaml_path = self.config_generator.find_board_config_files(
+                selected_board, {selected_info.name: selected_info}
+            )
+        else:
+            periph_yaml_path, dev_yaml_path = self.config_generator.find_board_config_files(
+                selected_board, all_boards
+            )
+        if periph_yaml_path and dev_yaml_path:
+            from generators.utils.config_utils import load_yaml_with_includes
+            try:
+                periph_yaml = load_yaml_with_includes(periph_yaml_path, amend_plan=self.amend_plan) or {}
+                dev_yaml = load_yaml_with_includes(dev_yaml_path, amend_plan=self.amend_plan) or {}
+                def _generated_name(raw_name):
+                    try:
+                        return parse_component_name(raw_name).name
+                    except ValueError:
+                        return raw_name
+
+                periph_names = {
+                    _generated_name(item['name'])
+                    for item in self.peripheral_parser.flatten_peripherals(periph_yaml.get('peripherals'))
+                    if isinstance(item, dict) and item.get('name') and item.get('gen_skip') is not True
+                }
+                dev_names = {
+                    _generated_name(item['name'])
+                    for item in (dev_yaml.get('devices') or [])
+                    if isinstance(item, dict) and item.get('name') and item.get('gen_skip') is not True
+                }
+                collisions = periph_names & dev_names
+                if collisions:
+                    self.logger.error(
+                        'Device and peripheral names must be distinct: ' + ', '.join(sorted(collisions))
+                    )
+                    return False
+            except BoardConfigYamlError as e:
+                self.logger.error(f'Board YAML error, aborting: {e}')
+                return False
 
         current_board = None
         sdkconfig_preserved_same_board = False
@@ -1758,6 +2414,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         if project_root:
             # Capture current board name BEFORE clearing the directory
             current_board = self.get_current_board_name(project_root)
+            current_board_path = self.get_current_board_path(project_root) or current_board_path
 
             # Clean environment before generating new configuration
             self.logger.debug('   Cleaning environment...')
@@ -1784,7 +2441,14 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
                     # Check if we should preserve sdkconfig (if board hasn't changed)
                     should_clean_sdkconfig = True
                     if os.path.exists(sdkconfig_path):
-                        if current_board and current_board == selected_board:
+                        selected_path = board_directory_path(selected_info)
+                        same_board = bool(
+                            current_board_path and selected_path and
+                            Path(current_board_path).resolve() == Path(selected_path).resolve()
+                        )
+                        if not same_board and current_board and current_board == selected_board:
+                            same_board = current_board_path is None
+                        if same_board:
                             self.logger.info(f'ℹ️  Board unchanged ({selected_board}), preserving sdkconfig')
                             should_clean_sdkconfig = False
                             sdkconfig_preserved_same_board = True
@@ -1805,8 +2469,6 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
 
         # 3. Find configuration files for selected board
         self.logger.info('⚙️  Step 3/8: Finding board configuration files...')
-        periph_yaml_path, dev_yaml_path = self.config_generator.find_board_config_files(selected_board, all_boards)
-
         if not periph_yaml_path or not dev_yaml_path:
             self.logger.error('❌ Error: Could not find configuration files for selected board')
             if not periph_yaml_path:
@@ -1828,6 +2490,8 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         peripheral_types = set()
         device_types = set()
         device_subtypes = {}  # Initialize device_subtypes
+        extra_configs = {}
+        extra_includes = set()
 
         if not args.devices_only:
             self.logger.info('⚙️  Step 4/8: Processing peripherals...')
@@ -1880,7 +2544,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             self.logger.info('⚙️  Step 5/8: Processing devices and dependencies...')
 
             # Get board path for extra_dev scanning
-            board_path = board_directory_path(all_boards.get(selected_board))
+            board_path = board_directory_path(selected_info)
             extra_configs = {}
             extra_includes = set()
             # TODO: Remove this once we have a way to scan extra_dev files
@@ -1923,6 +2587,48 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         else:
             self.logger.info('⏭️  Step 5/8: Processing devices... (SKIPPED)')
 
+        if self.board_amend_plan and self.board_amend_plan.board_revisions:
+            self._last_revision_dependencies = {}
+            try:
+                base_peripheral_metadata = getattr(self, '_last_peripheral_metadata_artifacts', [])
+                base_device_metadata = getattr(self, '_last_device_metadata_artifacts', [])
+                device_types, device_subtypes, peripheral_types = self._generate_board_revisions(
+                    periph_yaml_path,
+                    dev_yaml_path,
+                    board_path,
+                    list(getattr(self, '_last_peripherals', [])),
+                    list(getattr(self, '_last_devices', [])),
+                    extra_configs,
+                    extra_includes,
+                    device_types,
+                    device_subtypes,
+                    peripheral_types,
+                )
+                for component, version in self._last_revision_dependencies.items():
+                    if component in device_dependencies and device_dependencies[component] != version:
+                        raise ValueError(
+                            f"Conflicting dependency '{component}' between base board and revision: "
+                            f"'{device_dependencies[component]}' vs '{version}'"
+                        )
+                    device_dependencies[component] = version
+                self._last_peripheral_metadata_artifacts = base_peripheral_metadata
+                self._last_device_metadata_artifacts = base_device_metadata
+            except BoardConfigYamlError as e:
+                self.logger.error(f'❌ Board YAML error in revision, aborting: {e}')
+                return False
+            except Exception as e:
+                self.logger.error(f'❌ Board revision generation failed: {e}')
+                return False
+
+        self.descriptor_device_table_max_num = max(
+            int(getattr(self, 'descriptor_device_table_max_num', 0)),
+            len(getattr(self, '_last_devices', [])),
+        )
+        self.descriptor_periph_table_max_num = max(
+            int(getattr(self, 'descriptor_periph_table_max_num', 0)),
+            len(getattr(self, '_last_peripherals', [])),
+        )
+
         # 6. Generate Kconfig if requested (SIXTH STEP - after device and peripheral processing)
         self.logger.info('⚙️  Step 6/8: Generating Kconfig menu system...')
 
@@ -1957,7 +2663,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
         self.logger.info('⚙️  Step 7/8: Updating SDK configuration...')
 
         # Get chip name from board_info.yaml (needed for both sdkconfig and sdkconfig.defaults)
-        board_path = board_directory_path(all_boards.get(selected_board))
+        board_path = board_directory_path(selected_info)
         if not board_path:
             self.logger.error(f'❌ Board path not found for {selected_board}')
             return False
@@ -2057,7 +2763,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             device_subtypes=device_subtypes,
         )
         if board_defaults_result['added']:
-            self.logger.info(f'✅ Generated board-specific defaults to {board_manager_defaults_file}')
+            self.logger.debug(f'✅ Generated board-specific defaults to {_resolved_log_path(board_manager_defaults_file)}')
             self.logger.debug(f'   The file will be automatically applied when compilation occurs')
 
         # If an amend plan is active, append each amend-supplied sdkconfig.defaults.board
@@ -2089,6 +2795,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             board_name=selected_board,
             chip_name=chip_name,
             out_path=metadata_path,
+            board_path=board_path,
         )
 
         # Setup components/gen_bmgr_codes directory and build system
@@ -2334,12 +3041,26 @@ def board_directory_from_path(generator, board_input: str) -> Optional[BoardDire
             path=abs_path,
             source='external',
             source_type='component',
+            chip=_read_board_chip(abs_path),
         )
     return None
 
 
-def resolve_board_name_or_index(board_input: str, all_boards: Dict[str, BoardDirectory], generator, board_customer_path: Optional[str] = None) -> Optional[str]:
-    """Resolve board name from input (board name or index number).
+def _ambiguous_selector_message(selector: str, matches: List[Tuple[int, BoardDirectory]]) -> str:
+    lines = [f'Board selector "{selector}" matches more than one board:']
+    for idx, info in matches:
+        lines.append(f'  [{idx}] {info.source}/{info.name} ({info.path})')
+    lines.append('ℹ️  Select a board by index or pass the board directory path directly.')
+    return '\n'.join(lines)
+
+
+def resolve_board_name_or_index(
+    board_input: str,
+    all_boards: Dict[str, BoardDirectory],
+    generator,
+    board_customer_path: Optional[str] = None,
+) -> Optional[BoardDirectory]:
+    """Resolve a ``-b`` selector to a single :class:`BoardDirectory` record.
 
     For direct-path inputs the caller should prefer :func:`board_directory_from_path`
     so that the full board scan can be skipped; this function still handles paths
@@ -2348,17 +3069,30 @@ def resolve_board_name_or_index(board_input: str, all_boards: Dict[str, BoardDir
     """
     info = board_directory_from_path(generator, board_input)
     if info is not None:
-        all_boards[info.name] = info
-        return info.name
+        all_boards[info.path] = info
+        return info
 
+    indexed = indexed_board_infos(all_boards)
     if board_input.isdigit():
         board_idx = int(board_input)
-        if board_idx < 1 or board_idx > len(all_boards):
+        if board_idx < 1 or board_idx > len(indexed):
             return None
-        ordered_boards = [bi.name for bi in generator.config_generator.sorted_board_infos(all_boards)]
-        return ordered_boards[board_idx - 1]
+        return indexed[board_idx - 1][1]
 
-    return board_input if board_input in all_boards else None
+    if '/' in board_input:
+        source, _, name = board_input.rpartition('/')
+        matches = [
+            (idx, info)
+            for idx, info in indexed
+            if info.source == source and info.name == name
+        ]
+        if not matches:
+            return None
+        if len(matches) > 1:
+            raise AmbiguousBoardSelectorError(_ambiguous_selector_message(board_input, matches))
+        return matches[0][1]
+
+    return select_last_named_board(all_boards, board_input)
 
 def main():
     """Main entry point with command line argument parsing and error handling"""
@@ -2392,13 +3126,19 @@ Examples:
     parser.add_argument(
         'board',
         nargs='?',
-        help='Board name, index number, or directory path (bypasses sdkconfig reading)'
+        help=(
+            'Board name, global index, source/board_name, or board directory path '
+            '(bypasses sdkconfig reading)'
+        )
     )
 
     parser.add_argument(
         '-b', '--board',
         dest='board_name',
-        help='Specify board name, index number, or directory path (bypasses sdkconfig reading, overrides positional argument)'
+        help=(
+            'Board name, global index, source/board_name, or board directory path '
+            '(bypasses sdkconfig reading, overrides positional argument)'
+        )
     )
 
     parser.add_argument(
@@ -2453,7 +3193,10 @@ Examples:
     parser.add_argument(
         '--list-boards', '-l',
         action='store_true',
-        help='List all available boards and exit'
+        help=(
+            'List available boards and exit. Optional positional FILTER matches chip, '
+            'full source, the last source segment, or the compatibility word customer'
+        )
     )
 
     parser.add_argument(
@@ -2479,10 +3222,20 @@ Examples:
         ),
     )
 
+    parser.add_argument(
+        '-w', '--writable',
+        action='store_true',
+        help='Generate writable board descriptor tables for runtime customization',
+    )
+
     args = parser.parse_args()
 
-    # Merge positional argument with -b parameter (priority: -b > positional)
-    if args.board_name is None and args.board:
+    # Merge positional argument with -b parameter (priority: -b > positional).
+    # Under -l the positional token is a list filter, not a board selection.
+    list_filter = None
+    if args.list_boards:
+        list_filter = args.board
+    elif args.board_name is None and args.board is not None:
         args.board_name = args.board
 
     # Set global log level first
@@ -2498,6 +3251,10 @@ Examples:
     # Setup logging with global level
     setup_logger('board_config_generator')
     logger = get_logger('main')
+
+    if not args.list_boards and args.board_name == '':
+        logger.error('Board selection cannot be empty')
+        sys.exit(1)
 
     project_dir = resolve_project_root_dir(
         explicit_project_dir=args.project_dir,
@@ -2553,10 +3310,19 @@ Examples:
             board_infos = generator.config_generator.scan_board_directories(args.board_customer_path)
 
             if board_infos:
-                generator.logger.info(f'Found {len(board_infos)} board(s):')
+                try:
+                    header, lines = build_list_board_output(
+                        board_infos,
+                        list_filter,
+                        generator.config_generator.get_project_root(),
+                    )
+                except UnknownBoardListFilterError as e:
+                    generator.logger.error(str(e))
+                    sys.exit(1)
+                generator.logger.info(header)
                 print()
 
-                for line in format_board_groups(board_infos):
+                for line in lines:
                     if line:
                         generator.logger.info(line)
                     else:
@@ -2580,21 +3346,31 @@ Examples:
     if args.board_name:
         direct_info = board_directory_from_path(generator, args.board_name)
         if direct_info is not None:
-            cached_boards = {direct_info.name: direct_info}
+            cached_boards = {direct_info.path: direct_info}
             args.board_name = direct_info.name
+            generator.selected_board_info = direct_info
             generator.logger.info(f'ℹ️  Resolved board: {direct_info.name}')
         else:
             cached_boards = generator.config_generator.scan_board_directories(args.board_customer_path)
-            resolved_board = resolve_board_name_or_index(args.board_name, cached_boards, generator, args.board_customer_path)
+            try:
+                resolved_board = resolve_board_name_or_index(
+                    args.board_name, cached_boards, generator, args.board_customer_path
+                )
+            except AmbiguousBoardSelectorError as exc:
+                generator.logger.error(str(exc))
+                sys.exit(1)
             if resolved_board is None:
                 if args.board_name.isdigit():
                     generator.logger.error(f'❌ Board index {args.board_name} is out of range (1-{len(cached_boards)})')
                 else:
                     generator.logger.error(f'❌ Board "{args.board_name}" not found')
-                    generator.logger.info(f'Available boards: {sorted(cached_boards.keys())}')
+                    generator.logger.info(
+                        f'Available boards: {sorted({info.name for info in cached_boards.values()})}'
+                    )
                 sys.exit(1)
-            args.board_name = resolved_board
-            generator.logger.info(f'ℹ️  Resolved board: {resolved_board}')
+            args.board_name = resolved_board.name
+            generator.selected_board_info = resolved_board
+            generator.logger.info(f'ℹ️  Resolved board: {resolved_board.name}')
 
     try:
         success = generator.run(args, cached_boards=cached_boards)

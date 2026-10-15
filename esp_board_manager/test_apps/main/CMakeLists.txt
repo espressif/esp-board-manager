@@ -62,8 +62,12 @@ idf_component_register(
 
         # Utility files (conditionally included)
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>:wav_header.c>
+
+        # Runtime override / prepare lifecycle tests
+        "test_runtime_override.c"
+        $<$<BOOL:${CONFIG_BMGR_TEST_RUNTIME_C_NODES}>:test_runtime_c_nodes.c>
     INCLUDE_DIRS "." "./periph" "./framework" "./commands" "./cases" "./support" "./automation"
-    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs console
+    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs console esp_driver_ppa esp_mm
     EMBED_TXTFILES audio_files/test.wav audio_files/16k_16bit_1ch.wav
 )
 

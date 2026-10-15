@@ -3,7 +3,15 @@ Test log level functionality
 Tests --log-level parameter with different values
 """
 
+import re
+
 import pytest
+
+
+SCAN_EXPAND = 'Scanning all directories in'
+FOUND_VALID_BOARD = 'Found valid board in'
+FOUND_BOARDS_DUMP = 'boards: ['
+YAML_PERIPH = 'board_peripherals.yaml'
 
 
 class TestValidLogLevels:
@@ -19,13 +27,50 @@ class TestValidLogLevels:
 class TestLogLevelOutput:
     """Test that log levels affect output verbosity"""
 
-    def test_debug_level_verbose(self, run_bmgr_cmd, valid_board):
-        """Test that DEBUG level produces verbose output"""
-        result = run_bmgr_cmd(['-b', valid_board, '--log-level', 'DEBUG', '--kconfig-only'])
+    def test_info_keeps_roots_and_scan_sources(self, run_bmgr_cmd):
+        result = run_bmgr_cmd(['-l', '--log-level', 'INFO'])
         assert result.returncode == 0
-        # DEBUG should show more messages
-        debug_count = result.stdout.count('DEBUG') + result.stdout.count('debug')
-        assert debug_count >= 0  # May or may not have explicit DEBUG tags
+        out = result.stdout + result.stderr
+        assert 'Using script directory as root directory:' in out
+        assert 'Using project directory:' in out or 'Using user-specified project directory:' in out
+        assert 'espressif/esp_boards' in out
+        assert 'Board Components:' in out
+        assert SCAN_EXPAND not in out
+        assert FOUND_VALID_BOARD not in out
+
+    def test_debug_list_shows_per_board_scan_trace(self, run_bmgr_cmd):
+        result = run_bmgr_cmd(['-l', '--log-level', 'DEBUG'])
+        assert result.returncode == 0
+        out = result.stdout + result.stderr
+        assert SCAN_EXPAND in out
+        assert FOUND_VALID_BOARD in out
+        assert out.count(FOUND_VALID_BOARD) > 1
+
+    def test_info_generation_keeps_board_path_not_yaml_dump(self, run_bmgr_cmd, valid_board):
+        result = run_bmgr_cmd(['-b', valid_board, '--kconfig-only', '--log-level', 'INFO'])
+        assert result.returncode == 0
+        out = result.stdout + result.stderr
+        assert 'Using script directory as root directory:' in out
+        assert 'Board path:' in out
+        assert valid_board in out
+        assert re.search(r'Found \d+ board\(s\)\.', out)
+        assert FOUND_BOARDS_DUMP not in out
+        assert SCAN_EXPAND not in out
+        assert FOUND_VALID_BOARD not in out
+        assert YAML_PERIPH not in out
+        assert 'Writing Kconfig file to:' not in out
+        assert 'Generated selected-board Kconfig.projbuild at:' not in out
+
+    def test_debug_generation_shows_yaml_and_board_dump(self, run_bmgr_cmd, valid_board):
+        result = run_bmgr_cmd(['-b', valid_board, '--kconfig-only', '--log-level', 'DEBUG'])
+        assert result.returncode == 0
+        out = result.stdout + result.stderr
+        assert FOUND_VALID_BOARD in out
+        assert YAML_PERIPH in out
+        assert 'Boards:' in out
+        assert 'Writing Kconfig file to:' in out
+        info = run_bmgr_cmd(['-b', valid_board, '--kconfig-only', '--log-level', 'INFO'])
+        assert len(result.stdout.splitlines()) > len(info.stdout.splitlines())
 
     def test_error_level_minimal(self, run_bmgr_cmd, valid_board):
         """Test that ERROR level suppresses info messages"""

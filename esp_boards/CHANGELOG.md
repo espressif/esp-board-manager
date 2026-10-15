@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+
+### Features
+
+- Extended ESP-Mosaico to support v1.0/v1.2 pin layouts and a left-slot DVP camera with USB HS CDC console support.
+
+### Bug Fixes
+
+- Skipped automatic initialization of boot GPIO resources that conflict with I2S or LCD SPI on LyraT, Korvo-2, and Vaquita-DSPG boards.
+
 ## 0.6.1~1
 
 ### Features

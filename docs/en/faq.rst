@@ -180,7 +180,9 @@ If the project must use an older Board Manager release, add the board component 
 
 **Version Relationship**
 
-- ``esp_boards 0.6.0``, ``esp_friends_boards 0.6.0``, and ``m5stack_boards 0.6.0`` and later require ``esp_board_manager >=0.7.1``.
+- ``esp_boards 0.6.0`` through ``0.6.2`` require ``esp_board_manager >=0.7.1`` for semantic peripheral references.
+- ``esp_friends_boards 0.6.x`` and ``m5stack_boards 0.6.x`` require ``esp_board_manager >=0.7.1`` for semantic peripheral references.
+- ``esp_boards 0.7.x`` requires ``esp_board_manager >=0.7.4`` because its boards may use peripheral ``init_skip``. BMGR 0.7.4 depends on ``esp_boards ~0.7.0``; older BMGR releases constrained to ``~0.6.0`` cannot automatically resolve it.
 - ``esp_boards 0.5.4``, ``esp_friends_boards 0.5.3``, and ``m5stack_boards 0.5.4`` require ``esp_board_manager >=0.7.0``.
 
 Runtime Phase
@@ -219,7 +221,7 @@ Cannot Get Handle or Configuration at Runtime
 **Possible Causes**
 
 - The current board has not enabled the device or peripheral; it is not declared in the YAML.
-- ``init_skip: true`` causes BMGR to skip the device during the automatic initialization phase.
+- ``init_skip: true`` causes BMGR to skip the device or peripheral during the automatic initialization phase.
 - :cpp:func:`esp_board_manager_init` did not execute successfully (a prior error or ESP_FAIL return).
 - The ``name`` is misspelled and does not match the YAML.
 
@@ -227,7 +229,7 @@ Cannot Get Handle or Configuration at Runtime
 
 1. Call :cpp:func:`esp_board_manager_print` after startup to confirm that the expected devices and peripherals are all correctly registered and initialized.
 2. Check the startup log to confirm whether :cpp:func:`esp_board_manager_init` returned successfully; any device initialization failure will leave an error log.
-3. For devices explicitly declared with ``init_skip: true``, call :cpp:func:`esp_board_manager_init_device_by_name` at the appropriate business timing before a handle can be obtained.
+3. For devices explicitly declared with ``init_skip: true``, call :cpp:func:`esp_board_manager_init_device_by_name` at the appropriate business timing before a handle can be obtained. For peripherals with ``init_skip: true``, call :cpp:func:`esp_board_periph_init`, or initialize a device that references that peripheral.
 
 Device Malfunction (Power / Reset / Timing)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

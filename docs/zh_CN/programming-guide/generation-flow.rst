@@ -8,7 +8,7 @@ BMGR 在编译前先将开发板的 YAML 描述解析为一组明确的配置源
 执行 ``idf.py bmgr -b <board>`` 时，BMGR 依次完成以下工作：
 
 1. 扫描开发板目录，收集默认目录、自定义目录和组件目录中的候选开发板。
-2. 根据命令行参数（名称或索引）确定当前选中的开发板。
+2. 根据命令行参数（名称或索引）确定当前选中的开发板。``-c "path_a;path_b"`` 按顺序扫描各根目录；仅传入 ``-b board_name`` 时选择最后被扫描到的同名记录。``-l`` 会列出所有同名开发板，客户板按 ``<root-basename>`` 或 ``<root-basename>/<relative-parent>`` 分组；多个 ``-c`` 根目录来源标签相同时，列表标题会追加相对工程根的路径后缀（该后缀不是过滤词）。使用 ``-b INDEX``、``-b source/board_name`` 或 ``-b /path/to/board`` 选择特定记录；限定名仍匹配多条时 BMGR 报错而不猜测。
 3. 定位该开发板对应的 ``board_peripherals.yaml``、``board_devices.yaml``、``board_info.yaml``、``sdkconfig.defaults.board``、``Kconfig.projbuild``。
 4. 解析外设和设备，生成对应的配置结构、句柄表和板级元数据。
 5. 校验已选开发板配置，包括 SoC 能力、硬件限制、IO 合法性和 IO 冲突。

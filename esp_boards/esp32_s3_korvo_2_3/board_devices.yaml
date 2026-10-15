@@ -131,7 +131,7 @@ devices:
         de_io: 38
         pclk_io: 11
         xclk_io: 40
-        xclk_freq: 10000000
+        xclk_freq: 20000000
         data_io:
           data_io_0: 13
           data_io_1: 47
@@ -146,12 +146,14 @@ devices:
         frequency: 100000
 
   # Boot button. Schematic net: ESP0_Boot_IO0 / ESP_IO0.
-  # GPIO0 is also the LCD SPI MOSI pin (spi_display.mosi_io_num). Do not use
-  # this button together with the LCD SPI interface.
+  # GPIO0 is also the LCD SPI MOSI pin (spi_display.mosi_io_num). Skip
+  # auto-init so init_all does not claim GPIO0 while LCD SPI is in use.
+  # Init this device by name only when the LCD SPI interface is unused.
   - name: boot_button
     type: button
     sub_type: gpio
     version: default
+    init_skip: true
     config:
       active_level: 0
       enable_power_save: false

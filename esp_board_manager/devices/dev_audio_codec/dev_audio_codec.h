@@ -134,6 +134,7 @@ typedef struct {
     audio_hw_dac_cfg_t      codec_dac_cfg;     /*!< Codec DAC configuration */
     audio_hw_pa_cfg_t       codec_pa_cfg;      /*!< Codec PA configuration */
     audio_hw_reset_cfg_t    codec_reset_cfg;   /*!< Codec reset configuration */
+    audio_hw_int_cfg_t      codec_int_cfg;     /*!< Codec interrupt configuration */
 
     /* Metadata */
     uint8_t *metadata;       /*!< Metadata buffer */

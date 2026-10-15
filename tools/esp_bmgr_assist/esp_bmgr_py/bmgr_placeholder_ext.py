@@ -17,7 +17,7 @@ from esp_bmgr_py import preflight, project_integration
 
 # Keep in sync with esp_board_manager idf_ext.py (flag names / types).
 BMGR_PLACEHOLDER_OPTIONS: Any = [
-    {'names': ['-l', '--list-boards'], 'help': 'List all available boards and exit', 'is_flag': True},
+    {'names': ['-l', '--list-boards'], 'help': 'List boards and exit. Optional FILTER matches chip or component', 'is_flag': True},
     {'names': ['-b', '--board'], 'help': 'Specify board name, index, or directory path', 'type': str},
     {'names': ['-c', '--customer-path'], 'help': 'Path to customer boards directory (use "NONE" to skip)', 'type': str},
     {
@@ -34,9 +34,15 @@ BMGR_PLACEHOLDER_OPTIONS: Any = [
     {'names': ['--peripherals-only'], 'help': 'Only process peripherals', 'is_flag': True},
     {'names': ['--devices-only'], 'help': 'Only process devices', 'is_flag': True},
     {'names': ['--kconfig-only'], 'help': 'Only generate Kconfig menu', 'is_flag': True},
+    {'names': ['-w', '--writable'], 'help': 'Generate writable descriptor tables for C-defined runtime nodes', 'is_flag': True},
     {
         'names': ['--skip-sdkconfig-check'],
         'help': 'Skip CONFIG_IDF_TARGET and ESP_BOARD_* sdkconfig preflight warnings in idf_ext',
+        'is_flag': True,
+    },
+    {
+        'names': ['--skip-soc-capability-check'],
+        'help': 'Skip parser-stage SoC capability validation for device/peripheral YAML.',
         'is_flag': True,
     },
     {
@@ -47,6 +53,13 @@ BMGR_PLACEHOLDER_OPTIONS: Any = [
     },
 ]
 GEN_BMGR_CONFIG_PLACEHOLDER_OPTIONS = BMGR_PLACEHOLDER_OPTIONS
+BMGR_PLACEHOLDER_ARGUMENTS = [
+    {
+        'names': ['list_filter'],
+        'required': False,
+    }
+]
+GEN_BMGR_CONFIG_PLACEHOLDER_ARGUMENTS = BMGR_PLACEHOLDER_ARGUMENTS
 ASSIST_PREFLIGHT_GLOBAL_OPTIONS: Any = [
     {
         'names': ['--bmgr-preflight-level'],
@@ -81,11 +94,13 @@ def _fake_actions(callback) -> Dict[str, Any]:
             'bmgr': {
                 'callback': _placeholder_bmgr_callback,
                 'options': BMGR_PLACEHOLDER_OPTIONS,
+                'arguments': BMGR_PLACEHOLDER_ARGUMENTS,
                 'short_help': 'Run ESP Board Manager',
             },
             'gen-bmgr-config': {
                 'callback': _placeholder_bmgr_callback,
                 'options': BMGR_PLACEHOLDER_OPTIONS,
+                'arguments': BMGR_PLACEHOLDER_ARGUMENTS,
                 'short_help': 'Generate ESP Board Manager configuration files',
             },
         },

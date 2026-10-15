@@ -3,9 +3,75 @@ Test board selection functionality
 Tests -b parameter and positional argument with names, indices, and error cases
 """
 
+import re
 import subprocess
 
 import pytest
+
+
+def test_same_name_board_switch_uses_path_for_sdkconfig_preservation(tmp_path, script_path):
+    project = tmp_path / 'project'
+    project.mkdir()
+    first = tmp_path / 'first' / 'same_board'
+    second = tmp_path / 'second' / 'same_board'
+    _write_minimal_board(first, 'first definition')
+    _write_minimal_board(second, 'second definition')
+    sdkconfig = project / 'sdkconfig'
+
+    def generate(board):
+        result = subprocess.run(
+            ['python3', str(script_path), '-b', str(board), '--project-dir', str(project)],
+            cwd=str(project), capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+    generate(first)
+    original = 'CONFIG_IDF_TARGET="esp32s3"\nCONFIG_PROJECT_MARKER=y\n'
+    sdkconfig.write_text(original, encoding='utf-8')
+    generate(first)
+    preserved = sdkconfig.read_text(encoding='utf-8')
+    assert 'CONFIG_PROJECT_MARKER=y' in preserved
+    generate(second)
+    backup = project / 'components' / 'gen_bmgr_codes' / 'sdkconfig.bmgr_board.old'
+    assert backup.read_text(encoding='utf-8') == preserved
+    assert not sdkconfig.exists() or 'CONFIG_PROJECT_MARKER=y' not in sdkconfig.read_text(encoding='utf-8')
+
+
+@pytest.mark.parametrize('conflicting', [False, True])
+def test_revision_component_dependencies_reach_generated_manifest(tmp_path, script_path, conflicting):
+    import yaml
+
+    project = tmp_path / 'project'
+    project.mkdir()
+    board = tmp_path / 'dependency_board'
+    _write_minimal_board(board, 'revision dependencies')
+    board.joinpath('board_devices.yaml').write_text(
+        'devices:\n  - name: base_device\n    type: power_ctrl\n    sub_type: custom\n'
+        '    dependencies:\n      example/base_driver: "1.0.0"\n', encoding='utf-8',
+    )
+    board.joinpath('board_amend.yaml').write_text(
+        'board_revisions:\n  new_revision:\n    - revision.yaml\n', encoding='utf-8',
+    )
+    component = 'example/base_driver' if conflicting else 'example/revision_driver'
+    board.joinpath('revision.yaml').write_text(
+        'devices:\n  - name: added_device\n    type: power_ctrl\n    sub_type: custom\n'
+        f'    dependencies:\n      {component}: "2.0.0"\n', encoding='utf-8',
+    )
+    result = subprocess.run(
+        ['python3', str(script_path), '-b', str(board), '--project-dir', str(project)],
+        cwd=str(project), capture_output=True, text=True,
+    )
+    if conflicting:
+        assert result.returncode != 0
+        assert 'Conflicting dependency' in result.stdout + result.stderr
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        generated = project / 'components' / 'gen_bmgr_codes'
+        manifest = yaml.safe_load((generated / 'idf_component.yml').read_text(encoding='utf-8'))
+        assert manifest['dependencies']['example/revision_driver'] == '2.0.0'
+        assert manifest['dependencies']['example/base_driver'] == '1.0.0'
+        kconfig = (generated / 'Kconfig.projbuild').read_text(encoding='utf-8')
+        assert 'range 2 4096\n    default 2' in kconfig
 
 
 def _write_minimal_board(board_path, marker):
@@ -16,6 +82,180 @@ def _write_minimal_board(board_path, marker):
     )
     board_path.joinpath('board_peripherals.yaml').write_text('peripherals: []\n', encoding='utf-8')
     board_path.joinpath('board_devices.yaml').write_text('devices: []\n', encoding='utf-8')
+
+
+def _parse_customer_board_index(list_output: str, source_label: str, board_name: str) -> int:
+    """Return the global list index for ``board_name`` under a customer source header."""
+    lines = list_output.splitlines()
+    in_group = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.endswith(':') and source_label in stripped:
+            in_group = True
+            continue
+        if in_group and stripped.endswith(':') and source_label not in stripped:
+            in_group = False
+        if in_group:
+            match = re.match(rf'\[(\d+)\] {re.escape(board_name)}$', stripped)
+            if match:
+                return int(match.group(1))
+    raise AssertionError(
+        f'Board [{board_name}] under source {source_label!r} not found in list output:\n{list_output}'
+    )
+
+
+@pytest.mark.parametrize('from_amend', [False, True])
+def test_cli_rejects_device_peripheral_name_collision(tmp_path, script_path, from_amend):
+    project_dir = tmp_path / 'project'
+    project_dir.mkdir()
+    board_path = tmp_path / 'collision_board'
+    _write_minimal_board(board_path, 'collision test')
+    board_path.joinpath('board_devices.yaml').write_text(
+        'devices:\n  - name: shared_name\n    type: custom\n', encoding='utf-8'
+    )
+    periph_yaml = 'peripherals:\n  - name: shared_name\n    type: custom\n'
+    args = []
+    if from_amend:
+        amend_dir = tmp_path / 'amend'
+        amend_dir.mkdir()
+        amend_dir.joinpath('board_amend.yaml').write_text(
+            'version: "1.0"\napply:\n  - collision.yaml\n', encoding='utf-8'
+        )
+        amend_dir.joinpath('collision.yaml').write_text(periph_yaml, encoding='utf-8')
+        args = ['-a', str(amend_dir)]
+    else:
+        board_path.joinpath('board_peripherals.yaml').write_text(periph_yaml, encoding='utf-8')
+
+    result = subprocess.run(
+        ['python3', str(script_path), '-b', str(board_path), '--project-dir',
+         str(project_dir), '--kconfig-only', *args],
+        cwd=str(project_dir), capture_output=True, text=True,
+    )
+    assert result.returncode != 0
+    assert 'Device and peripheral names must be distinct: shared_name' in result.stdout + result.stderr
+
+
+def test_cli_collision_preflight_ignores_skipped_invalid_names(tmp_path, script_path):
+    project_dir = tmp_path / 'project'
+    project_dir.mkdir()
+    board_path = tmp_path / 'skip_collision_board'
+    _write_minimal_board(board_path, 'skipped collision preflight')
+    board_path.joinpath('board_devices.yaml').write_text(
+        'devices:\n  - name: InvalidLegacyName\n    type: custom\n    gen_skip: true\n',
+        encoding='utf-8',
+    )
+    board_path.joinpath('board_peripherals.yaml').write_text(
+        'peripherals:\n  - name: InvalidLegacyName\n    type: custom\n    gen_skip: true\n',
+        encoding='utf-8',
+    )
+
+    result = subprocess.run(
+        ['python3', str(script_path), '-b', str(board_path), '--project-dir',
+         str(project_dir), '--kconfig-only'],
+        cwd=str(project_dir), capture_output=True, text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'Invalid component name format' not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('selector', ['option', 'positional'])
+def test_cli_customer_indices_match_listed_board_paths(tmp_path, script_path, selector):
+    project_dir = tmp_path / 'project'
+    project_dir.mkdir()
+    customer_root = tmp_path / 'customer_boards'
+    for name in ('selection_first', 'selection_second'):
+        _write_minimal_board(customer_root / name, name)
+
+    common_args = ['-c', str(customer_root), '--project-dir', str(project_dir)]
+    listed = subprocess.run(
+        ['python3', str(script_path), '-l', *common_args],
+        cwd=str(project_dir), capture_output=True, text=True,
+    )
+    assert listed.returncode == 0, listed.stdout + listed.stderr
+    for name in ('selection_first', 'selection_second'):
+        index = _parse_customer_board_index(listed.stdout, 'customer_boards', name)
+        board_arg = ['-b', str(index)] if selector == 'option' else [str(index)]
+        result = subprocess.run(
+            ['python3', str(script_path), *board_arg, *common_args, '--kconfig-only'],
+            cwd=str(project_dir), capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert f'Board path: {(customer_root / name).resolve()}' in result.stdout
+
+
+def test_cli_index_selects_listed_record_not_last_same_name(tmp_path, script_path):
+    project_dir = tmp_path / 'project'
+    project_dir.mkdir()
+    root_a = tmp_path / 'boards_a'
+    root_b = tmp_path / 'boards_b'
+    board_name = 'foo'
+    board_a = root_a / board_name
+    board_b = root_b / board_name
+
+    _write_minimal_board(board_a, 'customer root a')
+    _write_minimal_board(board_b, 'customer root b')
+
+    customer_paths = f'{root_a};{root_b}'
+    list_result = subprocess.run(
+        [
+            'python3',
+            str(script_path),
+            '-l',
+            '-c',
+            customer_paths,
+            '--project-dir',
+            str(project_dir),
+        ],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert list_result.returncode == 0, list_result.stdout + list_result.stderr
+    list_output = list_result.stdout + list_result.stderr
+    low_index = _parse_customer_board_index(list_output, 'boards_a', board_name)
+
+    index_result = subprocess.run(
+        [
+            'python3',
+            str(script_path),
+            '-b',
+            str(low_index),
+            '-c',
+            customer_paths,
+            '--project-dir',
+            str(project_dir),
+            '--kconfig-only',
+            '--log-level',
+            'DEBUG',
+        ],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert index_result.returncode == 0, index_result.stdout + index_result.stderr
+    assert f'✅ Board path: {board_a.resolve()}' in index_result.stdout
+    assert f'Peripherals: {board_a.resolve() / "board_peripherals.yaml"}' in index_result.stdout
+    assert f'Peripherals: {board_b.resolve() / "board_peripherals.yaml"}' not in index_result.stdout
+
+    name_result = subprocess.run(
+        [
+            'python3',
+            str(script_path),
+            '-b',
+            board_name,
+            '-c',
+            customer_paths,
+            '--project-dir',
+            str(project_dir),
+            '--kconfig-only',
+        ],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert name_result.returncode == 0, name_result.stdout + name_result.stderr
+    assert f'✅ Board path: {board_b.resolve()}' in name_result.stdout
 
 
 def test_scan_board_directories_later_sources_override_same_named_boards(tmp_path, bmgr_root):
@@ -37,8 +277,10 @@ def test_scan_board_directories_later_sources_override_same_named_boards(tmp_pat
     generator = ConfigGenerator(bmgr_root_dir, project_dir=str(project_dir))
     boards = generator.scan_board_directories(str(customer_board.parent))
 
-    assert boards[board_name].path == str(customer_board.resolve())
-    assert boards[board_name].source_type == 'customer'
+    matches = [info for info in boards.values() if info.name == board_name]
+    assert [info.path for info in matches][-1] == str(customer_board.resolve())
+    assert matches[-1].source_type == 'customer'
+    assert len(matches) == 2
 
 
 def test_project_components_override_managed_components_for_same_named_boards(tmp_path, bmgr_root):
@@ -57,8 +299,10 @@ def test_project_components_override_managed_components_for_same_named_boards(tm
     generator = ConfigGenerator(tmp_path / 'bmgr', project_dir=str(project_dir))
     boards = generator.scan_board_directories()
 
-    assert boards[board_name].path == str(component_board.resolve())
-    assert boards[board_name].source == 'local_boards'
+    matches = [info for info in boards.values() if info.name == board_name]
+    assert [info.path for info in matches][-1] == str(component_board.resolve())
+    assert matches[-1].source == 'local_boards'
+    assert len(matches) == 2
 
 
 def test_cli_same_named_board_priority_matches_real_scan_order(tmp_path, script_path):
@@ -91,7 +335,6 @@ def test_cli_same_named_board_priority_matches_real_scan_order(tmp_path, script_
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert f'Duplicate board "{board_name}"' in result.stdout
     assert f'✅ Board path: {customer_board.resolve()}' in result.stdout
     assert f'Peripherals: {customer_board.resolve() / "board_peripherals.yaml"}' in result.stdout
     assert f'Devices: {customer_board.resolve() / "board_devices.yaml"}' in result.stdout
@@ -281,21 +524,6 @@ class TestIndexNameCorrespondence:
 
         # Verify it resolved to the correct board
         assert expected_board in result.stdout
-
-    def test_all_indices_map_correctly(self, run_bmgr_cmd, board_list):
-        """Test that all indices map to their corresponding boards using -b"""
-        for idx, expected_board in enumerate(board_list[:5], start=1):
-            result = run_bmgr_cmd(['-b', str(idx), '--kconfig-only'])
-            assert result.returncode == 0
-            assert expected_board in result.stdout, f'Index {idx} did not resolve to {expected_board}'
-
-    def test_all_indices_map_correctly_positional(self, run_bmgr_cmd, board_list):
-        """Test that all indices map to their corresponding boards using positional argument"""
-        for idx, expected_board in enumerate(board_list[:5], start=1):
-            result = run_bmgr_cmd([str(idx), '--kconfig-only'])
-            assert result.returncode == 0
-            assert expected_board in result.stdout, f'Index {idx} did not resolve to {expected_board}'
-
 
 class TestParameterPriority:
     """Test parameter priority when both positional and -b are provided"""

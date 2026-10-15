@@ -91,6 +91,9 @@ class PeripheralParser(LoggerMixin):
                     self.logger.info(f"⏭️  Skipping peripheral '{name}' (gen_skip=True)")
                     continue
 
+                if 'init_skip' not in obj:
+                    obj['init_skip'] = False
+
                 # Validate peripheral name using unified rules
                 if not validate_component_name(name):
                     self.logger.error(f'Invalid peripheral name! Path: {yaml_path}')
@@ -165,12 +168,13 @@ class PeripheralParser(LoggerMixin):
 
         @dataclass
         class PeripheralConfig:
-            def __init__(self, name: str, type_: str, format_: str, config: Dict[str, Any], version: Optional[str] = None, role_: Optional[str] = None):
+            def __init__(self, name: str, type_: str, format_: str, config: Dict[str, Any], version: Optional[str] = None, role_: Optional[str] = None, init_skip: bool = False):
                 self.name = name
                 self.type = type_
                 self.format = format_
                 self.config = config
                 self.version = version
+                self.init_skip = bool(init_skip)
                 # Use role from YAML if provided, otherwise derive from format
                 if role_ is not None:
                     self.role = role_
@@ -192,7 +196,8 @@ class PeripheralParser(LoggerMixin):
                 format_=format_,
                 config=config,
                 version=version,
-                role_=role_
+                role_=role_,
+                init_skip=obj.get('init_skip', False),
             ))
 
         return result

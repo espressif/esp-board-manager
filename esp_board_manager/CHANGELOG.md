@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.4
+
+### Features
+
+- Added per-name peripheral and device runtime configuration overrides with APP > BOARD > YAML priority, `esp_board_periph_set_ops` / `esp_board_device_set_ops`, and the board `esp_board_runtime_pre_init` hook. Configuration and operation overrides are tracked independently; runtime lookups and device initialization protect configuration lifetime against concurrent override/restore calls.
+- Added the runtime prepare state machine for board pre-initialization. Prepare serializes the hook, supports owner-task reentry, validates descriptor/handle/ops topology, and rolls back table and link changes and unused BOARD-layer overrides on failure. Existing legacy handle registrations remain supported without counting them against descriptor capacity.
+- Added writable runtime descriptor tables and C-defined runtime nodes. `idf.py bmgr --writable` generates writable device/peripheral descriptor tables; configure sufficient table capacity when board or application code adds nodes before initialization.
+- Added board hardware revisions through `board_revisions` in a board-level `board_amend.yaml`. Revision YAML uses `unused` to mark resources not used by a hardware version and retains `init_skip` for skipping automatic initialization. Revision YAML overlays generate revision-specific configurations and apply APIs for runtime selection, preserve base and revision-specific peripheral type/role handles, and size descriptor capacity for all revision views. Explicit revision dependencies are included in the generated component manifest, with conflicting constraints rejected during generation.
+- Added `init_skip` for peripherals. When `true`, `esp_board_periph_init_all()` skips that peripheral; `esp_board_periph_init()` and devices that reference it can still initialize it later.
+- Added an optional filter to `idf.py bmgr -l` / `python gen_bmgr_config_codes.py -l` by chip or board-component name. Filtered rows retain global board indices, and chained `idf.py` actions remain available after the list command.
+
+### Modifications
+
+- Raised the minimum `esp_codec_dev` version to `2.0.0-beta4` and passed optional audio codec interrupt configuration through to the codec driver; an unset IRQ pin now defaults to `-1`.
+- Same-named boards remain visible in `idf.py bmgr -l`; a bare board name selects the highest scan-priority match, including explicitly supplied customer paths. Customer boards are grouped by `-c` root in the list output.
+- Reduced default board-scan logs: INFO keeps the count, selected board, and warnings; per-directory scan traces and the full board-name dump are debug-only.
+- Deprecated `esp_board_periph_init_custom` and `esp_board_manager_register_device_handle` while preserving their existing ABI. Use `set_ops` / the board pre-init hook for customization; new devices require matching descriptor and handle nodes. Each legacy API emits one `ESP_LOGW` by default; define `ESP_BOARD_LEGACY_API_WARN=0` to disable these warnings.
+- Aligned assist placeholder CLI options with the board-manager command, including `--writable`.
+- Runtime configuration overrides are rejected after the corresponding resource is initialized; BOARD-layer changes during prepare are restricted to the prepare owner. Hooks must release hardware resources they created before returning an error; configuration-size mismatches are rejected at resource initialization.
+
+### Bug Fixes
+
+- Fixed preservation of project sdkconfig when switching between different board directories with the same board name; selection now records and compares board paths.
+- Fixed customer-board symlink scanning and amend-manifest warnings.
+
 ## 0.7.3~1
 
 ### Bug Fixes
