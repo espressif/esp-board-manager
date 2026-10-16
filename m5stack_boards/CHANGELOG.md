@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1~2
+
+### Bug Fixes
+
+- Removed camera sensor format, gain, and IPA configuration defaults from the M5Stack Tab5 board sdkconfig defaults, retaining sensor enable and auto-detection options so applications can select their own camera settings.
+
 ## 0.6.1~1
 
 ### Bug Fixes
