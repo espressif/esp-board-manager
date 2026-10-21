@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "esp_board_periph.h"
 #include "driver/gpio.h"
 
 #ifdef __cplusplus
@@ -26,19 +25,21 @@ typedef struct {
 /**
  * @brief  Peripheral GPIO configuration structure
  *
- *         This structure includes the standard gpio_config_t and a default_level field
- *         to specify the initial output level for GPIO pins configured as outputs.
+ *         Native pins use gpio_config and default_level. Virtual pins at or above
+ *         GPIO_NUM_MAX are configured by the IO expander instead.
  */
 typedef struct {
     gpio_config_t  gpio_config;    /*!< Standard GPIO configuration */
     int            default_level;  /*!< Default output level (0 or 1) for output pins */
+    int            gpio_num;       /*!< Explicit GPIO number when gpio_config.pin_bit_mask is zero (virtual pins only) */
 } periph_gpio_config_t;
 
 /**
- * @brief  Initialize a GPIO pin or set of pins
+ * @brief  Initialize a single GPIO peripheral
  *
- *         This function initializes one or more GPIO pins using the provided configuration structure.
- *         For output pins, it also sets the default level as specified in the configuration.
+ *         Native pins are configured and output pins receive default_level.
+ *         Virtual pins at or above GPIO_NUM_MAX only receive a handle; their mode,
+ *         pulls, interrupts and initial level must be configured by the IO expander.
  *
  * @param[in]   cfg            Pointer to periph_gpio_config_t
  * @param[in]   cfg_size       Size of the configuration structure

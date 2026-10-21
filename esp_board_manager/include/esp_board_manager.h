@@ -43,8 +43,10 @@ extern const esp_board_info_t g_esp_board_info;
  *         handle tables, apply generated board revisions, call override_config /
  *         set_ops, and initialize temporary resources needed for hardware
  *         detection. Resources created by the hook must be deinitialized before
- *         returning an error; prepare rollback restores table state but does not
- *         release hardware resources.
+ *         returning an error; prepare rollback does not release hardware resources.
+ *         If resources remain after failure, BMGR preserves the current tables and
+ *         configuration and rejects further runtime operations until restart.
+ *         C-defined nodes and referenced data must remain valid until restart.
  *
  * @return
  *       - ESP_OK  On success
@@ -60,11 +62,14 @@ esp_err_t esp_board_runtime_pre_init(void);
  *         calls from other tasks while preparing are rejected. Calls before a
  *         FreeRTOS task exists are also rejected. Single device/peripheral init calls this
  *         before creating a handle so the hook cannot be skipped.
+ *         A hook failure without retained resources rolls back immediately and may
+ *         retry. If resources remain, BMGR preserves the current topology/config,
+ *         rejects further runtime operations and requires a restart.
  *
  * @return
  *       - ESP_OK                 On success or already prepared
  *       - ESP_ERR_INVALID_STATE  If called by a non-owner task while preparing,
- *                                or without a current task
+ *                                without a current task, or after a failure that requires a restart
  *       - Others                 Error codes from the pre-init hook
  */
 esp_err_t esp_board_manager_prepare(void);

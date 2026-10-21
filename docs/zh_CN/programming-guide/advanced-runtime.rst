@@ -31,9 +31,9 @@
 
 config 与 ops 分层独立记录。仅设置 ops 时，config 仍使用更低层；仅设置 config 时，ops 仍使用更低层。
 
-目标名称 ``ref_count != 0`` 时，再对该名称调用 ``override_config`` / ``set_ops`` / ``restore_*`` 返回 ``ESP_ERR_INVALID_STATE``。尚未 init 时，同一层重复调用直接替换。``deinit`` 使计数回到 0 后可再次修改。
+资源正在初始化或仍被占用时，对该名称调用 ``override_config`` / ``set_ops`` / ``restore_*`` 返回 ``ESP_ERR_INVALID_STATE``。尚未 init 时，同一层重复调用直接替换。正常 deinit 成功释放资源后可再次修改。init 失败留下非空句柄时，即使 ``ref_count`` 为 0，也不能修改该资源；具体处理见 :ref:`bmgr-init-failure`。
 
-``deinit`` 只释放已创建的驱动 handle，不清 BOARD 或 APP 覆盖。``restore_config`` / ``restore_ops`` 只清除 APP 层。APP restore 后，config 回退到 BOARD 覆盖；若没有 BOARD config 覆盖，则读取当前 descriptor 的配置。当前 descriptor 可能已由 revision apply 替换或被 C 代码修改；若未修改，其配置就是 YAML 生成的默认配置。ops 则回退到 BOARD ops，或在没有 BOARD ops 时回退到匹配类型/角色的操作。恢复 APP 覆盖不会撤销 revision apply 或 descriptor 修改。pre-init hook 失败时会回滚未被活动资源使用的 BOARD 覆盖；hook 必须自行反初始化临时硬件资源。
+``deinit`` 只释放已创建的驱动 handle，不清 BOARD 或 APP 覆盖。``restore_config`` / ``restore_ops`` 只清除 APP 层。APP restore 后，config 回退到 BOARD 覆盖；若没有 BOARD config 覆盖，则读取当前 descriptor 的配置。当前 descriptor 可能已由 revision apply 替换或被 C 代码修改；若未修改，其配置就是 YAML 生成的默认配置。ops 则回退到 BOARD ops，或在没有 BOARD ops 时回退到匹配类型/角色的操作。恢复 APP 覆盖不会撤销 revision apply 或 descriptor 修改。Hook 必须自行反初始化临时硬件资源。prepare 失败且没有资源遗留时，BMGR 清除 hook 设置的 BOARD 覆盖；仍有资源遗留时，则保留当前配置并拒绝后续正常运行时操作，见 :ref:`bmgr-prepare-failure`。
 
 没有 YAML 生成配置的资源不能覆盖。共享同一 ``(type, role)`` 但名称不同的资源，按名称隔离 ops 与 config。
 

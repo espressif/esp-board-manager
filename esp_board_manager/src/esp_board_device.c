@@ -131,6 +131,9 @@ static esp_err_t check_active_device_dependents(const char *name)
         if (check_h->device_handle) {
             const esp_board_device_desc_t *check_d = esp_board_find_device_desc(check_h->name);
             if (check_d) {
+                if (check_d->power_ctrl_device && strcmp(check_d->power_ctrl_device, name) == 0) {
+                    return ESP_BOARD_ERR_DEVICE_DEP_IN_USE;
+                }
                 for (int i = 0; i < check_d->depends_on_num; i++) {
                     if (strcmp(check_d->depends_on[i], name) == 0) {
                         ESP_LOGE(TAG, "Cannot deinit %s, it is in use by %s", name, check_d->name);
@@ -154,6 +157,15 @@ esp_err_t esp_board_device_init(const char *name)
     const esp_board_device_desc_t *desc = esp_board_find_device_desc(name);
     ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(desc, name, TAG, "Device %s not found", name);
 
+    /* Find device handle */
+    esp_board_device_handle_t *handle = esp_board_find_device_handle(name);
+    ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(handle, name, TAG, "Device handle %s not found", name);
+
+    if (handle->device_handle != NULL && handle->ref_count == 0) {
+        ESP_LOGE(TAG, "Device %s init left unreleased resources; restart required", name);
+        return ESP_ERR_INVALID_STATE;
+    }
+
     /* Power on device if power control device is specified */
     if (desc->power_ctrl_device) {
         ret = esp_board_device_power_ctrl(name, true);
@@ -161,10 +173,6 @@ esp_err_t esp_board_device_init(const char *name)
             ESP_LOGW(TAG, "Failed to power on device: %s via power control device: %s", name, desc->power_ctrl_device);
         }
     }
-
-    /* Find device handle */
-    esp_board_device_handle_t *handle = esp_board_find_device_handle(name);
-    ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(handle, name, TAG, "Device handle %s not found", name);
 
     /* Existing reference fast path; concurrent init/deinit of this device is not supported. */
     if (handle->ref_count > 0) {
@@ -255,27 +263,27 @@ esp_err_t esp_board_device_init(const char *name)
     }
     esp_board_runtime_unlock();
 
-    ret = init_fn(cfg, (int)cfg_size, &handle->device_handle);
+    /* Capture the matching cleanup before init; never publish an unbound instance. */
+    ret = esp_board_runtime_set_bound_deinit(name, (void *)deinit_fn);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init device: %s", name);
+        ESP_LOGE(TAG, "Failed to snapshot deinit for device: %s", name);
         (void)esp_board_runtime_set_initialized(name, false);
-        handle->device_handle = NULL;
         for (int i = 0; i < desc->depends_on_num; i++) {
             esp_board_device_deinit_internal(desc->depends_on[i], true);
         }
         return ret;
     }
 
-    ret = esp_board_runtime_set_bound_deinit(name, (void *)deinit_fn);
+    ret = init_fn(cfg, (int)cfg_size, &handle->device_handle);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to snapshot deinit for device: %s", name);
-        if (deinit_fn) {
-            (void)deinit_fn(handle->device_handle);
-        }
-        handle->device_handle = NULL;
-        (void)esp_board_runtime_set_initialized(name, false);
-        for (int i = 0; i < desc->depends_on_num; i++) {
-            esp_board_device_deinit_internal(desc->depends_on[i], true);
+        ESP_LOGE(TAG, "Failed to init device: %s", name);
+        if (handle->device_handle == NULL) {
+            (void)esp_board_runtime_set_initialized(name, false);
+            for (int i = 0; i < desc->depends_on_num; i++) {
+                esp_board_device_deinit_internal(desc->depends_on[i], true);
+            }
+        } else {
+            ESP_LOGW(TAG, "Device %s init left unreleased resources; restart required", name);
         }
         return ret;
     }
@@ -294,8 +302,8 @@ esp_err_t esp_board_device_get_handle(const char *name, void **device_handle)
     /* Find device handle */
     esp_board_device_handle_t *handle = esp_board_find_device_handle(name);
     ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(handle, name, TAG, "Device handle %s not found", name);
-    if (handle->device_handle == NULL) {
-        ESP_LOGE(TAG, "Device %s handle is NULL", name);
+    if (handle->device_handle == NULL || handle->ref_count == 0) {
+        ESP_LOGE(TAG, "Device %s has no active handle", name);
         return ESP_BOARD_ERR_DEVICE_NO_HANDLE;
     }
     *device_handle = handle->device_handle;
@@ -433,11 +441,13 @@ esp_err_t esp_board_device_restore_ops(const char *name)
 esp_err_t esp_board_device_get_i2c_effective_addr(const char *device_name, uint16_t *addr)
 {
     ESP_BOARD_RETURN_ON_FALSE(device_name && addr, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid args");
+    esp_err_t ret = ensure_board_prepared();
+    ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Board prepare failed before I2C address lookup");
 
     const esp_board_device_desc_t *desc = esp_board_find_device_desc(device_name);
     ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(desc, device_name, TAG, "Device %s not found", device_name);
 
-    esp_err_t ret = periph_i2c_get_effective_addr_internal(device_name, addr);
+    ret = periph_i2c_get_effective_addr_internal(device_name, addr);
     if (ret == ESP_OK) {
         return ESP_OK;
     }
@@ -449,6 +459,10 @@ esp_err_t esp_board_device_get_i2c_effective_addr(const char *device_name, uint1
 
 static esp_err_t esp_board_device_deinit_internal(const char *name, bool ignore_dep_check)
 {
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     ESP_BOARD_RETURN_ON_FALSE(name, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "name is null");
 
     /* Find device handle */
@@ -467,8 +481,8 @@ static esp_err_t esp_board_device_deinit_internal(const char *name, bool ignore_
     }
 
     if (handle->ref_count == 0) {
-        ESP_LOGW(TAG, "Device %s ref count is already 0 but deinit is called", name);
-        return ESP_OK;
+        ESP_LOGE(TAG, "Device %s init left unreleased resources; restart required", name);
+        return ESP_ERR_INVALID_STATE;
     }
 
     uint8_t old_ref_count = handle->ref_count;
@@ -479,7 +493,7 @@ static esp_err_t esp_board_device_deinit_internal(const char *name, bool ignore_
 
     /* Only deinitialize if ref_count reaches 0 */
     if (handle->ref_count == 0) {
-        /* Use deinit snapshotted at 0->1 init; do not re-resolve ops */
+        /* Use the cleanup bound to this successfully initialized instance. */
         esp_board_device_deinit_func bound_deinit =
             (esp_board_device_deinit_func)esp_board_runtime_get_bound_deinit(name);
         if (!bound_deinit) {
@@ -493,10 +507,6 @@ static esp_err_t esp_board_device_deinit_internal(const char *name, bool ignore_
             handle->ref_count = old_ref_count;
             ESP_BOARD_RETURN_ON_DEVICE_NOT_FOUND(desc, name, TAG, "Device %s not found", name);
         }
-        if (desc->power_ctrl_device != NULL) {
-            /* Deinitialize power ctrl device if needed */
-            esp_board_device_deinit(desc->power_ctrl_device);
-        }
         esp_err_t ret = bound_deinit(handle->device_handle);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to deinit device: %s", name);
@@ -505,6 +515,14 @@ static esp_err_t esp_board_device_deinit_internal(const char *name, bool ignore_
         }
         handle->device_handle = NULL;
         (void)esp_board_runtime_set_initialized(name, false);
+
+        if (desc->power_ctrl_device != NULL) {
+            /* Keep power available until the device has finished cleanup. */
+            esp_err_t power_ret = esp_board_device_deinit(desc->power_ctrl_device);
+            if (power_ret != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to release power control device %s of %s", desc->power_ctrl_device, name);
+            }
+        }
 
         for (int i = 0; i < desc->depends_on_num; i++) {
             esp_err_t dep_ret = esp_board_device_deinit_internal(desc->depends_on[i], true);
@@ -587,8 +605,10 @@ esp_err_t esp_board_device_iterate_name_by_type(const char *type, void **cursor,
 
 esp_err_t esp_board_device_init_all(void)
 {
+    esp_err_t ret = esp_board_manager_prepare();
+    ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Board prepare failed before device init_all");
+
     const esp_board_device_desc_t *desc = g_esp_board_devices;
-    esp_err_t ret;
 
     /* Initialize all devices in the list */
     while (desc && desc->name) {
@@ -610,6 +630,10 @@ esp_err_t esp_board_device_init_all(void)
 
 esp_err_t esp_board_device_deinit_all(void)
 {
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     esp_err_t ret;
     bool made_progress;
     int total_devices_freed = 0;
@@ -626,6 +650,9 @@ esp_err_t esp_board_device_deinit_all(void)
                     if (dep_check->device_handle && dep_check != handle) {
                         const esp_board_device_desc_t *dep_desc = esp_board_find_device_desc(dep_check->name);
                         if (dep_desc) {
+                            if (dep_desc->power_ctrl_device && strcmp(dep_desc->power_ctrl_device, handle->name) == 0) {
+                                has_active_dependent = true;
+                            }
                             for (int i = 0; i < dep_desc->depends_on_num; i++) {
                                 if (strcmp(dep_desc->depends_on[i], handle->name) == 0) {
                                     has_active_dependent = true;
@@ -679,16 +706,27 @@ esp_err_t esp_board_device_deinit_all(void)
 
 const esp_board_device_handle_t *esp_board_device_find_by_handle(void *device_handle)
 {
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return NULL;
+    }
     if (device_handle == NULL) {
         ESP_LOGE(TAG, "Device handle is NULL in find_device_by_handle");
         return NULL;
     }
     esp_board_device_handle_t *handle = g_esp_board_device_handles;
+    esp_board_device_handle_t *slow = handle;
+    esp_board_device_handle_t *fast = handle;
     while (handle) {
         if (handle->device_handle == device_handle) {
             return handle;
         }
         handle = handle->next;
+        slow = slow ? slow->next : NULL;
+        fast = (fast && fast->next) ? fast->next->next : NULL;
+        if (slow && slow == fast) {
+            ESP_LOGE(TAG, "Device handle list contains a cycle");
+            return NULL;
+        }
     }
     return NULL;
 }
@@ -696,6 +734,9 @@ const esp_board_device_handle_t *esp_board_device_find_by_handle(void *device_ha
 esp_err_t esp_board_device_power_ctrl(const char *name, bool power_on)
 {
 #ifdef CONFIG_ESP_BOARD_DEV_POWER_CTRL_SUPPORT
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
     if (name == NULL) {
         ESP_LOGE(TAG, "Device name is NULL");
         return ESP_BOARD_ERR_MANAGER_INVALID_ARG;
@@ -764,6 +805,8 @@ esp_err_t esp_board_device_power_ctrl(const char *name, bool power_on)
 esp_err_t esp_board_device_callback_register(const char *name, void *call_back_func, void *user_data)
 {
     ESP_BOARD_RETURN_ON_FALSE(name && call_back_func, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid arguments");
+    esp_err_t err = ensure_board_prepared();
+    ESP_BOARD_RETURN_ON_ERROR(err, TAG, "Board prepare failed before callback registration");
 
     /* Find device descriptor */
     const esp_board_device_desc_t *dev_desc = esp_board_find_device_desc(name);
@@ -771,7 +814,7 @@ esp_err_t esp_board_device_callback_register(const char *name, void *call_back_f
 
     /* Get device-specific callback registration function */
     void *extra_func = NULL;
-    esp_err_t err = esp_board_extra_func_get(dev_desc->type, &extra_func);
+    err = esp_board_extra_func_get(dev_desc->type, &extra_func);
     if (err != 0) {
         ESP_LOGE(TAG, "Callback register func for device type %s not found", dev_desc->type);
         return ESP_BOARD_ERR_DEVICE_NOT_SUPPORTED;

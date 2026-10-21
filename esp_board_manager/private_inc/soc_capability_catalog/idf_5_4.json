@@ -81,6 +81,20 @@
       ],
       "type": "display_lcd"
     },
+    "device.ethernet_emac_rgmii": {
+      "kind": "device",
+      "sub_type": [
+        "emac_rgmii"
+      ],
+      "type": "ethernet"
+    },
+    "device.ethernet_emac_rmii": {
+      "kind": "device",
+      "sub_type": [
+        "emac_rmii"
+      ],
+      "type": "ethernet"
+    },
     "device.fs_fat_sdmmc": {
       "kind": "device",
       "sub_type": [
@@ -265,6 +279,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -277,6 +294,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": true,
         "device.fs_fat_sdmmc": true,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -287,6 +306,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": true,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -412,6 +432,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": false,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -424,6 +447,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -434,6 +459,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -530,6 +556,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -542,6 +571,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -552,6 +583,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -651,6 +683,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -663,6 +698,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -673,6 +710,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": true,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -793,6 +831,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -805,6 +846,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -815,6 +858,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": true,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -939,6 +983,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": false,
         "device.button_adc_single": false,
@@ -951,6 +998,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -961,6 +1010,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": false,
@@ -1058,6 +1108,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -1070,6 +1123,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -1080,6 +1135,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -1207,6 +1263,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": true,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": true,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -1219,6 +1278,8 @@
         "device.display_lcd_rgb": true,
         "device.display_lcd_rgb_3wire_spi": true,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": true,
         "device.fs_fat_sdmmc": true,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -1229,6 +1290,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": true,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": true,
         "i2c.lp_supported": true,
         "i2s.supports_pdm_rx_hp_filter": true,
         "peripheral.adc_continuous": true,
@@ -1421,6 +1483,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -1433,6 +1498,8 @@
         "device.display_lcd_rgb": false,
         "device.display_lcd_rgb_3wire_spi": false,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": false,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -1443,6 +1510,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": false,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -1601,6 +1669,9 @@
         }
       },
       "capabilities": {
+        "SOC_EMAC_MII_USE_GPIO_MATRIX": false,
+        "SOC_EMAC_SUPPORT_1000M": false,
+        "SOC_EMAC_USE_MULTI_IO_MUX": false,
         "device.audio_codec": true,
         "device.button_adc_multi": true,
         "device.button_adc_single": true,
@@ -1613,6 +1684,8 @@
         "device.display_lcd_rgb": true,
         "device.display_lcd_rgb_3wire_spi": true,
         "device.display_lcd_spi": true,
+        "device.ethernet_emac_rgmii": false,
+        "device.ethernet_emac_rmii": false,
         "device.fs_fat_sdmmc": true,
         "device.fs_fat_spi": true,
         "device.gpio_expander": true,
@@ -1623,6 +1696,7 @@
         "device.ledc_ctrl": true,
         "device.littlefs_sdmmc": true,
         "device.littlefs_spi": true,
+        "emac.use_multi_io_mux": false,
         "i2c.lp_supported": false,
         "i2s.supports_pdm_rx_hp_filter": false,
         "peripheral.adc_continuous": true,
@@ -1907,9 +1981,6 @@
         }
       ]
     },
-    "i2c.hp_instance_count": {},
-    "i2c.instance_count": {},
-    "i2s.instance_count": {},
     "lcd.i80_bus_width": {
       "appliesTo": [
         {

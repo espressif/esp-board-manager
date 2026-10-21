@@ -51,11 +51,11 @@ def parse(name: str, config: dict) -> dict:
 
         # Get GPIO pin number with validation
         pin = cfg.get('pin', -1)
-        if pin < 0:
-            raise ValueError(f'Invalid GPIO pin number: {pin}. Must be >= 0.')
+        if isinstance(pin, bool) or not isinstance(pin, int) or not 0 <= pin <= 2147483647:
+            raise ValueError(f'Invalid GPIO pin number: {pin}. Must be a non-negative 32-bit signed integer.')
 
-        # Use BIT64(pin) format for pin_bit_mask
-        pin_bit_mask = f'BIT64({pin})'
+        # Keep virtual GPIO numbers outside the 64-bit configuration mask.
+        pin_bit_mask = f'BIT64({pin})' if pin < 64 else 0
 
         # Get GPIO mode with validation
         mode = resolve_idf_macro(
@@ -94,6 +94,11 @@ def parse(name: str, config: dict) -> dict:
         # Use logger for debug output
         from generators.utils.logger import get_logger
         logger = get_logger('periph_gpio')
+        if pin >= 64:
+            logger.warning(
+                'GPIO peripheral %s pin %d exceeds the 64-bit gpio_config() mask; '
+                'configuration is delegated to the IO expander.', name, pin,
+            )
         logger.debug(f'GPIO {name} pin={pin}, mode={mode}, intr_type={intr_type}, default_level={default_level}')
 
         # Create configuration structure
@@ -108,7 +113,8 @@ def parse(name: str, config: dict) -> dict:
                     'pull_down_en': pull_down_en,
                     'intr_type': intr_type
                 },
-                'default_level': default_level
+                'default_level': default_level,
+                'gpio_num': pin,
             }
         }
 
@@ -123,6 +129,10 @@ def parse(name: str, config: dict) -> dict:
 
 
 def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: dict) -> dict:
+    gpio_num = parse_result.get('struct_init', {}).get('gpio_num')
+    if isinstance(gpio_num, int) and not isinstance(gpio_num, bool):
+        return {'io': {'pin': gpio_num}}
+
     gpio_config = parse_result.get('struct_init', {}).get('gpio_config', {})
     pin_bit_mask = gpio_config.get('pin_bit_mask')
     if not isinstance(pin_bit_mask, str):

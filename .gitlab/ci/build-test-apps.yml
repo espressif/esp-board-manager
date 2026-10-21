@@ -15,6 +15,7 @@
 # esp_board_manager/test_apps/components/ci_coverage_boards/ stack every
 # SoC-supported peripheral wrapper plus compile-cheap device wrappers (LCD/touch
 # use local fake factories). They are not hardware bring-up configs.
+# test_ethernet_extra covers custom PHY discovery, dependencies, and C adapters.
 build_test_apps:
   extends:
     - .rules:build
@@ -22,7 +23,7 @@ build_test_apps:
   parallel:
     matrix:
       - IDF_IMAGE: *idf_image_matrix
-        BOARD: ["esp32_coverage"]
+        BOARD: ["esp32_coverage", "test_ethernet_extra"]
         IDF_TARGET: ["esp32"]
       - IDF_IMAGE: *idf_image_matrix
         BOARD: ["esp32s3_coverage", "esp32_s3_korvo_2_3"]

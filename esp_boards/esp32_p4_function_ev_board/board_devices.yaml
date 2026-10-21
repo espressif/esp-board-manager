@@ -1,5 +1,27 @@
 # Devices Configuration
 devices:
+  - name: ethernet
+    type: ethernet
+    sub_type: emac_rmii
+    chip: ip101
+    config:
+      phy_config:
+        phy_addr: 1
+        reset_gpio_num: 51
+      smi_gpio:
+        mdc_num: 31
+        mdio_num: 52
+      clock_config:
+        clock_mode: EMAC_CLK_EXT_IN
+        clock_gpio: 50
+      dataif_gpio:
+        tx_en_num: 49
+        txd0_num: 34
+        txd1_num: 35
+        crs_dv_num: 28
+        rxd0_num: 29
+        rxd1_num: 30
+
   - name: audio_dac
     chip: es8311  # Codec chip (ES8311)
     type: audio_codec

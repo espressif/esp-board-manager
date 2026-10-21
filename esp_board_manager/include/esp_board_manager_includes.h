@@ -144,6 +144,11 @@
 #include "dev_knob.h"
 #endif  /* CONFIG_ESP_BOARD_DEV_KNOB_SUPPORT */
 
+/* Ethernet Device */
+#ifdef CONFIG_ESP_BOARD_DEV_ETHERNET_SUPPORT
+#include "dev_ethernet.h"
+#endif  /* CONFIG_ESP_BOARD_DEV_ETHERNET_SUPPORT */
+
 /* LCD Touch Device */
 #ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
 #include "dev_lcd_touch.h"

@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
+# SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
+
+version: "1.0"
+description: "Use the test application's 4 MB partition layout on ESP32-Ethernet-Kit"
+apply:
+  - sdkconfig.defaults.board

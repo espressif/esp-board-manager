@@ -6,4 +6,4 @@
  */
 
 #pragma once
-#include "host_idf_stubs.h"
+#define ESP_EVENT_DECLARE_BASE(name)  extern const char *name

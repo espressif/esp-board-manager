@@ -290,6 +290,14 @@ void app_main(void)
   - GitHub 链接：[espressif/esp-board-manager/tree/main/m5stack_boards](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards)
   - ESP Component Registry 链接：[espressif/m5stack_boards](https://components.espressif.com/components/espressif/m5stack_boards)
 
+- `waveshare/waveshare_boards`
+  - GitHub 链接：[waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
+  - ESP Component Registry 链接：[waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+
+- `guition-jc/guition_boards`
+  - GitHub 链接：[Guition-JC/Guition](https://github.com/Guition-JC/Guition)
+  - ESP Component Registry 链接：[guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+
 ### 支持的设备类型
 
 | 设备名称 | 描述 | 类型 | 子类型 | 外设 | 参考 YAML | 示例 |
@@ -308,6 +316,7 @@ void app_main(void)
 | `button` | 按键 | button | gpio<br/>adc_single<br/>adc_multi<br/>custom | gpio<br/>adc | [`dev_button.yaml`](devices/dev_button/dev_button.yaml) | **[`test_dev_button.c`](test_apps/main/test_dev_button.c)** <br/>按钮测试 |
 | `knob` | 正交旋钮 | knob | gpio | - | [`dev_knob.yaml`](devices/dev_knob/dev_knob.yaml) | **[`test_dev_knob.c`](test_apps/main/test_dev_knob.c)** <br/>独立旋钮事件与计数测试 |
 | `led_strip` | LED 灯带 | led_strip | rmt<br/>spi | - | [`dev_led_strip.yaml`](devices/dev_led_strip/dev_led_strip.yaml) | **[`test_dev_led_strip.c`](test_apps/main/test_dev_led_strip.c)** <br/>LED 灯带初始化和控制测试 |
+| `ethernet` | 内部 EMAC + PHY | ethernet | emac_rmii / emac_rgmii | - | [`dev_ethernet.yaml`](devices/dev_ethernet/dev_ethernet.yaml) | **[`test_dev_ethernet.c`](test_apps/main/test_dev_ethernet.c)** <br/>以太网句柄与链路测试 |
 
 > 对于同一种设备，我们将不再使用接口类型来区分类型。例如，`dev_fatfs_sdcard` 和 `dev_fatfs_sdcard_spi` 将统一使用 `fs_fat` 进行管理，`dev_display_lcd_spi` 也将改为使用 `dev_display_lcd` 进行管理。
 

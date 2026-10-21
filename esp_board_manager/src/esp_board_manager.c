@@ -93,6 +93,9 @@ esp_err_t esp_board_manager_init(void)
 esp_err_t esp_board_manager_get_periph_handle(const char *periph_name, void **periph_handle)
 {
     ESP_BOARD_RETURN_ON_FALSE(periph_name && periph_handle, ESP_BOARD_ERR_MANAGER_INVALID_ARG, TAG, "Invalid arguments");
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
     esp_err_t ret = esp_board_periph_get_handle(periph_name, periph_handle);
     if (ret != ESP_OK) {
@@ -106,6 +109,9 @@ esp_err_t esp_board_manager_get_periph_handle(const char *periph_name, void **pe
 esp_err_t esp_board_manager_get_device_handle(const char *dev_name, void **device_handle)
 {
     ESP_BOARD_RETURN_ON_FALSE(dev_name && device_handle, ESP_BOARD_ERR_MANAGER_INVALID_ARG, TAG, "Invalid arguments");
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
     /* Find device handle */
     esp_err_t ret = esp_board_device_get_handle(dev_name, device_handle);
@@ -151,6 +157,9 @@ esp_err_t esp_board_manager_get_board_info(esp_board_info_t *board_info)
 esp_err_t esp_board_manager_register_device_handle(esp_board_device_handle_t *reg_handle)
 {
     ESP_BOARD_RETURN_ON_FALSE(reg_handle, ESP_BOARD_ERR_DEVICE_INVALID_ARG, TAG, "Invalid args");
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
 #if ESP_BOARD_LEGACY_API_WARN
     warn_legacy_register_device_handle_once();
@@ -176,6 +185,8 @@ esp_err_t esp_board_manager_register_device_handle(esp_board_device_handle_t *re
 esp_err_t esp_board_manager_init_device_by_name(const char *dev_name)
 {
     ESP_BOARD_RETURN_ON_FALSE(dev_name, ESP_BOARD_ERR_MANAGER_INVALID_ARG, TAG, "Invalid arguments");
+    esp_err_t ret = esp_board_runtime_prepare();
+    ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Board prepare failed before device lookup");
 
     /* First check if device exists */
     const esp_board_device_desc_t *dev_desc = esp_board_find_device_desc(dev_name);
@@ -185,7 +196,7 @@ esp_err_t esp_board_manager_init_device_by_name(const char *dev_name)
     }
 
     /* Initialize the device */
-    esp_err_t ret = esp_board_device_init(dev_name);
+    ret = esp_board_device_init(dev_name);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize device %s", dev_name);
         return ret;
@@ -225,6 +236,9 @@ esp_err_t esp_board_manager_print_board_info(void)
 
 esp_err_t esp_board_manager_print(void)
 {
+    esp_err_t ret = esp_board_runtime_prepare();
+    ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Board prepare failed before manager print");
+
     printf("\r\n");
     ESP_LOGI(TAG, "Board Manager Status:");
     ESP_LOGI(TAG, "-------------------");

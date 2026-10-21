@@ -46,7 +46,8 @@ KCONFIG_PROJBUILD_FILE = 'Kconfig.projbuild'
 YAML_SUFFIXES = frozenset({'.yaml', '.yml'})
 SOURCE_SUFFIXES = frozenset({'.c', '.cpp', '.cc', '.cxx', '.s'})
 HEADER_SUFFIXES = frozenset({'.h', '.hpp'})
-SUPPORTED_FILE_SUFFIXES = YAML_SUFFIXES | SOURCE_SUFFIXES | HEADER_SUFFIXES
+PYTHON_SUFFIXES = frozenset({'.py'})
+SUPPORTED_FILE_SUFFIXES = YAML_SUFFIXES | SOURCE_SUFFIXES | HEADER_SUFFIXES | PYTHON_SUFFIXES
 
 # ``sdkconfig.defaults.board`` and ``Kconfig.projbuild`` are recognised by
 # basename rather than suffix (both filenames are fixed by ESP-IDF / bmgr
@@ -57,6 +58,7 @@ SUPPORTED_FILE_SUFFIXES = YAML_SUFFIXES | SOURCE_SUFFIXES | HEADER_SUFFIXES
 KIND_YAML = 'yaml'
 KIND_SOURCE = 'source'
 KIND_HEADER = 'header'
+KIND_PYTHON = 'python'
 KIND_SDKCONFIG_BOARD = 'sdkconfig_board'
 KIND_KCONFIG_PROJBUILD = 'kconfig_projbuild'
 
@@ -135,6 +137,10 @@ class AmendPlan:
     def source_files(self) -> List[Path]:
         return [f.resolved_path for f in self.source_fragments()]
 
+    def python_files(self) -> List[Path]:
+        """Explicit parser modules in manifest order; never scan amend directories."""
+        return [f.resolved_path for f in self.fragments if f.kind == KIND_PYTHON]
+
     def include_dirs(self) -> List[Path]:
         """De-duplicated INCLUDE_DIRS for the generated component.
 
@@ -204,8 +210,10 @@ def _classify_path(resolved_path: Path, *, raw_item: str, item_index: int) -> st
         return KIND_SOURCE
     if suffix in HEADER_SUFFIXES:
         return KIND_HEADER
+    if suffix in PYTHON_SUFFIXES:
+        return KIND_PYTHON
 
-    supported = sorted({*YAML_SUFFIXES, *SOURCE_SUFFIXES, *HEADER_SUFFIXES})
+    supported = sorted(SUPPORTED_FILE_SUFFIXES)
     raise AmendError(
         f'Amend item (apply[{item_index}] = {raw_item!r}) has unsupported suffix '
         f'{suffix!r}. Supported suffixes: {", ".join(supported)}. '
@@ -732,6 +740,7 @@ __all__ = [
     'KIND_YAML',
     'KIND_SOURCE',
     'KIND_HEADER',
+    'KIND_PYTHON',
     'KIND_SDKCONFIG_BOARD',
     'KIND_KCONFIG_PROJBUILD',
     'MANIFEST_FILENAME',
@@ -740,6 +749,7 @@ __all__ = [
     'YAML_SUFFIXES',
     'SOURCE_SUFFIXES',
     'HEADER_SUFFIXES',
+    'PYTHON_SUFFIXES',
     'SUPPORTED_FILE_SUFFIXES',
     'build_amend_plan',
     'merge_amend_plans',

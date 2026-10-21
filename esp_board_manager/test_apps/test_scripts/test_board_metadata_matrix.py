@@ -1420,6 +1420,62 @@ DEVICE_CASES = [
         },
     },
     {
+        'id': 'dev_ethernet',
+        'chip': 'esp32s31',
+        'peripherals': [],
+        'device': {
+            'name': 'ethernet',
+            'type': 'ethernet',
+            'sub_type': 'emac_rgmii',
+            'chip': 'yt8531',
+            'config': {
+                'phy_config': {'phy_addr': -1, 'reset_gpio_num': 7},
+                'smi_gpio': {
+                    'mdc_num': 5,
+                    'mdio_num': 6,
+                },
+                'clock_config': {
+                    'clock_rx_gpio': 14,
+                    'clock_tx_gpio': 13,
+                    'clock_phy_ref_gpio': -1,
+                },
+                'dataif_gpio': {
+                    'tx_ctl_num': 12,
+                    'txd0_num': 8,
+                    'txd1_num': 9,
+                    'txd2_num': 10,
+                    'txd3_num': 11,
+                    'rx_ctl_num': 15,
+                    'rxd0_num': 19,
+                    'rxd1_num': 18,
+                    'rxd2_num': 17,
+                    'rxd3_num': 16,
+                },
+            },
+        },
+        'expected': {
+            'type': 'ethernet',
+            'sub_type': 'emac_rgmii',
+            'io': {
+                'phy_reset_gpio_num': 7,
+                'mdc_num': 5,
+                'mdio_num': 6,
+                'clock_rx_gpio': 14,
+                'clock_tx_gpio': 13,
+                'tx_ctl_num': 12,
+                'txd0_num': 8,
+                'txd1_num': 9,
+                'txd2_num': 10,
+                'txd3_num': 11,
+                'rx_ctl_num': 15,
+                'rxd0_num': 19,
+                'rxd1_num': 18,
+                'rxd2_num': 17,
+                'rxd3_num': 16,
+            },
+        },
+    },
+    {
         'id': 'dev_power_ctrl',
         'chip': 'esp32s3',
         'peripherals': [
@@ -1445,6 +1501,45 @@ DEVICE_CASES = [
     },
 ]
 
+
+DEVICE_CASES.append({
+    'id': 'dev_ethernet_rmii_external_clock_loopback',
+    'chip': 'esp32p4',
+    'peripherals': [],
+    'device': {
+        'name': 'ethernet',
+        'type': 'ethernet',
+        'sub_type': 'emac_rmii',
+        'config': {
+            'phy_config': {'reset_gpio_num': -1},
+            'smi_gpio': {'mdc_num': 31, 'mdio_num': 52},
+            'clock_config': {'clock_mode': 'EMAC_CLK_OUT', 'clock_gpio': 0},
+            'clock_config_out_in': {'clock_mode': 'EMAC_CLK_EXT_IN', 'clock_gpio': 20},
+            'dataif_gpio': {
+                'tx_en_num': 49, 'txd0_num': 34, 'txd1_num': 35,
+                'crs_dv_num': 28, 'rxd0_num': 29, 'rxd1_num': 30,
+            },
+        },
+    },
+    'expected': {
+        'type': 'ethernet',
+        'sub_type': 'emac_rmii',
+        'io': {
+            'mdc_num': 31,
+            'mdio_num': 52,
+            'clock_gpio': 0,
+            'clock_out_in_gpio': 20,
+            'tx_en_num': 49,
+            'txd0_num': 34,
+            'txd1_num': 35,
+            'crs_dv_num': 28,
+            'rxd0_num': 29,
+            'rxd1_num': 30,
+        },
+    },
+})
+
+
 @pytest.mark.parametrize('case', PERIPHERAL_CASES, ids=[case['id'] for case in PERIPHERAL_CASES])
 def test_board_metadata_matrix_for_peripherals(bmgr_root, tmp_path, case):
     metadata = _generate_metadata(
@@ -1459,7 +1554,23 @@ def test_board_metadata_matrix_for_peripherals(bmgr_root, tmp_path, case):
     assert metadata['peripherals'][peripheral_name] == case['expected']
 
 @pytest.mark.parametrize('case', DEVICE_CASES, ids=[case['id'] for case in DEVICE_CASES])
-def test_board_metadata_matrix_for_devices(bmgr_root, tmp_path, case):
+def test_board_metadata_matrix_for_devices(bmgr_root, tmp_path, monkeypatch, case):
+    device = case['device']
+    interface = device.get('config', {}).get('interface')
+    if device.get('type') == 'ethernet' or interface == 'EMAC_DATA_INTERFACE_RGMII':
+        sys.path.insert(0, str(bmgr_root))
+        from devices.dev_ethernet import dev_ethernet
+        from generators import parser_loader
+        monkeypatch.setattr(dev_ethernet, 'get_idf_version', lambda: (6, 1, 0))
+        orig_load = parser_loader._load_parser_module
+        monkeypatch.setattr(
+            parser_loader,
+            '_load_parser_module',
+            lambda module_name, script_path: (
+                dev_ethernet if module_name == 'dev_ethernet' else orig_load(module_name, script_path)
+            ),
+        )
+
     metadata = _generate_metadata(
         bmgr_root,
         tmp_path,

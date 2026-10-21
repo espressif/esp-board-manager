@@ -6,7 +6,7 @@
  *
  * IDF test cases for runtime prepare / sidecar behavior that work with the
  * default weak esp_board_runtime_pre_init(). Hook-custom cases live in
- * test_apps/host_runtime_override/.
+ * test_apps/host_tests/runtime_override/.
  */
 
 #include <stdio.h>

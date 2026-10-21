@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1
+
+### Features
+
+- ESP32-S31-Function-CoreBoard-1, ESP32-Ethernet-Kit, and ESP32-P4-Function-EV-Board now declare the `ethernet` device.
+- Added the `battery_monitor` custom device for ESP-Mosaico's BQ27220 fuel gauge, with explicit initialization, revision-aware shared I2C access, and a configurable design capacity (65 mAh by default).
+
+### Bug Fixes
+
+- Use the PHY's external RMII reference clock input on the stock ESP32-Ethernet-Kit assembly, and skip automatic initialization of the BOOT button and its GPIO because GPIO0 is shared with that clock.
+
 ## 0.7.0~1
 
 ### Bug Fixes

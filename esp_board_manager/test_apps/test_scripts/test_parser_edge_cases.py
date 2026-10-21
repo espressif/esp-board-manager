@@ -1266,6 +1266,38 @@ def test_audio_codec_resolves_explicit_pa_and_reset_names(bmgr_root):
     assert result['struct_init']['reset_peripheral']['name'] == 'codec_line'
 
 
+@pytest.mark.parametrize('binding', ['pa_name', 'reset_name'])
+@pytest.mark.parametrize('pin', [-1, 32768, 65535, 2147483647, True, '65'])
+def test_audio_codec_rejects_gpio_outside_signed_port(bmgr_root, binding, pin):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    with pytest.raises(ValueError, match='0.*32767'):
+        mod.parse('audio_dac', {
+            'type': 'audio_codec', 'chip': 'es8311',
+            'config': {'dac_enabled': True},
+            'peripherals': [{binding: 'control', 'active_level': 1}],
+        }, peripherals_dict={'control': SimpleNamespace(type='gpio', config={'pin': pin})})
+
+
+@pytest.mark.parametrize('binding,member', [('pa_name', 'pa_peripheral'), ('reset_name', 'reset_peripheral')])
+@pytest.mark.parametrize('pin', [0, 65, 32767])
+def test_audio_codec_preserves_gpio_port_boundaries(bmgr_root, binding, member, pin):
+    from types import SimpleNamespace
+
+    sys.path.insert(0, str(bmgr_root))
+    from devices.dev_audio_codec import dev_audio_codec as mod
+
+    result = mod.parse('audio_dac', {
+        'type': 'audio_codec', 'chip': 'es8311',
+        'config': {'dac_enabled': True},
+        'peripherals': [{binding: 'control', 'active_level': 1}],
+    }, peripherals_dict={'control': SimpleNamespace(type='gpio', config={'pin': pin})})
+    assert result['struct_init'][member]['port'] == pin
+
+
 def test_audio_codec_rejects_duplicate_explicit_pa_bindings(bmgr_root):
     from types import SimpleNamespace
 

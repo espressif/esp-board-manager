@@ -56,6 +56,19 @@ I2C IO 扩展
 
 ``gpio_expander`` 初始化时引用 ``i2c`` 外设句柄，并按 ``i2c_addr`` 列表探测可响应的地址。驱动创建成功后，设备会按配置设置输出、输入、默认输出电平、可选输出模式以及可选上下拉。初始化完成后，BMGR 会记录探测到的有效 I2C 地址，供同一 I2C 总线上的其他逻辑使用。
 
+GPIO API 映射
+--------------------------------------------------
+
+将 ``config.gpio_mapping.enabled`` 设置为 ``true``，并启用 ``CONFIG_IO_EXPANDER_ENABLE_GPIO_API_WRAPPER``，即可通过上游封装的 ESP-IDF GPIO API 访问扩展引脚。可选字段 ``start_io_num`` 指定第一个虚拟 GPIO 编号，必须大于或等于目标芯片的 ``GPIO_NUM_MAX``，省略时使用 ``GPIO_NUM_MAX``。扩展器引脚 N 对应 ``start_io_num + N``。映射范围由驱动的 ``io_count`` 决定，不随输入、输出引脚列表缩减，多个映射范围不得重叠。
+
+BMGR 在扩展器配置完成后注册映射，在删除句柄前移除映射。使用虚拟 GPIO 前必须初始化扩展器；使用这些引脚的设备可通过 ``depends_on`` 声明对扩展器的依赖。``esp_board_manager_init()`` 先初始化外设、再初始化设备，因此普通 GPIO 外设不能在扩展器映射建立前配置这些引脚。
+
+``gpio_config()`` 使用 64 位引脚掩码，只能表达小于 64 的引脚编号。编号大于或等于 64 时，使用 ``gpio_set_direction()`` 和 ``gpio_set_level()`` 等单引脚 API。可用操作限于上游 GPIO wrapper 支持的 API，不包括中断和 GPIO matrix 路由。
+
+映射引脚可以配置为普通 ``gpio`` 外设，例如绑定到 audio codec 的 ``pa_name``。该外设需设置 ``init_skip: true``，使用它的设备需在 ``depends_on`` 中声明扩展器，使外设获取发生在映射注册之后。对于编号大于或等于 ``GPIO_NUM_MAX`` 的引脚，GPIO 外设初始化仅创建句柄，跳过 ``mode``、上下拉、中断和 ``default_level`` 配置。引脚配置由扩展器的输入、输出掩码及电平配置或板级 setup 代码完成。编号大于或等于 64 时，解析器输出警告，并保存独立引脚编号，不生成 GPIO 配置位掩码。使用该引脚的驱动也需支持虚拟编号；codec PA 绑定要求 codec GPIO 接口对虚拟引脚跳过掩码配置。生成阶段依据已启用映射的 ``start_io_num`` 和 ``max_pins`` 校验这类 GPIO 外设；I2C、I2S 等外设的信号引脚仍要求主控原生 GPIO。启用映射时，BMGR 要求 ``max_pins`` 与驱动的 ``io_count`` 相等，确保生成校验与运行时映射范围一致。
+
+Audio codec 的 ``pa_name`` 和 ``reset_name`` 绑定使用 ``int16_t`` 保存引脚编号，接受 0 到 32767。生成阶段拒绝这些绑定中超出范围的虚拟 GPIO 编号。
+
 .. _gpio-expander-full-fields:
 
 完整字段
@@ -79,6 +92,9 @@ I2C IO 扩展完整字段
         espressif/esp_io_expander_generic: "*"  # [TO_BE_CONFIRMED] Component dependency for the IO expander
       config:
         max_pins: 8                       # Maximum number of IO pins supported
+        gpio_mapping:
+          enabled: false                 # Optional; requires IO_EXPANDER_ENABLE_GPIO_API_WRAPPER=y
+          start_io_num: 64                # Optional; omit to use GPIO_NUM_MAX; ranges must not overlap
         output_io_mask: [1, 2, 3]         # List of pins configured as output, maximum number is 32
         output_io_level_mask : [1, 1, 0]  # List of output levels for output pins (eg. set io 1,2 to high level, 3 to low level)
         output_io_mode_mask: [0, 1, 1]    # Optional configuration, need to determine if the IO expansion chip is supported

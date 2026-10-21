@@ -373,6 +373,24 @@ class BoardMetadataGenerator:
 
         soc = current_soc()
         chip_name = str(metadata.get('chip') or chip_profile.chip)
+        # Catalog range maxima describe the native GPIO number space, including holes.
+        native_maxima = [value for value in (
+            chip_profile.gpio.input_range_max, chip_profile.gpio.output_range_max,
+        ) if value is not None]
+        native_count = max(native_maxima) + 1 if native_maxima else None
+        mapped_ranges = []
+        for name, device in metadata.get('devices', {}).items():
+            mapping = device.get('gpio_mapping')
+            if not mapping or native_count is None:
+                continue
+            start = mapping['start_io_num']
+            if start == -1:
+                start = native_count
+            end = start + mapping['max_pins']
+            if start < native_count or any(start < other_end and other_start < end
+                                          for other_start, other_end in mapped_ranges):
+                raise ValueError("Invalid gpio_mapping range for device '%s': native/expander overlap" % name)
+            mapped_ranges.append((start, end))
 
         for section, display_kind in (('devices', 'device'), ('peripherals', 'peripheral')):
             objects = metadata.get(section, {})
@@ -386,6 +404,11 @@ class BoardMetadataGenerator:
                     continue
                 for field, pin in _iter_metadata_io_values(io_metadata):
                     if soc.valid_gpio(pin, direction='any', allow_nc=True, default=True):
+                        continue
+                    pin_num = _gpio_candidate(pin)
+                    if (section == 'peripherals' and object_metadata.get('type') == 'gpio'
+                            and isinstance(pin_num, int)
+                            and any(start <= pin_num < end for start, end in mapped_ranges)):
                         continue
                     raise ValueError(
                         "Invalid GPIO for %s '%s' io field '%s': pin %s is not valid on chip %s"
@@ -509,6 +532,7 @@ class BoardMetadataGenerator:
             'peripherals': list(artifact.get('peripherals', [])),
             'dependencies': artifact.get('dependencies', {}) or {},
             'io': io_metadata,
+            'gpio_mapping': custom_result.get('gpio_mapping', {}) if extractor else {},
         }), io_records
 
     def _build_peripheral_metadata(

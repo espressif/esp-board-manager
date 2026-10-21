@@ -3,10 +3,9 @@
 # Source: ESP32-Ethernet-Kit v1.2 user guide
 # Reference: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-ethernet-kit/user_guide.html
 #
-# The Ethernet interface — the reason this board exists — has no
-# esp-board-manager device type; see the "Not modeled" section in
-# board_peripherals.yaml for the full IP101GRI pin record and why the omission
-# is harmless (every RMII signal is a fixed-function ESP32 pad).
+# The Ethernet interface (IP101GRI RMII PHY) is declared as the `ethernet`
+# device below. RMII data pins are fixed-function ESP32 pads and are not
+# listed as peripherals; see board_peripherals.yaml for the pin record.
 #
 devices:
   # ---------- BOOT button (GPIO0, active-low, strapping) ----------
@@ -14,6 +13,7 @@ devices:
     type: button
     sub_type: gpio
     version: default
+    init_skip: true  # GPIO0 is shared with the Ethernet RMII reference clock.
     config:
       active_level: 0
       enable_power_save: false
@@ -22,3 +22,19 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_boot_button
+
+  # ---------- Ethernet (IP101GRI + RMII) ----------
+  - name: ethernet
+    type: ethernet
+    sub_type: emac_rmii
+    chip: ip101
+    config:
+      phy_config:
+        phy_addr: 1
+        reset_gpio_num: 5
+      smi_gpio:
+        mdc_num: 23
+        mdio_num: 18
+      clock_config:
+        clock_mode: EMAC_CLK_EXT_IN
+        clock_gpio: 0

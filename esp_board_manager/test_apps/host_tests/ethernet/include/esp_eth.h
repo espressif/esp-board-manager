@@ -6,4 +6,8 @@
  */
 
 #pragma once
-#include "host_idf_stubs.h"
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include "sdkconfig.h"
+#include "esp_eth_driver.h"

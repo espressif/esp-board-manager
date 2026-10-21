@@ -2,6 +2,93 @@
 
 This directory contains comprehensive pytest-based test suite for the ESP Board Manager Configuration Generator.
 
+## Host C tests
+
+`../host_tests/` contains the host C tests and substitutes for hardware APIs.
+Python test entry points remain in this directory and `generators/tests/`.
+The tests compile production BMGR sources with the real headers from `include/`,
+`private_inc/`, and the relevant device or peripheral directory. They do not
+maintain copies of BMGR descriptors, error codes, registration macros, or lookup
+functions.
+
+```text
+host_tests/
+├── runtime_override/  # Manager lifecycle, runtime overrides, and revision cleanup
+├── ethernet/          # RMII/RGMII runtime fixtures and EMAC substitutes
+├── gpio_expander/     # Expander mapping lifecycle fixture
+├── gpio/              # Generated native and virtual GPIO configuration fixture
+└── support/           # Shared host linker sections
+```
+
+- `test_dev_ethernet.py` checks RMII/RGMII configuration forwarding, PHY hooks,
+  and cleanup against headers from `IDF_PATH`. MAC/PHY hardware calls are simulated.
+- `test_gpio_expander_mapping.py` checks mapping registration, cleanup failures,
+  and generated virtual GPIO configurations, with UBSan enabled for its C fixtures.
+- `test_interactive_controls.py` checks button selection, callback cleanup, IO
+  dispatch, and console argument handling. Its board/driver boundary functions
+  are simulated, but their BMGR declarations come from the production headers.
+- `../host_tests/runtime_override/run_host_test.sh` compiles the real manager, device,
+  peripheral, runtime-state, and custom power-controller sources. The revision
+  generator suite invokes this runner with generated revision-apply code.
+
+Tests that exercise registration use `../host_tests/support/esp_board_sections.ld`
+with a GNU-compatible ELF host linker. This supplies the section boundaries
+normally created by the ESP-IDF linker; registration and lookup still use the
+production BMGR implementation. The standalone runtime runner requires Bash and
+`cc`. Registration tests skip hosts whose compiler does not target ELF; the
+standalone runner returns exit code 77 on those hosts. Ethernet host tests also
+require `IDF_PATH` and skip targets absent from that IDF checkout.
+
+These tests verify software behavior. Simulated GPIO/I2C/EMAC calls and RTOS/timer
+scheduling do not verify electrical behavior, real concurrency, network traffic,
+or operation on a physical board.
+
+## Interactive hardware controls
+
+The test application's console can monitor one button by its YAML device name,
+or enumerate every `button` device, including GPIO, ADC, and custom buttons:
+
+```text
+case run button.read
+case run button.read key0_button
+case run button.read all
+```
+
+Each run monitors events for 10 seconds and prints the device name and button
+handle, including single/double clicks and long-press events. It acquires and
+releases its own device references and removes its test callbacks on exit.
+If a monitored event already has callbacks, the test reports an error; release
+that consumer before testing, because the button API cannot remove a callback
+by its function pointer. Existing application callbacks are preserved.
+
+Physical IO levels can be changed without rebuilding:
+
+```text
+io set gpio 1 0
+io get gpio 1
+bmgr init xl9555
+io set xl9555 2 0
+io get xl9555 2
+case run speaker.tone.1khz
+bmgr deinit xl9555
+```
+
+`gpio` addresses native chip GPIOs and, when the GPIO wrapper is enabled,
+registered expander GPIOs. Native `set` leaves the pad in input/output mode;
+native `get` requires its input to be enabled. Mapped `set` selects output mode,
+and mapped `get` reads the expander input register. Initialize the expander first
+(for ATK: `bmgr init xl9555`, then `io set gpio 51 0`). These operations do not
+automatically restore earlier pin configuration.
+
+Device IO requires the device to be initialized first. A board-local driver can
+register `<device>_io_get` and `<device>_io_set` with
+`DEVICE_EXTRA_FUNC_REGISTER`; their signatures are documented in
+`main/commands/cmd_io.h`. The ATK XL9555 adapters take zero-based pin indices,
+reject writes to input pins, and update the driver's cached output state. A
+native GPIO number does not refer to an expander pin. Device IO state is left
+in place for subsequent tests; a later device initialization may restore its
+configured defaults.
+
 ## 📁 Directory Structure
 
 ```

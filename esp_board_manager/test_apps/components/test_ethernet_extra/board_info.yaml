@@ -1,0 +1,5 @@
+board: test_ethernet_extra
+chip: esp32
+version: 1.0.0
+description: Compile-only fixture for custom Ethernet configuration, dependencies, and initialization adapters
+manufacturer: ESPRESSIF

@@ -115,7 +115,7 @@ revision 差异文件沿用 amend 的 YAML 合并规则，见 :doc:`/create-boar
 * 替换初始化和反初始化函数：``esp_board_device_set_ops``、``esp_board_periph_set_ops``。
 * 恢复配置或函数：对应的 ``restore_config``、``restore_ops`` API。
 
-资源仍有初始化引用（\ ``ref_count`` 非零）时，修改和恢复操作会返回 ``ESP_ERR_INVALID_STATE``。需要先释放所有引用，使计数回到 0，再修改配置或函数，并按需重新初始化。
+资源正在初始化或尚未释放时，修改和恢复操作会返回 ``ESP_ERR_INVALID_STATE``。init 失败且资源已清理时，可以重试 init。init 失败并留下非空句柄时，该资源后续 init/deinit 都会被拒绝；正常初始化成功后 deinit 失败，则可重试 deinit。具体场景见 :ref:`bmgr-init-failure`。
 
 ``override_config`` 会复制配置结构体，但不会复制结构体指针字段所引用的数据。这些数据在覆盖有效期间必须保持有效。完整 API 规则见 :doc:`/programming-guide/advanced-runtime`。
 
@@ -160,6 +160,8 @@ descriptor 是生成代码中的设备或外设描述，记录名称、类型和
 
 ``--writable`` 的短选项是 ``-w``。启用后，``g_esp_board_devices[]`` 和 ``g_esp_board_peripherals[]`` 会变为可写，C 代码可以修改节点中的 ``next`` 指针、名称、类型、``cfg``、``cfg_size`` 等字段。
 
+应在 prepare 所属任务中、资源初始化前修改资源表；其他修改入口需要与初始化和清理操作串行执行。生成的 revision apply 函数会在内部检查资源状态，资源正在使用、初始化遗留资源或准备失败需要重启时返回 ``ESP_ERR_INVALID_STATE``，且不修改资源表。
+
 单独使用 ``--writable`` 时，``ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM`` 和 ``ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM`` 默认分别等于生成配置中的设备和外设数量，没有为新增资源预留空间。需要新增节点时，应在项目 Kconfig 中把相应容量调高到“生成节点数 + 最大新增节点数”。
 
 新增设备需要提供名称和类型匹配的 descriptor 节点与 handle 节点。新增外设需要 descriptor 节点，并通过 ``esp_board_periph_set_ops`` 为该外设设置操作。节点、配置和配置引用的数据都必须在使用期间保持有效。节点链接和初始化要求见 :doc:`/programming-guide/runtime-lifecycle`。
@@ -177,6 +179,8 @@ BMGR 在整体初始化、单个设备或外设初始化、配置或句柄查询
 
 配置查询可以在资源初始化前使用。句柄查询也会触发准备，但不会自动初始化目标资源；目标资源尚未创建句柄时，查询会返回错误。
 
-BMGR 会记录准备中和准备完成的状态，避免 ``esp_board_runtime_pre_init()`` 被重复调用，函数执行失败时，BMGR 会回滚其管理的运行时状态，恢复为未准备状态，后续相关 API 调用可以重试。
+BMGR 会记录准备状态，避免重复调用 ``esp_board_runtime_pre_init()``。如果 hook 或运行时校验失败且没有遗留资源，BMGR 会立即恢复保存的资源表和 BOARD 层覆盖，回到未准备状态，后续调用可以重试。
 
 Hook 可以初始化硬件资源，若 hook 返回失败，必须先自行反初始化它创建的硬件资源；BMGR 的运行时状态回滚不会代替硬件清理。Hook 中通过 ``override_config`` 或 ``set_ops`` 设置的覆盖记为 BOARD 层，优先级和恢复规则见 :ref:`app-runtime-overrides`。
+
+如果 prepare 失败时仍有资源未释放，BMGR 会进入 ``FAILED``。此后所有资源的正常运行时操作都会被拒绝，包括之前初始化成功的资源，直到系统重启。当前表和所需配置仍保留，旧表备份被释放。框架会打印 ``restart required`` 日志，不会自动重启，由应用决定是否重启。场景表和示例见 :ref:`bmgr-prepare-failure`。板级 revision 应在资源初始化前应用。

@@ -98,6 +98,11 @@ menu "Board Manager Test App"
             depends on ESP_BOARD_DEV_KNOB_SUPPORT
             default "knob"
 
+        config BMGR_TEST_NAME_ETHERNET
+            string "Ethernet device name"
+            depends on ESP_BOARD_DEV_ETHERNET_SUPPORT
+            default "ethernet"
+
         config BMGR_TEST_NAME_I2C_MASTER
             string "I2C master peripheral name"
             depends on ESP_BOARD_PERIPH_I2C_SUPPORT

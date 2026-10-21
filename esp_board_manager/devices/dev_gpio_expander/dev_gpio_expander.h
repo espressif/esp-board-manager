@@ -1,11 +1,15 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
  */
 
 #pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +35,8 @@ typedef struct {
     uint32_t        io_pullup_mask;
     uint32_t        io_pulldown_mask;
     uint32_t        input_io_mask;
+    bool            gpio_mapping_enabled;  /*!< Register this handle with the standard GPIO API wrapper */
+    int32_t         gpio_start_io_num;     /*!< First virtual GPIO number; -1 selects the target's GPIO_NUM_MAX */
 } dev_io_expander_config_t;
 
 /**

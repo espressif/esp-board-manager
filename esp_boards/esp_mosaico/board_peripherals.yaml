@@ -132,7 +132,7 @@ peripherals:
 
   # ----------------------------------------------------------------------
   # Not modeled:
-  # - BMI270 IMU, 2x BMM150 magnetometer, BQ27220 fuel gauge: I2C devices
+  # - BMI270 IMU, 2x BMM150 magnetometer: I2C devices
   #   with no bmgr device type; the shared i2c_master above is their bus
   # - 1 Gbit SPI NAND (secondary storage)
   # - Magnetic module slots H1/H2 (2x10 pads each) and their EEPROMs

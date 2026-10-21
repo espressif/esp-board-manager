@@ -3,6 +3,7 @@
 #
 # See LICENSE file for details.
 
+import os
 import sys
 import subprocess
 import shutil
@@ -29,6 +30,59 @@ from gen_bmgr_config_codes import BoardConfigGenerator
 
 
 class TestAmendRevisions(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('cc') and shutil.which('bash'), 'host C compiler and bash are required')
+    def test_generated_revision_failed_prepare_uses_real_runtime(self):
+        component = Path(__file__).resolve().parents[2]
+        generator = BoardConfigGenerator(component)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            generator._write_revision_apply_files(
+                root,
+                [{
+                    'name': 'cleanup',
+                    'device_names': {'audio_dac', 'c_added_device'},
+                    'peripheral_names': {'i2c_master'},
+                    'device_delta_num': 2,
+                    'peripheral_delta_num': 1,
+                }],
+                {'audio_dac', 'gpio_button'},
+                {'i2c_master', 'i2c_master_1'},
+                {'audio_dac', 'gpio_button', 'c_added_device'},
+                {'i2c_master', 'i2c_master_1'},
+            )
+            # Only board data and hardware callbacks are fixtures. The existing
+            # host runner compiles the generated apply code and real BMGR core.
+            (root / 'sdkconfig.h').write_text(
+                '#define CONFIG_ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM 3\n'
+                '#define CONFIG_ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM 3\n',
+                encoding='utf-8',
+            )
+            (root / 'revision_fixture.c').write_text('''#include "gen_board_revisions.h"
+static unsigned char device_cfg = 0xD8;
+static unsigned char added_cfg = 0xD9;
+static unsigned char bus_cfg = 0xDA;
+static const char *const dependencies[] = {"audio_dac"};
+esp_board_device_desc_t g_esp_board_revision_cleanup_devices[] = {
+    {.name = "audio_dac", .type = "audio_codec", .cfg = &device_cfg, .cfg_size = 1},
+    {.name = "c_added_device", .type = "my_sensor", .cfg = &added_cfg, .cfg_size = 1,
+     .depends_on = dependencies, .depends_on_num = 1},
+};
+esp_board_periph_desc_t g_esp_board_revision_cleanup_peripherals[] = {
+    {.name = "i2c_master", .type = "i2c", .role = ESP_BOARD_PERIPH_ROLE_MASTER,
+     .cfg = &bus_cfg, .cfg_size = 1},
+};
+''', encoding='utf-8')
+            env = os.environ.copy()
+            env['BMGR_HOST_REVISION_DIR'] = str(root)
+            result = subprocess.run(
+                ['bash', str(component / 'test_apps/host_tests/runtime_override/run_host_test.sh')],
+                env=env, capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode == 77:
+                self.skipTest(result.stdout.strip())
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('failed revision prepare has no bulk recovery path', result.stdout)
+
     @unittest.skipUnless(shutil.which('cc'), 'host C compiler is required')
     def test_revision_append_uses_configured_capacity_and_can_retry(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -285,19 +339,6 @@ static esp_board_device_desc_t g_esp_board_devices[] = {
         # only for ESP-IDF dependencies; no hand-written revision arrays.
         include = root / 'host_include'
         include.mkdir()
-        for filename, struct_name in [('esp_board_device.h', 'esp_board_device_desc'),
-                                      ('esp_board_periph.h', 'esp_board_periph_desc')]:
-            public = (script.parent / 'include' / filename).read_text()
-            begin = public.index('typedef struct ' + struct_name + ' {')
-            end = public.index('} ' + struct_name + '_t;', begin) + len('} ' + struct_name + '_t;')
-            (include / filename).write_text(
-                '#pragma once\n#include <stdint.h>\n#include <stdbool.h>\n'
-                '#include "esp_board_manager_defs.h"\n' + public[begin:end] + '\n'
-            )
-        (include / 'esp_board_manager_defs.h').write_text(
-            '#pragma once\n#define ESP_BOARD_TABLE_CONST\n'
-            'typedef enum {ESP_BOARD_PERIPH_ROLE_NONE} esp_board_periph_role_t;\n'
-        )
         (include / 'sdkconfig.h').write_text(
             f'#define CONFIG_ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM {capacity}\n'
             '#define CONFIG_ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM 1\n'
@@ -305,17 +346,13 @@ static esp_board_device_desc_t g_esp_board_devices[] = {
         (include / 'esp_err.h').write_text(
             '#pragma once\ntypedef int esp_err_t;\n#define ESP_OK 0\n#define ESP_ERR_INVALID_STATE 1\n'
         )
-        (include / 'dev_power_ctrl.h').write_text(
-            '#include <stdint.h>\n'
-            'typedef struct {const char *name; const char *sub_type; union {struct {'
-            'const char *const *periph_names; uint8_t periph_count; const void *user_cfg;'
-            'uint16_t user_cfg_size;} custom;} sub_cfg;} dev_power_ctrl_config_t;\n'
-        )
         harness = r'''#include <assert.h>
 #include <string.h>
 #include "gen_board_revisions.h"
 #include "dev_power_ctrl.h"
 extern esp_board_device_desc_t g_esp_board_devices[];
+/* This table-only fixture is idle; the separate runtime suite tests the guard. */
+esp_err_t esp_board_runtime_check_idle(void) { return ESP_OK; }
 static const esp_board_device_desc_t *find(const char *name) {
     const esp_board_device_desc_t *entry = g_esp_board_devices;
     int count = 0;
@@ -357,7 +394,11 @@ int main(int argc, char **argv) {
         compiled = subprocess.run(
             ['cc', '-std=c17', '-Wall', '-Wextra', '-Werror', '-Wno-type-limits', '-Wno-old-style-declaration',
              '-DINHERIT=' + str(int(inherit)), '-DAPP=' + str(int(app_skip is not None)),
-             '-DRETIRED_BASE=' + str(int(app_skip is not True)), '-DCAPACITY=' + str(capacity), '-I', str(include), '-I', str(generated),
+             '-DRETIRED_BASE=' + str(int(app_skip is not True)), '-DCAPACITY=' + str(capacity),
+             '-DCONFIG_ESP_BOARD_MANAGER_WRITABLE_TABLES=1',
+             '-I', str(include), '-I', str(generated),
+             '-I', str(script.parent / 'include'), '-I', str(script.parent / 'private_inc'),
+             '-I', str(script.parent / 'devices/dev_power_ctrl'),
              *map(str, sources), '-o', str(root / 'revision_views')],
             capture_output=True, text=True,
         )

@@ -6,6 +6,7 @@ Provides fixtures and common utilities
 import pytest
 import subprocess
 import os
+import shutil
 from pathlib import Path
 
 
@@ -17,6 +18,21 @@ def bmgr_root():
     # test_dir.parent = .../test_apps
     # test_dir.parent.parent = .../esp_board_manager (board manager root)
     return test_dir.parent.parent
+
+
+@pytest.fixture(scope='session')
+def host_board_linker_flags(bmgr_root):
+    """Use the real registration sections when the host compiler targets ELF."""
+    compiler = shutil.which('cc')
+    if compiler is None:
+        pytest.skip('Host C compiler is not installed')
+    macros = subprocess.run(
+        [compiler, '-dM', '-E', '-'], input='', capture_output=True, text=True, timeout=10,
+    )
+    assert macros.returncode == 0, macros.stderr
+    if '#define __ELF__ ' not in macros.stdout:
+        pytest.skip('BMGR host registration tests require a GNU-compatible ELF linker')
+    return ['-Wl,-T,' + str(bmgr_root / 'test_apps/host_tests/support/esp_board_sections.ld')]
 
 
 @pytest.fixture(scope='session')

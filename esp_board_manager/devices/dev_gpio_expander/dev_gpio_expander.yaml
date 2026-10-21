@@ -8,7 +8,12 @@
   dependencies:
     espressif/esp_io_expander_generic: "*"  # [TO_BE_CONFIRMED] Component dependency for the IO expander
   config:
-    max_pins: 8                       # Maximum number of IO pins supported
+    max_pins: 8                       # Maximum number of IO pins supported; must match driver io_count when mapping is enabled
+    gpio_mapping:
+      enabled: false                 # Optional; default false. Requires IO_EXPANDER_ENABLE_GPIO_API_WRAPPER=y
+      start_io_num: 64                # Optional; omit to use GPIO_NUM_MAX. Must be >= GPIO_NUM_MAX
+                                      # Maps the handle's io_count pins consecutively; ranges must not overlap
+                                      # gpio_config uses a 64-bit mask; use single-pin APIs for GPIO >= 64
     output_io_mask: [1, 2, 3]         # List of pins configured as output, maximum number is 32
     output_io_level_mask : [1, 1, 0]  # List of output levels for output pins (eg. set io 1,2 to high level, 3 to low level)
     output_io_mode_mask: [0, 1, 1]    # Optional configuration, need to determine if the IO expansion chip is supported

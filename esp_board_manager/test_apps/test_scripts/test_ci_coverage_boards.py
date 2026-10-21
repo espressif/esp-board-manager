@@ -5,6 +5,9 @@
 
 from pathlib import Path
 import json
+import os
+import shutil
+import subprocess
 import sys
 
 import pytest
@@ -192,3 +195,37 @@ def test_committed_coverage_yaml_matches_generator(tmp_path, monkeypatch):
             committed = (COVERAGE_ROOT / board / name).read_text(encoding='utf-8')
             generated = (tmp_path / board / name).read_text(encoding='utf-8')
             assert committed == generated, f'{board}/{name} is out of date; rerun generate_coverage_boards.py'
+
+
+@pytest.mark.parametrize('board,partition,flash', [
+    ('esp32_coverage', 'partitions_test_app.csv', '8MB'),
+    ('esp32_lyrat_4_3', 'partitions_test_app.csv', '8MB'),
+    ('esp32_ethernet_kit', 'partitions_test_app_4mb.csv', '4MB'),
+])
+def test_esp32_test_partition_matches_selected_board(bmgr_root, tmp_path, board, partition, flash):
+    """Use the normal CLI auto-amend and defaults order, without touching test_apps."""
+    test_app = bmgr_root / 'test_apps'
+    (tmp_path / 'CMakeLists.txt').write_text('cmake_minimum_required(VERSION 3.5)\n')
+    components = tmp_path / 'components'
+    components.mkdir()
+    overrides = test_app / 'components/test_board_overrides'
+    if overrides.exists():
+        shutil.copytree(overrides, components / 'test_board_overrides')
+    result = subprocess.run([
+        sys.executable, str(bmgr_root / 'gen_bmgr_config_codes.py'),
+        '--project-dir', str(tmp_path), '-b', board, '-c',
+        ';'.join([str(COVERAGE_ROOT), str(bmgr_root.parent / 'esp_boards')]),
+    ], capture_output=True, text=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+    assert result.returncode == 0, result.stdout + result.stderr
+    configs = {}
+    for path in (test_app / 'sdkconfig.defaults', test_app / 'sdkconfig.defaults.esp32',
+                 components / 'gen_bmgr_codes/board_manager.defaults'):
+        for line in path.read_text(encoding='utf-8').splitlines():
+            if line.startswith('CONFIG_') and '=' in line:
+                key, value = line.split('=', 1)
+                configs[key] = value.strip('"')
+    assert configs['CONFIG_PARTITION_TABLE_CUSTOM_FILENAME'] == partition
+    assert configs['CONFIG_ESPTOOLPY_FLASHSIZE'] == flash
+    # The failing CI binaries are about 2.5 MB; coverage needs the 3 MB slot.
+    if board == 'esp32_coverage':
+        assert ', 3M,' in (test_app / partition).read_text()

@@ -5,7 +5,12 @@
 - name: gpio
   type: gpio
   config:
-    # GPIO pin number (required, no default - must be >= 0)
+    # GPIO pin number (required, non-negative 32-bit signed integer).
+    # Pins >= 64 produce a warning and are stored without a gpio_config bit mask.
+    # Virtual pins require an enabled gpio_expander mapping and init_skip: true;
+    # the consuming device must depend on the expander before acquiring this GPIO.
+    # For pins >= GPIO_NUM_MAX, periph_gpio_init only creates a handle. Configure
+    # direction, pulls and initial level on the expander; mode/default_level below are skipped.
     pin: 0                   # [IO] GPIO pin number
 
     # GPIO mode (default: GPIO_MODE_INPUT)

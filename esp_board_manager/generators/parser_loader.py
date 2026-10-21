@@ -48,6 +48,26 @@ def _resolve_component_parser_file(component_folder: Path, component_name: str) 
     return None
 
 
+def load_device_parser_attribute(device_type: str, base_dir: Path, attribute: str):
+    """Load optional metadata or a hook from the selected device parser."""
+    if not isinstance(device_type, str):
+        return None
+    component_name = device_type if device_type.startswith(DEV_PREFIX) else f'{DEV_PREFIX}{device_type}'
+    if Path(component_name).name != component_name:
+        return None
+    component_folder = Path(base_dir) / component_name
+    parser_file = _resolve_component_parser_file(component_folder, component_name)
+    if parser_file is None:
+        return None
+    module = _load_parser_module(component_name, str(parser_file))
+    return getattr(module, attribute, None)
+
+
+def load_device_dependency_resolver(device_type: str, base_dir: Path) -> Optional[Callable]:
+    """Load a device parser's optional get_dependencies(full_config) hook."""
+    return load_device_parser_attribute(device_type, base_dir, 'get_dependencies')
+
+
 def load_parsers(search_dirs: List[str], prefix: str, base_dir: str = None) -> Dict[str, Tuple[str, Callable, Callable]]:
     """
     prefix: 'parse_periph_' for peripherals, 'parse_dev_' for devices

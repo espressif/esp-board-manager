@@ -234,6 +234,27 @@ config ESP_BOARD_DEV_DISPLAY_LCD_SUB_SPI_SUPPORT
         Enable display_lcd spi sub-type support.
         This option enables the display_lcd spi sub-type driver.
 
+config ESP_BOARD_DEV_ETHERNET_SUPPORT
+    bool "Device 'ethernet' support"
+    help
+        Enable ethernet device support.
+        This option enables the ethernet device driver.
+        The driver is located at: devices/dev_ethernet
+
+config ESP_BOARD_DEV_ETHERNET_SUB_EMAC_RGMII_SUPPORT
+    bool "Device 'ethernet' emac_rgmii sub-type support"
+    depends on ESP_BOARD_DEV_ETHERNET_SUPPORT
+    help
+        Enable ethernet emac_rgmii sub-type support.
+        This option enables the ethernet emac_rgmii sub-type driver.
+
+config ESP_BOARD_DEV_ETHERNET_SUB_EMAC_RMII_SUPPORT
+    bool "Device 'ethernet' emac_rmii sub-type support"
+    depends on ESP_BOARD_DEV_ETHERNET_SUPPORT
+    help
+        Enable ethernet emac_rmii sub-type support.
+        This option enables the ethernet emac_rmii sub-type driver.
+
 config ESP_BOARD_DEV_FS_FAT_SUPPORT
     bool "Device 'fs_fat' support"
     help

@@ -56,6 +56,19 @@ See complete fields: :ref:`gpio-expander-i2c-full`.
 
 During initialization, ``gpio_expander`` references the ``i2c`` peripheral handle and probes the addresses in the ``i2c_addr`` list for a responding device. After the driver is created successfully, the device sets the output pins, input pins, default output levels, optional output modes, and optional pull configurations according to the config. After initialization, BMGR records the detected valid I2C address for use by other logic on the same I2C bus.
 
+GPIO API Mapping
+----------------
+
+Set ``config.gpio_mapping.enabled`` to ``true`` and enable ``CONFIG_IO_EXPANDER_ENABLE_GPIO_API_WRAPPER`` to access the expanded pins through the wrapped ESP-IDF GPIO APIs. Optional ``start_io_num`` selects the first virtual GPIO number and must be at least the target's ``GPIO_NUM_MAX``. When omitted, it defaults to ``GPIO_NUM_MAX``. Pin N maps to ``start_io_num + N``; the registered range covers the driver's ``io_count`` pins, independently of the pins configured as inputs or outputs. Mapped ranges must not overlap.
+
+BMGR registers the mapping after configuring the expander and removes it before deleting the handle. Initialize the expander before using its virtual GPIOs. A device that consumes these GPIOs can declare the expander in ``depends_on``. Ordinary GPIO peripherals initialized by ``esp_board_manager_init()`` are initialized before devices, so they cannot configure these pins before the expander mapping exists.
+
+``gpio_config()`` uses a 64-bit pin mask and can only represent pin numbers below 64. For virtual GPIO numbers 64 and above, use single-pin APIs such as ``gpio_set_direction()`` and ``gpio_set_level()``. Only the GPIO APIs supported by the upstream wrapper are available; interrupts and GPIO matrix routing are not supported.
+
+A mapped pin can be declared as an ordinary ``gpio`` peripheral, for example as an audio codec's ``pa_name``. Set ``init_skip: true`` on that peripheral and declare the expander in the consuming device's ``depends_on``. The consumer then acquires the peripheral after the mapping exists. For pins at or above ``GPIO_NUM_MAX``, GPIO peripheral initialization only creates a handle and skips ``mode``, pull, interrupt, and ``default_level`` configuration. Configure these pins through the expander's input/output masks and level settings or board setup code. Pin numbers 64 and above produce a parser warning and are stored without a GPIO configuration bit mask. The consuming driver must also support the virtual pin number; codec PA bindings require a codec GPIO interface that skips mask-based setup for virtual pins. Generation validates such GPIO peripherals against enabled mapping ranges described by ``start_io_num`` and ``max_pins``; I2C, I2S, and other peripheral signal pins still require native SoC GPIOs. When mapping is enabled, BMGR requires ``max_pins`` to equal the driver's ``io_count`` so the generated and runtime ranges agree.
+
+Audio codec ``pa_name`` and ``reset_name`` bindings store the pin number in ``int16_t`` and accept GPIO numbers from 0 to 32767. Generation rejects larger virtual pin numbers for these bindings.
+
 .. _gpio-expander-full-fields:
 
 All Fields
@@ -79,6 +92,9 @@ I2C IO Expansion All Fields
         espressif/esp_io_expander_generic: "*"  # [TO_BE_CONFIRMED] Component dependency for the IO expander
       config:
         max_pins: 8                       # Maximum number of IO pins supported
+        gpio_mapping:
+          enabled: false                 # Optional; requires IO_EXPANDER_ENABLE_GPIO_API_WRAPPER=y
+          start_io_num: 64                # Optional; omit to use GPIO_NUM_MAX; ranges must not overlap
         output_io_mask: [1, 2, 3]         # List of pins configured as output, maximum number is 32
         output_io_level_mask : [1, 1, 0]  # List of output levels for output pins (eg. set io 1,2 to high level, 3 to low level)
         output_io_mode_mask: [0, 1, 1]    # Optional configuration, need to determine if the IO expansion chip is supported

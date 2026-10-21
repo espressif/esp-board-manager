@@ -38,6 +38,7 @@ from generators.utils.file_utils import (
 )
 from generators import get_config_generator, get_sdkconfig_manager, get_dependency_manager, get_source_scanner
 from generators.parser_loader import load_parsers
+from generators.phy_parser_loader import phy_parser_context
 from generators.config_generator import (
     AmbiguousBoardSelectorError,
     BoardDirectory,
@@ -130,6 +131,8 @@ class BoardConfigGenerator(LoggerMixin):
         # scanning (resolve_amend_plan) can reuse the same customer roots.
         self.board_customer_path: Optional[str] = None
         self.skip_soc_capability_check = False
+        self._device_runtime_sources = set()
+        self._device_runtime_source_groups = {}
 
         # Initialize all sub-components (version display, root_dir, parsers, etc.)
         self._init_components()
@@ -749,6 +752,7 @@ class BoardConfigGenerator(LoggerMixin):
 
         with open(out_path, 'w') as f:
             f.write(self.get_license_header('Auto-generated peripheral configuration file'))
+            f.write('#include <stdbool.h>\n')
             f.write('#include <stdlib.h>\n')
             f.write('#include "esp_board_periph.h"\n')
 
@@ -906,6 +910,9 @@ class BoardConfigGenerator(LoggerMixin):
                 version, parse_func, get_includes = parse_entry
                 if get_includes:
                     all_includes.update(get_includes())
+
+            for result in device_structs:
+                all_includes.update(result.get('includes', ()))
 
             # Write collected headers
             for include in sorted(all_includes):
@@ -1416,6 +1423,19 @@ class BoardConfigGenerator(LoggerMixin):
 
     def process_devices(self, dev_yaml_path: str, peripherals_dict, periph_name_map,
                        board_path: Optional[str] = None, extra_configs: Dict = {}, extra_includes: set = set()):
+        """Discover PHY extensions consistently for validation and generation."""
+        if self.active_revision is None:
+            self._device_runtime_sources = set()
+            self._device_runtime_source_groups = {}
+        with phy_parser_context(
+            board_dir=board_path or Path(dev_yaml_path).parent,
+            python_files=self.amend_plan.python_files() if self.amend_plan else (),
+        ):
+            return self._process_devices(dev_yaml_path, peripherals_dict, periph_name_map,
+                                         board_path, extra_configs, extra_includes)
+
+    def _process_devices(self, dev_yaml_path: str, peripherals_dict, periph_name_map,
+                         board_path: Optional[str], extra_configs: Dict, extra_includes: set):
         """Process devices from YAML and generate C configuration files, returns device types set"""
         self.logger.debug('   Parsing device YAML file...')
         device_parsers = load_parsers([], prefix='dev_', base_dir=str(self.devices_dir))
@@ -1537,6 +1557,16 @@ class BoardConfigGenerator(LoggerMixin):
             try:
                 result = parse_func(d.name, full_config, peripherals_dict)
                 device_structs.append(result)
+                for group, sources in result.get('runtime_source_groups', {}).items():
+                    source_set = frozenset(sources)
+                    previous = self._device_runtime_source_groups.get(group)
+                    if previous is not None and previous != source_set:
+                        raise ValueError(
+                            f"Conflicting runtime sources for '{group}' across board revisions: "
+                            f'{sorted(previous)} vs {sorted(source_set)}'
+                        )
+                    self._device_runtime_source_groups[group] = source_set
+                self._device_runtime_sources.update(result.get('runtime_sources', ()))
                 self._last_device_metadata_artifacts.append({
                     'name': d.name,
                     'type': d.type,
@@ -1835,6 +1865,7 @@ class BoardConfigGenerator(LoggerMixin):
                 '#include "sdkconfig.h"\n'
                 '#include "esp_err.h"\n'
                 '#include "gen_board_revisions.h"\n'
+                '#include "esp_board_runtime_state.h"\n'
                 '#include "esp_board_manager_defs.h"\n\n'
                 'extern ESP_BOARD_TABLE_CONST esp_board_device_desc_t g_esp_board_devices[];\n'
                 'extern ESP_BOARD_TABLE_CONST esp_board_periph_desc_t g_esp_board_peripherals[];\n\n'
@@ -1848,7 +1879,8 @@ class BoardConfigGenerator(LoggerMixin):
             source += ''.join(f'    "{item}",\n' for item in removed_peripherals) or '    NULL,\n'
             source += '};\n'
             source += f'\nesp_err_t gen_board_revision_apply_{name}(void)\n{{\n'
-            source += '    esp_err_t ret = ESP_OK;\n'
+            source += '    esp_err_t ret = esp_board_runtime_check_idle();\n'
+            source += '    if (ret != ESP_OK) {\n        return ret;\n    }\n'
             source += f'    for (size_t i = 0; i < {len(removed_devices)}; ++i) {{\n'
             source += f'        ret = revision_device_unlink(s_removed_devices_{name}[i]);\n        if (ret != ESP_OK) {{\n            return ret;\n        }}\n    }}\n'
             source += f'    for (size_t i = 0; i < {len(removed_peripherals)}; ++i) {{\n'
@@ -2555,7 +2587,8 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             # Extract dependencies from board_devices.yaml
             self.logger.debug('   Extracting device dependencies...')
             try:
-                device_dependencies = self.dependency_manager.extract_device_dependencies(dev_yaml_path, amend_plan=self.amend_plan)
+                device_dependencies = self.dependency_manager.extract_device_dependencies(
+                    dev_yaml_path, amend_plan=self.amend_plan)
             except BoardConfigYamlError as e:
                 self.logger.error(f'❌ Board YAML error (devices), aborting: {e}')
                 return False
@@ -2874,9 +2907,9 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
 
             amend_srcs: List[str] = []
             amend_include_dirs: List[str] = []
+            seen_src_keys = set()
             if self.amend_plan is not None:
                 # Explicit sources (target_sources): every source-typed amend fragment.
-                seen_src_keys = set()
                 for frag in self.amend_plan.source_fragments():
                     abs_path = frag.resolved_path
                     rel = os.path.relpath(str(abs_path), gen_bmgr_codes_dir)
@@ -2899,6 +2932,20 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
                     seen_inc_keys.add(key)
                     amend_include_dirs.append(f'"{rel}"')
 
+            # Selected extension adapters compile with the generated component's
+            # dependencies, keeping vendor headers out of the core BMGR component.
+            for source in sorted(self._device_runtime_sources):
+                source_path = Path(source).resolve()
+                if str(source_path) in seen_src_keys:
+                    continue
+                seen_src_keys.add(str(source_path))
+                rel = Path(os.path.relpath(source_path, gen_bmgr_codes_dir)).as_posix()
+                amend_srcs.append(f'    "{rel}"')
+                inc_rel = Path(os.path.relpath(source_path.parent, gen_bmgr_codes_dir)).as_posix()
+                token = f'"{inc_rel}"'
+                if token not in amend_include_dirs:
+                    amend_include_dirs.append(token)
+
             src_dirs_tokens = ['"."'] + board_src_dirs
             include_dirs_tokens = ['"."'] + board_src_dirs + amend_include_dirs
             src_dirs_str = ' '.join(src_dirs_tokens)
@@ -2907,7 +2954,7 @@ idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
             target_sources_block = ''
             if amend_srcs:
                 target_sources_block = (
-                    '\n# Amend-supplied sources, added after idf_component_register because '
+                    '\n# Extension and amend sources, added after idf_component_register because '
                     'specifying\n# SRCS there would suppress the SRC_DIRS scan and drop the '
                     'generated gen_board_*.c files.\n'
                     'target_sources(${COMPONENT_LIB} PRIVATE\n'

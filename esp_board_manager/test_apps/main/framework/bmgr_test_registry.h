@@ -84,6 +84,7 @@ void bmgr_register_audio_cases(void);
 void bmgr_register_button_cases(void);
 void bmgr_register_camera_cases(void);
 void bmgr_register_custom_cases(void);
+void bmgr_register_ethernet_cases(void);
 void bmgr_register_fs_cases(void);
 void bmgr_register_gpio_expander_cases(void);
 void bmgr_register_knob_cases(void);
