@@ -113,3 +113,27 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_boot_button
+
+  # ---------- NS4168 I2S class-D amplifier ----------
+  - name: audio_dac
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: false
+      dac_enabled: true
+      sys_cfg:
+        no_mclk: true
+    peripherals:
+      - i2s_name: i2s_audio_out
+
+  # ---------- SPM1423 PDM microphone ----------
+  # init_skip: initialize by name once audio_dac has been released.
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    init_skip: true
+    config:
+      adc_enabled: true
+      dac_enabled: false
+    peripherals:
+      - i2s_name: i2s_audio_in

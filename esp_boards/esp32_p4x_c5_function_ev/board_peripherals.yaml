@@ -127,8 +127,6 @@ peripherals:
   #   GPIO6 is corroborated by esp-hosted-mcu Kconfig
   #   (ESP_HOSTED_HOST_WAKEUP_GPIO defaults to 6 for this board over
   #   SDIO / SPI-FD; it is GPIO4 instead under SPI-HD).
-  # - IP101GR Ethernet PHY on the P4 EMAC RMII interface + RJ45 10/100 port:
-  #   no bmgr device type for an EMAC/PHY pair.
   # - SD card power gate SD_PWRn on GPIO45 (the pin reaches J1 only after
   #   moving R231 to R100); the SDMMC slot-0 driver owns its own IO.
   # - TPS2051C USB power switch for the USB 2.0 Type-A host port; the

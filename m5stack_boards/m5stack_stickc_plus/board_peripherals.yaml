@@ -51,9 +51,8 @@ peripherals:
         clk: 0                  # GPIO0 is a strapping pin; driven only after boot
         din: 34
 
-  # Passive buzzer (GPIO2). A passive buzzer is driven by a PWM tone, so the
-  # LEDC channel is the peripheral; there is no bmgr buzzer device type, and
-  # ledc_ctrl models a duty percentage rather than a frequency.
+  # Passive buzzer (GPIO2). freq_hz sets the tone; the buzzer device's duty
+  # percent turns it on and off.
   - name: ledc_buzzer
     type: ledc
     config:
@@ -114,8 +113,6 @@ peripherals:
   #   not a GPIO
   # - MPU6886 6-axis IMU (I2C 7-bit 0x68) and BM8563 RTC (I2C 7-bit 0x51),
   #   shared IRQ on GPIO35: no bmgr device types
-  # - SPM1423 PDM MEMS microphone: control-less, the pdm-in peripheral
-  #   above IS the interface
   # - Grove HY2.0-4P port (GPIO32 / GPIO33 plus 5V and GND)
   # - Header pads GPIO0 / GPIO25 / GPIO26 / GPIO36 (GPIO25 and GPIO36 share
   #   one header position; float the unused one)

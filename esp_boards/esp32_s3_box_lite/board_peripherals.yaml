@@ -81,3 +81,13 @@ peripherals:
       duty: 0
       duty_resolution: LEDC_TIMER_10_BIT
       output_invert: true
+
+  # Front-key resistor ladder (GPIO1, ADC1_CH0)
+  - name: adc_oneshot
+    type: adc
+    role: oneshot
+    config:
+      unit_id: ADC_UNIT_1
+      channel_id: 0
+      atten: ADC_ATTEN_DB_12
+      bit_width: ADC_BITWIDTH_12

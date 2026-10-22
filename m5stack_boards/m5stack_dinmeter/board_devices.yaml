@@ -73,3 +73,12 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_button_wake
+
+  # ---------- Passive buzzer (GPIO3) ----------
+  - name: buzzer
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_buzzer

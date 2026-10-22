@@ -3,10 +3,6 @@
 # Source: M5Stack AtomS3U documentation
 # Reference: https://docs.m5stack.com/en/core/AtomS3U
 #
-# There is no audio_codec device here on purpose: the SPM1423 microphone
-# has no control interface, so the pdm-in peripheral in
-# board_peripherals.yaml is the whole story.
-#
 devices:
   # ---------- On-board WS2812 addressable RGB LED ----------
   - name: led_strip
@@ -49,3 +45,13 @@ devices:
       default_level: 0
     peripherals:
       - gpio_name: gpio_ir_tx
+
+  # ---------- SPM1423 PDM microphone ----------
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+    peripherals:
+      - i2s_name: i2s_audio_in

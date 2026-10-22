@@ -41,7 +41,7 @@ ESP Board Manager 的乐鑫官方板卡定义组件。
 | 板子名称 | 芯片 | 音频 | SD 卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 | 旋钮 |
 |---|---|---|---|---|---|---|---|---|---|
 | [`ESP32-S3-BOX-3`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_3/hardware_overview_for_box_3_cn.md) | ESP32-S3 | ES8311 (DAC) + ES7210 (ADC) | SDMMC | ILI9341 (spi) | GT911/TT21100 (i2c) | - | GPIO 按键 | - | - |
-| [`ESP32-S3-BOX-Lite`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ES8156 (DAC) + ES7243E (ADC) | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
+| [`ESP32-S3-BOX-Lite`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ES8156 (DAC) + ES7243E (ADC) | - | ST7789 (spi) | - | - | ADC 按键 + GPIO 按键 | - | - |
 | ESP32-S3-DevKitC-1 | ESP32-S3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | ESP32-S3-DevKitM-1 | ESP32-S3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | ESP32-S3-EYE | ESP32-S3 | 内置 ADC | SDMMC | ST7789 (spi) | - | 摄像头 (dvp) | ADC 按键 + GPIO 按键 | - | - |
@@ -81,7 +81,7 @@ ESP Board Manager 的乐鑫官方板卡定义组件。
 | ESP32-C3-DevKitC-02 | ESP32-C3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | ESP32-C3-DevKitM-1 | ESP32-C3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | ESP32-C3-LCDKit | ESP32-C3 | 内置 DAC | - | GC9A01 (spi) | - | - | GPIO 按键 | WS2812 (rmt) | 旋钮 (gpio) |
-| [`ESP32-C3-Lyra`](https://docs.espressif.com/projects/esp-adf/zh_CN/latest/design-guide/dev-boards/user-guide-esp32-c3-lyra.html) | ESP32-C3 | 内置 ADC + DAC | - | - | - | - | GPIO 按键 | - | - |
+| [`ESP32-C3-Lyra`](https://docs.espressif.com/projects/esp-adf/zh_CN/latest/design-guide/dev-boards/user-guide-esp32-c3-lyra.html) | ESP32-C3 | 内置 ADC + DAC | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
 
 ### ESP32-C5
 

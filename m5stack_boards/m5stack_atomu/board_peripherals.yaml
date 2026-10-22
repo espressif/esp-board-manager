@@ -50,9 +50,6 @@ peripherals:
 
   # ----------------------------------------------------------------------
   # Not modeled:
-  # - SPM1423 PDM MEMS microphone: control-less (no register interface),
-  #   so there is no audio_codec device for it — the pdm-in peripheral
-  #   above IS the interface
   # - Grove HY2.0-4P port (GPIO26 / GPIO32 plus 5V and GND): a user-wired
   #   expansion port, not an on-board device
   # - RESET button (EN pin, handled in hardware)

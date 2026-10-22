@@ -32,3 +32,17 @@ peripherals:
       pull_up: true
       pull_down: false
       intr_type: GPIO_INTR_DISABLE
+
+  # IR transmit LED. The application applies the 38 kHz carrier
+  # (rmt_apply_carrier) and an IR protocol encoder on this channel.
+  - name: rmt_ir_tx
+    type: rmt
+    role: tx
+    config:
+      gpio_num: 4
+      clk_src: RMT_CLK_SRC_DEFAULT
+      resolution_hz: 1000000
+      mem_block_symbols: 64
+      trans_queue_depth: 4
+      flags:
+        init_level: 0

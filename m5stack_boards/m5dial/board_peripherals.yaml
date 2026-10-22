@@ -41,3 +41,23 @@ peripherals:
       pull_up: true
       pull_down: false
       intr_type: GPIO_INTR_DISABLE
+
+  - name: ledc_buzzer
+    type: ledc
+    config:
+      gpio_num: 3
+      speed_mode: LEDC_LOW_SPEED_MODE
+      channel: LEDC_CHANNEL_1
+      timer_sel: LEDC_TIMER_1
+      freq_hz: 4000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+
+  # Power latch (GPIO46). Must be driven high to keep the board powered on battery.
+  - name: gpio_power_hold
+    type: gpio
+    role: io
+    config:
+      pin: 46
+      mode: GPIO_MODE_OUTPUT
+      default_level: 1

@@ -110,3 +110,13 @@ devices:
           d2: -1
           d3: -1
           cd: 34
+
+  # Green LED (GPIO22, active-high).
+  - name: led_green
+    type: gpio_ctrl
+    version: default
+    config:
+      active_level: 1
+      default_level: 0
+    peripherals:
+      - gpio_name: gpio_green_led

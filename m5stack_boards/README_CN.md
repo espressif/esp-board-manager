@@ -38,9 +38,9 @@ dependencies:
 | M5Stack AtomS3R | ESP32-S3 | - | - | ST7735 (spi) | - | - | GPIO 按键 | - | - |
 | M5Dial | ESP32-S3 | - | - | GC9A01 (spi) | FT5X06 (i2c) | - | GPIO 按键 | - | 旋钮 (gpio) |
 | AtomS3-Lite | ESP32-S3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
-| AtomS3U | ESP32-S3 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
-| M5Capsule | ESP32-S3 | - | SPI | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
-| M5Stack Cardputer | ESP32-S3 | - | SPI | ST7789 (spi) | - | - | GPIO 按键 | WS2812 (rmt) | - |
+| AtomS3U | ESP32-S3 | 内置 ADC | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
+| M5Capsule | ESP32-S3 | 内置 ADC | SPI | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
+| M5Stack Cardputer | ESP32-S3 | 内置 DAC + ADC | SPI | ST7789 (spi) | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | M5Stack Cardputer Adv | ESP32-S3 | ES8311 (DAC + ADC) | SPI | ST7789 (spi) | - | - | GPIO 按键 | WS2812 (rmt) | - |
 | [`M5STACK CORES3`](https://docs.m5stack.com/zh_CN/core/CoreS3) | ESP32-S3 | AW88298 (DAC) + ES7210 (ADC) | - | ILI9341 (spi) | FT5X06 (i2c) | 摄像头 (dvp) | - | - | - |
 | M5Stack Din Meter | ESP32-S3 | - | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
@@ -52,20 +52,20 @@ dependencies:
 
 | 板子名称 | 芯片 | 音频 | SD 卡 | LCD | LCD 触摸 | 摄像头 | 按键 | LED 灯带 | 旋钮 |
 |---|---|---|---|---|---|---|---|---|---|
-| M5Stack ATOM Echo | ESP32 | - | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
+| M5Stack ATOM Echo | ESP32 | 内置 DAC + ADC | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
 | M5Stack ATOM Lite | ESP32 | - | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
 | M5Stack ATOM Matrix | ESP32 | - | - | - | - | - | GPIO 按键 | WS2812 (rmt) | - |
-| M5Stack ATOM U | ESP32 | - | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
+| M5Stack ATOM U | ESP32 | 内置 ADC | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
 | M5Stack Core | ESP32 | - | SPI | ILI9341 (spi) | - | - | GPIO 按键 | - | - |
-| M5Stack Core2 | ESP32 | 内置 DAC | SPI | ILI9341 (spi) | FT5X06 (i2c) | - | - | - | - |
+| M5Stack Core2 | ESP32 | 内置 DAC + ADC | SPI | ILI9341 (spi) | FT5X06 (i2c) | - | - | - | - |
 | M5Stack CoreInk | ESP32 | - | - | - | - | - | GPIO 按键 | - | - |
 | M5Stack Fire | ESP32 | - | SPI | ILI9341 (spi) | - | - | GPIO 按键 | SK6812 (rmt) | - |
 | M5Paper | ESP32 | - | SPI | - | GT911 (i2c) | - | GPIO 按键 | - | - |
 | M5Stamp Pico | ESP32 | - | - | - | - | - | GPIO 按键 | SK6812 (rmt) | - |
 | M5Station-485 | ESP32 | - | - | ST7789 (spi) | - | - | GPIO 按键 | SK6812 (rmt) | - |
-| M5StickC | ESP32 | - | - | - | - | - | GPIO 按键 | - | - |
-| M5StickC PLUS | ESP32 | - | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
-| M5StickC PLUS2 | ESP32 | - | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
+| M5StickC | ESP32 | 内置 ADC | - | - | - | - | GPIO 按键 | - | - |
+| M5StickC PLUS | ESP32 | 内置 ADC | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
+| M5StickC PLUS2 | ESP32 | 内置 ADC | - | ST7789 (spi) | - | - | GPIO 按键 | - | - |
 | M5Stack Tough | ESP32 | - | SPI | ILI9341 (spi) | - | - | - | - | - |
 
 ### ESP32-C3

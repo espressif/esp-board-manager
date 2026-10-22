@@ -38,9 +38,9 @@ Versions `0.6.0` and later of this component require `espressif/esp_board_manage
 | M5Stack AtomS3R | ESP32-S3 | - | - | ST7735 (spi) | - | - | GPIO button | - | - |
 | M5Dial | ESP32-S3 | - | - | GC9A01 (spi) | FT5X06 (i2c) | - | GPIO button | - | Knob (gpio) |
 | AtomS3-Lite | ESP32-S3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
-| AtomS3U | ESP32-S3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
-| M5Capsule | ESP32-S3 | - | SPI | - | - | - | GPIO button | WS2812 (rmt) | - |
-| M5Stack Cardputer | ESP32-S3 | - | SPI | ST7789 (spi) | - | - | GPIO button | WS2812 (rmt) | - |
+| AtomS3U | ESP32-S3 | Built-in ADC | - | - | - | - | GPIO button | WS2812 (rmt) | - |
+| M5Capsule | ESP32-S3 | Built-in ADC | SPI | - | - | - | GPIO button | WS2812 (rmt) | - |
+| M5Stack Cardputer | ESP32-S3 | Built-in DAC + ADC | SPI | ST7789 (spi) | - | - | GPIO button | WS2812 (rmt) | - |
 | M5Stack Cardputer Adv | ESP32-S3 | ES8311 (DAC + ADC) | SPI | ST7789 (spi) | - | - | GPIO button | WS2812 (rmt) | - |
 | [`M5STACK CORES3`](https://docs.m5stack.com/en/core/CoreS3) | ESP32-S3 | AW88298 (DAC) + ES7210 (ADC) | - | ILI9341 (spi) | FT5X06 (i2c) | Camera (dvp) | - | - | - |
 | M5Stack Din Meter | ESP32-S3 | - | - | ST7789 (spi) | - | - | GPIO button | - | - |
@@ -52,20 +52,20 @@ Versions `0.6.0` and later of this component require `espressif/esp_board_manage
 
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip | Knob |
 |---|---|---|---|---|---|---|---|---|---|
-| M5Stack ATOM Echo | ESP32 | - | - | - | - | - | GPIO button | SK6812 (rmt) | - |
+| M5Stack ATOM Echo | ESP32 | Built-in DAC + ADC | - | - | - | - | GPIO button | SK6812 (rmt) | - |
 | M5Stack ATOM Lite | ESP32 | - | - | - | - | - | GPIO button | SK6812 (rmt) | - |
 | M5Stack ATOM Matrix | ESP32 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
-| M5Stack ATOM U | ESP32 | - | - | - | - | - | GPIO button | SK6812 (rmt) | - |
+| M5Stack ATOM U | ESP32 | Built-in ADC | - | - | - | - | GPIO button | SK6812 (rmt) | - |
 | M5Stack Core | ESP32 | - | SPI | ILI9341 (spi) | - | - | GPIO button | - | - |
-| M5Stack Core2 | ESP32 | Built-in DAC | SPI | ILI9341 (spi) | FT5X06 (i2c) | - | - | - | - |
+| M5Stack Core2 | ESP32 | Built-in DAC + ADC | SPI | ILI9341 (spi) | FT5X06 (i2c) | - | - | - | - |
 | M5Stack CoreInk | ESP32 | - | - | - | - | - | GPIO button | - | - |
 | M5Stack Fire | ESP32 | - | SPI | ILI9341 (spi) | - | - | GPIO button | SK6812 (rmt) | - |
 | M5Paper | ESP32 | - | SPI | - | GT911 (i2c) | - | GPIO button | - | - |
 | M5Stamp Pico | ESP32 | - | - | - | - | - | GPIO button | SK6812 (rmt) | - |
 | M5Station-485 | ESP32 | - | - | ST7789 (spi) | - | - | GPIO button | SK6812 (rmt) | - |
-| M5StickC | ESP32 | - | - | - | - | - | GPIO button | - | - |
-| M5StickC PLUS | ESP32 | - | - | ST7789 (spi) | - | - | GPIO button | - | - |
-| M5StickC PLUS2 | ESP32 | - | - | ST7789 (spi) | - | - | GPIO button | - | - |
+| M5StickC | ESP32 | Built-in ADC | - | - | - | - | GPIO button | - | - |
+| M5StickC PLUS | ESP32 | Built-in ADC | - | ST7789 (spi) | - | - | GPIO button | - | - |
+| M5StickC PLUS2 | ESP32 | Built-in ADC | - | ST7789 (spi) | - | - | GPIO button | - | - |
 | M5Stack Tough | ESP32 | - | SPI | ILI9341 (spi) | - | - | - | - | - |
 
 ### ESP32-C3

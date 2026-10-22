@@ -75,10 +75,12 @@ peripherals:
 
   # SPM1423 PDM microphone (capture). Shares the GPIO43 clock line with
   # the amplifier's LRCK above.
+  # init_skip: init_all brings up i2s_audio_out on the same port first.
   - name: i2s_audio_in
     type: i2s
     role: master
     format: pdm-in
+    init_skip: true
     config:
       port: 0
       sample_rate_hz: 16000
@@ -133,9 +135,6 @@ peripherals:
   # - Grove HY2.0-4P port (GPIO2 / GPIO1 plus 5V and GND), also the
   #   external I2C bus in M5Stack's convention
   # - Native USB (OTG / Serial-JTAG) on GPIO19 / GPIO20: console path
-  # - NS4168 amplifier and SPM1423 microphone are control-less (no I2C
-  #   register set), so there is no audio_codec device — the I2S
-  #   peripherals above ARE the interface
   # - RESET button (handled in hardware)
   # - The IR LED above is a plain GPIO; carrier modulation is an
   #   application concern (RMT), there is no bmgr device type for it
