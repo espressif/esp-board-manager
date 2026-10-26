@@ -17,6 +17,7 @@
 #include "bmgr_test_registry.h"
 #include "commands/cmd_bmgr.h"
 #include "commands/cmd_case.h"
+#include "commands/cmd_io.h"
 
 #define BMGR_TEST_CONSOLE_PROMPT          "bmgr-test>"
 #define BMGR_TEST_CONSOLE_INPUT_RETRY_MS  10
@@ -29,6 +30,7 @@ static esp_err_t bmgr_test_console_register_cases(void)
     bmgr_register_button_cases();
     bmgr_register_camera_cases();
     bmgr_register_custom_cases();
+    bmgr_register_ethernet_cases();
     bmgr_register_fs_cases();
     bmgr_register_gpio_expander_cases();
     bmgr_register_knob_cases();
@@ -54,9 +56,17 @@ static esp_err_t bmgr_test_console_register_commands(bmgr_test_context_t *ctx)
         return ret;
     }
 
+    ret = register_io_command();
+    if (ret != ESP_OK) {
+        unregister_case_command();
+        unregister_bmgr_command();
+        return ret;
+    }
+
     ret = bmgr_test_console_register_cases();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to register test cases: %s", esp_err_to_name(ret));
+        unregister_io_command();
         unregister_case_command();
         unregister_bmgr_command();
         return ret;
@@ -210,6 +220,7 @@ esp_err_t bmgr_test_console_start(bmgr_test_context_t *ctx)
     return ESP_OK;
 
 cleanup:
+    unregister_io_command();
     unregister_case_command();
     unregister_bmgr_command();
     if (repl != NULL && repl->del != NULL) {

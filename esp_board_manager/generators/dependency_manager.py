@@ -15,6 +15,7 @@ from typing import Dict, List, Set, Optional, Any, TYPE_CHECKING
 from .utils.logger import LoggerMixin
 from .utils.yaml_utils import load_yaml_safe, save_yaml_safe
 from .utils.config_utils import load_yaml_with_includes
+from .parser_loader import load_device_dependency_resolver
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import
     from .amend import AmendPlan
@@ -27,9 +28,12 @@ class DependencyManager(LoggerMixin):
         super().__init__()
         self.root_dir = root_dir
 
-    def extract_device_dependencies(self, dev_yaml_path: str, amend_plan: Optional['AmendPlan'] = None) -> Dict[str, str]:
+    def extract_device_dependencies(self, dev_yaml_path: str,
+                                    amend_plan: Optional['AmendPlan'] = None) -> Dict[str, Any]:
         """
-        Extract dependencies from board_devices.yaml file.
+        Extract device defaults and explicit dependencies from board_devices.yaml.
+
+        Explicit dependencies override device defaults regardless of device order.
 
         Args:
             dev_yaml_path: Path to board_devices.yaml file
@@ -39,7 +43,9 @@ class DependencyManager(LoggerMixin):
         Returns:
             dict: Dictionary of component dependencies with versions
         """
-        dependencies: Dict[str, str] = {}
+        dependencies: Dict[str, Any] = {}
+        explicit_dependencies: Dict[str, Any] = {}
+        dependency_resolvers = {}
         # Same merge/parse rules as device generation (anchors across sibling .yaml files).
         data = load_yaml_with_includes(dev_yaml_path, amend_plan) or {}
         if not isinstance(data, dict):
@@ -51,7 +57,16 @@ class DependencyManager(LoggerMixin):
             if device.get('gen_skip', False):
                 continue
 
-            # Only process explicit dependencies
+            device_type = device.get('type')
+            if device_type not in dependency_resolvers:
+                dependency_resolvers[device_type] = load_device_dependency_resolver(
+                    device_type, self.root_dir / 'devices'
+                )
+            resolver = dependency_resolvers[device_type]
+            if resolver is not None:
+                dependencies.update(resolver(device))
+
+            # Collect explicit dependencies separately so defaults cannot override them.
             if 'dependencies' in device:
                 device_deps = device['dependencies']
                 if isinstance(device_deps, list):
@@ -59,19 +74,21 @@ class DependencyManager(LoggerMixin):
                         if isinstance(dep, dict):
                             # Handle dictionary format: {"component": "version"}
                             for component, version in dep.items():
-                                dependencies[component] = version
+                                explicit_dependencies[component] = version
                         elif isinstance(dep, str):
                             # Handle string format: "component:version"
                             if ':' in dep:
                                 component, version = dep.split(':', 1)
-                                dependencies[component.strip()] = version.strip()
+                                explicit_dependencies[component.strip()] = version.strip()
                             else:
                                 # Default version if not specified
-                                dependencies[dep.strip()] = '*'
+                                explicit_dependencies[dep.strip()] = '*'
                 elif isinstance(device_deps, dict):
                     # Handle direct dictionary format
                     for component, version in device_deps.items():
-                        dependencies[component] = version
+                        explicit_dependencies[component] = version
+
+        dependencies.update(explicit_dependencies)
 
         if dependencies:
             self.logger.debug(f'Extracted {len(dependencies)} dependencies from {dev_yaml_path}:')

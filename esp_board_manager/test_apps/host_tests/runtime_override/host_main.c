@@ -7,18 +7,24 @@
  * Host driver for runtime prepare / sparse sidecar / peripheral and device
  * APP overrides. Compiles the real esp_board_runtime_state.c,
  * esp_board_manager.c, esp_board_periph.c, and esp_board_device.c against
- * lightweight stubs (no hardware).
+ * the production BMGR headers and platform stubs (no hardware).
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "freertos/task.h"
-#include "esp_board_runtime_state.h"
+#include "dev_power_ctrl.h"
+#include "esp_board_device.h"
+#include "esp_board_find_utils.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_err.h"
 #include "esp_board_periph.h"
-#include "esp_board_device.h"
+#include "esp_board_runtime_state.h"
+#ifdef HOST_TEST_BOARD_REVISION
+#include "gen_board_revisions.h"
+#endif  /* HOST_TEST_BOARD_REVISION */
 
 static uint8_t s_dev_cfg = 0x11;
 static uint8_t s_i2c_cfg_a = 0x21;
@@ -272,7 +278,27 @@ typedef enum {
     HOOK_TOPOLOGY_REPLACE,
     HOOK_TOPOLOGY_REPLACE_FAIL,
     HOOK_INACTIVE_HANDLE_STATE_FAIL,
+    HOOK_ACTIVE_CFG_LOOKUP_FAIL,
+    HOOK_PARTIAL_BASE_FAIL,
+    HOOK_PARTIAL_REPLACE_FAIL,
+    HOOK_PARTIAL_ADD_FAIL,
+    HOOK_PARTIAL_PREFLIGHT_FAIL,
+    HOOK_PARTIAL_PERIPH_PREFLIGHT_FAIL,
+    HOOK_PARTIAL_HANDLE_REPLACE_FAIL,
+#ifdef HOST_TEST_BOARD_REVISION
+    HOOK_PARTIAL_REVISION_FAIL,
+#endif  /* HOST_TEST_BOARD_REVISION */
 } hook_mode_t;
+
+static int partial_device_init(void *cfg, int cfg_size, void **device_handle);
+static int partial_device_deinit(void *device_handle);
+
+static esp_board_device_handle_t s_replacement_handle = {
+    .name   = "gpio_button",
+    .type   = "button",
+    .init   = gpio_button_init,
+    .deinit = gpio_button_deinit,
+};
 
 static hook_mode_t s_hook_mode = HOOK_OK;
 static int s_failures = 0;
@@ -282,6 +308,7 @@ static esp_err_t s_hook_owner_get_ret = ESP_FAIL;
 static esp_err_t s_hook_non_owner_get_ret = ESP_FAIL;
 static esp_err_t s_non_owner_override_ret = ESP_OK;
 static esp_err_t s_non_owner_restore_ret = ESP_OK;
+static esp_err_t s_non_owner_idle_ret = ESP_OK;
 static esp_board_runtime_source_t s_non_owner_source = ESP_BOARD_RUNTIME_SOURCE_BOARD;
 static esp_err_t s_concurrent_prepare_ret = ESP_OK;
 static esp_err_t s_override_during_init_ret = ESP_FAIL;
@@ -396,6 +423,7 @@ static void host_test_cleanup(void)
     s_hook_non_owner_get_ret = ESP_FAIL;
     s_non_owner_override_ret = ESP_OK;
     s_non_owner_restore_ret = ESP_OK;
+    s_non_owner_idle_ret = ESP_OK;
     s_non_owner_source = ESP_BOARD_RUNTIME_SOURCE_BOARD;
     s_concurrent_prepare_ret = ESP_OK;
     s_shared_init_count = 0;
@@ -460,6 +488,7 @@ esp_err_t esp_board_runtime_pre_init(void)
             }
             host_set_current_task((TaskHandle_t)(uintptr_t)0xDEAD);
             s_non_owner_source = esp_board_runtime_get_override_source();
+            s_non_owner_idle_ret = esp_board_runtime_check_idle();
             void *handle = NULL;
             s_hook_non_owner_get_ret = esp_board_periph_get_handle("i2c_master", &handle);
             s_non_owner_override_ret =
@@ -494,6 +523,11 @@ esp_err_t esp_board_runtime_pre_init(void)
             s_dev_handle_no_cfg.next = &s_hook_added_handle;
             g_esp_board_periph_handles[0].next = &s_hook_added_ops;
             return ESP_FAIL;
+        case HOOK_ACTIVE_CFG_LOOKUP_FAIL:
+            if (esp_board_periph_set_ops("i2c_master", shared_init, shared_deinit) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            /* fall through */
         case HOOK_ACTIVE_CFG_FAIL:
             if (esp_board_runtime_copy_config("i2c_master", &board_cfg, sizeof(board_cfg)) != ESP_OK ||
                 esp_board_periph_init("i2c_master") != ESP_OK) {
@@ -536,6 +570,60 @@ esp_err_t esp_board_runtime_pre_init(void)
             esp_err_t ret = esp_board_periph_set_ops("i2c_master_1", ops_b_init, ops_b_deinit);
             return ret == ESP_OK && s_hook_mode == HOOK_TOPOLOGY_REPLACE_FAIL ? ESP_FAIL : ret;
         }
+#ifdef HOST_TEST_BOARD_REVISION
+        case HOOK_PARTIAL_REVISION_FAIL:
+            if (gen_board_revision_apply_cleanup() != ESP_OK) {
+                return ESP_FAIL;
+            }
+            s_dev_handle_no_cfg.next = &s_added_device_handle;
+            if (esp_board_device_set_ops("c_added_device", partial_device_init, partial_device_deinit) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            s_hook_nested_init_ret = esp_board_device_init("c_added_device");
+            return ESP_FAIL;
+#endif  /* HOST_TEST_BOARD_REVISION */
+        case HOOK_PARTIAL_BASE_FAIL:
+        case HOOK_PARTIAL_REPLACE_FAIL:
+        case HOOK_PARTIAL_ADD_FAIL:
+        case HOOK_PARTIAL_PREFLIGHT_FAIL:
+        case HOOK_PARTIAL_PERIPH_PREFLIGHT_FAIL:
+        case HOOK_PARTIAL_HANDLE_REPLACE_FAIL: {
+            const char *name = "gpio_button";
+            if (s_hook_mode == HOOK_PARTIAL_HANDLE_REPLACE_FAIL) {
+                g_esp_board_device_handles[0].next = &s_replacement_handle;
+            } else if (s_hook_mode == HOOK_PARTIAL_REPLACE_FAIL || s_hook_mode == HOOK_PARTIAL_PREFLIGHT_FAIL ||
+                       s_hook_mode == HOOK_PARTIAL_PERIPH_PREFLIGHT_FAIL) {
+                s_dev_no_cfg.cfg = &s_dev_cfg;
+                s_dev_no_cfg.cfg_size = sizeof(s_dev_cfg);
+            } else if (s_hook_mode == HOOK_PARTIAL_ADD_FAIL) {
+                s_dev_no_cfg.next = &s_added_device_desc;
+                s_dev_handle_no_cfg.next = &s_added_device_handle;
+                name = "c_added_device";
+            }
+            if (s_hook_mode != HOOK_PARTIAL_BASE_FAIL) {
+                s_hook_nested_init_ret = esp_board_device_set_ops(name, partial_device_init, partial_device_deinit);
+            } else {
+                s_hook_nested_init_ret = esp_board_device_override_config(name, &board_dev_cfg, sizeof(board_dev_cfg));
+            }
+            if (s_hook_nested_init_ret != ESP_OK) {
+                return s_hook_nested_init_ret;
+            }
+            if (s_hook_mode == HOOK_PARTIAL_BASE_FAIL &&
+                esp_board_device_set_ops(name, partial_device_init, partial_device_deinit) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            s_hook_nested_init_ret = esp_board_device_init(name);
+            if (s_hook_mode == HOOK_PARTIAL_PERIPH_PREFLIGHT_FAIL) {
+                s_periph_b.next = &g_esp_board_peripherals[0];
+                return ESP_OK;
+            }
+            if (s_hook_mode == HOOK_PARTIAL_PREFLIGHT_FAIL) {
+                s_dev_no_cfg.type = NULL;
+                s_dev_no_cfg.next = &g_esp_board_devices[0];
+                return ESP_OK;
+            }
+            return ESP_FAIL;
+        }
         case HOOK_INACTIVE_HANDLE_STATE_FAIL:
             g_esp_board_device_handles[0].device_handle = (void *)(uintptr_t)0xDEAD;
             g_esp_board_device_handles[0].ref_count = 7;
@@ -544,6 +632,17 @@ esp_err_t esp_board_runtime_pre_init(void)
         default:
             return ESP_OK;
     }
+}
+
+static void test_config_by_handle_prepares_before_invalid_links(void)
+{
+    host_test_cleanup();
+    g_esp_board_device_handles[0].next = &g_esp_board_device_handles[0];
+    void *cfg = NULL;
+    EXPECT(esp_board_device_get_config_by_handle((void *)(uintptr_t)0xDEAD, &cfg) == ESP_ERR_INVALID_STATE,
+           "first config-by-handle lookup rejects a cycle instead of hanging before prepare");
+    g_esp_board_device_handles[0].next = &s_dev_handle_no_cfg;
+    host_test_cleanup();
 }
 
 static void test_duplicate_names(void)
@@ -688,31 +787,64 @@ static void test_handle_link_rollback(void)
 
 static void test_active_config_survives_failed_hook(void)
 {
-    host_test_cleanup();
     s_hook_mode = HOOK_ACTIVE_CFG_FAIL;
     EXPECT(esp_board_runtime_prepare() == ESP_FAIL, "failed hook with active resource propagates");
     esp_board_runtime_node_t *node = esp_board_runtime_find_node("i2c_master");
     EXPECT(node && node->board.has_cfg && node->board.cfg != NULL,
-           "rollback retains config still bound to active resource");
-    EXPECT(esp_board_runtime_is_initialized("i2c_master"),
-           "rollback retains active resource mark for explicit deinit");
-    EXPECT(esp_board_periph_deinit("i2c_master") == ESP_OK,
-           "hook-owned resource can be deinitialized after failed prepare");
-    host_test_cleanup();
+           "failed prepare retains configuration still used by hardware");
+    EXPECT(esp_board_runtime_prepare() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "failed prepare with live peripheral cannot rerun hook");
+    EXPECT(esp_board_periph_deinit("i2c_master") == ESP_ERR_INVALID_STATE,
+           "failed prepare does not offer peripheral recovery through deinit");
+}
+
+static void test_failed_hook_peripheral_cleanup_lookups(void)
+{
+    s_hook_mode = HOOK_ACTIVE_CFG_LOOKUP_FAIL;
+    EXPECT(esp_board_runtime_prepare() == ESP_FAIL, "hook failure retains live peripheral");
+    const char *name = NULL;
+    void *cfg = NULL;
+    EXPECT(esp_board_periph_get_name_by_handle((void *)(uintptr_t)0x1000, &name) == ESP_ERR_INVALID_STATE,
+           "failed prepare rejects peripheral name lookup");
+    EXPECT(esp_board_periph_get_config("i2c_master", &cfg) == ESP_ERR_INVALID_STATE,
+           "failed prepare rejects config lookup rather than entering cleanup");
+    EXPECT(esp_board_periph_deinit_all() == ESP_ERR_INVALID_STATE && s_shared_deinit_count == 0,
+           "failed prepare bulk cleanup does not call drivers");
+    EXPECT(esp_board_runtime_prepare() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "failed prepare stays failed without automatic retry");
 }
 
 static void test_failed_hook_preserves_active_device_handle(void)
 {
-    host_test_cleanup();
     s_hook_mode = HOOK_ACTIVE_DEVICE_FAIL;
     EXPECT(esp_board_runtime_prepare() == ESP_FAIL, "failed hook after device init propagates");
-    EXPECT(s_dev_handle_no_cfg.next == NULL, "failed hook restores device handle link");
+    EXPECT(s_dev_handle_no_cfg.next == &s_hook_added_handle,
+           "failed prepare preserves links needed by live resources");
     EXPECT(g_esp_board_device_handles[0].device_handle != NULL &&
-               g_esp_board_device_handles[0].ref_count == 1,
-           "rollback preserves initialized device handle and refcount");
-    EXPECT(esp_board_device_deinit("audio_dac") == ESP_OK,
-           "hook-owned device can be deinitialized after failed prepare");
-    host_test_cleanup();
+               g_esp_board_device_handles[0].ref_count == 1, "failed prepare retains device instance");
+    EXPECT(esp_board_device_deinit("audio_dac") == ESP_ERR_INVALID_STATE,
+           "failed prepare does not offer device recovery through deinit");
+    uint8_t cfg = 0;
+    EXPECT(esp_board_device_override_config("gpio_button", &cfg, sizeof(cfg)) == ESP_ERR_INVALID_STATE,
+           "failed prepare rejects overrides even for inactive resources");
+    EXPECT(esp_board_runtime_check_idle() == ESP_ERR_INVALID_STATE,
+           "failed prepare rejects revision table updates");
+    void *handle = NULL;
+    EXPECT(esp_board_manager_get_device_handle("audio_dac", &handle) == ESP_ERR_INVALID_STATE,
+           "manager device lookup reports failed prepare");
+    EXPECT(esp_board_manager_get_periph_handle("i2c_master", &handle) == ESP_ERR_INVALID_STATE,
+           "manager peripheral lookup reports failed prepare");
+    EXPECT(esp_board_manager_init_device_by_name("missing") == ESP_ERR_INVALID_STATE,
+           "manager init rejects failed prepare before descriptor lookup");
+    EXPECT(esp_board_manager_print() == ESP_ERR_INVALID_STATE,
+           "manager print rejects failed prepare before traversing tables");
+    EXPECT(esp_board_device_callback_register("gpio_button", &s_dev_cfg, NULL) == ESP_ERR_INVALID_STATE,
+           "callback registration rejects failed prepare before descriptor lookup");
+    uint16_t addr = 0;
+    EXPECT(esp_board_device_get_i2c_effective_addr("missing", &addr) == ESP_ERR_INVALID_STATE,
+           "I2C address lookup rejects failed prepare before descriptor lookup");
+    EXPECT(esp_board_device_find_by_handle(g_esp_board_device_handles[0].device_handle) == NULL,
+           "reverse handle lookup rejects failed prepare");
 }
 
 static void test_direct_table_mutation_rolls_back_on_preflight_failure(void)
@@ -1736,6 +1868,7 @@ static void test_non_owner_rejected_during_preparing(void)
     host_test_cleanup();
     s_hook_mode = HOOK_NON_OWNER;
     EXPECT(esp_board_runtime_prepare() == ESP_OK, "prepare with non-owner probe");
+    EXPECT(s_non_owner_idle_ret == ESP_ERR_INVALID_STATE, "non-owner cannot update runtime tables during prepare");
     EXPECT(s_non_owner_source == ESP_BOARD_RUNTIME_SOURCE_APP,
            "non-owner get_override_source is APP during PREPARING");
     EXPECT(s_hook_non_owner_get_ret == ESP_ERR_INVALID_STATE,
@@ -1814,15 +1947,421 @@ static void test_concurrent_prepare_rejected(void)
     host_test_cleanup();
 }
 
-int main(void)
+static int s_partial_init_calls;
+static int s_partial_cleanup_calls;
+static bool s_partial_deinit_fails;
+static bool s_partial_requires_power;
+
+static int partial_device_init(void *cfg, int cfg_size, void **device_handle)
 {
+    (void)cfg;
+    (void)cfg_size;
+    s_partial_init_calls++;
+    *device_handle = (void *)(uintptr_t)0x4300;
+    return ESP_FAIL;
+}
+
+static int partial_device_deinit(void *device_handle)
+{
+    s_partial_cleanup_calls++;
+    EXPECT(device_handle == (void *)(uintptr_t)0x4300, "cleanup receives the original handle");
+    if (s_partial_requires_power && g_esp_board_device_handles[0].device_handle == NULL) {
+        EXPECT(false, "power controller remains live during device cleanup");
+        return ESP_FAIL;
+    }
+    return s_partial_deinit_fails ? ESP_FAIL : ESP_OK;
+}
+
+static void test_failed_device_init_retains_resources(void)
+{
+    static const char *const dependencies[] = {"audio_dac"};
+    s_dev_no_cfg.depends_on = dependencies;
+    s_dev_no_cfg.depends_on_num = 1;
+    s_partial_deinit_fails = false;
+    EXPECT(esp_board_device_set_ops("gpio_button", partial_device_init, partial_device_deinit) == ESP_OK,
+           "install driver that reports unreleased resources");
+    EXPECT(esp_board_device_init("gpio_button") == ESP_FAIL, "failed init reports driver error");
+    EXPECT(s_dev_handle_no_cfg.device_handle == (void *)(uintptr_t)0x4300 &&
+               s_dev_handle_no_cfg.ref_count == 0, "failed init retains record without a successful reference");
+    EXPECT(g_esp_board_device_handles[0].ref_count == 1 && esp_board_runtime_is_initialized("gpio_button"),
+           "failed init retains dependencies and protects configuration");
+    void *handle = NULL;
+    EXPECT(esp_board_device_get_handle("gpio_button", &handle) == ESP_BOARD_ERR_DEVICE_NO_HANDLE,
+           "failed init does not expose a usable handle");
+    EXPECT(esp_board_device_init("gpio_button") == ESP_ERR_INVALID_STATE && s_partial_init_calls == 1,
+           "failed init cannot overwrite unreleased resources");
+    EXPECT(esp_board_device_restore_ops("gpio_button") == ESP_ERR_INVALID_STATE,
+           "failed init prevents ops replacement");
+    EXPECT(esp_board_device_deinit("audio_dac") == ESP_BOARD_ERR_DEVICE_DEP_IN_USE,
+           "failed init protects dependencies");
+    EXPECT(esp_board_device_deinit("gpio_button") == ESP_ERR_INVALID_STATE,
+           "failed init has no caller-driven deinit recovery contract");
+    EXPECT(esp_board_device_deinit_all() == ESP_FAIL && s_partial_cleanup_calls == 0,
+           "device bulk cleanup skips failed init without invoking cleanup");
+}
+
+static int clean_device_init_fails(void *cfg, int cfg_size, void **device_handle)
+{
+    (void)cfg;
+    (void)cfg_size;
+    *device_handle = NULL;
+    return ESP_FAIL;
+}
+
+static void test_clean_peripheral_init_failure(void)
+{
+    host_test_cleanup();
+    EXPECT(esp_board_periph_set_ops("i2c_master", clean_device_init_fails, shared_deinit) == ESP_OK,
+           "install peripheral initializer that rolls back on failure");
+    EXPECT(esp_board_periph_init("i2c_master") == ESP_FAIL,
+           "ordinary peripheral init failure returns driver error");
+    EXPECT(!esp_board_runtime_is_initialized("i2c_master"),
+           "ordinary peripheral failure releases configuration");
+    EXPECT(esp_board_periph_set_ops("i2c_master", shared_init, shared_deinit) == ESP_OK,
+           "ordinary peripheral failure allows ops update without deinit");
+    EXPECT(esp_board_periph_init("i2c_master") == ESP_OK,
+           "ordinary peripheral failure retries without deinit");
+    EXPECT(esp_board_periph_deinit("i2c_master") == ESP_OK,
+           "successful retry can be deinitialized normally");
+    host_test_cleanup();
+}
+
+static void test_dependency_init_failure(void)
+{
+    static const char *const dependencies[] = {"c_added_device", "gpio_button"};
+    host_test_cleanup();
+    s_hook_mode = HOOK_TOPOLOGY_ADD;
+    EXPECT(esp_board_runtime_prepare() == ESP_OK, "prepare dependency failure fixture");
+    g_esp_board_devices[0].depends_on = dependencies;
+    g_esp_board_devices[0].depends_on_num = 2;
+    s_partial_deinit_fails = false;
+    EXPECT(esp_board_device_set_ops("gpio_button", clean_device_init_fails,
+                                    partial_device_deinit) == ESP_OK, "install failing dependency");
+    EXPECT(esp_board_device_init("audio_dac") == ESP_FAIL, "parent returns dependency init error");
+    EXPECT(s_dev_init_count == 0 && g_esp_board_device_handles[0].device_handle == NULL,
+           "parent driver is not called after dependency failure");
+    EXPECT(s_added_device_handle.ref_count == 0 && s_added_device_handle.device_handle == NULL,
+           "earlier successful dependency reference is released");
+    EXPECT(!esp_board_runtime_is_initialized("gpio_button"), "clean dependency failure releases config");
+    EXPECT(esp_board_device_set_ops("gpio_button", gpio_button_init, gpio_button_deinit) == ESP_OK,
+           "clean dependency failure can retry without a deinit call");
+    EXPECT(esp_board_device_init("audio_dac") == ESP_OK, "parent initializes after dependency is fixed");
+    g_esp_board_devices[0].depends_on = NULL;
+    g_esp_board_devices[0].depends_on_num = 0;
+    host_test_cleanup();
+    s_dev_no_cfg.next = NULL;
+    s_dev_handle_no_cfg.next = NULL;
+    s_periph_b.next = NULL;
+    g_esp_board_periph_handles[0].next = NULL;
+}
+
+static int powered_device_init(void *cfg, int cfg_size, void **device_handle)
+{
+    (void)partial_device_init(cfg, cfg_size, device_handle);
+    return ESP_OK;
+}
+
+static void test_cleanup_keeps_power_controller(void)
+{
+    host_test_cleanup();
+    s_partial_requires_power = true;
+    s_partial_deinit_fails = true;
+    EXPECT(esp_board_device_init("audio_dac") == ESP_OK, "initialize power controller fixture");
+    s_dev_no_cfg.power_ctrl_device = "audio_dac";
+    EXPECT(esp_board_device_set_ops("gpio_button", powered_device_init, partial_device_deinit) == ESP_OK,
+           "install powered driver");
+    EXPECT(esp_board_device_init("gpio_button") == ESP_OK, "powered driver returns expected init result");
+    EXPECT(esp_board_device_deinit("audio_dac") == ESP_BOARD_ERR_DEVICE_DEP_IN_USE,
+           "initialized device protects its power controller");
+    EXPECT(esp_board_device_deinit("gpio_button") == ESP_FAIL, "device cleanup failure propagates");
+    EXPECT(g_esp_board_device_handles[0].ref_count == 1 && s_dev_handle_no_cfg.device_handle != NULL,
+           "failed cleanup retains power controller and device handle");
+    s_partial_deinit_fails = false;
+    EXPECT(esp_board_device_deinit_all() == ESP_OK, "global cleanup processes powered device before controller");
+    EXPECT(g_esp_board_device_handles[0].device_handle == NULL, "power controller released after device cleanup");
+    s_partial_requires_power = false;
+    s_dev_no_cfg.power_ctrl_device = NULL;
+    host_test_cleanup();
+}
+
+static void test_bulk_init_prepares_before_traversal(void)
+{
+    for (int kind = 0; kind < 2; kind++) {
+        for (int skip = 0; skip < 2; skip++) {
+            host_test_cleanup();
+            g_esp_board_devices[0].init_skip = skip;
+            s_dev_no_cfg.init_skip = skip;
+            g_esp_board_peripherals[0].init_skip = skip;
+            s_periph_b.init_skip = skip;
+            s_hook_mode = HOOK_FAIL_AFTER_OVERRIDE;
+            esp_err_t ret = kind == 0 ? esp_board_device_init_all() : esp_board_periph_init_all();
+            EXPECT(ret == ESP_FAIL, "bulk init propagates prepare error before traversing descriptors");
+            EXPECT(s_hook_call_count == 1, "bulk init attempts failed prepare only once");
+            EXPECT(s_dev_init_count == 0 && s_shared_init_count == 0,
+                   "failed bulk prepare never calls a driver");
+            g_esp_board_devices[0].init_skip = false;
+            s_dev_no_cfg.init_skip = false;
+            g_esp_board_peripherals[0].init_skip = false;
+            s_periph_b.init_skip = false;
+        }
+        host_test_cleanup();
+        g_esp_board_devices[0].init_skip = true;
+        s_dev_no_cfg.init_skip = true;
+        g_esp_board_peripherals[0].init_skip = true;
+        s_periph_b.init_skip = true;
+        esp_err_t ret = kind == 0 ? esp_board_device_init_all() : esp_board_periph_init_all();
+        EXPECT(ret == ESP_OK && s_hook_call_count == 1,
+               "all-skipped bulk init still completes prepare");
+        EXPECT(s_dev_init_count == 0 && s_shared_init_count == 0,
+               "all-skipped bulk init does not call drivers");
+        g_esp_board_devices[0].init_skip = false;
+        s_dev_no_cfg.init_skip = false;
+        g_esp_board_peripherals[0].init_skip = false;
+        s_periph_b.init_skip = false;
+    }
+    host_test_cleanup();
+    EXPECT(esp_board_device_set_ops("audio_dac", clean_device_init_fails, audio_dac_deinit) == ESP_OK,
+           "install clean device failure for best-effort bulk init");
+    EXPECT(esp_board_device_init_all() == ESP_OK,
+           "bulk device init still logs ordinary driver errors and continues");
+    EXPECT(s_dev_handle_no_cfg.device_handle != NULL,
+           "bulk device init reaches the next device after a clean failure");
+    host_test_cleanup();
+    EXPECT(esp_board_periph_set_ops("i2c_master", clean_device_init_fails, shared_deinit) == ESP_OK,
+           "install clean peripheral failure for best-effort bulk init");
+    EXPECT(esp_board_periph_init_all() == ESP_OK && s_shared_init_count == 1,
+           "bulk peripheral init still reaches the next peripheral after a clean failure");
+    host_test_cleanup();
+}
+
+static void test_bulk_init_rejects_failed_prepare(bool peripheral)
+{
+    s_hook_mode = peripheral ? HOOK_PARTIAL_PERIPH_PREFLIGHT_FAIL : HOOK_PARTIAL_PREFLIGHT_FAIL;
+    esp_err_t ret = peripheral ? esp_board_periph_init_all() : esp_board_device_init_all();
+    EXPECT(ret != ESP_OK && s_hook_call_count == 1,
+           "fresh bulk init returns from failed prepare without following retained cyclic links");
+    EXPECT(esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED,
+           "bulk init preserves terminal prepare failure with retained resources");
+    EXPECT(esp_board_device_init_all() == ESP_ERR_INVALID_STATE &&
+               esp_board_periph_init_all() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "later bulk init rejects failed prepare without revisiting descriptors");
+}
+
+static void test_failed_prepare_stops_recovery(hook_mode_t mode)
+{
+    s_dev_no_cfg.cfg = &s_dev_cfg;
+    s_dev_no_cfg.cfg_size = sizeof(s_dev_cfg);
+    s_hook_mode = mode;
+    EXPECT(esp_board_runtime_prepare() != ESP_OK && s_hook_nested_init_ret == ESP_FAIL,
+           "hook or preflight failure reports unreleased init resources");
+    EXPECT(esp_board_runtime_prepare() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "failed prepare cannot rerun hook");
+    EXPECT(esp_board_device_deinit_all() == ESP_ERR_INVALID_STATE && s_partial_cleanup_calls == 0,
+           "failed prepare does not offer bulk recovery");
+    EXPECT(esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED,
+           "failed prepare records terminal failure");
+    EXPECT(esp_board_runtime_check_idle() == ESP_ERR_INVALID_STATE,
+           "failed prepare keeps table updates blocked");
+    EXPECT(esp_board_device_set_ops("audio_dac", audio_dac_init, audio_dac_deinit) == ESP_ERR_INVALID_STATE,
+           "failed prepare rejects ops updates");
+    EXPECT(esp_board_manager_init_device_by_name("missing") == ESP_ERR_INVALID_STATE,
+           "manager init does not traverse invalid retained descriptors");
+    EXPECT(esp_board_manager_print() == ESP_ERR_INVALID_STATE,
+           "manager print does not traverse invalid retained descriptors");
+    EXPECT(esp_board_device_callback_register("gpio_button", &s_dev_cfg, NULL) == ESP_ERR_INVALID_STATE,
+           "callback registration does not read invalid retained device type");
+    uint16_t addr = 0;
+    EXPECT(esp_board_device_get_i2c_effective_addr("missing", &addr) == ESP_ERR_INVALID_STATE,
+           "I2C address lookup does not traverse invalid retained descriptors");
+    const char *name = mode == HOOK_PARTIAL_ADD_FAIL ? "c_added_device" : "gpio_button";
+    EXPECT(esp_board_runtime_set_initialized(name, false) == ESP_OK,
+           "test removes mark to verify failure state is independent of cleanup");
+    EXPECT(esp_board_runtime_prepare() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "clearing marks cannot reset failed prepare");
+}
+
+#ifdef HOST_TEST_BOARD_REVISION
+static void test_generated_revision_rejects_active_resources(void)
+{
+    for (int kind = 0; kind < 3; kind += 2) {
+        host_test_cleanup();
+        EXPECT(esp_board_runtime_prepare() == ESP_OK, "prepare revision idle guard fixture");
+        if (kind == 0) {
+            EXPECT(esp_board_device_init("gpio_button") == ESP_OK, "revision guard sees initialized device");
+        } else {
+            EXPECT(esp_board_periph_init("i2c_master_1") == ESP_OK, "revision guard sees initialized peripheral");
+        }
+        esp_board_device_desc_t device = g_esp_board_devices[0];
+        esp_board_device_desc_t button = s_dev_no_cfg;
+        esp_board_periph_desc_t peripheral = g_esp_board_peripherals[0];
+        esp_board_periph_desc_t bus = s_periph_b;
+        EXPECT(gen_board_revision_apply_cleanup() == ESP_ERR_INVALID_STATE,
+               "generated revision rejects live resources");
+        EXPECT(memcmp(&device, &g_esp_board_devices[0], sizeof(device)) == 0 &&
+                   memcmp(&peripheral, &g_esp_board_peripherals[0], sizeof(peripheral)) == 0,
+               "rejected revision leaves descriptor tables unchanged");
+        /* Keep the fixture recoverable even when checking a broken guard. */
+        g_esp_board_devices[0] = device;
+        s_dev_no_cfg = button;
+        g_esp_board_peripherals[0] = peripheral;
+        s_periph_b = bus;
+        host_test_cleanup();
+    }
+}
+
+static void test_failed_revision_prepare_stops_recovery(void)
+{
+    s_hook_mode = HOOK_PARTIAL_REVISION_FAIL;
+    EXPECT(esp_board_runtime_prepare() == ESP_FAIL && s_hook_nested_init_ret == ESP_FAIL,
+           "generated revision hook reports init failure with unreleased resources");
+    EXPECT(esp_board_runtime_prepare() == ESP_ERR_INVALID_STATE && s_hook_call_count == 1,
+           "failed revision prepare cannot rerun hook");
+    EXPECT(gen_board_revision_apply_cleanup() == ESP_ERR_INVALID_STATE,
+           "failed revision prepare rejects revision changes");
+    EXPECT(esp_board_device_deinit_all() == ESP_ERR_INVALID_STATE,
+           "failed revision prepare has no bulk recovery path");
+    EXPECT(g_esp_board_devices[0].cfg != &s_dev_cfg &&
+               *(const uint8_t *)g_esp_board_devices[0].cfg == 0xD8 &&
+               s_dev_handle_no_cfg.next == &s_added_device_handle,
+           "failed revision keeps current topology instead of restoring old tables");
+}
+#endif  /* HOST_TEST_BOARD_REVISION */
+
+int dev_power_ctrl_sub_custom_deinit(void *device_handle);
+
+static int s_custom_power_cleanup_calls;
+static bool s_custom_power_cleanup_fails;
+
+static int custom_power_cleanup(void *context)
+{
+    EXPECT(context == &s_custom_power_cleanup_calls, "custom power cleanup receives retained context");
+    s_custom_power_cleanup_calls++;
+    return s_custom_power_cleanup_fails ? ESP_FAIL : ESP_OK;
+}
+
+static const dev_power_ctrl_custom_ops_t s_custom_power_ops = {
+    .deinit = custom_power_cleanup,
+};
+
+static int custom_power_test_init(void *cfg, int cfg_size, void **device_handle)
+{
+    (void)cfg;
+    (void)cfg_size;
+    dev_power_ctrl_handle_t *handle = calloc(1, sizeof(*handle));
+    if (handle == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    void *periph_handle = NULL;
+    int ret = esp_board_periph_ref_handle("i2c_master", &periph_handle);
+    if (ret != ESP_OK) {
+        free(handle);
+        return ret;
+    }
+    handle->custom_ops = &s_custom_power_ops;
+    handle->custom_context = &s_custom_power_cleanup_calls;
+    *device_handle = handle;
+    return ESP_OK;
+}
+
+static void test_custom_power_deinit_retry(void)
+{
+    host_test_cleanup();
+    static const char *const peripherals[] = {"i2c_master"};
+    static const dev_power_ctrl_config_t cfg = {
+        .name = "audio_dac",
+        .type = "power_ctrl",
+        .sub_type = "custom",
+        .sub_cfg.custom = {.periph_names = peripherals, .periph_count = 1},
+    };
+    g_esp_board_devices[0].cfg = &cfg;
+    g_esp_board_devices[0].cfg_size = sizeof(cfg);
+    s_custom_power_cleanup_calls = 0;
+    s_custom_power_cleanup_fails = true;
+    EXPECT(esp_board_device_set_ops("audio_dac", custom_power_test_init,
+                                    dev_power_ctrl_sub_custom_deinit) == ESP_OK, "install real custom power cleanup");
+    EXPECT(esp_board_device_init("audio_dac") == ESP_OK, "initialize custom power cleanup fixture");
+    EXPECT(esp_board_device_deinit("audio_dac") == ESP_FAIL, "custom power cleanup failure reaches core");
+    EXPECT(s_shared_deinit_count == 0, "failed custom power cleanup retains peripheral reference");
+    if (s_shared_deinit_count != 0) {
+        return;  /* The broken wrapper has already freed the handle; do not retry it. */
+    }
+    void *handle = NULL;
+    EXPECT(esp_board_device_get_handle("audio_dac", &handle) == ESP_OK && handle != NULL,
+           "failed custom power cleanup retains device handle");
+    s_custom_power_cleanup_fails = false;
+    EXPECT(esp_board_device_deinit("audio_dac") == ESP_OK, "custom power cleanup retry succeeds");
+    EXPECT(s_custom_power_cleanup_calls == 2, "custom power cleanup retries original context");
+    EXPECT(s_shared_deinit_count == 1, "successful custom power cleanup releases peripheral once");
+    EXPECT(!esp_board_runtime_is_initialized("audio_dac") &&
+               !esp_board_runtime_is_initialized("i2c_master"), "successful custom power cleanup clears both marks");
+    host_test_cleanup();
+    g_esp_board_devices[0].cfg = &s_dev_cfg;
+    g_esp_board_devices[0].cfg_size = sizeof(s_dev_cfg);
+}
+
+int main(int argc, char **argv)
+{
+    if (argc == 2) {
+        if (strcmp(argv[1], "failed-device-init") == 0) {
+            test_failed_device_init_retains_resources();
+        } else if (strcmp(argv[1], "failed-legacy-periph-init") == 0) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+            EXPECT(esp_board_periph_init_custom("i2c_master", partial_device_init, partial_device_deinit) ==
+                       ESP_BOARD_ERR_PERIPH_INIT_FAILED, "legacy peripheral init reports unreleased resources");
+            EXPECT(esp_board_runtime_is_initialized("i2c_master"), "failed legacy init retains config mark");
+            EXPECT(esp_board_periph_init_custom("i2c_master", partial_device_init, partial_device_deinit) ==
+                       ESP_ERR_INVALID_STATE, "failed legacy init cannot overwrite unreleased resources");
+#pragma GCC diagnostic pop
+            EXPECT(esp_board_periph_deinit("i2c_master") == ESP_ERR_INVALID_STATE,
+                   "failed legacy init has no deinit recovery");
+        } else if (strcmp(argv[1], "failed-periph-init") == 0) {
+            EXPECT(esp_board_periph_set_ops("i2c_master", partial_device_init, partial_device_deinit) == ESP_OK,
+                   "install peripheral that reports unreleased resources");
+            EXPECT(esp_board_periph_init("i2c_master") == ESP_FAIL, "failed peripheral init returns error");
+            EXPECT(esp_board_runtime_is_initialized("i2c_master"), "failed peripheral init retains config mark");
+            void *handle = NULL;
+            EXPECT(esp_board_periph_get_handle("i2c_master", &handle) == ESP_BOARD_ERR_PERIPH_NO_HANDLE,
+                   "failed peripheral init does not expose handle");
+            EXPECT(esp_board_periph_deinit("i2c_master") == ESP_ERR_INVALID_STATE,
+                   "failed peripheral init has no deinit recovery");
+            EXPECT(esp_board_periph_init("i2c_master") == ESP_ERR_INVALID_STATE && s_partial_init_calls == 1,
+                   "failed peripheral init cannot overwrite unreleased resources");
+        } else if (strcmp(argv[1], "failed-hook-periph") == 0) {
+            test_active_config_survives_failed_hook();
+        } else if (strcmp(argv[1], "failed-hook-lookups") == 0) {
+            test_failed_hook_peripheral_cleanup_lookups();
+        } else if (strcmp(argv[1], "failed-hook-device") == 0) {
+            test_failed_hook_preserves_active_device_handle();
+        } else if (strcmp(argv[1], "failed-bulk-device-init") == 0) {
+            test_bulk_init_rejects_failed_prepare(false);
+        } else if (strcmp(argv[1], "failed-bulk-periph-init") == 0) {
+            test_bulk_init_rejects_failed_prepare(true);
+        } else if (strcmp(argv[1], "failed-hook-base") == 0) {
+            test_failed_prepare_stops_recovery(HOOK_PARTIAL_BASE_FAIL);
+        } else if (strcmp(argv[1], "failed-hook-replace") == 0) {
+            test_failed_prepare_stops_recovery(HOOK_PARTIAL_REPLACE_FAIL);
+        } else if (strcmp(argv[1], "failed-hook-add") == 0) {
+            test_failed_prepare_stops_recovery(HOOK_PARTIAL_ADD_FAIL);
+        } else if (strcmp(argv[1], "failed-hook-preflight") == 0) {
+            test_failed_prepare_stops_recovery(HOOK_PARTIAL_PREFLIGHT_FAIL);
+        } else if (strcmp(argv[1], "failed-hook-handle") == 0) {
+            test_failed_prepare_stops_recovery(HOOK_PARTIAL_HANDLE_REPLACE_FAIL);
+#ifdef HOST_TEST_BOARD_REVISION
+        } else if (strcmp(argv[1], "failed-hook-revision") == 0) {
+            test_failed_revision_prepare_stops_recovery();
+#endif  /* HOST_TEST_BOARD_REVISION */
+        } else {
+            return 2;
+        }
+        return s_failures != 0;
+    }
+    test_config_by_handle_prepares_before_invalid_links();
     test_duplicate_names();
     test_runtime_preflight_rejects_bad_tables();
     test_periph_set_ops_without_shared_handler();
     test_preflight_uses_effective_ops_priority();
     test_handle_link_rollback();
-    test_active_config_survives_failed_hook();
-    test_failed_hook_preserves_active_device_handle();
     test_direct_table_mutation_rolls_back_on_preflight_failure();
     test_manual_topology_add();
     test_manual_topology_remove();
@@ -1833,6 +2372,7 @@ int main(void)
     test_manager_init_rechecks_writable_tables();
     test_unknown_board_override();
     test_prepare_idempotent();
+    test_bulk_init_prepares_before_traversal();
     test_reentry();
     test_hook_fail_rollback();
     test_initialized_mark_no_sidecar();
@@ -1860,7 +2400,14 @@ int main(void)
     test_init_custom_also_prepares();
     test_null_task_prepare_rejected();
     test_concurrent_prepare_rejected();
+    test_clean_peripheral_init_failure();
+    test_dependency_init_failure();
+    test_cleanup_keeps_power_controller();
+#ifdef HOST_TEST_BOARD_REVISION
+    test_generated_revision_rejects_active_resources();
+#endif  /* HOST_TEST_BOARD_REVISION */
 
+    test_custom_power_deinit_retry();
     if (s_failures != 0) {
         fprintf(stderr, "%d host runtime tests failed\n", s_failures);
         return 1;

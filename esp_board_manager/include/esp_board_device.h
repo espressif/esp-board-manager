@@ -21,6 +21,9 @@ extern "C" {
 
 /**
  * @brief  Function pointer type for device initialization
+ *
+ *         Publish a usable handle only on success. Roll back resources acquired by
+ *         a failed initialization; do not free objects still used by the driver.
  */
 typedef int (*esp_board_device_init_func)(void *cfg, int cfg_size, void **device_handle);
 
@@ -75,6 +78,11 @@ typedef struct esp_board_device_handle {
  *         This function initializes a device with reference counting support. If the device
  *         is already initialized, it increments the reference count instead of reinitializing
  *         The device is only actually initialized when the reference count reaches 1
+ *         The initializer must roll back resources acquired by a failed call. Applications
+ *         do not need to call deinit after an ordinary initialization failure. If the
+ *         initializer returns an error with a non-NULL handle, BMGR retains the record,
+ *         configuration and dependencies to prevent reuse; a restart is required.
+ *         Such a handle is not exposed for use or for caller-driven deinit recovery.
  *
  * @param[in]  name  Device name to initialize
  *
@@ -83,7 +91,7 @@ typedef struct esp_board_device_handle {
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If name is NULL
  *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device descriptor or handle not found
  *       - ESP_BOARD_ERR_DEVICE_NO_INIT      If no init function is available
- *       - ESP_ERR_INVALID_STATE             If the runtime already marks this device initialized
+ *       - ESP_ERR_INVALID_STATE             If init left unreleased resources or board prepare requires a restart
  *       - ESP_ERR_INVALID_SIZE              If effective config size differs from the descriptor
  *       - Others                            Error codes from device-specific initialization
  */
@@ -249,9 +257,14 @@ esp_err_t esp_board_device_restore_ops(const char *name);
  *         deinitialized when the reference count reaches 0. If the device is not
  *         initialized, this function returns success
  *
+ *         A successful instance remains available for another cleanup attempt if
+ *         its deinit callback fails. An instance left by failed initialization, or
+ *         a failed board prepare with unreleased resources, requires a restart.
+ *
  * @param[in]  name  Device name to deinitialize
  *
  * @return
+ *       - ESP_ERR_INVALID_STATE             If initialization or prepare requires a restart
  *       - ESP_OK                            On success
  *       - ESP_BOARD_ERR_DEVICE_INVALID_ARG  If name is NULL
  *       - ESP_BOARD_ERR_DEVICE_NOT_FOUND    If device handle not found
@@ -298,7 +311,8 @@ esp_err_t esp_board_device_iterate_name_by_type(const char *type, void **cursor,
 /**
  * @brief  Initialize all devices
  *
- *         Iterates through all device descriptors and initializes each device
+ *         Prepares the board before iterating through device descriptors and
+ *         initializing each device. Returns immediately if prepare fails.
  *         Continues initializing even if some devices fail, but logs errors
  *
  * @note  Device initialization strictly follows the order defined in board_devices.yaml
@@ -309,7 +323,8 @@ esp_err_t esp_board_device_iterate_name_by_type(const char *type, void **cursor,
  *         YAML entries or manually call the device initialization function
  *
  * @return
- *       - ESP_OK  On success (always returns ESP_OK, errors are logged)
+ *       - ESP_OK  Prepare succeeded; individual device init errors are logged
+ *       - Others  Board prepare failed
  */
 esp_err_t esp_board_device_init_all(void);
 

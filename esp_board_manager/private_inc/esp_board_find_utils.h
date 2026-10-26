@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
@@ -141,7 +141,7 @@ static inline esp_board_periph_entry_t *esp_board_find_periph_handle(const char 
     }
 
     esp_board_periph_entry_t *handle = g_esp_board_periph_handles;
-    while (handle) {
+    while (handle && handle->type) {
         if (strcmp(handle->type, type) == 0 && handle->role == role) {
             return handle;
         }

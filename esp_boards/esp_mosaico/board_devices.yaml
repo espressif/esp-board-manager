@@ -22,6 +22,22 @@ devices:
       usb_hs_console:
         path: "${BOARD_PATH}/usb_hs_console"
 
+  # BQ27220 fuel gauge on the CoreBoard, 7-bit address 0x55 on both revisions.
+  # Returns bq27220_handle_t. Initialize explicitly with
+  # esp_board_manager_init_device_by_name("battery_monitor"); the driver may
+  # update the cell profile. No automatic shutdown or charging policy is added.
+  - name: battery_monitor
+    chip: bq27220
+    type: custom
+    version: default
+    init_skip: true
+    dependencies:
+      espressif/bq27220: "^0.1.3"
+    config:
+      design_capacity: 65     # mAh, stock cell on v1.0 and v1.2
+    peripherals:
+      - name: i2c_master      # revision selection supplies the actual bus pins
+
   # ---------- Codec power gate ----------
   - name: audio_power
     type: power_ctrl

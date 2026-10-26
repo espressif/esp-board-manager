@@ -124,6 +124,7 @@ int dev_power_ctrl_sub_custom_deinit(void *device_handle)
         ret = handle->custom_ops->deinit(handle->custom_context);
         if (ret != 0) {
             ESP_LOGE(TAG, "Custom power controller deinit failed: %d", ret);
+            return ret;
         }
     }
     dev_power_ctrl_sub_custom_unref_peripherals(device_handle);

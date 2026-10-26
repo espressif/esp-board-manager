@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
+# SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
+
+# ESP32-Ethernet-Kit has 4 MB flash. This layout belongs to test_apps only.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_test_app_4mb.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions_test_app_4mb.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"

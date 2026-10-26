@@ -1,160 +1,263 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO., LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO., LTD
  * SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
  *
  * See LICENSE file for details.
  */
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "dev_button.h"
 #include "esp_board_device.h"
-#include "esp_board_manager.h"
-#include "esp_board_manager_defs.h"
-#include "bmgr_test_names.h"
 #include "test_dev_button.h"
 
+#define BUTTON_TEST_DURATION_MS  10000
+
+typedef struct {
+    const char           *name;
+    dev_button_handles_t *handles;
+    uint32_t              registered[CONFIG_ADC_BUTTON_MAX_BUTTON_PER_CHANNEL];
+    bool                  acquired;
+} button_test_target_t;
+
 static const char *TAG = "TEST_BUTTON";
+static const button_event_t s_events[] = {
+    BUTTON_PRESS_DOWN, BUTTON_PRESS_UP, BUTTON_SINGLE_CLICK, BUTTON_DOUBLE_CLICK,
+    BUTTON_LONG_PRESS_START, BUTTON_LONG_PRESS_HOLD, BUTTON_LONG_PRESS_UP,
+    BUTTON_PRESS_REPEAT, BUTTON_PRESS_REPEAT_DONE, BUTTON_PRESS_END,
+};
 
-static void simple_button_event_handler(void *arg, void *data)
+static void button_test_event(void *handle, void *user_data)
 {
-    button_handle_t btn_handle = (button_handle_t)arg;
-    button_event_t event = iot_button_get_event(btn_handle);
-    const char *event_str = iot_button_get_event_str(event);
-
-    switch (event) {
-        case BUTTON_PRESS_DOWN:
-            ESP_LOGI(TAG, "Press down event (%s)", (char *)data);
-            break;
-        case BUTTON_PRESS_UP:
-            ESP_LOGI(TAG, "Press up event (%s)", (char *)data);
-            break;
-        case BUTTON_SINGLE_CLICK:
-            ESP_LOGI(TAG, "Single click event (%s)", (char *)data);
-            break;
-        case BUTTON_DOUBLE_CLICK:
-            ESP_LOGI(TAG, "Double click event (%s)", (char *)data);
-            break;
-        case BUTTON_MULTIPLE_CLICK:
-            ESP_LOGI(TAG, "Multiple click event: %d times (%s)", iot_button_get_repeat(btn_handle), (char *)data);
-            break;
-        case BUTTON_LONG_PRESS_START:
-            ESP_LOGI(TAG, "Long press start (duration: %" PRIu32 "ms) (%s)", iot_button_get_pressed_time(btn_handle), (char *)data);
-            break;
-        case BUTTON_LONG_PRESS_HOLD:
-            ESP_LOGI(TAG, "Long press hold (hold count: %d) (%s)", iot_button_get_long_press_hold_cnt(btn_handle), (char *)data);
-            break;
-        case BUTTON_LONG_PRESS_UP:
-            ESP_LOGI(TAG, "Long press release (total duration: %" PRIu32 "ms) (%s)", iot_button_get_pressed_time(btn_handle), (char *)data);
-            break;
-        case BUTTON_PRESS_REPEAT:
-            ESP_LOGI(TAG, "Press repeat (count: %d) (%s)", iot_button_get_repeat(btn_handle), (char *)data);
-            break;
-        case BUTTON_PRESS_REPEAT_DONE:
-            ESP_LOGI(TAG, "Press repeat done (total count: %d) (%s)", iot_button_get_repeat(btn_handle), (char *)data);
-            break;
-        case BUTTON_PRESS_END:
-            ESP_LOGI(TAG, "Press end (%s)", (char *)data);
-            break;
-        default:
-            ESP_LOGI(TAG, "Event: %s", event_str);
-            break;
-    }
+    /* Board device names have static lifetime, including after this test exits. */
+    ESP_LOGI(TAG, "%s (%p): %s", (const char *)user_data, handle,
+             iot_button_get_event_str(iot_button_get_event(handle)));
 }
 
-#ifdef CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT
-static int test_gpio_button(void)
+typedef struct {
+    button_test_target_t *targets;
+    size_t                count;
+    SemaphoreHandle_t     done;
+    bool                  cleanup;
+    bool                  completed;
+    esp_err_t             result;
+} button_test_dispatch_t;
+
+/* button 4.x dispatches on ESP_TIMER_TASK. Run mutations on that same task:
+ * any in-flight scan has returned, and the next scan cannot overlap them.
+ * Keep the ten-second monitoring wait on the console task. */
+static void button_test_update_callbacks(void *arg)
 {
-    ESP_LOGI(TAG, "=== Testing GPIO Button ===");
-    // Get button handle
-    dev_button_handles_t *btn_handles = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_GPIO_BUTTON, (void **)&btn_handles);
-    if (ret != ESP_OK || btn_handles == NULL) {
-        ESP_LOGE(TAG, "Failed to get %s handle", BMGR_TEST_NAME_GPIO_BUTTON);
-        return -1;
-    }
-    ESP_LOGI(TAG, "Successfully obtained button handle");
+    button_test_dispatch_t *dispatch = arg;
+    button_test_target_t *targets = dispatch->targets;
+    size_t count = dispatch->count;
+    esp_err_t ret = dispatch->result;
 
-    ret = esp_board_device_callback_register(BMGR_TEST_NAME_GPIO_BUTTON, simple_button_event_handler, NULL);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register callback for button: %s", BMGR_TEST_NAME_GPIO_BUTTON);
-        return -1;
-    }
-    return 0;
-}
-#endif  /* CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT */
-
-#if defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_SINGLE_SUPPORT) || defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_MULTI_SUPPORT)
-static int test_adc_button(void)
-{
-    ESP_LOGI(TAG, "=== Testing ADC Button ===");
-    // Get button handle
-    dev_button_handles_t *btn_handles = NULL;
-    const char *button_name = NULL;
-
-    // Try to get button handle, support both single button and button group
-    esp_err_t ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_ADC_BUTTON_GROUP, (void **)&btn_handles);
-    if (ret != ESP_OK || btn_handles == NULL) {
-        ret = esp_board_manager_get_device_handle(ESP_BOARD_DEVICE_NAME_ADC_BUTTON_0, (void **)&btn_handles);
-        if (ret != ESP_OK || btn_handles == NULL) {
-            ESP_LOGE(TAG, "Failed to get ADC button handle");
-            return -1;
-        } else {
-            button_name = ESP_BOARD_DEVICE_NAME_ADC_BUTTON_0;
-            ESP_LOGI(TAG, "Successfully obtained ADC button handle for single button: %s", button_name);
+    if (!dispatch->cleanup) {
+        for (size_t i = 0; i < count; i++) {
+            button_test_target_t *target = &targets[i];
+            for (size_t button = 0; button < target->handles->num_buttons; button++) {
+                for (size_t event = 0; event < sizeof(s_events) / sizeof(s_events[0]); event++) {
+                    ret = iot_button_register_cb(target->handles->button_handles[button], s_events[event],
+                                                 NULL, button_test_event, (void *)target->name);
+                    /* Some driver errors are returned after inserting the callback. */
+                    if (iot_button_count_event_cb(target->handles->button_handles[button], s_events[event]) != 0) {
+                        target->registered[button] |= UINT32_C(1) << event;
+                    }
+                    if (ret != ESP_OK) {
+                        goto done;
+                    }
+                }
+            }
         }
     } else {
-        button_name = ESP_BOARD_DEVICE_NAME_ADC_BUTTON_GROUP;
-        ESP_LOGI(TAG, "Successfully obtained ADC button handle for multi-button: %s", button_name);
+        for (size_t i = count; i > 0; i--) {
+            button_test_target_t *target = &targets[i - 1];
+            if (target->handles != NULL) {
+                for (size_t button = 0; button < sizeof(target->registered) / sizeof(target->registered[0]); button++) {
+                    for (size_t event = 0; event < sizeof(s_events) / sizeof(s_events[0]); event++) {
+                        if (target->registered[button] & (UINT32_C(1) << event)) {
+                            esp_err_t remove_ret = iot_button_unregister_cb(target->handles->button_handles[button], s_events[event], NULL);
+                            if (remove_ret != ESP_OK) {
+                                ESP_LOGE(TAG, "Failed to remove test callback on %s: %s", target->name, esp_err_to_name(remove_ret));
+                                if (ret == ESP_OK) {
+                                    ret = remove_ret;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (target->acquired) {
+                esp_err_t release_ret = esp_board_device_deinit(target->name);
+                if (release_ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to release %s: %s", target->name, esp_err_to_name(release_ret));
+                    if (ret == ESP_OK) {
+                        ret = release_ret;
+                    }
+                }
+            }
+        }
     }
 
-    ret = esp_board_device_callback_register(button_name, simple_button_event_handler, NULL);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register callback for button: %s", button_name);
-        return -1;
-    }
-    return 0;
+done:
+    dispatch->result = ret;
+    dispatch->completed = true;
+    xSemaphoreGive(dispatch->done);
 }
-#endif  /* defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_SINGLE_SUPPORT) || defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_MULTI_SUPPORT) */
 
-#ifdef CONFIG_ESP_BOARD_DEV_BUTTON_SUB_CUSTOM_SUPPORT
-static int test_custom_button(void)
+static esp_err_t button_test_dispatch(esp_timer_handle_t timer, button_test_dispatch_t *dispatch)
 {
-    ESP_LOGI(TAG, "=== Testing Custom Button ===");
-
-    dev_button_handles_t *btn_handles = NULL;
-    esp_err_t ret = esp_board_manager_get_device_handle(BMGR_TEST_NAME_CUSTOM_BUTTON, (void **)&btn_handles);
-    if (ret != ESP_OK || btn_handles == NULL) {
-        ESP_LOGE(TAG, "Failed to get %s handle", BMGR_TEST_NAME_CUSTOM_BUTTON);
-        return -1;
-    }
-    ESP_LOGI(TAG, "Successfully obtained custom button handle");
-
-    ret = esp_board_device_callback_register(BMGR_TEST_NAME_CUSTOM_BUTTON, simple_button_event_handler, NULL);
+    dispatch->completed = false;
+    esp_err_t ret = esp_timer_start_once(timer, 1);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register callback for button: %s", BMGR_TEST_NAME_CUSTOM_BUTTON);
-        return -1;
+        return ret;
     }
-    return 0;
+    while (xSemaphoreTake(dispatch->done, portMAX_DELAY) != pdTRUE) {
+        /* Do not let stack-owned dispatch state expire before completion. */
+    }
+    return dispatch->result;
 }
-#endif  /* CONFIG_ESP_BOARD_DEV_BUTTON_SUB_CUSTOM_SUPPORT */
+
+esp_err_t test_dev_button_named(const char *selected_name)
+{
+    const bool all = selected_name == NULL || strcmp(selected_name, "all") == 0;
+    const char *name = NULL;
+    void *cursor = NULL;
+    size_t count = 0;
+    esp_err_t ret;
+
+    while ((ret = esp_board_device_iterate_name_by_type("button", &cursor, &name)) == ESP_OK) {
+        if (all || strcmp(selected_name, name) == 0) {
+            count++;
+        }
+    }
+    if (ret != ESP_BOARD_ERR_DEVICE_NOT_FOUND) {
+        return ret;
+    }
+    if (count == 0) {
+        ESP_LOGE(TAG, "No matching button: %s", all ? "all" : selected_name);
+        return ESP_ERR_NOT_FOUND;
+    }
+    button_test_target_t *targets = calloc(count, sizeof(*targets));
+    if (targets == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    button_test_dispatch_t dispatch = {
+        .targets = targets,
+        .count = count,
+        .done = xSemaphoreCreateBinary(),
+    };
+    if (dispatch.done == NULL) {
+        free(targets);
+        return ESP_ERR_NO_MEM;
+    }
+    const esp_timer_create_args_t timer_args = {
+        .callback = button_test_update_callbacks,
+        .arg = &dispatch,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "button_test",
+    };
+    esp_timer_handle_t timer = NULL;
+    ret = esp_timer_create(&timer_args, &timer);
+    if (ret != ESP_OK) {
+        vSemaphoreDelete(dispatch.done);
+        free(targets);
+        return ret;
+    }
+
+    cursor = NULL;
+    size_t index = 0;
+    while ((ret = esp_board_device_iterate_name_by_type("button", &cursor, &name)) == ESP_OK) {
+        if (!all && strcmp(selected_name, name) != 0) {
+            continue;
+        }
+        if (index >= count) {
+            ret = ESP_ERR_INVALID_STATE;
+            goto cleanup;
+        }
+        button_test_target_t *target = &targets[index++];
+        target->name = name;
+        ret = esp_board_device_init(name);
+        if (ret != ESP_OK) {
+            goto cleanup;
+        }
+        target->acquired = true;
+        ret = esp_board_device_get_handle(name, (void **)&target->handles);
+        if (ret != ESP_OK) {
+            goto cleanup;
+        }
+        if (target->handles == NULL || target->handles->num_buttons == 0 ||
+            target->handles->num_buttons > sizeof(target->handles->button_handles) / sizeof(target->handles->button_handles[0])) {
+            ret = ESP_ERR_INVALID_STATE;
+            goto cleanup;
+        }
+        for (size_t button = 0; button < target->handles->num_buttons; button++) {
+            if (target->handles->button_handles[button] == NULL) {
+                ret = ESP_ERR_INVALID_STATE;
+                goto cleanup;
+            }
+            for (size_t event = 0; event < sizeof(s_events) / sizeof(s_events[0]); event++) {
+                /* The button API cannot remove one callback by function pointer.
+                 * Refuse occupied events instead of removing another consumer. */
+                if (iot_button_count_event_cb(target->handles->button_handles[button], s_events[event]) != 0) {
+                    ESP_LOGE(TAG, "%s already has event callbacks; release its other consumer first", name);
+                    ret = ESP_ERR_INVALID_STATE;
+                    goto cleanup;
+                }
+            }
+        }
+        ESP_LOGI(TAG, "Monitoring %s (%u buttons)", name, (unsigned)target->handles->num_buttons);
+    }
+    if (ret != ESP_BOARD_ERR_DEVICE_NOT_FOUND || index != count) {
+        if (ret == ESP_BOARD_ERR_DEVICE_NOT_FOUND) {
+            ret = ESP_ERR_INVALID_STATE;
+        }
+        goto cleanup;
+    }
+
+    dispatch.result = ESP_OK;
+    ret = button_test_dispatch(timer, &dispatch);
+    if (ret != ESP_OK) {
+        goto cleanup;
+    }
+    ESP_LOGI(TAG, "Press any monitored button during the next 10 seconds");
+    vTaskDelay(pdMS_TO_TICKS(BUTTON_TEST_DURATION_MS));
+    ESP_LOGI(TAG, "Button monitoring finished; confirm the observed events manually");
+    ret = ESP_OK;
+
+cleanup:
+    dispatch.cleanup = true;
+    dispatch.result = ret;
+    ret = button_test_dispatch(timer, &dispatch);
+    if (!dispatch.completed) {
+        /* A dispatch failure must not fall back to racing the live button scan. */
+        ESP_LOGE(TAG, "Could not schedule button cleanup; device references retained: %s", esp_err_to_name(ret));
+    }
+    esp_err_t delete_ret = esp_timer_delete(timer);
+    if (delete_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to delete button test timer: %s", esp_err_to_name(delete_ret));
+        if (ret == ESP_OK) {
+            ret = delete_ret;
+        }
+    }
+    vSemaphoreDelete(dispatch.done);
+    free(targets);
+    return ret;
+}
 
 void test_dev_button(void)
 {
-    int ret = -1;
-#if CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT
-    ret = test_gpio_button();
-#elif defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_SINGLE_SUPPORT) || defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_MULTI_SUPPORT)
-    ret = test_adc_button();
-#elif CONFIG_ESP_BOARD_DEV_BUTTON_SUB_CUSTOM_SUPPORT
-    ret = test_custom_button();
-#endif  /* CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT */
-    if (ret != 0) {
-        ESP_LOGE(TAG, "Failed to test dev button");
-        return;
+    esp_err_t ret = test_dev_button_named(NULL);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Button test failed: %s", esp_err_to_name(ret));
     }
-    vTaskDelay(pdMS_TO_TICKS(10000));  // Test for 10 seconds
-    ESP_LOGI(TAG, "Dev button test completed");
 }

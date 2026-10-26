@@ -292,6 +292,14 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
   - GitHub: [espressif/esp-board-manager/tree/main/m5stack_boards](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards)
   - ESP Component Registry: [espressif/m5stack_boards](https://components.espressif.com/components/espressif/m5stack_boards)
 
+- `waveshare/waveshare_boards`
+  - GitHub: [waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
+  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+
+- `guition-jc/guition_boards`
+  - GitHub: [Guition-JC/Guition](https://github.com/Guition-JC/Guition)
+  - ESP Component Registry: [guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+
 ### Supported Device Types
 
 | Device Name | Description | Type | Subtype | Peripheral | Reference YAML | Examples |
@@ -310,6 +318,7 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 | `button` | Button | button | gpio<br/>adc_single<br/>adc_multi<br/>custom | gpio<br/>adc | [`dev_button`](devices/dev_button/dev_button.yaml) | **[`test_dev_button.c`](test_apps/main/test_dev_button.c)** <br/>Button testing |
 | `knob` | Quadrature knob | knob | gpio | - | [`dev_knob`](devices/dev_knob/dev_knob.yaml) | **[`test_dev_knob.c`](test_apps/main/test_dev_knob.c)** <br/>Standalone knob event and count testing |
 | `led_strip` | LED strip | led_strip | rmt<br/>spi | - | [`dev_led_strip`](devices/dev_led_strip/dev_led_strip.yaml) | **[`test_dev_led_strip.c`](test_apps/main/test_dev_led_strip.c)** <br/>LED strip initialization and control testing |
+| `ethernet` | Internal EMAC + PHY | ethernet | emac_rmii / emac_rgmii | - | [`dev_ethernet`](devices/dev_ethernet/dev_ethernet.yaml) | **[`test_dev_ethernet.c`](test_apps/main/test_dev_ethernet.c)** <br/>Ethernet handle and link testing |
 
 > For the same device, we will no longer distinguish types by interface. For example, `dev_fatfs_sdcard` and `dev_fatfs_sdcard_spi` will be unified under `fs_fat` for management, and `dev_display_lcd_spi` will also be changed to use `dev_display_lcd` for management.
 

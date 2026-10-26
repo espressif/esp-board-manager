@@ -49,6 +49,9 @@ typedef int (*dev_power_ctrl_custom_init_func_t)(const dev_power_ctrl_config_t *
 
 /**
  * @brief  Deinitialize a board-specific custom power controller.
+ *
+ *         On failure, keep the context valid for a later cleanup retry. Board
+ *         Manager retains the controller handle and its peripheral references.
  */
 typedef int (*dev_power_ctrl_custom_deinit_func_t)(void *context);
 

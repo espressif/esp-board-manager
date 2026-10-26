@@ -47,6 +47,7 @@
 #include "esp_board_device.h"
 #include "esp_board_manager.h"
 #include "gen_board_revisions.h"
+#include "battery_monitor.h"
 
 extern ESP_BOARD_TABLE_CONST esp_board_device_desc_t g_esp_board_devices[];
 
@@ -366,6 +367,13 @@ esp_err_t esp_board_runtime_pre_init(void)
             return ret;
         }
     }
+
+#if MOSAICO_HAS_BATTERY_MONITOR
+    ret = mosaico_battery_monitor_setup();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+#endif  /* MOSAICO_HAS_BATTERY_MONITOR */
 
 #if MOSAICO_HAS_CAMERA
     const esp_board_device_desc_t *camera = g_esp_board_devices;

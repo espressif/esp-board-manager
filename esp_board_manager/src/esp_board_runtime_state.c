@@ -21,7 +21,7 @@ static const char *TAG = "BOARD_RUNTIME";
 typedef struct esp_board_runtime_init_mark {
     struct esp_board_runtime_init_mark *next;
     const char                         *name;          /*!< Points at descriptor name (flash) */
-    void                               *bound_deinit;  /*!< Deinit snapshotted after successful 0->1 init */
+    void                               *bound_deinit;  /*!< Cleanup bound to the driver init attempt */
 } esp_board_runtime_init_mark_t;
 
 static esp_board_runtime_prepare_state_t s_prepare_state = ESP_BOARD_RUNTIME_UNPREPARED;
@@ -286,6 +286,25 @@ static void discard_table_snapshots(device_table_snapshot_t *devices,
     peripherals->count = 0;
 }
 
+static void rollback_prepare(device_table_snapshot_t *devices, periph_table_snapshot_t *peripherals,
+                             device_handle_snapshot_t *handles, periph_ops_snapshot_t *ops)
+{
+    if (s_init_marks != NULL) {
+        /* Hardware still owns the current topology/config. Do not restore tables
+         * or offer recovery after this failed hook; a restart is required. */
+        discard_table_snapshots(devices, peripherals);
+        discard_handle_snapshots(handles, ops, false);
+        s_prepare_state = ESP_BOARD_RUNTIME_FAILED;
+        ESP_LOGE(TAG, "Board prepare failed with unreleased resources; restart required");
+        return;
+    }
+    esp_board_runtime_rollback_board();
+    restore_device_table(devices);
+    restore_periph_table(peripherals);
+    discard_handle_snapshots(handles, ops, true);
+    s_prepare_state = ESP_BOARD_RUNTIME_UNPREPARED;
+}
+
 static void clear_layer(esp_board_runtime_layer_t *layer)
 {
     if (layer == NULL) {
@@ -461,6 +480,9 @@ void esp_board_runtime_unlock(void)
  */
 static esp_err_t ensure_override_writable(void)
 {
+    if (s_prepare_state == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
     if (s_prepare_state == ESP_BOARD_RUNTIME_PREPARING) {
         if (xTaskGetCurrentTaskHandle() != s_prepare_owner_task) {
             return ESP_ERR_INVALID_STATE;
@@ -775,6 +797,11 @@ esp_err_t esp_board_runtime_prepare(void)
         return is_owner ? ESP_OK : ESP_ERR_INVALID_STATE;
     }
 
+    if (s_prepare_state == ESP_BOARD_RUNTIME_FAILED) {
+        esp_board_runtime_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+
     TaskHandle_t self = xTaskGetCurrentTaskHandle();
     if (self == NULL) {
         esp_board_runtime_unlock();
@@ -819,11 +846,7 @@ esp_err_t esp_board_runtime_prepare(void)
         if (ret == ESP_OK) {
             ret = lock_ret;
         }
-        esp_board_runtime_rollback_board();
-        restore_device_table(&device_snapshot);
-        restore_periph_table(&periph_snapshot);
-        discard_handle_snapshots(&device_handles_snapshot, &periph_ops_snapshot, true);
-        s_prepare_state = ESP_BOARD_RUNTIME_UNPREPARED;
+        rollback_prepare(&device_snapshot, &periph_snapshot, &device_handles_snapshot, &periph_ops_snapshot);
         s_prepare_owner_task = NULL;
         ESP_LOGE(TAG, "Board runtime prepare exit lock failed: %s", esp_err_to_name(lock_ret));
         return ret;
@@ -831,11 +854,7 @@ esp_err_t esp_board_runtime_prepare(void)
 
     if (ret != ESP_OK) {
         /* Rollback ignores owner. Leave PREPARING only while owner is still set. */
-        esp_board_runtime_rollback_board();
-        restore_device_table(&device_snapshot);
-        restore_periph_table(&periph_snapshot);
-        discard_handle_snapshots(&device_handles_snapshot, &periph_ops_snapshot, true);
-        s_prepare_state = ESP_BOARD_RUNTIME_UNPREPARED;
+        rollback_prepare(&device_snapshot, &periph_snapshot, &device_handles_snapshot, &periph_ops_snapshot);
         s_prepare_owner_task = NULL;
         esp_board_runtime_unlock();
         ESP_LOGE(TAG, "Board runtime pre-init failed: %s", esp_err_to_name(ret));
@@ -844,11 +863,7 @@ esp_err_t esp_board_runtime_prepare(void)
 
     ret = esp_board_runtime_preflight();
     if (ret != ESP_OK) {
-        esp_board_runtime_rollback_board();
-        restore_device_table(&device_snapshot);
-        restore_periph_table(&periph_snapshot);
-        discard_handle_snapshots(&device_handles_snapshot, &periph_ops_snapshot, true);
-        s_prepare_state = ESP_BOARD_RUNTIME_UNPREPARED;
+        rollback_prepare(&device_snapshot, &periph_snapshot, &device_handles_snapshot, &periph_ops_snapshot);
         s_prepare_owner_task = NULL;
         esp_board_runtime_unlock();
         ESP_LOGE(TAG, "Board runtime table preflight failed: %s", esp_err_to_name(ret));
@@ -861,6 +876,20 @@ esp_err_t esp_board_runtime_prepare(void)
     discard_handle_snapshots(&device_handles_snapshot, &periph_ops_snapshot, false);
     esp_board_runtime_unlock();
     return ESP_OK;
+}
+
+esp_err_t esp_board_runtime_check_idle(void)
+{
+    esp_err_t ret = esp_board_runtime_lock();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    if (s_init_marks != NULL || s_prepare_state == ESP_BOARD_RUNTIME_FAILED || (s_prepare_state == ESP_BOARD_RUNTIME_PREPARING &&
+                                                                                xTaskGetCurrentTaskHandle() != s_prepare_owner_task)) {
+        ret = ESP_ERR_INVALID_STATE;
+    }
+    esp_board_runtime_unlock();
+    return ret;
 }
 
 esp_board_runtime_node_t *esp_board_runtime_find_node(const char *name)

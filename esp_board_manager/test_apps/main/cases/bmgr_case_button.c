@@ -7,7 +7,6 @@
 
 #include "sdkconfig.h"
 #include "esp_board_manager_defs.h"
-#include "bmgr_test_names.h"
 #include "bmgr_test_registry.h"
 
 #ifdef CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT
@@ -18,27 +17,14 @@
 #define ARRAY_SIZE(array)  (sizeof(array) / sizeof((array)[0]))
 #endif  /* ARRAY_SIZE */
 
-/* Resolve the primary button device name for the configured sub-type. */
-#ifdef CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT
-#if defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT)
-#define BMGR_TEST_BUTTON_REQUIRE  BMGR_TEST_NAME_GPIO_BUTTON
-#elif defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_MULTI_SUPPORT)
-#define BMGR_TEST_BUTTON_REQUIRE  ESP_BOARD_DEVICE_NAME_ADC_BUTTON_GROUP
-#elif defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_ADC_SINGLE_SUPPORT)
-#define BMGR_TEST_BUTTON_REQUIRE  ESP_BOARD_DEVICE_NAME_ADC_BUTTON_0
-#elif defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_CUSTOM_SUPPORT)
-#define BMGR_TEST_BUTTON_REQUIRE  BMGR_TEST_NAME_CUSTOM_BUTTON
-#endif  /* defined(CONFIG_ESP_BOARD_DEV_BUTTON_SUB_GPIO_SUPPORT) */
-#endif  /* CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT */
-
 #ifdef CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT
 static esp_err_t run_button_read(bmgr_test_context_t *ctx, int argc, char **argv)
 {
     (void)ctx;
-    (void)argc;
-    (void)argv;
-    test_dev_button();
-    return ESP_OK;
+    if (argc < 0 || argc > 1 || (argc == 1 && argv == NULL)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return test_dev_button_named(argc == 1 ? argv[0] : NULL);
 }
 #endif  /* CONFIG_ESP_BOARD_DEV_BUTTON_SUPPORT */
 
@@ -49,12 +35,7 @@ void bmgr_register_button_cases(void)
         {
             .name = "button.read",
             .group = "button",
-            .help = "Run button read test",
-#ifdef BMGR_TEST_BUTTON_REQUIRE
-            .resources = {
-                BMGR_TEST_RESOURCE_REQUIRED(BMGR_TEST_BUTTON_REQUIRE),
-            },
-#endif  /* BMGR_TEST_BUTTON_REQUIRE */
+            .help = "Monitor all buttons, or pass a device name (GPIO/ADC/custom)",
             .run = run_button_read,
             .flags = BMGR_TEST_CASE_FLAG_MANUAL | BMGR_TEST_CASE_FLAG_NEEDS_BOARD,
         },

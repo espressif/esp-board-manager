@@ -15,6 +15,7 @@ import yaml
 import difflib
 
 from .utils.logger import LoggerMixin
+from .parser_loader import load_device_parser_attribute
 
 
 @dataclass
@@ -37,6 +38,7 @@ class DeviceSchemaValidator(LoggerMixin):
         self.devices_dir = devices_dir
         # Cache: {(device_type, sub_type): schema, (device_type, '__type_wide__'): union}
         self.schemas = {}
+        self.dynamic_fields = {}
 
     def load_schema(self, device_type: str, sub_type: Optional[str] = None) -> Optional[Set[str]]:
         """
@@ -234,9 +236,18 @@ class DeviceSchemaValidator(LoggerMixin):
 
         strict_sub = self.load_schema(device_type, sub_type)
 
+        if device_type not in self.dynamic_fields:
+            self.dynamic_fields[device_type] = tuple(load_device_parser_attribute(
+                device_type, self.devices_dir, 'DYNAMIC_CONFIG_FIELDS'
+            ) or ())
+        dynamic_fields = self.dynamic_fields[device_type]
+
         config_keys = self._extract_keys_recursive(config)
 
         for key in config_keys:
+            if any(key.startswith(f'{field}.') for field in dynamic_fields):
+                # The device parser delegates this subtree to its selected extension.
+                continue
             if self._should_ignore_key(key):
                 continue
 

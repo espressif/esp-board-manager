@@ -1,0 +1,108 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO., LTD
+# SPDX-License-Identifier: LicenseRef-Espressif-Modified-MIT
+#
+# See LICENSE file for details.
+
+# Example board_devices.yaml configuration for ethernet device (emac_rmii / emac_rgmii).
+# sub_type: spi is reserved and currently rejected by the parser.
+# The subtype selects the interface and the native clock/data GPIO union members.
+# emac_rgmii requires ESP-IDF v6.1+ and SOC_EMAC_SUPPORT_1000M (e.g. ESP32-S31).
+# Classic ESP32 and ESP32-P4 do not support emac_rgmii.
+# GPIO values are examples; set every [IO] value to match the board schematic.
+
+- name: ethernet
+  type: ethernet
+  sub_type: emac_rgmii
+  chip: yt8531                   # PHY chip/model name (optional)
+                                 # yt8531 automatically adds espressif/yt8531: ^0.2.0 (ESP-IDF v6.1+)
+  config:
+    mac_config:                  # Optional eth_mac_config_t fields
+      sw_reset_timeout_ms: 100   # Software reset timeout in ms
+      rx_task_stack_size: 4096   # Receive-task stack size in bytes
+      rx_task_prio: 15           # Receive-task priority
+      flags: 0                   # Integer mask or list: ETH_MAC_FLAG_WORK_WITH_CACHE_DISABLE,
+                                 # ETH_MAC_FLAG_PIN_TO_CORE
+    phy_config:                  # Optional eth_phy_config_t fields
+      phy_addr: -1               # PHY address; -1 enables auto-detection
+      reset_gpio_num: 7          # [IO] PHY reset GPIO; -1 if unused (BMGR default)
+      reset_timeout_ms: 100      # PHY software reset timeout in ms; minimum 10 ms
+      autonego_timeout_ms: 4000  # Auto-negotiation timeout in ms
+      hw_reset_assert_time_us: 0 # Hardware reset pulse in us; 0 uses PHY-specific default
+      post_hw_reset_delay_ms: 0  # Delay after hardware reset; 0 uses PHY default, -1 skips wait
+    dma_burst_len: ETH_DMA_BURST_LEN_16 # ESP32-S31 default; 32 is unsupported on S31
+    intr_priority: 0             # 0 or negative: automatic; explicit priority: 1, 2, or 3
+    mdc_freq_hz: 0               # 0 or negative: default range up to 2.5 MHz;
+                                 # positive: HAL selects the closest supported divider
+    check_link_period_ms: 2000   # Driver link-status polling interval in ms
+    smi_gpio:
+      mdc_num: 5                 # [IO] SMI MDC GPIO
+      mdio_num: 6                # [IO] SMI MDIO GPIO
+    clock_config:
+      clock_rx_gpio: 14          # [IO] RGMII RX clock GPIO
+      clock_tx_gpio: 13          # [IO] RGMII TX clock GPIO
+      clock_phy_ref_gpio: -1     # [IO] optional PHY ref clock GPIO; -1 if unused
+    dataif_gpio:
+      tx_ctl_num: 12             # [IO]
+      txd0_num: 8                # [IO]
+      txd1_num: 9                # [IO]
+      txd2_num: 10               # [IO]
+      txd3_num: 11               # [IO]
+      rx_ctl_num: 15             # [IO]
+      rxd0_num: 19               # [IO]
+      rxd1_num: 18               # [IO]
+      rxd2_num: 17               # [IO]
+      rxd3_num: 16               # [IO]
+    vendor_config:               # Optional PHY-specific fields, parsed by the chip plugin
+                                 # Built-in yt8531 parser: emac_rgmii only; native delay type
+                                 # Set all four members; omission preserves PHY delay settings.
+                                 # Values below match ESP32-S31-Function-CoreBoard-1.
+      rxc_dly_en: true           # Enable approximately 2 ns coarse RX delay
+      rx_delay_sel: 0            # RX fine delay steps, 0..15 (approximately 150 ps per step)
+      tx_delay_sel: 13           # Gigabit TX delay steps, 0..15
+      tx_delay_sel_fe: 13        # 10/100 Mbps TX delay steps, 0..15
+
+- name: ethernet
+  type: ethernet
+  sub_type: emac_rmii
+  chip: ip101                    # PHY chip/model name (optional)
+  config:
+    mac_config:                  # Optional eth_mac_config_t fields
+      sw_reset_timeout_ms: 100   # Software reset timeout in ms
+      rx_task_stack_size: 4096   # Receive-task stack size in bytes
+      rx_task_prio: 15           # Receive-task priority
+      flags: 0                   # Integer mask or list: ETH_MAC_FLAG_WORK_WITH_CACHE_DISABLE,
+                                 # ETH_MAC_FLAG_PIN_TO_CORE
+    phy_config:                  # Optional eth_phy_config_t fields
+      phy_addr: 1                # PHY address; -1 enables auto-detection
+      reset_gpio_num: 5          # [IO] PHY reset GPIO; -1 if unused (BMGR default)
+      reset_timeout_ms: 100      # PHY software reset timeout in ms; minimum 10 ms
+      autonego_timeout_ms: 4000  # Auto-negotiation timeout in ms
+      hw_reset_assert_time_us: 0 # Hardware reset pulse in us; 0 uses PHY-specific default
+      post_hw_reset_delay_ms: 0  # Delay after hardware reset; 0 uses PHY default, -1 skips wait
+    dma_burst_len: ETH_DMA_BURST_LEN_32 # ESP32/ESP32-P4 default; use 16 for ESP32-S31
+    intr_priority: 0             # 0 or negative: automatic; explicit priority: 1, 2, or 3
+    mdc_freq_hz: 0               # 0 or negative: default range up to 2.5 MHz;
+                                 # positive: HAL selects the closest supported divider
+    check_link_period_ms: 2000   # Driver link-status polling interval in ms
+    smi_gpio:
+      mdc_num: 31                # [IO] SMI MDC GPIO
+      mdio_num: 52               # [IO] SMI MDIO GPIO
+    # ESP32-P4 RMII output-clock example: route GPIO23 output to GPIO50 input.
+    # Match every GPIO and the external clock-return connection to the board schematic.
+    # Classic ESP32: remove dataif_gpio and clock_config_out_in, then select
+    # EMAC_CLK_EXT_IN with clock_gpio: 0 for PHY-supplied clock (as on Ethernet-Kit).
+    # ESP32-S31: use DMA burst length 16; clock_config_out_in may be omitted or
+    # use GPIO -1 to select its internal output-clock path.
+    clock_config:
+      clock_mode: EMAC_CLK_OUT
+      clock_gpio: 23             # [IO] PHY reference-clock output
+    clock_config_out_in:         # Only RMII OUT without internal output-to-input loopback
+      clock_mode: EMAC_CLK_EXT_IN
+      clock_gpio: 50             # [IO] External clock-return input; required on ESP32-P4
+    dataif_gpio:                 # Required with configurable RMII data GPIOs
+      tx_en_num: 49              # [IO]
+      txd0_num: 34               # [IO]
+      txd1_num: 35               # [IO]
+      crs_dv_num: 28             # [IO]
+      rxd0_num: 29               # [IO]
+      rxd1_num: 30               # [IO]

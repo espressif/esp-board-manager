@@ -35,6 +35,7 @@ typedef enum {
     ESP_BOARD_RUNTIME_UNPREPARED = 0,
     ESP_BOARD_RUNTIME_PREPARING,
     ESP_BOARD_RUNTIME_PREPARED,
+    ESP_BOARD_RUNTIME_FAILED,  /*!< Failed prepare retained resources; restart required */
 } esp_board_runtime_prepare_state_t;
 
 /**
@@ -82,9 +83,16 @@ esp_board_runtime_prepare_state_t esp_board_runtime_get_prepare_state(void);
  *         Idempotent when already PREPARED and for nested calls by the prepare
  *         owner while PREPARING. Other tasks get ESP_ERR_INVALID_STATE. Only the
  *         owner may write BOARD during the hook. Manager deinit does not return
- *         to UNPREPARED.
+ *         to UNPREPARED. A failed prepare with unreleased resources enters FAILED:
+ *         retain its current topology/config, reject further operations and require
+ *         a restart. A failure without resources rolls back immediately and may retry.
  */
 esp_err_t esp_board_runtime_prepare(void);
+
+/**
+ * @brief  Reject table updates while resources are marked or another task prepares
+ */
+esp_err_t esp_board_runtime_check_idle(void);
 
 /**
  * @brief  Reject duplicate names within each generated descriptor list
@@ -192,7 +200,10 @@ esp_err_t esp_board_runtime_clear_app_ops(const char *name);
 void esp_board_runtime_rollback_board(void);
 
 /**
- * @brief  Check whether a resource is marked initialized
+ * @brief  Check whether a resource owns its runtime configuration
+ *
+ *         The mark is set before init and kept for active or unreleased resources;
+ *         it does not indicate that initialization succeeded.
  */
 bool esp_board_runtime_is_initialized(const char *name);
 
@@ -235,8 +246,9 @@ esp_err_t esp_board_runtime_set_initialized_unlocked(const char *name, bool init
 /**
  * @brief  Store the deinit function for the active resource instance
  *
- *         Capture after a successful 0->1 driver init. The snapshot is removed
- *         when the initialized mark is cleared on last-ref deinit or rollback.
+ *         Capture before invoking init so a successful instance has matching
+ *         cleanup. Failed init with no handle clears the mark; an error with a
+ *         handle retains the record to prevent reuse, without offering recovery.
  */
 esp_err_t esp_board_runtime_set_bound_deinit(const char *name, void *deinit_fn);
 

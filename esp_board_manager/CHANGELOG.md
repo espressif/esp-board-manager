@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.5
+
+### Features
+
+- Added the `ethernet` device with `emac_rmii` and `emac_rgmii` subtypes. The subtype determines the MAC-PHY interface. RGMII requires ESP-IDF v6.1 or later and a SoC with gigabit EMAC support. Applications are responsible for driver start/stop and network resource management.
+- Added support for Ethernet chip extensions discovered from the selected board's `ethernet_extra/` directory or explicitly applied amend modules. Each chip plugin defines vendor-configuration types and required C source files. Known PHY driver dependencies are added automatically; custom dependencies are declared in device YAML. Runtime PHY operations are registered through `ESP_BOARD_ETHERNET_PHY_REGISTER`. A custom PHY test fixture covers board selection, code generation, local driver dependencies, and compilation in the test-app CI matrix.
+- Added optional GPIO API mapping for IO expanders, including mapped GPIO peripheral validation and codec PA bindings. Mapping requires the GPIO wrapper to be enabled.
+- Added test-console Ethernet handle/link/network cases, native and expander IO controls, and button monitoring by device name or across all configured buttons.
+
+### Modifications
+
+- Raised the minimum `esp_boards` version to `0.7.1` and `esp_io_expander` to `1.2.1`.
+- Documented standalone board-pack discovery and dependencies in the repository and component READMEs.
+
+### Bug Fixes
+
+- Reject audio codec PA/reset GPIO numbers outside the signed 16-bit port range before generating C configurations.
+- Generate a null vendor-configuration pointer for LCD panels when `vendor_config` is omitted, null, empty, `auto`, or `NULL`, instead of passing a string to the panel driver.
+- Allow mapped GPIO peripheral numbers above 63 without generating an invalid pin mask. Virtual GPIO peripheral initialization delegates pin configuration and the initial level to the IO expander.
+- Run board preparation before bulk device/peripheral initialization traverses runtime descriptors.
+- Handle an empty shared peripheral-ops table during lookup, and include the boolean definitions used by generated peripheral configurations.
+- Preserve configuration, dependencies, power, and handles when device cleanup fails, including IO-expander mapping and custom power-controller cleanup. Ordinary init failures remain the initializer's rollback responsibility; resources left by failed initialization or preparation require a restart.
+- Serialize button-test callback registration and removal with timer event dispatch, wait for active callbacks before cleanup, and preserve existing application callbacks.
+- Expand mono WAV samples to both channels when the test application's standard I2S output is configured for stereo.
+
 ## 0.7.4
 
 ### Features

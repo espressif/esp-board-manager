@@ -29,14 +29,48 @@ Key Behaviors
 
 BMGR's runtime model does not compress all initialization logic into a single ``init()`` call; instead, it organizes the initialization order according to the board description, while preserving runtime behaviors such as reference counting, deferred initialization, inter-device dependencies, and power control.
 
+.. _bmgr-init-failure:
+
+Initialization and Cleanup Failures
+-----------------------------------
+
+The initializer is responsible for releasing resources created by a failed initialization attempt and reporting the result through its return value and output handle.
+
+While prepare remains usable, each device or peripheral follows these rules:
+
+.. list-table:: Initialization and cleanup failures
+   :header-rows: 1
+   :widths: 35 40 25
+
+   * - Scenario
+     - BMGR behavior
+     - Application action
+   * - Init fails, resources are released, and the initializer returns a NULL handle
+     - Clear the resource's ownership record
+     - Fix the cause and retry init
+   * - Init fails, resources remain, and the initializer returns a non-NULL handle
+     - Keep the handle, config, and dependency references without exposing a usable handle; reject subsequent init and deinit for this resource with ``ESP_ERR_INVALID_STATE``
+     - BMGR cannot recover this resource; restart before using it again
+   * - Init succeeds, but a later normal deinit fails
+     - Keep the original handle and reference count
+     - Retry deinit
+
+The second case blocks that resource without changing prepare to a failed state on its own. Its dependencies and power resources may also remain held. If retained resources also cause prepare to fail, the global restrictions in :ref:`bmgr-prepare-failure` apply.
+
+BMGR detects retained resources from an initialization error with a non-NULL output handle. It does not inspect whether the driver completed rollback. Resources left unreported by the initializer cannot be detected automatically.
+
+When resources remain after an init failure, BMGR logs ``restart required`` and rejects subsequent init/deinit for that resource until the system restarts. The first init failure follows the API's existing error-return rules; there is no dedicated error code indicating that a restart is needed. The framework does not call ``esp_restart()`` automatically; the application decides whether to restart.
+
+The bulk entry points :cpp:func:`esp_board_device_init_all` and :cpp:func:`esp_board_periph_init_all` complete prepare before traversing descriptors, including when every descriptor has ``init_skip: true``. A prepare error is returned immediately. After prepare succeeds, individual driver errors are logged and initialization continues with the remaining resources.
+
 Board Pre-init Hook
 -------------------
 
 :cpp:func:`esp_board_runtime_pre_init` is a fixed weak symbol. The library provides a default that returns ``ESP_OK``. A final application may supply exactly one strong definition; multiple strong definitions fail at link time. There is no ``board_info.yaml`` field and no generated function-pointer registry. Place the strong definition in board sources such as ``setup_device.c``.
 
-The hook runs once per process the first time prepare executes. :cpp:func:`esp_board_manager_init`, :cpp:func:`esp_board_periph_init`, :cpp:func:`esp_board_device_init`, and :cpp:func:`esp_board_periph_init_custom` all call prepare before creating a handle, so the hook cannot be skipped. :cpp:func:`esp_board_manager_prepare` is an optional, idempotent public entry if the application must read board-overridden effective config before any init.
+The hook runs on the first prepare attempt. After prepare succeeds, later calls do not run the hook again. :cpp:func:`esp_board_manager_init`, :cpp:func:`esp_board_periph_init`, :cpp:func:`esp_board_device_init`, and :cpp:func:`esp_board_periph_init_custom` all call prepare before creating a handle, so the hook cannot be skipped. :cpp:func:`esp_board_manager_prepare` is an optional, idempotent public entry if the application must read board-overridden effective config before any init.
 
-Prepare and init must run from a FreeRTOS task (a valid current-task handle is required). The hook may edit writable descriptor/handle tables and call ``override_config`` / ``set_ops``; override calls write the BOARD layer. The prepare owner may initialize a resource and query its handle inside the hook. Recursive prepare in the same task does not run the hook again; other tasks cannot query intermediate state. On hook failure, the manager restores table links and BOARD overrides not used by active resources, then returns to ``UNPREPARED``. The hook must deinitialize hardware it created before returning an error; prepare rollback does not release hardware.
+Prepare and init must run from a FreeRTOS task (a valid current-task handle is required). The hook may edit writable descriptor/handle tables and call ``override_config`` / ``set_ops``; override calls write the BOARD layer. The prepare owner may initialize a resource and query its handle inside the hook. Recursive prepare in the same task does not run the hook again; other tasks cannot query intermediate state. The hook must deinitialize hardware it created before returning an error; restoring config tables does not clean up hardware. Failure handling is described below.
 
 Use ``idf.py bmgr -b <board> --writable`` to generate writable descriptor tables. When adding C-defined nodes, raise ``ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM`` or ``ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM`` in project configuration to include the extra nodes. The default limit equals the number of generated nodes. A new device needs descriptor and handle nodes with the same name and type. A new peripheral needs a descriptor plus matching shared ``type + role`` ops or a per-name ``esp_board_periph_set_ops`` call. Nodes and config storage must remain valid for the runtime lifetime.
 
@@ -46,6 +80,41 @@ Runtime constraints and configuration considerations:
 
 - A board pre-init hook may initialize resources and query their handles. It must deinitialize resources it created before returning an error.
 - When configuring multiple logical peripherals, verify their physical bus relationship. BMGR does not automatically share one physical bus merely because two peripherals use the same ``port`` value.
+
+.. _bmgr-prepare-failure:
+
+Prepare Failures
+----------------
+
+Prepare runs the board hook and validates the modified resource tables. If either step fails, BMGR checks whether any resource ownership records remain:
+
+.. list-table:: Scope of a prepare failure
+   :header-rows: 1
+   :widths: 35 40 25
+
+   * - State at failure
+     - BMGR behavior
+     - Application action
+   * - No resources remain held
+     - Immediately restore the old tables, clear BOARD overrides installed by the hook, and return to ``UNPREPARED``
+     - Retry prepare, which runs the hook again
+   * - Resources remain unreleased
+     - Keep the current tables, handles, and required config; free the old table backups and enter ``FAILED``
+     - Normal BMGR runtime operations are unavailable globally; restart before using them again
+
+In ``FAILED``, later prepare, init, deinit, config updates, and revision apply calls are rejected. Runtime resource queries are also rejected. These restrictions apply to every resource, including resources that initialized successfully and resources not yet initialized, and remain in effect until the system restarts.
+
+For example, the hook may initialize a camera successfully before another check fails. If the hook does not release the camera before returning an error, prepare enters ``FAILED``. The camera's own initialization does not have to fail.
+
+The current tables and config remain allocated so memory still used by drivers stays valid. Retaining these records does not make the resources usable through BMGR. Keep C-defined nodes and referenced data valid until restart.
+
+The log message is:
+
+.. code-block:: text
+
+   Board prepare failed with unreleased resources; restart required
+
+BMGR does not restart automatically. The application decides whether to restart after the failure; later calls to the affected runtime APIs normally return ``ESP_ERR_INVALID_STATE``.
 
 Legacy APIs
 -----------

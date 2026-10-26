@@ -85,7 +85,7 @@ static esp_err_t run_speaker_tone_1khz(bmgr_test_context_t *ctx, int argc, char 
         return ret;
     }
 
-    return test_dev_audio_auto_play_1khz_wav(60);
+    return test_dev_audio_auto_play_1khz_wav(80);
 }
 
 static esp_err_t run_audio_record(bmgr_test_context_t *ctx, int argc, char **argv)

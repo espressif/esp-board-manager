@@ -217,22 +217,20 @@ esp_err_t esp_board_periph_init(const char *name)
     }
     esp_board_runtime_unlock();
 
-    ret = init_fn(cfg, cfg_size, &list->periph_handle);
+    ret = esp_board_runtime_set_bound_deinit(name, (void *)deinit_fn);
     if (ret != ESP_OK) {
         (void)esp_board_runtime_set_initialized(name, false);
-        list->periph_handle = NULL;
-        ESP_LOGE(TAG, "Failed to init periph: %s", name);
         return ret;
     }
 
-    ret = esp_board_runtime_set_bound_deinit(name, (void *)deinit_fn);
+    ret = init_fn(cfg, cfg_size, &list->periph_handle);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to snapshot deinit for periph: %s", name);
-        if (deinit_fn) {
-            (void)deinit_fn(list->periph_handle);
+        if (list->periph_handle == NULL) {
+            (void)esp_board_runtime_set_initialized(name, false);
+        } else {
+            ESP_LOGE(TAG, "Peripheral %s init left unreleased resources; restart required", name);
         }
-        list->periph_handle = NULL;
-        (void)esp_board_runtime_set_initialized(name, false);
+        ESP_LOGE(TAG, "Failed to init periph: %s", name);
         return ret;
     }
 
@@ -249,7 +247,7 @@ esp_err_t esp_board_periph_get_handle(const char *name, void **periph_handle)
 
     /* Find list entry */
     esp_board_periph_list_t *list = find_periph_list(name);
-    ESP_BOARD_RETURN_ON_FALSE(list && list->periph_handle, ESP_BOARD_ERR_PERIPH_NO_HANDLE, TAG,
+    ESP_BOARD_RETURN_ON_FALSE(list && list->periph_handle && list->ref_count > 0, ESP_BOARD_ERR_PERIPH_NO_HANDLE, TAG,
                               "No handle found for %s on get handle", name);
     *periph_handle = list->periph_handle;
     return ESP_OK;
@@ -447,6 +445,11 @@ esp_err_t esp_board_periph_init_custom(const char *name, esp_board_periph_init_f
         ESP_BOARD_RETURN_ON_FALSE(list, ESP_ERR_NO_MEM, TAG, "Failed to create list entry for %s", name);
     }
 
+    if (list->periph_handle != NULL && list->ref_count == 0) {
+        ESP_LOGE(TAG, "Peripheral %s init left unreleased resources; restart required", name);
+        return ESP_ERR_INVALID_STATE;
+    }
+
     /* Set functions (legacy: still writes the shared type/role handler) */
     handle->init = init;
     handle->deinit = deinit;
@@ -486,26 +489,25 @@ esp_err_t esp_board_periph_init_custom(const char *name, esp_board_periph_init_f
         }
         esp_board_runtime_unlock();
 
-        ret = handle->init((void *)desc->cfg, desc->cfg_size, &list->periph_handle);
-        if (ret != ESP_OK) {
-            (void)esp_board_runtime_set_initialized(name, false);
-            list->periph_handle = NULL;
-            ESP_LOGE(TAG, "Failed to init periph: %s", name);
-            /* Reset functions on failure */
-            handle->init = NULL;
-            handle->deinit = NULL;
-            return ESP_BOARD_ERR_PERIPH_INIT_FAILED;
-        }
-
         ret = esp_board_runtime_set_bound_deinit(name, (void *)deinit);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to snapshot deinit for custom periph: %s", name);
-            (void)deinit(list->periph_handle);
-            list->periph_handle = NULL;
             (void)esp_board_runtime_set_initialized(name, false);
             handle->init = NULL;
             handle->deinit = NULL;
             return ret;
+        }
+
+        ret = handle->init((void *)desc->cfg, desc->cfg_size, &list->periph_handle);
+        if (ret != ESP_OK) {
+            if (list->periph_handle == NULL) {
+                (void)esp_board_runtime_set_initialized(name, false);
+                handle->init = NULL;
+                handle->deinit = NULL;
+            } else {
+                ESP_LOGE(TAG, "Peripheral %s init left unreleased resources; restart required", name);
+            }
+            ESP_LOGE(TAG, "Failed to init periph: %s", name);
+            return ESP_BOARD_ERR_PERIPH_INIT_FAILED;
         }
 
         list->ref_count = 1;
@@ -517,6 +519,10 @@ esp_err_t esp_board_periph_init_custom(const char *name, esp_board_periph_init_f
 
 esp_err_t esp_board_periph_deinit(const char *name)
 {
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     ESP_BOARD_RETURN_ON_FALSE(name, ESP_BOARD_ERR_PERIPH_INVALID_ARG, TAG, "name is null");
 
     /* Find peripheral descriptor */
@@ -531,6 +537,11 @@ esp_err_t esp_board_periph_deinit(const char *name)
     if (!list->periph_handle) {
         ESP_LOGW(TAG, "Peripheral %s not initialized", name);
         return ESP_OK;
+    }
+
+    if (list->ref_count == 0) {
+        ESP_LOGE(TAG, "Peripheral %s init left unreleased resources; restart required", name);
+        return ESP_ERR_INVALID_STATE;
     }
 
     uint8_t old_ref_count = list->ref_count;
@@ -615,8 +626,10 @@ esp_err_t esp_board_periph_show(const char *name)
 
 esp_err_t esp_board_periph_init_all(void)
 {
+    esp_err_t ret = esp_board_manager_prepare();
+    ESP_BOARD_RETURN_ON_ERROR(ret, TAG, "Board prepare failed before peripheral init_all");
+
     const esp_board_periph_desc_t *desc = g_esp_board_peripherals;
-    esp_err_t ret;
 
     /* Initialize all peripherals in the list */
     while (desc && desc->name) {
@@ -637,6 +650,10 @@ esp_err_t esp_board_periph_init_all(void)
 
 esp_err_t esp_board_periph_deinit_all(void)
 {
+    if (esp_board_runtime_get_prepare_state() == ESP_BOARD_RUNTIME_FAILED) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     const esp_board_periph_desc_t *desc = g_esp_board_peripherals;
     esp_err_t ret;
 

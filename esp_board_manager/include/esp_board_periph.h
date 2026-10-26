@@ -72,7 +72,11 @@ typedef struct esp_board_periph_list {
  *         This function initializes a peripheral with reference counting support. If the peripheral
  *         is already initialized, it increments the reference count instead of reinitializing
  *         The peripheral is only actually initialized when the reference count reaches 1
- *         Peripherals are found by matching type and role from the handle list
+ *         Peripherals are found by matching type and role from the handle list.
+ *         The initializer must roll back resources acquired by a failed call.
+ *         Applications do not need deinit after an ordinary initialization failure.
+ *         An error with a non-NULL handle retains the record and configuration to
+ *         prevent reuse and requires a restart; deinit does not recover that instance.
  *
  * @param[in]  name  Peripheral name to initialize
  *
@@ -83,7 +87,7 @@ typedef struct esp_board_periph_list {
  *       - ESP_BOARD_ERR_PERIPH_NOT_FOUND    If peripheral descriptor not found
  *       - ESP_BOARD_ERR_PERIPH_NO_HANDLE    If no matching handle found for type/role
  *       - ESP_BOARD_ERR_PERIPH_NO_INIT      If no init function is available
- *       - ESP_ERR_INVALID_STATE             If the runtime already marks this peripheral initialized
+ *       - ESP_ERR_INVALID_STATE             If initialization or board prepare requires a restart, or init is in progress
  *       - ESP_ERR_INVALID_SIZE              If effective config size differs from the descriptor
  *       - Others                            Error codes from peripheral-specific initialization
  */
@@ -287,10 +291,15 @@ esp_err_t esp_board_periph_init_custom(const char *name, esp_board_periph_init_f
  *         deinitialized when the reference count reaches 0. If the peripheral is not
  *         initialized, this function returns success
  *
+ *         A successful instance remains available for another cleanup attempt if
+ *         its deinit callback fails. An instance left by failed initialization, or
+ *         a failed board prepare with unreleased resources, requires a restart.
+ *
  * @param[in]  name  Peripheral name to deinitialize
  *
  * @return
  *       - ESP_OK                            On success
+ *       - ESP_ERR_INVALID_STATE             If initialization or prepare requires a restart
  *       - ESP_BOARD_ERR_PERIPH_INVALID_ARG  If name is NULL
  *       - ESP_BOARD_ERR_PERIPH_NOT_FOUND    If peripheral list entry not found
  *       - ESP_BOARD_ERR_PERIPH_NO_INIT      If no deinit function is available
@@ -316,7 +325,8 @@ esp_err_t esp_board_periph_show(const char *name);
 /**
  * @brief  Initialize all peripherals
  *
- *         Iterates through all peripheral descriptors and initializes each peripheral
+ *         Prepares the board before iterating through peripheral descriptors and
+ *         initializing each peripheral. Returns immediately if prepare fails.
  *         Continues initializing even if some peripherals fail, but logs errors
  *         Descriptors with init_skip set are left uninitialized; call
  *         esp_board_periph_init() later if that peripheral is needed
@@ -324,7 +334,8 @@ esp_err_t esp_board_periph_show(const char *name);
  * @note  Peripheral initialization follows the order defined in board_peripherals.yaml
  *
  * @return
- *       - ESP_OK  On success (always returns ESP_OK, errors are logged)
+ *       - ESP_OK  Prepare succeeded; individual peripheral init errors are logged
+ *       - Others  Board prepare failed
  */
 esp_err_t esp_board_periph_init_all(void);
 

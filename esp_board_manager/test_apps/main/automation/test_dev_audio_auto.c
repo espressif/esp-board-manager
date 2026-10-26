@@ -42,6 +42,22 @@ typedef struct {
 static const char *TAG = "TEST_DEV_AUDIO_AUTO";
 static test_dev_audio_auto_summary_t s_last_summary;
 
+static uint16_t audio_auto_resolve_playback_channels(uint16_t wav_channels)
+{
+    dev_audio_codec_config_t *dac_cfg = NULL;
+    periph_i2s_config_t *i2s_cfg = NULL;
+
+    if (wav_channels != 1 ||
+        esp_board_manager_get_device_config(BMGR_TEST_NAME_AUDIO_DAC, (void **)&dac_cfg) != ESP_OK ||
+        dac_cfg == NULL || dac_cfg->i2s_cfg.name == NULL ||
+        esp_board_manager_get_periph_config(dac_cfg->i2s_cfg.name, (void **)&i2s_cfg) != ESP_OK ||
+        i2s_cfg == NULL || i2s_cfg->mode != I2S_COMM_MODE_STD) {
+        return wav_channels;
+    }
+
+    return i2s_cfg->i2s_cfg.std.slot_cfg.slot_mode == I2S_SLOT_MODE_STEREO ? 2 : 1;
+}
+
 static uint16_t audio_auto_read_le16(const uint8_t *data)
 {
     return (uint16_t)data[0] | ((uint16_t)data[1] << 8);
@@ -197,9 +213,12 @@ esp_err_t test_dev_audio_auto_play_1khz_wav(uint8_t volume)
         return ret;
     }
 
+    const uint16_t output_channels = audio_auto_resolve_playback_channels(wav_info.channels);
+    ESP_LOGI(TAG, "Playback WAV channels=%u, I2S output channels=%u",
+             (unsigned)wav_info.channels, (unsigned)output_channels);
     audio_config_t dac_config = {
         .sample_rate = wav_info.sample_rate,
-        .channels = wav_info.channels,
+        .channels = output_channels,
         .bits_per_sample = wav_info.bits_per_sample,
         .duration_seconds = 0,
     };
@@ -226,20 +245,47 @@ esp_err_t test_dev_audio_auto_play_1khz_wav(uint8_t volume)
     read_ptr = wav_info.data;
     remaining_bytes = wav_info.data_bytes;
     while (remaining_bytes > 0) {
-        size_t bytes_to_write = remaining_bytes > AUDIO_AUTO_PLAYBACK_CHUNK_BYTES ?
-                                AUDIO_AUTO_PLAYBACK_CHUNK_BYTES : remaining_bytes;
+        size_t input_frame_bytes = (size_t)wav_info.channels * sizeof(int16_t);
+        size_t output_frame_bytes = (size_t)output_channels * sizeof(int16_t);
+        size_t max_input_bytes = AUDIO_AUTO_PLAYBACK_CHUNK_BYTES;
+        size_t input_bytes_to_write;
+        size_t output_bytes_to_write;
         int codec_ret;
 
-        memcpy(playback_buffer, read_ptr, bytes_to_write);
-        codec_ret = esp_codec_dev_write(dac_handles->codec_dev, playback_buffer, bytes_to_write);
+        if (output_channels > wav_info.channels) {
+            max_input_bytes /= output_channels / wav_info.channels;
+        }
+        max_input_bytes -= max_input_bytes % input_frame_bytes;
+        input_bytes_to_write = remaining_bytes > max_input_bytes ? max_input_bytes : remaining_bytes;
+        input_bytes_to_write -= input_bytes_to_write % input_frame_bytes;
+        if (input_bytes_to_write == 0) {
+            ret = ESP_ERR_INVALID_SIZE;
+            goto cleanup;
+        }
+
+        if (wav_info.channels == 1 && output_channels == 2) {
+            const int16_t *input = (const int16_t *)read_ptr;
+            int16_t *output = (int16_t *)playback_buffer;
+            size_t samples = input_bytes_to_write / sizeof(int16_t);
+            for (size_t i = 0; i < samples; ++i) {
+                output[2 * i] = input[i];
+                output[2 * i + 1] = input[i];
+            }
+            output_bytes_to_write = input_bytes_to_write * output_frame_bytes / input_frame_bytes;
+        } else {
+            memcpy(playback_buffer, read_ptr, input_bytes_to_write);
+            output_bytes_to_write = input_bytes_to_write;
+        }
+
+        codec_ret = esp_codec_dev_write(dac_handles->codec_dev, playback_buffer, output_bytes_to_write);
         if (codec_ret != ESP_CODEC_DEV_OK) {
             ESP_LOGE(TAG, "Failed to write audio playback chunk");
             ret = ESP_FAIL;
             goto cleanup;
         }
 
-        read_ptr += bytes_to_write;
-        remaining_bytes -= bytes_to_write;
+        read_ptr += input_bytes_to_write;
+        remaining_bytes -= input_bytes_to_write;
     }
 
 cleanup:

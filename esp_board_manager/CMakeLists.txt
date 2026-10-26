@@ -35,6 +35,7 @@ idf_component_register(
         esp_common
         fatfs
         esp_lcd
+        esp_eth
         spiffs
         esp_adc
         esp_driver_i2s

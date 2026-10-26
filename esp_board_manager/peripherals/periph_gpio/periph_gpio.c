@@ -5,13 +5,12 @@
  * See LICENSE file for details.
  */
 
-#include "periph_gpio.h"
-#include "driver/gpio.h"
 #include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include "driver/gpio.h"
 #include "esp_log.h"
+#include "periph_gpio.h"
 
 static const char *TAG = "PERIPH_GPIO";
 
@@ -44,13 +43,18 @@ int periph_gpio_init(void *cfg, int cfg_size, void **periph_handle)
     }
     periph_gpio_config_t *periph_cfg = (periph_gpio_config_t *)cfg;
     gpio_config_t config = periph_cfg->gpio_config;
-    int gpio_num = _periph_gpio_bit_mask_to_num(config.pin_bit_mask);
-    if (gpio_num < 0) {
+    int gpio_num = config.pin_bit_mask ? _periph_gpio_bit_mask_to_num(config.pin_bit_mask) : periph_cfg->gpio_num;
+    if (gpio_num < 0 || (config.pin_bit_mask == 0 && gpio_num < GPIO_NUM_MAX)) {
         ESP_LOGE(TAG, "Invalid pin_bit_mask: 0x%llx", config.pin_bit_mask);
         free(handle);
         return -1;
     }
     handle->gpio_num = gpio_num;
+    if (gpio_num >= GPIO_NUM_MAX) {
+        ESP_LOGW(TAG, "Skip configuration of virtual GPIO %d; configure mode, pulls and initial level on the IO expander", gpio_num);
+        *periph_handle = handle;
+        return 0;
+    }
     bool gpio_configured = false;
     esp_err_t err = gpio_config(&config);
     if (err != ESP_OK) {

@@ -92,6 +92,25 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
 
     # Get max pins
     max_pins = int(device_config.get('max_pins', 8))  # 8 is default
+    if not 1 <= max_pins <= 32:
+        raise ValueError(f'IO Expander device {name} config.max_pins must be from 1 to 32')
+
+    gpio_mapping = device_config.get('gpio_mapping', {})
+    if not isinstance(gpio_mapping, dict):
+        raise ValueError(f'IO Expander device {name} config.gpio_mapping must be a map')
+    unknown_keys = set(gpio_mapping) - {'enabled', 'start_io_num'}
+    if unknown_keys:
+        raise ValueError(f'IO Expander device {name} config.gpio_mapping has unknown keys: {sorted(unknown_keys)}')
+    gpio_mapping_enabled = gpio_mapping.get('enabled', False)
+    if not isinstance(gpio_mapping_enabled, bool):
+        raise ValueError(f'IO Expander device {name} config.gpio_mapping.enabled must be boolean')
+    gpio_start_io_num = -1  # Resolve the target-dependent GPIO_NUM_MAX at runtime.
+    if 'start_io_num' in gpio_mapping:
+        gpio_start_io_num = gpio_mapping['start_io_num']
+        if (isinstance(gpio_start_io_num, bool) or not isinstance(gpio_start_io_num, int)
+                or not 0 <= gpio_start_io_num <= 2147483616):
+            raise ValueError(f'IO Expander device {name} config.gpio_mapping.start_io_num must be an integer '
+                             'from 0 to 2147483616; it must also be >= GPIO_NUM_MAX on the target')
 
     # Process output IO mask
     output_io_mask = 0
@@ -165,6 +184,8 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
             'i2c_addr_count': i2c_addr_count,
             'i2c_addr': i2c_addr,
             'max_pins': max_pins,
+            'gpio_mapping_enabled': gpio_mapping_enabled,
+            'gpio_start_io_num': gpio_start_io_num,
             'output_io_mask': output_io_mask,
             'output_io_level_mask': output_io_level_mask,
             'enable_mode_set': enable_mode_set,
@@ -176,3 +197,17 @@ def parse(name: str, config: dict, peripherals_dict=None) -> dict:
     }
 
     return result
+
+
+def extract_metadata(name: str, raw_config: dict, parse_result: dict, context: dict) -> dict:
+    """Expose the configured virtual GPIO range separately from native IO."""
+    cfg = parse_result.get('struct_init', {})
+    if not cfg.get('gpio_mapping_enabled', False):
+        return {'io': {}}
+    return {
+        'io': {},
+        'gpio_mapping': {
+            'start_io_num': cfg['gpio_start_io_num'],
+            'max_pins': cfg['max_pins'],
+        },
+    }

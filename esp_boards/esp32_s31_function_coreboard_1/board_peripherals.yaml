@@ -94,8 +94,12 @@ peripherals:
   # Note: the WS2812 IO is owned by the led_strip device, not declared here.
 
   # ----------------------------------------------------------------------
+  # Ethernet (YT8531DC-CA + RGMII) is owned by the `ethernet` device in
+  # board_devices.yaml. RGMII data/clock pins are not declared as peripherals.
+  # ----------------------------------------------------------------------
+
+  # ----------------------------------------------------------------------
   # Not modeled (left to user / not needed for ES8311 audio bring-up):
-  # - Ethernet (YT8531DC-CA + RGMII): bmgr currently has no eth device template
   # - USB Host (USB2.0 Type-A on USB1P1_DP/DN), USB Serial/JTAG, USB-UART
   # - SDIO header pins on J1 (SD_D0..3, SD_CLK, SD_CMD) - no SD socket on board
   # - BOOT button on GPIO61 is declared above; ROM also uses it for download mode.

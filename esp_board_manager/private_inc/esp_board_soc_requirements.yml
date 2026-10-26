@@ -58,6 +58,12 @@ devices:
   - display_lcd_rgb_3wire_spi:
       requires: SOC_LCDCAM_RGB_LCD_SUPPORTED
       match: { type: display_lcd, sub_type: rgb_3wire_spi }
+  - ethernet_emac_rmii:
+      requires: SOC_EMAC_SUPPORTED
+      match: { type: ethernet, sub_type: emac_rmii }
+  - ethernet_emac_rgmii:
+      requires: [SOC_EMAC_SUPPORTED, SOC_EMAC_SUPPORT_1000M]
+      match: { type: ethernet, sub_type: emac_rgmii }
   - fs_fat_sdmmc:
       requires: SOC_SDMMC_HOST_SUPPORTED
       match: { type: fs_fat, sub_type: sdmmc }
@@ -146,6 +152,10 @@ peripherals:
       match: { type: uart }
 
 capabilities:
+  SOC_EMAC_SUPPORT_1000M: SOC_EMAC_SUPPORT_1000M
+  SOC_EMAC_MII_USE_GPIO_MATRIX: SOC_EMAC_MII_USE_GPIO_MATRIX
+  SOC_EMAC_USE_MULTI_IO_MUX: SOC_EMAC_USE_MULTI_IO_MUX
+  emac.use_multi_io_mux: SOC_EMAC_USE_MULTI_IO_MUX
   i2c.lp_supported: SOC_LP_I2C_SUPPORTED
   i2s.supports_pdm_rx_hp_filter: SOC_I2S_SUPPORTS_PDM_RX_HP_FILTER
 

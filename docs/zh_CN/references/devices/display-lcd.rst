@@ -491,7 +491,7 @@ SPI 完整字段
             reset_active_high: false        # Reset pin active level (default: false)
 
           # Chip-specific configuration
-          vendor_config: ""                 # Vendor-specific configuration (default: empty string)
+          vendor_config: null                 # Vendor-specific configuration (default: NULL)
 
       peripherals:
         - spi_name: spi_master                  # [TO_BE_CONFIRMED] SPI peripheral for LCD communication
@@ -566,7 +566,7 @@ I80 完整字段
           flags:
             reset_active_high: false        # Reset pin active level (default: false)
           # Chip-specific configuration
-          vendor_config: ""                 # Vendor-specific configuration (default: empty string)
+          vendor_config: null                 # Vendor-specific configuration (default: NULL)
 
 .. _display-lcd-rgb-full:
 
@@ -814,7 +814,7 @@ PARLIO 完整字段
           bits_per_pixel: 16                    # [TO_BE_CONFIRMED] Bits per pixel (default: 16)
           flags:
             reset_active_high: false             # Reset pin active level (default: false)
-          vendor_config: ""
+          vendor_config: null
 
 .. _display-lcd-deps:
 

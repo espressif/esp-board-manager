@@ -80,3 +80,36 @@ devices:
         resolution_hz: 10000000
         mem_block_symbols: 0
         with_dma: false
+
+  # ---------- Ethernet (YT8531 + RGMII) ----------
+  - name: ethernet
+    type: ethernet
+    sub_type: emac_rgmii
+    chip: yt8531
+    config:
+      phy_config:
+        phy_addr: -1
+        reset_gpio_num: 7
+      smi_gpio:
+        mdc_num: 5
+        mdio_num: 6
+      clock_config:
+        clock_rx_gpio: 14
+        clock_tx_gpio: 13
+        clock_phy_ref_gpio: -1
+      dataif_gpio:
+        tx_ctl_num: 12
+        txd0_num: 8
+        txd1_num: 9
+        txd2_num: 10
+        txd3_num: 11
+        rx_ctl_num: 15
+        rxd0_num: 19
+        rxd1_num: 18
+        rxd2_num: 17
+        rxd3_num: 16
+      vendor_config:
+        rxc_dly_en: true
+        rx_delay_sel: 0
+        tx_delay_sel: 13
+        tx_delay_sel_fe: 13

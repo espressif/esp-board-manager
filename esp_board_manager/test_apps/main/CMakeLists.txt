@@ -10,12 +10,14 @@ idf_component_register(
         "framework/bmgr_test_registry.c"
         "commands/cmd_bmgr.c"
         "commands/cmd_case.c"
+        "commands/cmd_io.c"
         "support/bmgr_test_json.c"
         "support/bmgr_test_options.c"
         "cases/bmgr_case_audio.c"
         "cases/bmgr_case_button.c"
         "cases/bmgr_case_camera.c"
         "cases/bmgr_case_custom.c"
+        "cases/bmgr_case_ethernet.c"
         "cases/bmgr_case_fs.c"
         "cases/bmgr_case_gpio_expander.c"
         "cases/bmgr_case_knob.c"
@@ -49,6 +51,7 @@ idf_component_register(
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT}>:test_dev_ledc.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LED_STRIP_SUPPORT}>:test_dev_led_strip.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CUSTOM_SUPPORT}>:test_dev_custom.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_ETHERNET_SUPPORT}>:test_dev_ethernet.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT}>:test_dev_gpio_expander.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:test_dev_camera.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:test_dev_camera_convert.c>
@@ -67,7 +70,7 @@ idf_component_register(
         "test_runtime_override.c"
         $<$<BOOL:${CONFIG_BMGR_TEST_RUNTIME_C_NODES}>:test_runtime_c_nodes.c>
     INCLUDE_DIRS "." "./periph" "./framework" "./commands" "./cases" "./support" "./automation"
-    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs console esp_driver_ppa esp_mm
+    REQUIRES esp_board_manager gen_bmgr_codes esp_lcd esp_timer esp_partition spiffs console esp_driver_ppa esp_mm esp_eth esp_netif esp_event lwip
     EMBED_TXTFILES audio_files/test.wav audio_files/16k_16bit_1ch.wav
 )
 

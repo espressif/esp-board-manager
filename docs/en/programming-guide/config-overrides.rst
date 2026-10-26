@@ -115,7 +115,7 @@ Before initializing a device or peripheral, an application can change its config
 * Initialization and deinitialization functions: ``esp_board_device_set_ops`` and ``esp_board_periph_set_ops``.
 * Restore configuration or functions: the corresponding ``restore_config`` and ``restore_ops`` APIs.
 
-Modification and restore operations return ``ESP_ERR_INVALID_STATE`` while the resource still has initialization references (``ref_count`` is nonzero). Release all references to bring the count to 0 before modifying configuration or functions, then reinitialize the resource as needed.
+Modification and restore operations return ``ESP_ERR_INVALID_STATE`` while a resource is initializing or remains unreleased. Init can be retried after an init failure if resources have been released. Init failure with a non-NULL handle blocks subsequent init/deinit for that resource. A normal deinit failure after successful initialization can be retried. See :ref:`bmgr-init-failure` for the scenarios.
 
 ``override_config`` copies the configuration structure but does not copy data referenced by its pointer fields. This data must remain valid while the override is active. See :doc:`/programming-guide/advanced-runtime` for complete API rules.
 
@@ -160,6 +160,8 @@ A descriptor is a generated device or peripheral description containing its name
 
 The short option for ``--writable`` is ``-w``. When enabled, ``g_esp_board_devices[]`` and ``g_esp_board_peripherals[]`` become writable. C code can modify fields such as ``next``, name, type, ``cfg``, and ``cfg_size``.
 
+Edit tables in the prepare-owner task before initializing resources, and serialize any other table-editing path against initialization and cleanup. Generated revision apply functions check resource state internally and return ``ESP_ERR_INVALID_STATE`` without editing tables if resources are active, initialization left unreleased resources, or prepare requires a restart.
+
 With ``--writable`` alone, ``ESP_BOARD_MANAGER_DEVICE_TABLE_MAX_NUM`` and ``ESP_BOARD_MANAGER_PERIPH_TABLE_MAX_NUM`` default to the number of generated devices and peripherals, respectively. No capacity is reserved for new resources. To add nodes, increase the corresponding project Kconfig capacity to the number of generated nodes plus the maximum number of new nodes.
 
 A new device requires descriptor and handle nodes with matching names and types. A new peripheral requires a descriptor node and operations installed through ``esp_board_periph_set_ops``. Nodes, configurations, and referenced data must remain valid while in use. See :doc:`/programming-guide/runtime-lifecycle` for node-linking and initialization requirements.
@@ -177,6 +179,8 @@ BMGR automatically checks board runtime preparation during whole-board initializ
 
 Configuration queries can be used before resource initialization. Handle queries also trigger preparation, but do not automatically initialize the target resource. A handle query returns an error if the target resource's handle has not been created.
 
-BMGR tracks the preparing and prepared states to avoid repeated calls to ``esp_board_runtime_pre_init()``. If the function fails, BMGR rolls back the runtime state it manages and returns to the unprepared state. A later call to a relevant API can retry preparation.
+BMGR records prepare state to avoid repeated calls to ``esp_board_runtime_pre_init()``. If the hook or runtime validation fails without leaving resources, BMGR immediately restores its saved tables and BOARD-layer overrides and returns to the unprepared state. A later call can retry preparation.
 
 The hook can initialize hardware resources. If it returns an error, it must first deinitialize the hardware resources it created; BMGR runtime rollback does not perform hardware cleanup. Overrides installed through ``override_config`` or ``set_ops`` in the hook belong to the BOARD layer. See :ref:`app-runtime-overrides` for priority and restoration rules.
+
+If prepare fails with unreleased resources, BMGR enters ``FAILED``. Normal runtime operations are then rejected for every resource, including resources that initialized successfully, until the system restarts. The current tables and required config remain allocated, while the old table backups are freed. BMGR logs ``restart required`` without restarting automatically; the application decides whether to restart. See :ref:`bmgr-prepare-failure` for a scenario table and example. Apply board revisions before initializing resources.

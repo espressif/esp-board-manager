@@ -1,0 +1,22 @@
+version: 1.0.0
+devices:
+  - name: ethernet
+    type: ethernet
+    sub_type: emac_rmii
+    chip: bmgr_test_phy
+    init_skip: true                  # Compile coverage only; no physical PHY is assumed.
+    dependencies:
+      bmgr_test_eth_phy:
+        path: ${BOARD_PATH}/bmgr_test_eth_phy
+    config:
+      phy_config:
+        phy_addr: 1
+        reset_gpio_num: 5
+      smi_gpio:
+        mdc_num: 23
+        mdio_num: 18
+      clock_config:
+        clock_mode: EMAC_CLK_OUT
+        clock_gpio: 0
+      vendor_config:
+        settle_time_ms: 200

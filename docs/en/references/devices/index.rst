@@ -17,6 +17,7 @@ The device reference pages are used to look up the configuration method for a sp
    button
    knob
    led-strip
+   ethernet
    ledc-ctrl
    gpio-ctrl
    gpio-expander

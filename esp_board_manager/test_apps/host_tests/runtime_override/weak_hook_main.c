@@ -8,11 +8,11 @@
  * when no strong definition is linked.
  */
 
-#include <stdio.h>
 #include <stdint.h>
-#include "esp_board_runtime_state.h"
+#include <stdio.h>
 #include "esp_board_manager.h"
-#include "host_idf_stubs.h"
+#include "esp_board_periph.h"
+#include "esp_board_runtime_state.h"
 
 static uint8_t s_dev_cfg = 0x11;
 

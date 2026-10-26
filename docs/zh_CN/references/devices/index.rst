@@ -17,6 +17,7 @@
    button
    knob
    led-strip
+   ethernet
    ledc-ctrl
    gpio-ctrl
    gpio-expander

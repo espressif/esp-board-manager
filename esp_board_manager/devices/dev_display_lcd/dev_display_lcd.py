@@ -504,6 +504,11 @@ def parse_spi_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
         'io_spi_config': io_spi_config_parsed,
     }
 
+def _normalize_vendor_config(value):
+    """Use a null pointer for absent or automatic panel vendor configuration."""
+    return None if value in (None, '', 'auto', 'NULL') else value
+
+
 def _parse_lcd_panel_dev_config_dict(sub_config: dict) -> dict:
     """Shared esp_lcd_panel_dev_config_t-style block (SPI / PARLIO)."""
     lcd_panel_config = sub_config.get('lcd_panel_config', {})
@@ -515,7 +520,7 @@ def _parse_lcd_panel_dev_config_dict(sub_config: dict) -> dict:
         'flags': {
             'reset_active_high': lcd_panel_config.get('flags', {}).get('reset_active_high', False)
         },
-        'vendor_config': lcd_panel_config.get('vendor_config', '')
+        'vendor_config': _normalize_vendor_config(lcd_panel_config.get('vendor_config'))
     }
 
 def parse_parlio_sub_config(full_config: dict = None, peripherals_dict=None) -> dict:
@@ -715,9 +720,6 @@ def parse_rgb_3wire_spi_sub_config(full_config: dict = None, peripherals_dict=No
     rgb_sub_cfg = parse_rgb_sub_config(full_config, peripherals_dict)
     panel_config = _parse_lcd_panel_dev_config_dict(sub_config)
 
-    if panel_config.get('vendor_config') in ('', 'auto'):
-        panel_config['vendor_config'] = None
-
     io_3wire = sub_config.get('io_3wire_spi_config', {})
     lcd_panel_config = sub_config.get('lcd_panel_config', {})
 
@@ -791,7 +793,7 @@ def parse_i80_sub_config(full_config: dict = None, peripherals_dict=None) -> dic
         'flags': {
             'reset_active_high': panel_config.get('flags', {}).get('reset_active_high', False)
         },
-        'vendor_config': panel_config.get('vendor_config', '')
+        'vendor_config': _normalize_vendor_config(panel_config.get('vendor_config'))
     }
 
     return {

@@ -104,7 +104,12 @@ def _parse_codec_gpio_peripheral(device_name: str, periph_name: str, peripherals
         raise ValueError(
             f'Audio codec device {device_name} {purpose} GPIO peripheral must define config.pin'
         )
-    return int(peripheral_config['pin'])
+    pin = peripheral_config['pin']
+    if type(pin) is not int or not 0 <= pin <= 32767:
+        raise ValueError(
+            f'Audio codec device {device_name} {purpose} GPIO config.pin must be an integer in 0..32767'
+        )
+    return pin
 
 
 def _parse_codec_peripherals(device_name: str, peripherals: list, peripherals_dict=None):

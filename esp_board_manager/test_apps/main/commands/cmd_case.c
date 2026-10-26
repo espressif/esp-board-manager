@@ -21,6 +21,7 @@ static bmgr_test_context_t *s_ctx;
 static struct {
     struct arg_str *action;
     struct arg_str *name;
+    struct arg_str *target;
     struct arg_str *group;
     struct arg_lit *include_manual;
     struct arg_lit *summary;
@@ -32,6 +33,7 @@ static void clear_case_args(void)
 {
     s_case_args.action = NULL;
     s_case_args.name = NULL;
+    s_case_args.target = NULL;
     s_case_args.group = NULL;
     s_case_args.include_manual = NULL;
     s_case_args.summary = NULL;
@@ -48,7 +50,7 @@ static void free_case_args(void)
 
 void unregister_case_command(void)
 {
-    if (s_case_args.action == NULL && s_case_args.name == NULL && s_case_args.group == NULL &&
+    if (s_case_args.action == NULL && s_case_args.name == NULL && s_case_args.target == NULL && s_case_args.group == NULL &&
         s_case_args.include_manual == NULL && s_case_args.summary == NULL &&
         s_case_args.json == NULL && s_case_args.end == NULL) {
         return;
@@ -98,7 +100,9 @@ static int case_command_handler(int argc, char **argv)
             goto exit;
         }
         bool skipped = false;
-        esp_err_t ret = bmgr_test_case_run(ctx, test_case, 0, NULL, &skipped);
+        int case_argc = s_case_args.target->count;
+        char *case_argv[] = {case_argc > 0 ? (char *)s_case_args.target->sval[0] : NULL};
+        esp_err_t ret = bmgr_test_case_run(ctx, test_case, case_argc, case_argc > 0 ? case_argv : NULL, &skipped);
         status = ret == ESP_OK ? 0 : 1;
         goto exit;
     }
@@ -127,12 +131,13 @@ esp_err_t register_case_command(bmgr_test_context_t *ctx)
 
     s_case_args.action = arg_str1(NULL, NULL, "<list|run|run-all>", "Case command");
     s_case_args.name = arg_str0(NULL, NULL, "<name>", "Test case name");
+    s_case_args.target = arg_str0(NULL, NULL, "[device|all]", "Optional case argument (button.read: device name or all)");
     s_case_args.group = arg_str0(NULL, "group", "<group>", "Filter by group");
     s_case_args.include_manual = arg_lit0(NULL, "include-manual", "Include manual and destructive cases");
     s_case_args.summary = arg_lit0(NULL, "summary", "Emit summary metrics for this case run");
     s_case_args.json = arg_lit0(NULL, "json", "Emit summary metrics as machine-readable JSON for this case run");
     s_case_args.end = arg_end(2);
-    if (s_case_args.action == NULL || s_case_args.name == NULL || s_case_args.group == NULL ||
+    if (s_case_args.action == NULL || s_case_args.name == NULL || s_case_args.target == NULL || s_case_args.group == NULL ||
         s_case_args.include_manual == NULL || s_case_args.summary == NULL ||
         s_case_args.json == NULL || s_case_args.end == NULL) {
         free_case_args();
