@@ -6,7 +6,7 @@ This user guide will help you get started with ESP32-S3-EYE v2.2 and will also p
 
 .. note::
 
-   If you use ESP32-S3-EYE v2.1, please follow this guide. The differences between v2.2 and v2.1 are described in Section `Hardware Revision Details <#4-hardware-revision-details>`__.
+   If you use ESP32-S3-EYE v2.1, please follow this guide. The differences between v2.2 and v2.1 are described in Section :ref:`Hardware Revision Details <esp32-s3-eye-hardware-revision-details>`.
 
 The ESP32-S3-EYE is a small-sized AI development board produced by `Espressif <https://espressif.com>`__. It is based on the `ESP32-S3 <https://www.espressif.com/en/products/socs/esp32-s3>`__ SoC and `ESP-WHO <https://github.com/espressif/esp-who>`__, Espressif’s AI development framework. It features a 2-Megapixel camera, an LCD display, and a microphone, which are used for image recognition and audio processing. ESP32-S3-EYE offers plenty of storage, with an 8 MB Octal PSRAM and a 8 MB flash. It also supports image transmission via Wi-Fi and debugging through a Micro-USB port. With ESP-WHO, you can develop a variety of AIoT applications, such as smart doorbell, surveillance systems, facial recognition time clock, etc.
 
@@ -17,12 +17,14 @@ The ESP32-S3-EYE is a small-sized AI development board produced by `Espressif <h
 
 The document consists of the following major sections:
 
-* `Getting started <#1-getting-started>`__: Introduction of the board, block diagram, description of key components, contents and packaging, as well as quick guide to use the board.
-* `Start Application Development <#2-start-application-development>`__: Hardware and software setup instructions to flash firmware onto the board.
-* `Hardware Reference <#3-hardware-reference>`__: More detailed information about the board's hardware.
-* `Hardware Revision Details <#4-hardware-revision-details>`__: Hardware revision history, known issues, and links to user guides for previous versions (if any) of the board.
-* `Related Documents <#5-related-documents>`__: Links to related documentation.
-* `Disclaimer and Copyright Notice <#6-disclaimer-and-copyright-notice>`__: Link to the disclaimer and copyright notice.
+* :ref:`Getting started <esp32-s3-eye-getting-started>`: Introduction of the board, block diagram, description of key components, contents and packaging, as well as quick guide to use the board.
+* :ref:`Start Application Development <esp32-s3-eye-start-application-development>`: Hardware and software setup instructions to flash firmware onto the board.
+* :ref:`Hardware Reference <esp32-s3-eye-hardware-reference>`: More detailed information about the board's hardware.
+* :ref:`Hardware Revision Details <esp32-s3-eye-hardware-revision-details>`: Hardware revision history, known issues, and links to user guides for previous versions (if any) of the board.
+* :ref:`Related Documents <esp32-s3-eye-related-documents>`: Links to related documentation.
+* :ref:`Disclaimer and Copyright Notice <esp32-s3-eye-disclaimer-and-copyright-notice>`: Link to the disclaimer and copyright notice.
+
+.. _esp32-s3-eye-getting-started:
 
 1. Getting Started
 ==================
@@ -258,6 +260,8 @@ To control the board with voice commands, follow the instructions below:
 
 Now you get the first experience with the board. The following sections provide further information about how to flash firmware onto the board, configuration options, related resources, and more.
 
+.. _esp32-s3-eye-start-application-development:
+
 2. Start Application Development
 ================================
 
@@ -275,7 +279,7 @@ This section provides instructions on how to do hardware/software setup and flas
 
 * 1 x MicroSD card
 * 1 x Li-ion battery
-* 1 x `3D Printed case <#55-3d-printed-case>`__
+* 1 x :ref:`3D Printed case <esp32-s3-eye-3d-printed-case>`
 
 .. note::
 
@@ -293,9 +297,11 @@ Now the board is ready for software setup.
 
 After hardware setup, you can proceed with preparation of development tools. Go to the `guide to ESP-WHO <https://github.com/espressif/esp-who>`__, which will walk you through the following steps:
 
-#. `Get ESP-IDF <https://github.com/espressif/esp-who/#get-esp-idf>`__ which provides a common framework to develop applications for ESP32-S3 in C language.
-#. `Get ESP-WHO <https://github.com/espressif/esp-who/#get-esp-who>`__ which is an image processing platform that runs on ESP-IDF.
-#. `Run Examples <https://github.com/espressif/esp-who/#run-examples>`__ that are provided by ESP-WHO.
+#. `Get ESP-IDF <https://github.com/espressif/esp-who/#supported-esp-idf-version>`__ which provides a common framework to develop applications for ESP32-S3 in C language.
+#. `Get ESP-WHO <https://github.com/espressif/esp-who/#quick-start>`__ which is an image processing platform that runs on ESP-IDF.
+#. `Run Examples <https://github.com/espressif/esp-who/#build-flash-and-monitor>`__ that are provided by ESP-WHO.
+
+.. _esp32-s3-eye-hardware-reference:
 
 3. Hardware Reference
 =====================
@@ -305,7 +311,7 @@ This section provides more detailed information about the board's hardware.
 3.1. Notes on GPIO Allocations
 ------------------------------
 
-Except for GPIO3 that can be used to configure LED statuses, all GPIOs of the **ESP32-S3-WROOM-1** module have already been used to control specific components or functions of the board. If you would like to configure any pins yourself, please refer to the schematics provided in Section `Related Documents <#5-related-documents>`__.
+Except for GPIO3 that can be used to configure LED statuses, all GPIOs of the **ESP32-S3-WROOM-1** module have already been used to control specific components or functions of the board. If you would like to configure any pins yourself, please refer to the schematics provided in Section :ref:`Related Documents <esp32-s3-eye-related-documents>`.
 
 3.2. Independent Module and Camera Power Supply
 -----------------------------------------------
@@ -323,6 +329,8 @@ The ESP32-S3-EYE board features independent power supplies to the camera and the
 
    ESP32-S3-EYE - Camera Power Supply
 
+
+.. _esp32-s3-eye-hardware-revision-details:
 
 4. Hardware Revision Details
 ============================
@@ -354,7 +362,7 @@ Changes in hardware are described in detail below:
    * - ESP32-S3-EYE v2.2 with R83
      - ESP32-S3-EYE v2.1 Without R83
 
-#. The **main board schematics**, **main board PCB layout diagrams**, **main board dimension diagrams**, **main board dimension source files** are updated because of the two hardware changes. (See `Related Documents <#5-related-documents>`__).
+#. The **main board schematics**, **main board PCB layout diagrams**, **main board dimension diagrams**, **main board dimension source files** are updated because of the two hardware changes. (See :ref:`Related Documents <esp32-s3-eye-related-documents>`).
 
 4.2. known Issues
 -----------------
@@ -364,6 +372,8 @@ In case this issue occurs, you need to:
 
 * Hold down BOOT button and press RST button, then release RST button first, and BOOT button next. In this way, the board enters Firmware Download mode and you can start flashing program onto the board.
 * After flashing the program, press RST button to start the program.
+
+.. _esp32-s3-eye-related-documents:
 
 5. Related Documents
 ====================
@@ -403,6 +413,8 @@ In case this issue occurs, you need to:
 * `ESP32-S3-EYE-MB v2.1 Main Board Back Dimensions Source File <https://dl.espressif.com/dl/schematics/DXF_ESP32-S3-EYE_MB_Bottom_V2.1_20211111.dxf>`__ (DXF) - You can view it with `Autodesk Viewer <https://viewer.autodesk.com/>`__ online
 * `ESP32-S3-EYE-SUB Sub Board Dimensions Source File <https://dl.espressif.com/dl/schematics/DXF_ESP32-S3-EYE_SUB_V1.1_20211111.dxf>`__ (DXF) - You can view it with `Autodesk Viewer <https://viewer.autodesk.com/>`__ online
 
+.. _esp32-s3-eye-3d-printed-case:
+
 5.5. 3D Printed Case
 --------------------
 
@@ -423,6 +435,8 @@ The following 3D model is a two-part case you can 3D print for your ESP32-S3-EYE
 * `ESP32-S3-EYE Reference Design <https://documentation.espressif.com/ESP32-S3-EYE_Reference_Design.zip>`__
 
 For further design documentation for the board, please contact us at `sales@espressif.com <sales@espressif.com>`__.
+
+.. _esp32-s3-eye-disclaimer-and-copyright-notice:
 
 6. Disclaimer and Copyright Notice
 ==================================

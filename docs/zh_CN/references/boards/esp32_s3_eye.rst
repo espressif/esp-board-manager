@@ -6,9 +6,9 @@ ESP32-S3-EYE v2.2
 
 .. note::
 
-   如果您使用的是 ESP32-S3-EYE v2.1，请参考本指南。v2.2 相对 v2.1 的变化在`硬件版本 <#4-硬件版本>`__小节中列出。
+   如果您使用的是 ESP32-S3-EYE v2.1，请参考本指南。v2.2 相对 v2.1 的变化在\ :ref:`硬件版本 <esp32-s3-eye-hardware-revision-details>`\ 小节中列出。
 
-ESP32-S3-EYE 是`乐鑫 <https://www.espressif.com/zh-hans/home>`__推出的一款小型 AI（人工智能）开发板，搭载 `ESP32-S3 <https://www.espressif.com/zh-hans/products/socs/esp32-s3>`__ 芯片和乐鑫 AI 开发框架 `ESP-WHO <https://github.com/espressif/esp-who/blob/master/README_CN.md>`__。开发板配置一个 2 百万像素的摄像头、一个 LCD 显示屏和一个麦克风，适用于图像识别和音频处理等应用。板上还配有 8 MB 八线 PSRAM 和 8 MB flash，具有充足的存储空间。此外，ESP32-S3 芯片还为开发板提供了 Wi-Fi 图传和 USB 端口调试等功能。您可以使用 ESP-WHO 开发各种 AIoT（人工智能物联网）应用，例如智能门铃、监控系统、人脸识别打卡机等。
+ESP32-S3-EYE 是\ `乐鑫 <https://www.espressif.com/zh-hans/home>`__\ 推出的一款小型 AI（人工智能）开发板，搭载 `ESP32-S3 <https://www.espressif.com/zh-hans/products/socs/esp32-s3>`__ 芯片和乐鑫 AI 开发框架 `ESP-WHO <https://github.com/espressif/esp-who/blob/master/README_CN.md>`__\ 。开发板配置一个 2 百万像素的摄像头、一个 LCD 显示屏和一个麦克风，适用于图像识别和音频处理等应用。板上还配有 8 MB 八线 PSRAM 和 8 MB flash，具有充足的存储空间。此外，ESP32-S3 芯片还为开发板提供了 Wi-Fi 图传和 USB 端口调试等功能。您可以使用 ESP-WHO 开发各种 AIoT（人工智能物联网）应用，例如智能门铃、监控系统、人脸识别打卡机等。
 
 .. figure:: ../../../_static/boards/esp32_s3_eye/ESP32-S3-EYE-isometric.png
    :alt: ESP32-S3-EYE
@@ -17,12 +17,14 @@ ESP32-S3-EYE 是`乐鑫 <https://www.espressif.com/zh-hans/home>`__推出的一�
 
 本指南包括如下内容：
 
-* `入门指南 <#1-入门指南>`__：介绍了开发板的功能和特性、组件、包装，以及如何快速使用开发板。
-* `开始开发应用 <#2-开始开发应用>`__：说明了开发板烧录固件需要的硬件设置和软件设置。
-* `硬件参考 <#3-硬件参考>`__：详细介绍了开发板的硬件。
-* `硬件版本 <#4-硬件版本>`__：介绍硬件历史版本和已知问题，并提供链接至历史版本开发板的入门指南（如有）。
-* `相关文档 <#5-相关文档>`__：列出了相关文档的链接。
-* `免责声明和版权公告 <#6-免责声明和版权公告>`__：链接到免责声明和版权公告。
+* :ref:`入门指南 <esp32-s3-eye-getting-started>`\ ：介绍了开发板的功能和特性、组件、包装，以及如何快速使用开发板。
+* :ref:`开始开发应用 <esp32-s3-eye-start-application-development>`\ ：说明了开发板烧录固件需要的硬件设置和软件设置。
+* :ref:`硬件参考 <esp32-s3-eye-hardware-reference>`\ ：详细介绍了开发板的硬件。
+* :ref:`硬件版本 <esp32-s3-eye-hardware-revision-details>`\ ：介绍硬件历史版本和已知问题，并提供链接至历史版本开发板的入门指南（如有）。
+* :ref:`相关文档 <esp32-s3-eye-related-documents>`\ ：列出了相关文档的链接。
+* :ref:`免责声明和版权公告 <esp32-s3-eye-disclaimer-and-copyright-notice>`\ ：链接到免责声明和版权公告。
+
+.. _esp32-s3-eye-getting-started:
 
 1. 入门指南
 ==================================================
@@ -201,7 +203,7 @@ ESP32-S3-EYE 相比 `ESP-EYE <https://github.com/espressif/esp-who/blob/master/d
 1.7. 默认固件和功能测试
 --------------------------------------------------
 
-ESP32-S3-EYE 出厂即烧录`默认固件 <https://github.com/espressif/esp-who/tree/master/default_bin/esp32-s3-eye>`__ ，方便您立即上手使用开发板，体验语音唤醒、语音命令识别、人脸检测和识别的功能。
+ESP32-S3-EYE 出厂即烧录\ `默认固件 <https://github.com/espressif/esp-who/tree/master/default_bin/esp32-s3-eye>`__ ，方便您立即上手使用开发板，体验语音唤醒、语音命令识别、人脸检测和识别的功能。
 使用开发板前，您需要准备以下硬件：
 
 * 1 套 ESP32-S3-EYE 开发板
@@ -258,6 +260,8 @@ ESP32-S3-EYE 出厂即烧录`默认固件 <https://github.com/espressif/esp-who/
 
 至此您已经体验了开发板的主要功能。下面的章节将说明如何在开发板上烧录固件、硬件资源和相关文档等。
 
+.. _esp32-s3-eye-start-application-development:
+
 2. 开始开发应用
 ==================================================
 
@@ -275,7 +279,7 @@ ESP32-S3-EYE 出厂即烧录`默认固件 <https://github.com/espressif/esp-who/
 
 * 1 个 MicroSD 存储卡
 * 1 块锂电池
-* 1 套`3D打印外壳 <#55-3D打印外壳>`__
+* 1 套\ :ref:`3D打印外壳 <esp32-s3-eye-3d-printed-case>`
 
 .. note::
 
@@ -292,9 +296,11 @@ ESP32-S3-EYE 出厂即烧录`默认固件 <https://github.com/espressif/esp-who/
 
 准备开发工具，请前往 `ESP-WHO <https://github.com/espressif/esp-who/blob/master/README_CN.md>`__ 文档查看以下步骤：
 
-#. `获取 ESP-IDF <https://github.com/espressif/esp-who/blob/master/README_CN.md#获取-esp-idf>`__，配置基于 ESP32-S3 的 C 语言 PC 开发环境。
-#. `获取 ESP-WHO <https://github.com/espressif/esp-who/blob/master/README_CN.md#获取-esp-who>`__，运行乐鑫图像处理开发框架。
-#. `运行 ESP-WHO 示例 <https://github.com/espressif/esp-who/blob/master/README_CN.md#运行示例>`__。
+#. `获取 ESP-IDF <https://github.com/espressif/esp-who/blob/master/README_CN.md#支持的-esp-idf-版本>`__，配置基于 ESP32-S3 的 C 语言 PC 开发环境。
+#. `获取 ESP-WHO <https://github.com/espressif/esp-who/blob/master/README_CN.md#快速开始>`__，运行乐鑫图像处理开发框架。
+#. `运行 ESP-WHO 示例 <https://github.com/espressif/esp-who/blob/master/README_CN.md#编译烧录并监视>`__。
+
+.. _esp32-s3-eye-hardware-reference:
 
 3. 硬件参考
 ==================================================
@@ -304,7 +310,7 @@ ESP32-S3-EYE 出厂即烧录`默认固件 <https://github.com/espressif/esp-who/
 3.1. GPIO 分配
 --------------------------------------------------
 
-除了 GPIO3 可用于配置 LED 灯组合状态，\ **ESP32-S3-WROOM-1** 模组上的其他 GPIO 均已用于控制开发板的组件或功能。如果您想自己配置管脚，请参考`相关文档 <#5-相关文档>`__部分提供的原理图。
+除了 GPIO3 可用于配置 LED 灯组合状态，\ **ESP32-S3-WROOM-1** 模组上的其他 GPIO 均已用于控制开发板的组件或功能。如果您想自己配置管脚，请参考\ :ref:`相关文档 <esp32-s3-eye-related-documents>`\ 部分提供的原理图。
 
 3.2. 独立的模组与摄像头供电电路
 --------------------------------------------------
@@ -323,6 +329,8 @@ ESP32-S3-EYE 开发板为摄像头和 ESP32-S3-WROOM-1 模组及其他器件提�
    ESP32-S3-EYE - 摄像头供电电路
 
 
+.. _esp32-s3-eye-hardware-revision-details:
+
 4. 硬件版本
 ==================================================
 
@@ -330,7 +338,7 @@ ESP32-S3-EYE 开发板为摄像头和 ESP32-S3-WROOM-1 模组及其他器件提�
 4.1. 改版历史
 --------------------------------------------------
 
-ESP32-S3-EYE v2.2 相对于 ESP32-S3-EYE v2.1 在硬件方面有两处变更：1) 主板丝印，2) 主板增加限流电阻；固件方面一处变更：增加对英文唤醒词和英文命令词的支持（具体见[[英文版本文档]](../../en/get-started/ESP32-S3-EYE_Getting_Started_Guide.md)）。
+ESP32-S3-EYE v2.2 相对于 ESP32-S3-EYE v2.1 在硬件方面有两处变更：1) 主板丝印，2) 主板增加限流电阻；固件方面一处变更：增加对英文唤醒词和英文命令词的支持（具体见\ :link_to_translation:`en:[英文版本文档]`\ ）。
 硬件方面的变更具体如下：
 
 #. 主板丝印（背面）：ESP32-S3-EYE v2.2 的主板丝印为 ESP32-S3-EYE-MB_V2.2，ESP32-S3-EYE v2.1 的主板丝印为 ESP32-S3-EYE-MB_V2.1。
@@ -353,7 +361,7 @@ ESP32-S3-EYE v2.2 相对于 ESP32-S3-EYE v2.1 在硬件方面有两处变更：1
    * - ESP32-S3-EYE v2.2 限流电阻 R83 位置
      - ESP32-S3-EYE v2.1 无限流电阻 R83
 
-#. 因主板丝印变更和增加限流电阻同步更新\ **主板原理图**\ 、\ **主板 PCB 布局图**\ 、\ **主板尺寸图**\ 、\ **主板尺寸图源文件**\ （见`相关文档 <#5-相关文档>`__小节提供的文件）。
+#. 因主板丝印变更和增加限流电阻同步更新\ **主板原理图**\ 、\ **主板 PCB 布局图**\ 、\ **主板尺寸图**\ 、\ **主板尺寸图源文件**\ （见\ :ref:`相关文档 <esp32-s3-eye-related-documents>`\ 小节提供的文件）。
 
 4.2. 已知问题
 --------------------------------------------------
@@ -363,6 +371,8 @@ ESP32-S3-EYE 没有 USB 至 UART 桥接器，可能会出现已烧写的程序�
 
 #. 按住 BOOT 键再按住 RST 键，然后松开 RST 键，再松开 BOOT 键，然后开发板进入下载模式，开始下载程序。
 #. 下载完成后再按下 RST 键启动程序。
+
+.. _esp32-s3-eye-related-documents:
 
 5. 相关文档
 ==================================================
@@ -402,6 +412,8 @@ ESP32-S3-EYE 没有 USB 至 UART 桥接器，可能会出现已烧写的程序�
 * `ESP32-S3-EYE-MB v2.1 主板背面尺寸图源文件 <https://dl.espressif.com/dl/schematics/DXF_ESP32-S3-EYE_MB_Bottom_V2.1_20211111.dxf>`__ (DXF) - 可使用 `Autodesk Viewer <https://viewer.autodesk.com/>`__ 查看
 * `ESP32-S3-EYE-SUB 子板尺寸图源文件 <https://dl.espressif.com/dl/schematics/DXF_ESP32-S3-EYE_SUB_V1.1_20211111.dxf>`__ (DXF) - 可使用 `Autodesk Viewer <https://viewer.autodesk.com/>`__ 查看
 
+.. _esp32-s3-eye-3d-printed-case:
+
 5.5. 3D打印外壳
 --------------------------------------------------
 
@@ -422,6 +434,8 @@ ESP32-S3-EYE 没有 USB 至 UART 桥接器，可能会出现已烧写的程序�
 * `ESP32-S3-EYE 参考设计 <https://documentation.espressif.com/ESP32-S3-EYE_Reference_Design.zip>`__
 
 有关本开发板的更多设计文档，请联系我们的商务部门 `sales@espressif.com <sales@espressif.com>`__。
+
+.. _esp32-s3-eye-disclaimer-and-copyright-notice:
 
 6. 免责声明和版权公告
 ==================================================

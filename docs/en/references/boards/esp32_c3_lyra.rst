@@ -185,13 +185,13 @@ Testing Default Firmware
 Software Support
 ----------------
 
-`ESP-ADF <https://github.com/espressif/esp-adf>`_ is the development framework for ESP32-C3-Lyra. To see which version of ESP-ADF is supported for this board, please go to the section `Hardware <https://github.com/espressif/esp-adf#hardware>`_.
+`ESP-ADF <https://github.com/espressif/esp-adf>`_ is the development framework for ESP32-C3-Lyra. To see which version of ESP-ADF is supported for this board, please go to the section `Hardware <https://github.com/espressif/esp-adf/tree/release/v2.x#hardware>`_.
 
 Below are other software repositories developed by Espressif that may help you experiment with the functions of ESP32-C3-Lyra.
 
 - `ESP-IDF <https://github.com/espressif/esp-idf>`__: development framework for Espressif SoCs based on FreeRTOS with a rich set of components, including LED control (LEDC), ADC, RMT, SPI etc.
 
-Application examples for this board can be found at `application example <https://github.com/espressif/esp-adf/tree/master/examples>`__.
+Application examples for this board can be found at `application example <https://github.com/espressif/esp-adf/tree/release/v2.x/examples>`__.
 
 
 Start Application Development
@@ -291,7 +291,7 @@ This section provides more detailed information about the board's hardware.
 GPIO Allocation
 ---------------
 
-The `table <../../../_static/esp32-c3-lyra-gpio-allocation.pdf>`_ provides the allocation of GPIOs exposed on terminals of the ESP32-C3-WROOM-02 module to control specific components or functions of the board.
+The `table <https://docs.espressif.com/projects/esp-adf/en/latest/_static/esp32-c3-lyra-gpio-allocation.pdf>`_ provides the allocation of GPIOs exposed on terminals of the ESP32-C3-WROOM-02 module to control specific components or functions of the board.
 
 Power Distribution
 ------------------

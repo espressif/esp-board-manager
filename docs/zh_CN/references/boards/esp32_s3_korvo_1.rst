@@ -6,9 +6,9 @@ ESP32-S3-Korvo-1 v5.0
 
 .. note::
 
-   如果您使用的是 ESP32-S3-Korvo-1 v4.0，请参考本指南。v5.0 相对 v4.0 的变化在`硬件版本 <#4-硬件版本>`__\ 小节中列出。
+   如果您使用的是 ESP32-S3-Korvo-1 v4.0，请参考本指南。v5.0 相对 v4.0 的变化在\ :ref:`硬件版本 <esp32-s3-korvo-1-hardware-revision-details>`\ 小节中列出。
 
-ESP32-S3-Korvo-1 是`乐鑫 <https://www.espressif.com/zh-hans/home>`__推出的一款 AI（人工智能）开发板，搭载 `ESP32-S3 <https://www.espressif.com/zh-hans/products/socs/esp32-s3>`__ 芯片和乐鑫语音识别 SDK `ESP-Skainet <https://www.espressif.com/zh-hans/solutions/audio-solutions/esp-skainet/overview>`__。板上配置三麦克风阵列，适用于远场拾音，且功耗低。ESP32-S3-Korvo-1 支持中英文语音唤醒和离线语音命令识别。您可以使用 ESP-Skainet 开发各种语音识别应用，例如智能屏幕、智能插头、智能开关等。
+ESP32-S3-Korvo-1 是\ `乐鑫 <https://www.espressif.com/zh-hans/home>`__\ 推出的一款 AI（人工智能）开发板，搭载 `ESP32-S3 <https://www.espressif.com/zh-hans/products/socs/esp32-s3>`__ 芯片和乐鑫语音识别 SDK `ESP-Skainet <https://www.espressif.com/zh-hans/solutions/audio-solutions/esp-skainet/overview>`__\ 。板上配置三麦克风阵列，适用于远场拾音，且功耗低。ESP32-S3-Korvo-1 支持中英文语音唤醒和离线语音命令识别。您可以使用 ESP-Skainet 开发各种语音识别应用，例如智能屏幕、智能插头、智能开关等。
 
 .. figure:: ../../../_static/boards/esp32_s3_korvo_1/esp32-s3-Korvo-1-isometric.png
    :alt: ESP32-S3-Korvo-1
@@ -17,11 +17,13 @@ ESP32-S3-Korvo-1 是`乐鑫 <https://www.espressif.com/zh-hans/home>`__推出的
 
 本指南包括如下内容：
 
-* `入门指南 <#1-入门指南>`__：介绍了开发板的功能和特性、组件、包装，以及如何快速使用开发板。
-* `开始开发应用 <#2-开始开发应用>`__：说明了开发板烧录固件需要的硬件设置和软件设置。
-* `硬件参考 <#3-硬件参考>`__：详细介绍了开发板的硬件。
-* `硬件版本 <#4-硬件版本>`__：介绍硬件历史版本和已知问题，并提供链接至历史版本开发板的入门指南（如有）。
-* `相关文档 <#5-相关文档>`__：列出了相关文档的链接。
+* :ref:`入门指南 <esp32-s3-korvo-1-getting-started>`\ ：介绍了开发板的功能和特性、组件、包装，以及如何快速使用开发板。
+* :ref:`开始开发应用 <esp32-s3-korvo-1-start-application-development>`\ ：说明了开发板烧录固件需要的硬件设置和软件设置。
+* :ref:`硬件参考 <esp32-s3-korvo-1-hardware-reference>`\ ：详细介绍了开发板的硬件。
+* :ref:`硬件版本 <esp32-s3-korvo-1-hardware-revision-details>`\ ：介绍硬件历史版本和已知问题，并提供链接至历史版本开发板的入门指南（如有）。
+* :ref:`相关文档 <esp32-s3-korvo-1-related-documents>`\ ：列出了相关文档的链接。
+
+.. _esp32-s3-korvo-1-getting-started:
 
 1. 入门指南
 ==================================================
@@ -193,11 +195,11 @@ ESP32-S3-Korvo-1 开发板包含两部分：一块主板 ESP32-S3-Korvo-1，配�
 1.6. 默认固件和功能测试
 --------------------------------------------------
 
-ESP32-S3-Korvo-1 出厂即烧录`默认固件 <https://github.com/espressif/esp-skainet/blob/master/tools/default_firmware/default_firmware_ESP32-S3-Korvo-1>`__，方便您立即上手使用开发板，体验语音唤醒和语音命令识别的功能。
+ESP32-S3-Korvo-1 出厂即烧录\ `默认固件 <https://github.com/espressif/esp-skainet/blob/master/tools/default_firmware/default_firmware_ESP32-S3-Korvo-1>`__\ ，方便您立即上手使用开发板，体验语音唤醒和语音命令识别的功能。
 
 .. note::
 
-   请注意，默认固件仅支持中文唤醒词和语音命令。您也可以参考 `esp-skainet/examples <https://github.com/espressif/esp-skainet/tree/master/examples>`__ 配置使用英语唤醒词和语音命令。如需配置英语唤醒词和语音命令，请首先按照`第 2 节 <#2-开始开发应用>`__中的步骤进行操作。
+   请注意，默认固件仅支持中文唤醒词和语音命令。您也可以参考 `esp-skainet/examples <https://github.com/espressif/esp-skainet/tree/master/examples>`__ 配置使用英语唤醒词和语音命令。如需配置英语唤醒词和语音命令，请首先按照\ :ref:`第 2 节 <esp32-s3-korvo-1-start-application-development>`\ 中的步骤进行操作。
 
 使用开发板前，您需要准备以下硬件：
 
@@ -236,6 +238,8 @@ ESP32-S3-Korvo-1 出厂即烧录`默认固件 <https://github.com/espressif/esp-
 
 如果没有识别到命令词，RGB LED 将恢复至唤醒前的状态。
 至此您已经体验了开发板的主要功能。下面的章节将说明如何在开发板上烧录固件、硬件资源和相关文档等。
+
+.. _esp32-s3-korvo-1-start-application-development:
 
 2. 开始开发应用
 ==================================================
@@ -293,6 +297,8 @@ ESP32-S3-Korvo-1 出厂即烧录`默认固件 <https://github.com/espressif/esp-
 
    您可以自定义离线唤醒词。具体请查看 `Espressif Speech Wake Word Customization Process（乐鑫唤醒词定制流程） <https://github.com/espressif/esp-sr/blob/master/docs/zh_CN/wake_word_engine/ESP_Wake_Words_Customization.rst>`__。
 
+.. _esp32-s3-korvo-1-hardware-reference:
+
 3. 硬件参考
 ==================================================
 
@@ -301,7 +307,7 @@ ESP32-S3-Korvo-1 出厂即烧录`默认固件 <https://github.com/espressif/esp-
 3.1. GPIO 分配
 --------------------------------------------------
 
-**ESP32-S3-WROOM-1** 模组上的所有 GPIO 均已用于控制开发板的组件或功能。如果您想自己配置管脚，请参考`相关文档 <#5-相关文档>`__部分提供的原理图。
+**ESP32-S3-WROOM-1** 模组上的所有 GPIO 均已用于控制开发板的组件或功能。如果您想自己配置管脚，请参考\ :ref:`相关文档 <esp32-s3-korvo-1-related-documents>`\ 部分提供的原理图。
 
 3.2. 电路分布
 --------------------------------------------------
@@ -349,6 +355,8 @@ ESP32-S3-Korvo-1 开发板为音频组件和 ESP32-S3-WROOM-1 模组提供独立
 #. 扬声器输出：默认音频输出方式，未接入耳机的情况下有效。
 #. 耳机输出：接入耳机后，扬声器输出关闭，耳机输出有效。
 
+.. _esp32-s3-korvo-1-hardware-revision-details:
+
 4. 硬件版本
 ==================================================
 
@@ -374,7 +382,9 @@ ESP32-S3-Korvo-1 v5.0 相对于 ESP32-S3-Korvo-1 v4.0 主要有两处变更：1)
    * - ESP32-S3-Korvo-1 v5.0 主板 J1 位置
      - ESP32-S3-Korvo-1 v4.0 主板 J1 位置
 
-#. 因主板丝印更新和 J1 右移同步更新\ **主板原理图**\ 、\ **主板 PCB 布局图**\ 、\ **主板尺寸图**\ 、\ **主板尺寸图源文件**\ （见`相关文档 <#5-相关文档>`__\ 小节提供的文件）。
+#. 因主板丝印更新和 J1 右移同步更新\ **主板原理图**\ 、\ **主板 PCB 布局图**\ 、\ **主板尺寸图**\ 、\ **主板尺寸图源文件**\ （见\ :ref:`相关文档 <esp32-s3-korvo-1-related-documents>`\ 小节提供的文件）。
+
+.. _esp32-s3-korvo-1-related-documents:
 
 5. 相关文档
 ==================================================

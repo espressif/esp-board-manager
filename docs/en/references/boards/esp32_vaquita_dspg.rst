@@ -2,7 +2,7 @@ ESP32-Vaquita-DSPG User Guide
 =============================
 
 
-* `中文版 <../../../zh_CN/hw-reference/esp32/user-guide-esp32-vaquita-dspg.md>`__
+:link_to_translation:`zh_CN:[中文]`
 
 This user guide provides information on ESP32-Vaquita-DSPG.
 
@@ -17,15 +17,17 @@ ESP32-Vaquita-DSPG
 
 The document consists of the following major sections:
 
-* `Getting started <#1-getting-started>`__: Provides an overview of ESP32-Vaquita-DSPG and hardware/software setup instructions to get started.
-* `Hardware reference <#2-hardware-reference>`__: Provides more detailed information about the ESP32-Vaquita-DSPG's hardware.
-* `Related Documents <#3-related-documents>`__: Gives links to related documentation.
+* :ref:`Getting started <esp32-vaquita-dspg-getting-started>`: Provides an overview of ESP32-Vaquita-DSPG and hardware/software setup instructions to get started.
+* :ref:`Hardware reference <esp32-vaquita-dspg-hardware-reference>`: Provides more detailed information about the ESP32-Vaquita-DSPG's hardware.
+* :ref:`Related Documents <esp32-vaquita-dspg-related-documents>`: Gives links to related documentation.
+
+.. _esp32-vaquita-dspg-getting-started:
 
 1. Getting Started
 ------------------
 
 
-This section describes how to get started with ESP32-Vaquita-DSPG. It begins with a few introductory sections about ESP32-Vaquita-DSPG, then Section `Start Application Development <#14-start-application-development>`__ provides instructions on how to do the initial hardware setup and then how to flash firmware into ESP32-Vaquita-DSPG.
+This section describes how to get started with ESP32-Vaquita-DSPG. It begins with a few introductory sections about ESP32-Vaquita-DSPG, then Section :ref:`Start Application Development <esp32-vaquita-dspg-start-application-development>` provides instructions on how to do the initial hardware setup and then how to flash firmware into ESP32-Vaquita-DSPG.
 
 1.1 Overview
 ^^^^^^^^^^^^
@@ -120,6 +122,8 @@ ESP32-Vaquita-DSPG Subboard Front
 
    1：ESP32-Vaquita-DSPG boards delivered by Espressif before May 2020 are embedded with 64 Mbit flash; after that date with 128 Mbit flash.
 
+.. _esp32-vaquita-dspg-start-application-development:
+
 1.4 Start Application Development
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -151,6 +155,8 @@ in good condition with no obvious signs of damage.
 
 While this board can be used for variety of applications, one of the primary applications is to support "Alexa Voice Service (AVS) for AWS IoT" use cases. You can download Espressif's `AVS for AWS IoT SDK <https://github.com/espressif/esp-va-sdk/>`__ and follow the `instructions <https://github.com/espressif/esp-va-sdk/blob/master/README.md>`__.
 
+.. _esp32-vaquita-dspg-hardware-reference:
+
 2. Hardware Reference
 ---------------------
 
@@ -167,6 +173,8 @@ A block diagram below shows the components of ESP32-Vaquita-DSPG and their inter
    ESP32-Vaquita-DSPG
 
 ESP32-Vaquita-DSPG Block Diagram
+
+.. _esp32-vaquita-dspg-related-documents:
 
 3. Related Documents
 --------------------

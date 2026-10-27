@@ -53,7 +53,7 @@
      - 双麦克风、ES8389、4.3 英寸 LCD、触摸、DVP 摄像头（OV3660 / SC101IOT）、microSD、WS2812、GPIO Boot 按键
      - 面向智能音频和人机交互的多媒体开发板。
    * - :doc:`ESP32-S3-BOX-3 <esp32_s3_box_3>`
-     - ES8311、ES7210、ST77916 LCD、触摸、microSD、GPIO Boot 按键
+     - ES8311、ES7210、ILI9342C LCD、触摸、microSD、GPIO Boot 按键
      - ESP32-S3 语音和多媒体开发板。
    * - :doc:`ESP32-S3-BOX-Lite <esp32_s3_box_lite>`
      - ES8156、ES7243E、ST7789 LCD、GPIO Boot 按键

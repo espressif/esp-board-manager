@@ -12,16 +12,18 @@ Table of Contents
 -----------------
 
 
-1. `Document Information <#1-document-information>`__
-2. `Overview <#2-overview>`__
-3. `Hardware Description <#3-hardware-description>`__
-4. `Run the Quick Connect demo application <#4-run-the-quick-connect-demo-application>`__
-5. `Setup your AWS account and Permissions for IoT development <#5-setup-your-aws-account-and-permissions-for-iot-development>`__
-6. `Registering ExpressLink to your development account <#6-registering-expresslink-to-your-development-account>`__
-7. `Connecting and Interacting with AWS cloud <#7-connecting-and-interacting-with-aws-cloud>`__
-8. `Using ExpressLink with the Arduino Sketch <#8-using-expresslink-with-the-arduino-sketch>`__
-9. `Upgrading ExpressLink firmware <#9-upgrading-expresslink-firmware>`__
-10. `Troubleshooting <#10-troubleshooting>`__
+1. :ref:`Document Information <esp32-c3-aws-expresslink-document-information>`
+2. :ref:`Overview <esp32-c3-aws-expresslink-overview>`
+3. :ref:`Hardware Description <esp32-c3-aws-expresslink-hardware-description>`
+4. :ref:`Run the Quick Connect demo application <esp32-c3-aws-expresslink-run-the-quick-connect-demo-application>`
+5. :ref:`Setup your AWS account and Permissions for IoT development <esp32-c3-aws-expresslink-setup-your-aws-account-and-permissions-for-iot-development>`
+6. :ref:`Registering ExpressLink to your development account <esp32-c3-aws-expresslink-registering-expresslink-to-your-development-account>`
+7. :ref:`Connecting and Interacting with AWS cloud <esp32-c3-aws-expresslink-connecting-and-interacting-with-aws-cloud>`
+8. :ref:`Compiling and Uploading the ExpressLink Example with Arduino IDE <esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch>`
+9. :ref:`Upgrading ExpressLink firmware <esp32-c3-aws-expresslink-upgrading-expresslink-firmware>`
+10. :ref:`Troubleshooting <esp32-c3-aws-expresslink-troubleshooting>`
+
+.. _esp32-c3-aws-expresslink-document-information:
 
 1. Document Information
 -----------------------
@@ -33,6 +35,8 @@ Table of Contents
 
 1.0 29-November-2021 Final Draft  
 1.1 20-June-2022 Revised GSG with extended CONFMODE, steps for Quick Connect demo and better OTA steps
+
+.. _esp32-c3-aws-expresslink-overview:
 
 2. Overview
 -----------
@@ -53,11 +57,13 @@ Examples for AWS IoT ExpressLink can be found `here <https://github.com/aws/iot-
 
 .. note::
 
-   **NOTE**: Please upgrade your ExpressLink module to the latest available release as shown in `Section 9 <#9-upgrading-expresslink-firmware>`__ before proceeding with the Quick Connect demo application from `Section 4 <#4-run-the-quick-connect-demo-application>`__, or other examples mentioned in this guide.
+   **NOTE**: Please upgrade your ExpressLink module to the latest available release as shown in :ref:`Section 9 <esp32-c3-aws-expresslink-upgrading-expresslink-firmware>` before proceeding with the Quick Connect demo application from :ref:`Section 4 <esp32-c3-aws-expresslink-run-the-quick-connect-demo-application>`, or other examples mentioned in this guide.
 
 .. note::
 
    The OTW upgrade approach requires a smaller number of setup steps and is the preferred method for the first upgrade during evaluation.
+
+.. _esp32-c3-aws-expresslink-hardware-description:
 
 3. Hardware Description
 -----------------------
@@ -129,7 +135,7 @@ You may also need the following items:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-Refer to the `ESP32-C3 Hardware Reference <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/hw-reference/esp32c3/user-guide-devkitm-1.html#hardware-reference>`__, for more information on the hardware.
+Refer to the `ESP32-C3 Hardware Reference <https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#hardware-reference>`__, for more information on the hardware.
 
 3.6 Set up your hardware
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +149,7 @@ Refer to the `ESP32-C3 Hardware Reference <https://docs.espressif.com/projects/e
 2. You can directly plug the ExpressLink board onto the Arduino board's headers.
 3. Once this is done, ensure that the ExpressLink board's switch is in OFF state.
 4. You may now connect the Arduino to your computer, and that will automatically power the board.
-5. You can use the Arduino sketch as shown in `Section 8 <#8-using-expresslink-with-the-arduino-sketch>`__ to quickly get started.  
+5. Follow :ref:`Section 8 <esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch>` to compile and upload the ExpressLink example using Arduino IDE.
 
 The pins of the ExpressLink board are mapped to the Arduino as follows:  
 
@@ -253,6 +259,8 @@ For a quick check, in the terminal window type: **AT** followed by **return**. I
 
 Keep the terminal open, as it is needed for subsequent steps.
 
+.. _esp32-c3-aws-expresslink-run-the-quick-connect-demo-application:
+
 4. Run the Quick Connect demo application
 -----------------------------------------
 
@@ -285,6 +293,8 @@ The demo will connect to AWS IoT and give you a URL that you can use to visualiz
 
 
 
+.. _esp32-c3-aws-expresslink-setup-your-aws-account-and-permissions-for-iot-development:
+
 5. Setup your AWS account and Permissions for IoT development
 -------------------------------------------------------------
 
@@ -297,11 +307,13 @@ Refer to the instructions at `Set up your AWS Account <https://docs.aws.amazon.c
 
 Pay special attention to the Notes.
 
+.. _esp32-c3-aws-expresslink-registering-expresslink-to-your-development-account:
+
 6. Registering ExpressLink to your development account
 ------------------------------------------------------
 
 
-To create an IoT _Thing_ and add it to your account we will need to retrieve the ExpressLink module Thing Name and its corresponding certificate.  
+To create an AWS IoT thing and add it to your account, retrieve the ExpressLink module's Thing Name and its corresponding certificate.
 There are two methods to obtain the certificate, as shown in steps 6a and 6b:  
 
 6a. Directly connecting the ExpressLink board to your computer
@@ -346,7 +358,7 @@ _NOTE – The examples in this document are intended only for dev environments. 
 
 Click **Save** to complete the Thing creation.
 
-1. In the AWS IoT Console, choose **Settings** , copy your account _Endpoint_ string under _Device data endpoint._
+1. In the AWS IoT Console, choose **Settings** and copy the endpoint address under **Device data endpoint**.
 2. In the desktop terminal application type the command: **AT+CONF Endpoint=**
 
 6.1 Set up for Wi-Fi
@@ -440,6 +452,8 @@ Both the apps are open source, and the source code for the apps is available on 
 
 Congratulations! You have completed the registration of the evaluation kit as a Thing in your IoT account. You will not need to repeat these steps the next time you connect, as the ExpressLink module will remember its configuration and will be ready to connect to your AWS account automatically.
 
+.. _esp32-c3-aws-expresslink-connecting-and-interacting-with-aws-cloud:
+
 7. Connecting and Interacting with AWS cloud
 --------------------------------------------
 
@@ -490,12 +504,14 @@ On your terminal, enter the command: **AT+GET1**
 
 You will receive the message **OK Hello from the AWS IoT console**
 
-8. Using ExpressLink with the Arduino Sketch
---------------------------------------------
+.. _esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch:
+
+8. Compiling and Uploading the ExpressLink Example with Arduino IDE
+------------------------------------------------------------------------
 
 
-We have provided a basic sketch in this repository `sketches/arduino_sample_sketch.ino <sketches/arduino_sample_sketch.ino>`__ to get started quickly, with an Arduino.  
-The sketch will do the following:  
+The ESP AWS IoT ExpressLink evaluation repository provides an Arduino example sketch: `sketches/arduino_sample_sketch.ino <https://github.com/espressif/esp-aws-expresslink-eval/blob/main/sketches/arduino_sample_sketch.ino>`__. The program runs on the Arduino board and controls the ExpressLink board by sending AT commands over the serial interface.
+The example sketch performs the following operations:
 
 * It will reset the board and wait till it is ready.
 * It will check if the board is already provisioned (i.e. if it has credentials to connect to a Wi-Fi network already) and it will set the hardcoded Endpoint.
@@ -503,23 +519,21 @@ The sketch will do the following:
 * Once it has been provisioned, it will try to connect to the Wi-Fi network.
 * Once the connection has been successfully established, it will send "Hello World" to the "TEST" topic, every 10 seconds.  
 
-Before you flash the provided sketch, change the hardcoded value of the Endpoint in the script the AWS IoT Endpoint that you obtained in Step 6c.
+Open the example sketch in Arduino IDE and set ``MY_AWS_IOT_ENDPOINT`` in the source code to the AWS IoT endpoint obtained in Step 6c.
 
-You can flash the sketch onto the Arduino board, using the steps shown `here <https://www.arduino.cc/en/main/howto>`__.
+Follow Arduino's `program upload instructions <https://support.arduino.cc/hc/en-us/articles/4733418441116-Upload-a-sketch-in-Arduino-IDE>`__ to select the board and port in Arduino IDE, then compile and upload the example sketch.
 
 .. note::
 
    Note that the sketch is just a starting point, and is not the only way to use the ExpressLink board with an Arduino.  
 
-8.1 Debugging the Arduino sketch
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+8.1 Viewing the Example's Debug Output
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-Arduino's standard RX and TX pins are used to communicate with the ExpressLink board.  
-Hence, standard USB interface of Arduino cannot be used for logging and debugging.  
-You can use any other UART of Arduino for debugging purpose, as described below:  
+Arduino's standard RX and TX pins are used to communicate with the ExpressLink board. To view debug output, use ``SoftwareSerial`` to create a software serial port on other pins and connect it to the computer through a USB-to-TTL converter.
 
-1. In order to debug your Arduino sketch, you will need to use a USB-to-TTL converter (purchase link can be found in section 3.3)
+1. Prepare a USB-to-TTL converter (purchase links are in Section 3.3).
 2. For logging anything from the sketch, you will need to connect pins of the Arduino (via the ExpressLink board) to the USB-to-TTL converter as shown in the table below:  
 
 .. list-table::
@@ -541,7 +555,7 @@ You can use any other UART of Arduino for debugging purpose, as described below:
 
 3. Use a desktop terminal application set at baudrate 115200 and the port of the USB-to-TTL converter to view the output.
 
-The code snippet below shows how to accomplish this in an Arduino sketch.
+The following code snippet uses ``SoftwareSerial`` to create a software serial port on pins 8 and 9 and print debug output.
 
 .. code-block:: cpp
 
@@ -563,6 +577,8 @@ The code snippet below shows how to accomplish this in an Arduino sketch.
        delay(2000);
    }
 
+
+.. _esp32-c3-aws-expresslink-upgrading-expresslink-firmware:
 
 9. Upgrading ExpressLink firmware
 ---------------------------------
@@ -637,7 +653,7 @@ You should see "OK COMPLETE" at the end.
 To facilitate situations in which OTA upgrades are difficult to setup or completely not possible due to poor connectivity, we have provided the facility to carry out OTW upgrades.  
 
 First, download the latest release for ExpressLink from the `releases section <https://github.com/espressif/esp-aws-expresslink-eval/releases>`__.  
-The file `otw.py` needed for carrying out the OTW upgrade is `available <tools/otw.py>`__ in this repository in the `tools` directory.  
+The file ``otw.py`` needed for carrying out the OTW upgrade is `available <https://github.com/espressif/esp-aws-expresslink-eval/blob/main/tools/otw.py>`__ in the ``tools`` directory of the ESP AWS IoT ExpressLink evaluation repository.
 
 1. Start by connecting the board to your computer, as shown in Section 3.6.3
 2. Ensure that you have a functional Python 3.X installation.
@@ -646,6 +662,8 @@ The file `otw.py` needed for carrying out the OTW upgrade is `available <tools/o
 5. You should see percentage completion on the python console
 6. The update can take around 2 minutes to complete, and you will see `Uploaded 100.0% Done...` on the console once it is complete.
 7. Reset the board now, to boot into the latest firmware.
+
+.. _esp32-c3-aws-expresslink-troubleshooting:
 
 10. Troubleshooting
 -------------------

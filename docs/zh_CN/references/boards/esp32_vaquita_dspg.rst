@@ -2,7 +2,7 @@ ESP32-Vaquita-DSPG 用户指南
 ===============================
 
 
-* `English Version <https://github.com/espressif/esp-va-sdk/blob/master/docs/en/hw-reference/esp32/user-guide-esp32-vaquita-dspg.md>`__
+:link_to_translation:`en:[English]`
 
 本指南介绍了乐鑫的开发板 ESP32-Vaquita-DSPG。
 
@@ -17,15 +17,17 @@ ESP32-Vaquita-DSPG
 
 本指南包括如下内容：
 
-* `入门指南 <#1-入门指南>`__: 简要介绍了 ESP32-Vaquita-DSPG 和硬件、软件设置指南。
-* `硬件参考 <#2-硬件参考>`__: 详细介绍了 ESP32-Vaquita-DSPG 的硬件。
-* `相关文档 <#3-相关文档>`__: 列出了相关文档的链接。
+* :ref:`入门指南 <esp32-vaquita-dspg-getting-started>`: 简要介绍了 ESP32-Vaquita-DSPG 和硬件、软件设置指南。
+* :ref:`硬件参考 <esp32-vaquita-dspg-hardware-reference>`: 详细介绍了 ESP32-Vaquita-DSPG 的硬件。
+* :ref:`相关文档 <esp32-vaquita-dspg-related-documents>`: 列出了相关文档的链接。
+
+.. _esp32-vaquita-dspg-getting-started:
 
 1. 入门指南
 ---------------
 
 
-本节介绍了如何快速上手 ESP32-Vaquita-DSPG。开头部分介绍了 ESP32-Vaquita-DSPG，`开始开发应用 <#14-开始开发应用>`__ 小节介绍了怎样在 ESP32-Vaquita-DSPG 上安装模组、设置和烧录固件。
+本节介绍了如何快速上手 ESP32-Vaquita-DSPG。开头部分介绍了 ESP32-Vaquita-DSPG，\ :ref:`开始开发应用 <esp32-vaquita-dspg-start-application-development>` 小节介绍了怎样在 ESP32-Vaquita-DSPG 上安装模组、设置和烧录固件。
 
 1.1 概述
 ^^^^^^^^^^
@@ -55,7 +57,7 @@ ESP32-Vaquita-DSPG 为用户提供了便捷、安全、高性价比的方式开�
 
 如批量购买，开发板将以大纸板箱包装。
 
-批量订单请参考`乐鑫产品订购信息 <https://www.espressif.com/sites/default/files/documentation/espressif_products_ordering_information_cn.pdf>`__ (PDF) 。
+批量订单请参考\ `乐鑫产品订购信息 <https://www.espressif.com/sites/default/files/documentation/espressif_products_ordering_information_cn.pdf>`__ (PDF) 。
 
 1.3 组件介绍
 ^^^^^^^^^^^^^^^^
@@ -120,6 +122,8 @@ ESP32-Vaquita-DSPG 子板正面
 
    1：乐鑫 2020 年 5 月份前发货的开发板为 64 Mbit flash，5 月份开始发货的开发板为 128 Mbit flash。
 
+.. _esp32-vaquita-dspg-start-application-development:
+
 1.4 开始开发应用
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -148,7 +152,9 @@ ESP32-Vaquita-DSPG 子板正面
 ~~~~~~~~~~~~~~~~~~
 
 
-本款开发板可支持多种应用场景，其中最主要的应用场景是亚马逊物联网平台 (AWS IoT) 的 Alexa 语音服务（Alexa Voice Service，简称 AVS）。您可下载乐鑫的 `ESP AVS for AWS IoT <https://github.com/espressif/esp-va-sdk/>`__，参考`使用指南 <https://github.com/espressif/esp-va-sdk/blob/master/README.md>`__。
+本款开发板可支持多种应用场景，其中最主要的应用场景是亚马逊物联网平台 (AWS IoT) 的 Alexa 语音服务（Alexa Voice Service，简称 AVS）。您可下载乐鑫的 `ESP AVS for AWS IoT <https://github.com/espressif/esp-va-sdk/>`__\ ，参考\ `使用指南 <https://github.com/espressif/esp-va-sdk/blob/master/README.md>`__\ 。
+
+.. _esp32-vaquita-dspg-hardware-reference:
 
 2. 硬件参考
 ---------------
@@ -166,6 +172,8 @@ ESP32-Vaquita-DSPG 的主要组件和连接方式如下图所示。
    ESP32-Vaquita-DSPG
 
 ESP32-Vaquita-DSPG 功能框图
+
+.. _esp32-vaquita-dspg-related-documents:
 
 3. 相关文档
 ---------------
