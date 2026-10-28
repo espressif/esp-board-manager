@@ -44,3 +44,39 @@ build_test_apps:
     - mkdir -p "logs/${BOARD}"
     - idf.py bmgr -b "${BOARD}" 2>&1 | tee "logs/${BOARD}/bmgr.log"
     - SDKCONFIG_DEFAULTS="sdkconfig.defaults;components/gen_bmgr_codes/board_manager.defaults" idf-build-apps build --paths . --target "${IDF_TARGET}" --parallel-count 1 --parallel-index 1
+
+trigger_gmf_regression:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  inherit:
+    variables: false
+  variables:
+    UPSTREAM_COMPONENT: "auto"
+    UPSTREAM_PROJECT_PATH: "$CI_PROJECT_PATH"
+    UPSTREAM_SHA: "$CI_COMMIT_SHA"
+    UPSTREAM_BASE_SHA: "$CI_MERGE_REQUEST_DIFF_BASE_SHA"
+  trigger:
+    project: adf/multimedia/esp-gmf
+    branch: main
+    strategy: depend
+
+trigger_adf_regression:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  inherit:
+    variables: false
+  variables:
+    UPSTREAM_COMPONENT: "auto"
+    UPSTREAM_PROJECT_PATH: "$CI_PROJECT_PATH"
+    UPSTREAM_SHA: "$CI_COMMIT_SHA"
+    UPSTREAM_BASE_SHA: "$CI_MERGE_REQUEST_DIFF_BASE_SHA"
+  trigger:
+    project: adf/esp-adf-internal
+    branch: master
+    strategy: depend
