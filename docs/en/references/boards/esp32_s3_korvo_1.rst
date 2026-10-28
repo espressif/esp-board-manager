@@ -6,7 +6,7 @@ This user guide will help you get started with ESP32-S3-Korvo-1 v5.0 and will al
 
 .. note::
 
-   If you use ESP32-S3-Korvo-1 v4.0, please follow this guide. The differences between v5.0 and v4.0 are described in Section `Hardware Revision Details <#4-hardware-revision-details>`__.
+   If you use ESP32-S3-Korvo-1 v4.0, please follow this guide. The differences between v5.0 and v4.0 are described in Section :ref:`Hardware Revision Details <esp32-s3-korvo-1-hardware-revision-details>`.
 
 The ESP32-S3-Korvo-1 is an AI development board produced by `Espressif <https://espressif.com>`__. It is based on the `ESP32-S3 <https://www.espressif.com/en/products/socs/esp32-s3>`__ SoC and `ESP-Skainet <https://www.espressif.com/en/solutions/audio-solutions/esp-skainet/overview>`__, Espressif’s speech recognition SDK. It features a three-microphone array which is suitable for far-field voice pick-up with low power consumption. The ESP32-S3-Korvo-1 board supports voice wake-up and offline speech command recognition in Chinese and English languages. With ESP-Skainet, you can develop a variety of speech recognition applications, such as smart displays, smart plugs, smart switches, etc.
 
@@ -17,11 +17,13 @@ The ESP32-S3-Korvo-1 is an AI development board produced by `Espressif <https://
 
 The document consists of the following major sections:
 
-* `Getting started <#1-getting-started>`__: Introduction of the board, block diagram, description of key components, contents and packaging, as well as quick guide to use the board.
-* `Start Application Development <#2-start-application-development>`__: Hardware and software setup instructions to flash firmware onto the board.
-* `Hardware Reference <#3-hardware-reference>`__: More detailed information about the board's hardware.
-* `Hardware Revision Details <#4-hardware-revision-details>`__: Hardware revision history, known issues, and links to user guides for previous versions (if any) of the board.
-* `Related Documents <#5-related-documents>`__: Links to related documentation.
+* :ref:`Getting started <esp32-s3-korvo-1-getting-started>`: Introduction of the board, block diagram, description of key components, contents and packaging, as well as quick guide to use the board.
+* :ref:`Start Application Development <esp32-s3-korvo-1-start-application-development>`: Hardware and software setup instructions to flash firmware onto the board.
+* :ref:`Hardware Reference <esp32-s3-korvo-1-hardware-reference>`: More detailed information about the board's hardware.
+* :ref:`Hardware Revision Details <esp32-s3-korvo-1-hardware-revision-details>`: Hardware revision history, known issues, and links to user guides for previous versions (if any) of the board.
+* :ref:`Related Documents <esp32-s3-korvo-1-related-documents>`: Links to related documentation.
+
+.. _esp32-s3-korvo-1-getting-started:
 
 1. Getting Started
 ==================
@@ -197,7 +199,7 @@ Each ESP32-S3-Korvo-1 board comes with pre-built `default firmware <https://gith
 
 .. note::
 
-   Please note that only Chinese wake word and Chinese speech commands are supported in the default firmware. You can also configure to use English wake words and speech commands in `esp-skainet/examples <https://github.com/espressif/esp-skainet/tree/master/examples>`__. To do so, please first follow the steps in `Start Application Development <#2-start-application-development>`__.
+   Please note that only Chinese wake word and Chinese speech commands are supported in the default firmware. You can also configure to use English wake words and speech commands in `esp-skainet/examples <https://github.com/espressif/esp-skainet/tree/master/examples>`__. To do so, please first follow the steps in :ref:`Start Application Development <esp32-s3-korvo-1-start-application-development>`.
 
 To test the board's functions, you need the following hardware:
 
@@ -245,6 +247,8 @@ Before powering up your board, please make sure that it is in good condition wit
 
 If the command is not recognized, RGB LEDs return to the state before voice wake-up.
 Now you get the first experience with the board. The following sections provide further information about how to flash firmware onto the board, configuration options, related resources, and more.
+
+.. _esp32-s3-korvo-1-start-application-development:
 
 2. Start Application Development
 ================================
@@ -302,6 +306,8 @@ After hardware setup, you can proceed with preparation of development tools. Go 
 
    Espressif provides the **Off-line Wake Word Customization** service which allows you to customize wake words. For the detailed process, please refer to `Espressif Speech Wake Word Customization Process <https://github.com/espressif/esp-sr/blob/master/docs/en/wake_word_engine/ESP_Wake_Words_Customization.rst>`__.
 
+.. _esp32-s3-korvo-1-hardware-reference:
+
 3. Hardware Reference
 =====================
 
@@ -310,7 +316,7 @@ This section provides more detailed information about the board's hardware.
 3.1 Notes on GPIO Allocations
 -----------------------------
 
-All GPIOs of the **ESP32-S3-WROOM-1 Module** have already been used to control specific components or functions of the board. If you would like to configure any pins yourself, please refer to the schematics provided in Section `Related Documents <#5-related-documents>`__.
+All GPIOs of the **ESP32-S3-WROOM-1 Module** have already been used to control specific components or functions of the board. If you would like to configure any pins yourself, please refer to the schematics provided in Section :ref:`Related Documents <esp32-s3-korvo-1-related-documents>`.
 
 3.2 Notes on Power Distribution
 -------------------------------
@@ -358,6 +364,8 @@ The board provides two mutually exclusive audio outputs:
 #. Speaker output: The speaker output is enabled if headphones are not plugged in.
 #. Headphone output: Once headphones are plugged in, speaker output is disabled and headphone output is enabled.
 
+.. _esp32-s3-korvo-1-hardware-revision-details:
+
 4. Hardware Revision Details
 ============================
 
@@ -383,7 +391,9 @@ Compared to ESP32-S3-Korvo-1 v4.0, ESP32-S3-Korvo-1 v5.0 has two changes in hard
    * - J1 Location on the ESP32-S3-Korvo-1 v5.0 Main Board
      - J1 Location on the ESP32-S3-Korvo-1 v4.0 Main Board
 
-#. The **main board schematics**, **main board PCB layout diagrams**, **main board dimension diagrams**, **main board dimension source files** are updated because of the two hardware changes. (See `Related Documents <#5-related-documents>`__).
+#. The **main board schematics**, **main board PCB layout diagrams**, **main board dimension diagrams**, **main board dimension source files** are updated because of the two hardware changes. (See :ref:`Related Documents <esp32-s3-korvo-1-related-documents>`).
+
+.. _esp32-s3-korvo-1-related-documents:
 
 5. Related Documents
 ====================

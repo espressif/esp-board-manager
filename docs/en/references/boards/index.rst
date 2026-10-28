@@ -53,7 +53,7 @@ Official Development Boards (``espressif/esp_boards``)
      - Dual microphones, ES8389, 4.3-inch LCD, touch, DVP camera (OV3660 / SC101IOT), microSD, WS2812, GPIO boot button
      - Multimedia board for smart audio and HMI.
    * - :doc:`ESP32-S3-BOX-3 <esp32_s3_box_3>`
-     - ES8311, ES7210, ST77916 LCD, touch, microSD, GPIO boot button
+     - ES8311, ES7210, ILI9342C LCD, touch, microSD, GPIO boot button
      - ESP32-S3 voice and multimedia board.
    * - :doc:`ESP32-S3-BOX-Lite <esp32_s3_box_lite>`
      - ES8156, ES7243E, ST7789 LCD, GPIO boot button

@@ -12,16 +12,18 @@ ESP32-C3-AWS-ExpressLink-DevKit
 ----
 
 
-1. `文档信息 <#1-document-information>`__
-2. `概述 <#2-overview>`__
-3. `硬件说明 <#3-hardware-description>`__
-4. `运行 Quick Connect 演示应用 <#4-run-the-quick-connect-demo-application>`__
-5. `设置 AWS 账户和 IoT 开发权限 <#5-setup-your-aws-account-and-permissions-for-iot-development>`__
-6. `将 ExpressLink 注册到开发账户 <#6-registering-expresslink-to-your-development-account>`__
-7. `连接并与 AWS 云交互 <#7-connecting-and-interacting-with-aws-cloud>`__
-8. `在 Arduino 草图中使用 ExpressLink <#8-using-expresslink-with-the-arduino-sketch>`__
-9. `升级 ExpressLink 固件 <#9-upgrading-expresslink-firmware>`__
-10. `故障排除 <#10-troubleshooting>`__
+1. :ref:`文档信息 <esp32-c3-aws-expresslink-document-information>`
+2. :ref:`概述 <esp32-c3-aws-expresslink-overview>`
+3. :ref:`硬件说明 <esp32-c3-aws-expresslink-hardware-description>`
+4. :ref:`运行 Quick Connect 演示应用 <esp32-c3-aws-expresslink-run-the-quick-connect-demo-application>`
+5. :ref:`设置 AWS 账户和 IoT 开发权限 <esp32-c3-aws-expresslink-setup-your-aws-account-and-permissions-for-iot-development>`
+6. :ref:`将 ExpressLink 注册到开发账户 <esp32-c3-aws-expresslink-registering-expresslink-to-your-development-account>`
+7. :ref:`连接并与 AWS 云交互 <esp32-c3-aws-expresslink-connecting-and-interacting-with-aws-cloud>`
+8. :ref:`使用 Arduino IDE 编译和上传 ExpressLink 示例程序 <esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch>`
+9. :ref:`升级 ExpressLink 固件 <esp32-c3-aws-expresslink-upgrading-expresslink-firmware>`
+10. :ref:`故障排除 <esp32-c3-aws-expresslink-troubleshooting>`
+
+.. _esp32-c3-aws-expresslink-document-information:
 
 1. 文档信息
 --------------------------------------------------
@@ -31,8 +33,10 @@ ESP32-C3-AWS-ExpressLink-DevKit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-1.0 2021 年 11 月 29 日 初始草稿  
+1.0 2021 年 11 月 29 日 初版定稿
 1.1 2022 年 6 月 20 日 修订快速入门指南，扩展 CONFMODE，补充 Quick Connect 演示步骤并改进 OTA 步骤
+
+.. _esp32-c3-aws-expresslink-overview:
 
 2. 概述
 --------------------------------------------------
@@ -45,7 +49,7 @@ ESP32-C3-AWS-ExpressLink-DevKit
 
 
 乐鑫 AWS IoT ExpressLink（下文简称 ExpressLink）是一款连接模组，通过串行接口（UART）连接主机，并使用抽象的应用程序编程接口（API）将任意主机应用连接到 AWS IoT Core 及其服务。
-ExpressLink 模组将身份验证、设备管理、网络连接和消息传输等复杂且通用的工作负载从应用（主机）处理器中卸载。
+ExpressLink 模组负责身份验证、设备管理、网络连接和消息传输，减轻应用（主机）处理器的负担。
 该方案支持数百万嵌入式应用规模化迁移到云连接应用，并缩短产品上市时间。
 更多 AWS IoT ExpressLink 信息请参阅 `此处 <https://aws.amazon.com/iot-expresslink/>`__。
 开发者文档请参阅 `此处 <https://docs.aws.amazon.com/iot-expresslink>`__。
@@ -53,11 +57,13 @@ AWS IoT ExpressLink 示例请参阅 `此处 <https://github.com/aws/iot-expressl
 
 .. note::
 
-   **注意**\ ：运行 `第 4 节 <#4-run-the-quick-connect-demo-application>`__ 的 Quick Connect 演示应用或本指南中的其他示例前，请按照 `第 9 节 <#9-upgrading-expresslink-firmware>`__ 将 ExpressLink 模组升级到最新版本。
+   **注意**\ ：运行 :ref:`第 4 节 <esp32-c3-aws-expresslink-run-the-quick-connect-demo-application>` 的 Quick Connect 演示应用或本指南中的其他示例前，请按照 :ref:`第 9 节 <esp32-c3-aws-expresslink-upgrading-expresslink-firmware>` 将 ExpressLink 模组升级到最新版本。
 
 .. note::
 
-   OTW 升级所需的准备步骤较少，建议在评估期间首次升级时使用该方式。
+   有线（Over-The-Wire，OTW）升级所需的准备步骤较少，建议在评估期间首次升级时使用该方式。
+
+.. _esp32-c3-aws-expresslink-hardware-description:
 
 3. 硬件说明
 --------------------------------------------------
@@ -129,7 +135,7 @@ AWS IoT ExpressLink 示例请参阅 `此处 <https://github.com/aws/iot-expressl
 ^^^^^^^^^^^^^^^^
 
 
-更多硬件信息请参阅 `ESP32-C3 硬件参考 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/hw-reference/esp32c3/user-guide-devkitm-1.html#hardware-reference>`__。
+更多硬件信息请参阅 `ESP32-C3 硬件参考 <https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#hardware-reference>`__。
 
 3.6 硬件连接
 ^^^^^^^^^^^^
@@ -143,7 +149,7 @@ AWS IoT ExpressLink 示例请参阅 `此处 <https://github.com/aws/iot-expressl
 2. 将 ExpressLink 开发板直接插到 Arduino 开发板的排针上。
 3. 完成连接后，确认 ExpressLink 开发板的开关处于 OFF 状态。
 4. 将 Arduino 连接到电脑，开发板会自动上电。
-5. 按照 `第 8 节 <#8-using-expresslink-with-the-arduino-sketch>`__ 中的 Arduino 草图操作即可快速开始。
+5. 参照 :ref:`第 8 节 <esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch>`，使用 Arduino IDE 编译并上传 ExpressLink 示例程序。
 
 ExpressLink 开发板引脚与 Arduino 的映射如下：
 
@@ -253,6 +259,8 @@ ExpressLink 开发板可通过 USB 串行接口（使用 USB 至 TTL 转换器�
 
 请保持终端窗口打开，后续步骤仍需使用。
 
+.. _esp32-c3-aws-expresslink-run-the-quick-connect-demo-application:
+
 4. 运行 Quick Connect 演示应用
 -----------------------------------------
 
@@ -284,6 +292,8 @@ Quick Connect 演示应用可在几分钟内建立 AWS IoT 连接，无需安装
 
 
 
+.. _esp32-c3-aws-expresslink-setup-your-aws-account-and-permissions-for-iot-development:
+
 5. 设置 AWS 账户和 IoT 开发权限
 -------------------------------
 
@@ -295,10 +305,12 @@ Quick Connect 演示应用可在几分钟内建立 AWS IoT 连接，无需安装
 
 请仔细阅读页面中的注意事项。
 
+.. _esp32-c3-aws-expresslink-registering-expresslink-to-your-development-account:
+
 6. 将 ExpressLink 注册到开发账户
 ---------------------------------
 
-要创建 IoT _Thing_ 并将其添加到账户，需要获取 ExpressLink 模块的 Thing Name 及对应证书。
+要创建 AWS IoT 事物（Thing）并将其添加到账户，需要获取 ExpressLink 模组的事物名称（Thing Name）及对应证书。
 步骤 6a 和 6b 提供了两种获取证书的方法。
 
 6a. 将 ExpressLink 开发板直接连接到电脑
@@ -340,9 +352,9 @@ Quick Connect 演示应用可在几分钟内建立 AWS IoT 连接，无需安装
 
    本文示例仅适用于开发环境。设备群组中的每台设备都必须使用仅允许访问指定资源和执行指定操作的凭据。具体权限策略取决于应用场景，请根据业务和安全要求制定策略。更多信息请参阅 AWS 的示例策略和安全最佳实践。
 
-单击 **Save** 完成 Thing 创建。
+单击 **Save** 完成事物创建。
 
-1. 在 AWS IoT 控制台中选择 **Settings**\ ，在 **Device data endpoint** 下复制账户的 _Endpoint_ 字符串。
+1. 在 AWS IoT 控制台中选择 **Settings**\ ，复制 **Device data endpoint** 下的设备数据端点地址（Endpoint）。
 2. 在桌面终端应用中输入命令：\ **AT+CONF Endpoint=**\ 。
 
 6.1 Wi-Fi 设置
@@ -369,7 +381,7 @@ ExpressLink 开发板需要连接本地 Wi-Fi 路由器才能访问互联网。�
 
 `GitHub 上的 iOS/iPadOS 配网应用 <https://github.com/espressif/esp-idf-provisioning-ios>`__
 
-2. 在桌面终端应用中输入命令：\ **AT+CONFMODE**\ 。主机会返回 ``OK CONFMODE ENABLED``。
+2. 在桌面终端应用中输入命令：\ **AT+CONFMODE**\ 。ExpressLink 模组会返回 ``OK CONFMODE ENABLED``，终端会显示该回复。
 
 .. note::
 
@@ -425,7 +437,9 @@ ExpressLink 开发板需要连接本地 Wi-Fi 路由器才能访问互联网。�
 6.2 完成注册
 ^^^^^^^^^^^^
 
-至此，评估套件已作为 Thing 注册到 IoT 账户。ExpressLink 模块会记住配置，下次连接时无需重复这些步骤，并会自动连接到 AWS 账户。
+至此，评估套件已作为事物注册到 AWS IoT 账户。ExpressLink 模组会保存配置，下次连接时无需重复这些步骤，并会自动连接到 AWS 账户。
+
+.. _esp32-c3-aws-expresslink-connecting-and-interacting-with-aws-cloud:
 
 7. 连接并与 AWS 云交互
 -----------------------
@@ -463,33 +477,35 @@ ExpressLink 开发板需要连接本地 Wi-Fi 路由器才能访问互联网。�
 
 在终端中输入 **AT+GET1**\ ，模块会返回 **OK Hello from the AWS IoT console**\ 。
 
-8. 在 Arduino 草图中使用 ExpressLink
--------------------------------------
+.. _esp32-c3-aws-expresslink-using-expresslink-with-the-arduino-sketch:
 
-仓库提供了基础草图 `sketches/arduino_sample_sketch.ino <sketches/arduino_sample_sketch.ino>`__，用于配合 Arduino 快速开始。
+8. 使用 Arduino IDE 编译和上传 ExpressLink 示例程序
+------------------------------------------------------------------------
 
-草图执行以下操作：
+ESP AWS IoT ExpressLink 评估仓库提供了 Arduino 示例程序 `sketches/arduino_sample_sketch.ino <https://github.com/espressif/esp-aws-expresslink-eval/blob/main/sketches/arduino_sample_sketch.ino>`__。该程序运行在 Arduino 开发板上，通过串口发送 AT 命令控制 ExpressLink 开发板。
 
-* 重置开发板并等待其就绪。
-* 检查开发板是否已经完成配网（是否已有连接 Wi-Fi 所需的凭据），并设置硬编码的 Endpoint。
+示例程序执行以下操作：
+
+* 复位 ExpressLink 开发板并等待其就绪。
+* 检查 ExpressLink 开发板是否已保存 Wi-Fi 凭据，并配置 AWS IoT Endpoint。
 * 如果没有凭据，则进入 CONFMODE（使用方法参见第 6.1.1 节）。
 * 完成配网后尝试连接 Wi-Fi 网络。
 * 连接成功后，每 10 秒向 ``TEST`` 主题发送一次 ``Hello World``。
 
-烧录草图前，将脚本中的硬编码 Endpoint 修改为步骤 6c 获取的 AWS IoT Endpoint。
+使用 Arduino IDE 打开示例程序，将源码中的 ``MY_AWS_IOT_ENDPOINT`` 修改为步骤 6c 获取的 AWS IoT Endpoint。
 
-按照 Arduino 的 `烧录说明 <https://www.arduino.cc/en/main/howto>`__ 将草图烧录到 Arduino 开发板。
+参照 Arduino 官方的 `程序上传说明 <https://support.arduino.cc/hc/en-us/articles/4733418441116-Upload-a-sketch-in-Arduino-IDE>`__，在 Arduino IDE 中选择开发板型号和串口，然后编译并上传示例程序。
 
 .. note::
 
-   此草图用于演示基本流程，也可以使用其他方式在 Arduino 上控制 ExpressLink 开发板。
+   此示例程序演示了 ExpressLink 的基本使用流程。也可以自行编写 Arduino 程序控制 ExpressLink 开发板。
 
-8.1 Arduino 草图调试
-^^^^^^^^^^^^^^^^^^^^
+8.1 示例程序的日志输出
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此 Arduino 的标准 USB 接口不能用于日志输出和调试。可以使用 Arduino 的其他 UART，步骤如下：
+Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信。可使用 ``SoftwareSerial`` 在其他引脚上建立软件串口，通过 USB 至 TTL 转换器向电脑输出调试日志。步骤如下：
 
-1. 调试 Arduino 草图需要 USB 至 TTL 转换器（购买链接见第 3.3 节）。
+1. 准备 USB 至 TTL 转换器（购买链接见第 3.3 节）。
 2. 按下表连接 Arduino（通过 ExpressLink 开发板）与 USB 至 TTL 转换器：
 
 .. list-table::
@@ -511,7 +527,7 @@ Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此
 
 3. 使用波特率为 115200、端口选择 USB 至 TTL 转换器的桌面终端应用查看输出。
 
-   以下代码片段展示了如何在 Arduino 草图中完成调试输出。
+   以下代码片段使用 ``SoftwareSerial`` 在引脚 8 和 9 上建立软件串口，并输出调试信息。
 
 .. code-block:: cpp
 
@@ -534,12 +550,14 @@ Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此
    }
 
 
+.. _esp32-c3-aws-expresslink-upgrading-expresslink-firmware:
+
 9. ExpressLink 固件升级
 -----------------------
 
 可以选择第 9.1 节或第 9.2 节中的任一方法，将 ExpressLink 开发板升级到最新固件。
 
-9.1 空中（OTA）升级
+9.1 无线（OTA）升级
 ^^^^^^^^^^^^^^^^^^^
 
 9.1.1 前提条件
@@ -570,7 +588,7 @@ Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此
 
 * ExpressLink 模块会轮询固件更新任务，接收并验证任务后等待接受更新。
 * 主机应用会收到 ExpressLink 有新固件映像可用的 OTA 事件。
-* 主机应用可以使用 **AT+OTA?** 查询任务状态。若提出了模块 OTA 固件更新，模块会返回 **OK 1 version**\ 。
+* 主机应用可以使用 **AT+OTA?** 查询任务状态。如果有可用的模块 OTA 固件更新，模块会返回 **OK 1 version**\ 。
 * 主机应用发送 **AT+OTA ACCEPT** 接受固件更新。
 * ExpressLink 开始从云端下载固件，主机可以使用 **AT+OTA?** 监控任务状态。
 * 下载完成且固件签名验证成功后，主机会收到应用新映像的事件。
@@ -584,12 +602,12 @@ Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此
 
    应用 OTA 更新后必须执行 **AT+CONNECT** 才能完成 OTA。首次启动新固件时未执行该命令会导致回滚到之前的固件。
 
-9.2 在线（OTW）升级
+9.2 有线（OTW）升级
 ^^^^^^^^^^^^^^^^^^^
 
 当 OTA 升级难以配置或网络连接不可用时，可以使用 OTW 方法升级。
 
-从 `发布页面 <https://github.com/espressif/esp-aws-expresslink-eval/releases>`__ 下载最新 ExpressLink 固件。执行 OTW 升级所需的 `otw.py <tools/otw.py>`__ 位于本仓库的 `tools` 目录。
+从 `发布页面 <https://github.com/espressif/esp-aws-expresslink-eval/releases>`__ 下载最新 ExpressLink 固件。执行 OTW 升级所需的 `otw.py <https://github.com/espressif/esp-aws-expresslink-eval/blob/main/tools/otw.py>`__ 位于 ESP AWS IoT ExpressLink 评估仓库的 ``tools`` 目录。
 
 1. 按照第 3.6.3 节将开发板连接到电脑。
 2. 确认已安装可用的 Python 3.X。
@@ -597,7 +615,9 @@ Arduino 的标准 RX 和 TX 引脚用于与 ExpressLink 开发板通信，因此
 4. 输入 `python3 otw.py (UART serial port) (Firmware binary filename)` 启动 OTW 流程。
 5. Python 控制台会显示完成百分比。
 6. 更新大约需要 2 分钟。完成后控制台会显示 `Uploaded 100.0% Done...`。
-7. 重置开发板，启动最新固件。
+7. 复位开发板，启动最新固件。
+
+.. _esp32-c3-aws-expresslink-troubleshooting:
 
 10. 故障排除
 ------------

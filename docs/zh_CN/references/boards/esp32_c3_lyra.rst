@@ -185,13 +185,13 @@ ESP32-C3-Lyra 的主要组件和连接方式如下图所示。
 软件支持
 ----------------
 
-ESP32-C3-Lyra 的开发框架是 `ESP-ADF <https://github.com/espressif/esp-adf>`_。如需查看本开发板支持的 ESP-ADF 版本，请前往 `硬件 <https://github.com/espressif/esp-adf#hardware>`_。
+ESP32-C3-Lyra 的开发框架是 `ESP-ADF <https://github.com/espressif/esp-adf>`_。如需查看本开发板支持的 ESP-ADF 版本，请前往 `硬件 <https://github.com/espressif/esp-adf/tree/release/v2.x#hardware>`_。
 
 您也可以前往乐鑫开发的其他软件仓库，更加全面地探索 ESP32-C3-Lyra 的相关功能。
 
 - `ESP-IDF <https://github.com/espressif/esp-idf>`__：基于 FreeRTOS 的乐鑫 SoC 开发框架，具有众多组件，包括 LED 控制 (LEDC)、ADC、RMT、SPI 等。
 
-开发板的应用示例存放在 `application example <https://github.com/espressif/esp-adf/tree/master/examples>`__ 中。
+开发板的应用示例存放在 `application example <https://github.com/espressif/esp-adf/tree/release/v2.x/examples>`__ 中。
 
 
 开始开发应用
@@ -291,7 +291,7 @@ ESP32-C3-Lyra 的开发框架是 `ESP-ADF <https://github.com/espressif/esp-adf>
 GPIO 分配列表
 ---------------
 
-`表 <../../../_static/esp32-c3-lyra-gpio-allocation.pdf>`_ 为 ESP32-C3-WROOM-02 模组管脚的 GPIO 分配列表，用于控制开发板的特定组件或功能。
+`表 <https://docs.espressif.com/projects/esp-adf/en/latest/_static/esp32-c3-lyra-gpio-allocation.pdf>`_ 为 ESP32-C3-WROOM-02 模组管脚的 GPIO 分配列表，用于控制开发板的特定组件或功能。
 
 供电说明
 ------------------
