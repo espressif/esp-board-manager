@@ -88,3 +88,22 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_button_boot
+
+  # ---------- Passive buzzer (GPIO2) ----------
+  - name: buzzer
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_buzzer
+
+  # ---------- SPM1423 PDM microphone ----------
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+    peripherals:
+      - i2s_name: i2s_audio_in

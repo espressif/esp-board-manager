@@ -55,6 +55,7 @@ peripherals:
   - name: gpio_boot_button
     type: gpio
     role: io
+    init_skip: true
     config:
       pin: 35
       mode: GPIO_MODE_INPUT

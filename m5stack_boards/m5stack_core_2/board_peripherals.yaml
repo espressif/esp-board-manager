@@ -40,3 +40,21 @@ peripherals:
         ws: 0
         dout: 2
         din: -1
+
+  # SPM1423 PDM microphone. Shares GPIO0 with the amplifier's WS above.
+  # init_skip: init_all brings up i2s_audio_out on the same port first.
+  - name: i2s_audio_in
+    type: i2s
+    role: master
+    format: pdm-in
+    init_skip: true
+    config:
+      port: 0
+      sample_rate_hz: 16000
+      data_bit_width: 16
+      slot_bit_width: I2S_SLOT_BIT_WIDTH_AUTO
+      slot_mode: I2S_SLOT_MODE_MONO
+      slot_mask: I2S_PDM_SLOT_RIGHT
+      pins:
+        clk: 0
+        din: 34

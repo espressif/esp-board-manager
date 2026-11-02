@@ -41,7 +41,7 @@ Versions `0.6.0` and later of this component require `espressif/esp_board_manage
 | Board | Chip | Audio | SD Card | LCD | LCD Touch | Camera | Button | LED Strip | Knob |
 |---|---|---|---|---|---|---|---|---|---|
 | [`ESP32-S3-BOX-3`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_3/hardware_overview_for_box_3.md) | ESP32-S3 | ES8311 (DAC) + ES7210 (ADC) | SDMMC | ILI9341 (spi) | GT911/TT21100 (i2c) | - | GPIO button | - | - |
-| [`ESP32-S3-BOX-Lite`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ES8156 (DAC) + ES7243E (ADC) | - | ST7789 (spi) | - | - | GPIO button | - | - |
+| [`ESP32-S3-BOX-Lite`](https://github.com/espressif/esp-box/blob/master/docs/hardware_overview/esp32_s3_box_lite/hardware_overview_for_lite.md) | ESP32-S3 | ES8156 (DAC) + ES7243E (ADC) | - | ST7789 (spi) | - | - | ADC button + GPIO button | - | - |
 | ESP32-S3-DevKitC-1 | ESP32-S3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
 | ESP32-S3-DevKitM-1 | ESP32-S3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
 | ESP32-S3-EYE | ESP32-S3 | Built-in ADC | SDMMC | ST7789 (spi) | - | Camera (dvp) | ADC button + GPIO button | - | - |
@@ -81,7 +81,7 @@ Versions `0.6.0` and later of this component require `espressif/esp_board_manage
 | ESP32-C3-DevKitC-02 | ESP32-C3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
 | ESP32-C3-DevKitM-1 | ESP32-C3 | - | - | - | - | - | GPIO button | WS2812 (rmt) | - |
 | ESP32-C3-LCDKit | ESP32-C3 | Built-in DAC | - | GC9A01 (spi) | - | - | GPIO button | WS2812 (rmt) | Knob (gpio) |
-| [`ESP32-C3-Lyra`](https://docs.espressif.com/projects/esp-adf/en/latest/design-guide/dev-boards/user-guide-esp32-c3-lyra.html) | ESP32-C3 | Built-in ADC + DAC | - | - | - | - | GPIO button | - | - |
+| [`ESP32-C3-Lyra`](https://docs.espressif.com/projects/esp-adf/en/latest/design-guide/dev-boards/user-guide-esp32-c3-lyra.html) | ESP32-C3 | Built-in ADC + DAC | - | - | - | - | GPIO button | WS2812 (rmt) | - |
 
 ### ESP32-C5
 

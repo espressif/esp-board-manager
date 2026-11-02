@@ -54,3 +54,13 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_button_b
+
+  # ---------- SPM1423 PDM microphone ----------
+  - name: audio_adc
+    chip: internal
+    type: audio_codec
+    config:
+      adc_enabled: true
+      dac_enabled: false
+    peripherals:
+      - i2s_name: i2s_audio_in

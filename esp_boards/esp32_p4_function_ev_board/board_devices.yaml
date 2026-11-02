@@ -94,6 +94,7 @@ devices:
   - name: boot_button
     type: button
     sub_type: gpio
+    init_skip: true
     version: default
     config:
       active_level: 0

@@ -86,3 +86,12 @@ devices:
       short_press_time: 100
     peripherals:
       - gpio_name: gpio_dial_down
+
+  # ---------- Passive buzzer (GPIO2) ----------
+  - name: buzzer
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_buzzer

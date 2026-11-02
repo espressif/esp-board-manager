@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2
+
+### Features
+
+- Added the ESP32-S3-BOX-Lite front-key ADC button group, the ESP32-C3-Lyra WS2812C system LED, and the ESP32-LyraT V4.3 green LED.
+- ESP32-P4X-C5-Function-EV-Board now declares the `ethernet` device (IP101GR, RMII).
+
+### Bug Fixes
+
+- Skip automatic initialization of the BOOT button and its GPIO on ESP32-P4-Function-EV-Board and ESP32-P4X-C5-Function-EV-Board because GPIO35 is shared with the Ethernet RMII TXD1 pin.
+
 ## 0.7.1
 
 ### Features

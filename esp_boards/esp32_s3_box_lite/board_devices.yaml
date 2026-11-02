@@ -74,3 +74,19 @@ devices:
     version: default
     peripherals:
       - ledc_name: ledc_backlight               # LEDC peripheral for GPIO 47
+
+  # ---------- Front keys PREV / ENTER / NEXT (ADC ladder on GPIO1) ----------
+  # Ladder voltages from esp-bsp esp-box-lite: NEXT 820 mV, ENTER 1980 mV,
+  # PREV 2410 mV.
+  - name: adc_button_group
+    type: button
+    sub_type: adc_multi
+    config:
+      long_press_time: 2000
+      short_press_time: 100
+      button_num: 3
+      max_voltage: 3000
+      voltage_range: [820, 1980, 2410]
+      button_labels: ["NEXT", "ENTER", "PREV"]
+    peripherals:
+      - adc_name: adc_oneshot

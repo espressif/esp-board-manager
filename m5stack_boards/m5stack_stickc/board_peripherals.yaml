@@ -106,8 +106,6 @@ peripherals:
   #   write, not a GPIO
   # - MPU6886 6-axis IMU (I2C 7-bit 0x68) and BM8563 RTC (I2C 7-bit 0x51),
   #   shared IRQ on GPIO35: no bmgr device types
-  # - SPM1423 PDM MEMS microphone: control-less, the pdm-in peripheral
-  #   above IS the interface
   # - Grove HY2.0-4P port (GPIO32 / GPIO33 plus 5V and GND)
   # - Header pads GPIO0 / GPIO26 / GPIO36 (GPIO36 is input-only)
   # - RESET button (EN pin, handled in hardware)

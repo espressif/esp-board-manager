@@ -47,9 +47,8 @@ peripherals:
       duty_resolution: LEDC_TIMER_10_BIT
       speed_mode: LEDC_LOW_SPEED_MODE
 
-  # Passive buzzer (GPIO3). A passive buzzer is driven by a PWM tone, so the
-  # LEDC channel is the peripheral; there is no bmgr buzzer device type, and
-  # ledc_ctrl models a duty percentage rather than a frequency.
+  # Passive buzzer (GPIO3). freq_hz sets the tone; the buzzer device's duty
+  # percent turns it on and off.
   # The vendor pin table renders GPIO3 and GPIO42 in adjacent rows; M5Unified
   # settles it: board_M5DinMeter sets spk_cfg.pin_data_out = GPIO_NUM_3 with
   # spk_cfg.buzzer = true (M5Unified.cpp, _set_speaker branch), and reads the

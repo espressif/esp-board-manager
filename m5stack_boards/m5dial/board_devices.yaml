@@ -1,4 +1,11 @@
 devices:
+  - name: power_hold
+    type: power_ctrl
+    sub_type: gpio
+    peripherals:
+      - gpio_name: gpio_power_hold
+        active_level: 1
+
   - name: display_lcd
     chip: gc9a01
     type: display_lcd
@@ -81,3 +88,11 @@ devices:
     config:
       partition_label: NULL
       format_if_mount_failed: false
+
+  - name: buzzer
+    type: ledc_ctrl
+    version: default
+    config:
+      default_percent: 0
+    peripherals:
+      - ledc_name: ledc_buzzer

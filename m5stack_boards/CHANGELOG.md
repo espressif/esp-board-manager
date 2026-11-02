@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2
+
+### Features
+
+- Added `audio_codec` devices for the on-board SPM1423 PDM microphone on ATOM Echo, ATOM U, AtomS3U, M5Capsule, Cardputer, Core2, StickC, StickC PLUS and StickC PLUS2, and for the NS4168 amplifier on ATOM Echo and Cardputer. Where the microphone clock shares a pin with the amplifier WS line, the microphone is `init_skip` and is initialized by name once `audio_dac` is released.
+- Added buzzer `ledc_ctrl` devices on M5Capsule, CoreInk, DinMeter, M5Dial, StickC PLUS and StickC PLUS2, the M5Dial power-hold latch, and an RMT TX peripheral for the AtomS3 IR transmitter.
+
 ## 0.6.1~2
 
 ### Bug Fixes

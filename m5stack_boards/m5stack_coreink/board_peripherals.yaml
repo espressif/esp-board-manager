@@ -108,6 +108,19 @@ peripherals:
       pull_up: false
       pull_down: false
 
+  # Passive buzzer (GPIO2). freq_hz sets the tone; the buzzer device's duty
+  # percent turns it on and off.
+  - name: ledc_buzzer
+    type: ledc
+    config:
+      gpio_num: 2
+      channel: LEDC_CHANNEL_0
+      timer_sel: LEDC_TIMER_0
+      freq_hz: 4000
+      duty: 0
+      duty_resolution: LEDC_TIMER_10_BIT
+      speed_mode: LEDC_LOW_SPEED_MODE
+
   # ----------------------------------------------------------------------
   # Not modeled:
   # - GDEW0154M09 1.54" 200x200 e-paper panel: there is no e-ink device
@@ -116,8 +129,6 @@ peripherals:
   #   RST GPIO0 (also the BOOT strapping pin) and BUSY GPIO4
   # - BM8563 RTC (I2C 7-bit 0x51 on i2c_master): no bmgr device type; the
   #   shared bus above is its interface
-  # - Passive buzzer on GPIO2: needs a PWM tone driver and has no bmgr
-  #   device type (ledc_ctrl models brightness, not a sounder)
   # - Battery voltage divider on the ADC and the on-board Li-ion charger
   # - HY2.0-4P Grove port (GPIO32 yellow / GPIO33 white) plus 5 V and GND,
   #   the M5-BUS stacking header and the HAT expansion header

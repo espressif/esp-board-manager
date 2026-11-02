@@ -39,10 +39,12 @@ peripherals:
 
   # SPM1423 PDM microphone (capture). Shares the GPIO33 clock line with the
   # amplifier's LRCK above.
+  # init_skip: init_all brings up i2s_audio_out on the same port first.
   - name: i2s_audio_in
     type: i2s
     role: master
     format: pdm-in
+    init_skip: true
     config:
       port: 0
       sample_rate_hz: 16000
@@ -69,11 +71,6 @@ peripherals:
 
   # ----------------------------------------------------------------------
   # Not modeled:
-  # - NS4168 I2S class-D amplifier: control-less (no I2C register set, no
-  #   SoC-driven enable pin), so there is no audio_codec device for it —
-  #   the i2s_audio_out peripheral above IS the interface
-  # - SPM1423 PDM MEMS microphone: likewise control-less; the pdm-in
-  #   peripheral above is the interface
   # - Grove HY2.0-4P port (GPIO26 / GPIO32 plus 5V and GND)
   # - RESET button (EN pin, handled in hardware)
   # - CH9102 USB-to-UART bridge on the USB Type-C port (console path)
