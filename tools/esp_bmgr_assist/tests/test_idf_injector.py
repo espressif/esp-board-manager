@@ -3,7 +3,9 @@ import contextlib
 import importlib.util
 import errno
 import io
+import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -84,7 +86,7 @@ class InjectorTests(unittest.TestCase):
         idf_injector._MAIN_EXECUTED = False
 
     def test_parse_cli_context_supports_project_dir_variants(self) -> None:
-        base = Path('/tmp/demo')
+        base = Path('/tmp/demo').resolve()
         context = idf_injector._parse_cli_context(
             ['idf.py', '-C', '/tmp/proj', 'gen-bmgr-config', '-b', 'board'],
             cwd=base,
@@ -92,13 +94,13 @@ class InjectorTests(unittest.TestCase):
         self.assertTrue(context.is_idf_command)
         self.assertTrue(context.is_gen_bmgr_config)
         self.assertEqual(context.bmgr_command, 'gen-bmgr-config')
-        self.assertEqual(context.project_path, Path('/tmp/proj'))
+        self.assertEqual(context.project_path, Path('/tmp/proj').resolve())
 
         context = idf_injector._parse_cli_context(
             ['idf.py', '--project-dir=/tmp/alt', 'build'],
             cwd=base,
         )
-        self.assertEqual(context.project_path, Path('/tmp/alt'))
+        self.assertEqual(context.project_path, Path('/tmp/alt').resolve())
         self.assertFalse(context.is_gen_bmgr_config)
         self.assertIsNone(context.bmgr_command)
 
@@ -108,7 +110,7 @@ class InjectorTests(unittest.TestCase):
         )
         self.assertFalse(context.is_gen_bmgr_config)
         self.assertEqual(context.bmgr_command, 'bmgr')
-        self.assertEqual(context.project_path, Path('/tmp/proj'))
+        self.assertEqual(context.project_path, Path('/tmp/proj').resolve())
 
     def test_resolve_bmgr_request_tracks_current_and_legacy_commands(self) -> None:
         request = bmgr_request.resolve_bmgr_request(['idf.py', 'bmgr', '-l'])
@@ -452,6 +454,8 @@ class InjectorTests(unittest.TestCase):
                 captured['dest'] = dest
 
             os.environ.pop('IDF_TARGET', None)
+            os.environ.pop('IDF_VERSION', None)
+            os.environ.pop(idf_injector.SKIP_BOOTSTRAP_ENV, None)
             with mock.patch.dict(sys.modules, _stub_idf_component_manager_modules(fake_download)):
                 with mock.patch.object(
                     idf_injector,
@@ -578,16 +582,12 @@ class InjectorTests(unittest.TestCase):
                 _create_bmgr_component(managed_dir)
 
             with mock.patch.object(idf_injector, '_bootstrap_project_dependencies', side_effect=fake_bootstrap) as mocked_download:
-                with mock.patch.object(idf_injector.os, 'execvpe') as mocked_exec:
+                with mock.patch.object(idf_injector, '_reexec_after_bootstrap') as mocked_reexec:
                     idf_injector._bootstrap_for_context(context)
 
             self.assertTrue(_actions_path_contains(managed_dir))
             mocked_download.assert_called_once()
-            mocked_exec.assert_called_once()
-            argv = mocked_exec.call_args.args[1]
-            env = mocked_exec.call_args.args[2]
-            self.assertEqual(argv, [sys.executable, *context.argv])
-            self.assertEqual(env.get(idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV), '1')
+            mocked_reexec.assert_called_once_with(context)
 
     def test_active_bootstrap_accepts_bmgr_command(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -608,12 +608,12 @@ class InjectorTests(unittest.TestCase):
                 _create_bmgr_component(managed_dir)
 
             with mock.patch.object(idf_injector, '_bootstrap_project_dependencies', side_effect=fake_bootstrap) as mocked_download:
-                with mock.patch.object(idf_injector.os, 'execvpe') as mocked_exec:
+                with mock.patch.object(idf_injector, '_reexec_after_bootstrap') as mocked_reexec:
                     idf_injector._bootstrap_for_context(context)
 
             self.assertTrue(_actions_path_contains(managed_dir))
             mocked_download.assert_called_once()
-            mocked_exec.assert_called_once()
+            mocked_reexec.assert_called_once_with(context)
 
     def test_active_bootstrap_does_not_reexec_twice_when_flag_is_set(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -635,11 +635,94 @@ class InjectorTests(unittest.TestCase):
 
             with mock.patch.dict(os.environ, {idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV: '1'}, clear=False):
                 with mock.patch.object(idf_injector, '_bootstrap_project_dependencies', side_effect=fake_bootstrap) as mocked_download:
-                    with mock.patch.object(idf_injector.os, 'execvpe') as mocked_exec:
+                    with mock.patch.object(idf_injector, '_reexec_after_bootstrap') as mocked_reexec:
                         idf_injector._bootstrap_for_context(context)
 
             mocked_download.assert_called_once()
-            mocked_exec.assert_not_called()
+            mocked_reexec.assert_not_called()
+
+    def test_reexec_uses_execvpe_on_posix(self) -> None:
+        context = idf_injector.CliContext(True, Path.cwd(), False, ('idf.py', 'bmgr', '-l'), 'bmgr')
+        with mock.patch.object(idf_injector.sys, 'platform', 'linux'):
+            with mock.patch.object(idf_injector.os, 'execvpe') as mocked_exec:
+                with mock.patch.object(idf_injector.subprocess, 'run') as mocked_run:
+                    idf_injector._reexec_after_bootstrap(context)
+
+        mocked_run.assert_not_called()
+        mocked_exec.assert_called_once()
+        executable, argv, env = mocked_exec.call_args.args
+        self.assertEqual(executable, sys.executable)
+        self.assertEqual(argv, [sys.executable, *context.argv])
+        self.assertEqual(env[idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV], '1')
+
+    def test_reexec_on_windows_waits_and_propagates_status(self) -> None:
+        context = idf_injector.CliContext(
+            True, Path.cwd(), False,
+            ('C:/IDF tools/idf.py', '-C', 'C:/project with spaces', 'bmgr', '-l'), 'bmgr',
+        )
+        os.environ.pop(idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV, None)
+        for child_status, expected_status in [(0, 0), (23, 23), (0x80000001, -2147483647)]:
+            with self.subTest(child_status=child_status), contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.object(idf_injector.sys, 'platform', 'win32'))
+                stdout = stack.enter_context(mock.patch.object(idf_injector.sys, 'stdout'))
+                stderr = stack.enter_context(mock.patch.object(idf_injector.sys, 'stderr'))
+                mocked_exec = stack.enter_context(mock.patch.object(idf_injector.os, 'execvpe'))
+
+                def run_child(*args, **kwargs):
+                    stdout.flush.assert_called_once_with()
+                    stderr.flush.assert_called_once_with()
+                    return types.SimpleNamespace(returncode=child_status)
+
+                mocked_run = stack.enter_context(mock.patch.object(
+                    idf_injector.subprocess, 'run', side_effect=run_child,
+                ))
+                with self.assertRaises(SystemExit) as cm:
+                    idf_injector._reexec_after_bootstrap(context)
+
+                self.assertEqual(cm.exception.code, expected_status)
+                mocked_exec.assert_not_called()
+                mocked_run.assert_called_once_with(
+                    [sys.executable, *context.argv],
+                    env=dict(os.environ, **{idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV: '1'}),
+                    check=False,
+                )
+                self.assertNotIn(idf_injector.REEXEC_AFTER_BOOTSTRAP_ENV, os.environ)
+
+    def test_reexec_handoff_preserves_arguments_and_waits_for_child(self) -> None:
+        with tempfile.TemporaryDirectory(prefix='bmgr handoff ') as temp_dir:
+            root = Path(temp_dir)
+            child = root / 'child script.py'
+            parent = root / 'parent script.py'
+            marker = root / 'completed.json'
+            _write(child, 'import json, os, sys, time\n'
+                   'from pathlib import Path\n'
+                   'time.sleep(0.2)\n'
+                   'Path("completed.json").write_text(json.dumps([sys.argv[1:], '
+                   'os.environ.get("ESP_BMGR_ASSIST_REEXECED")]))\n'
+                   'print("child completed", flush=True)\n'
+                   'sys.exit(23)\n')
+            _write(parent, 'from pathlib import Path\n'
+                   'from esp_bmgr_py import idf_injector\n'
+                   'import sys\n'
+                   'print("before handoff")\n'
+                   'context = idf_injector.CliContext(True, Path.cwd(), False, '
+                   '(sys.argv[1], "argument with spaces", \'quoted "value"\'), "bmgr")\n'
+                   'idf_injector._reexec_after_bootstrap(context)\n'
+                   'raise SystemExit("handoff unexpectedly returned")\n')
+            env = dict(os.environ)
+            source_root = str(Path(idf_injector.__file__).resolve().parent.parent)
+            env['PYTHONPATH'] = os.pathsep.join(filter(None, [source_root, env.get('PYTHONPATH')]))
+            env.pop('PYTHONUNBUFFERED', None)
+            env.pop('ESP_BMGR_DEBUG', None)
+            with (root / 'stdout.log').open('w') as stdout, (root / 'stderr.log').open('w') as stderr:
+                result = subprocess.run(
+                    [sys.executable, str(parent), str(child)], cwd=root, env=env,
+                    stdout=stdout, stderr=stderr, timeout=20,
+                )
+            self.assertEqual(result.returncode, 23, (root / 'stderr.log').read_text())
+            self.assertEqual(json.loads(marker.read_text()), [['argument with spaces', 'quoted "value"'], '1'])
+            if sys.platform == 'win32':
+                self.assertEqual((root / 'stdout.log').read_text().splitlines(), ['before handoff', 'child completed'])
 
     def test_missing_board_manager_dependency_raises_friendly_error(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -746,7 +829,7 @@ class InjectorTests(unittest.TestCase):
             _create_project(project_path)
             _write(
                 project_path / 'main' / 'idf_component.yml',
-                'dependencies:\n  : not-a-valid-key\n',
+                'dependencies: [unterminated\n',
             )
 
             with self.assertRaises(Exception):
@@ -779,12 +862,12 @@ class InjectorTests(unittest.TestCase):
                 with mock.patch.object(
                     idf_injector, '_bootstrap_project_dependencies'
                 ) as mocked_discovery:
-                    with mock.patch.object(idf_injector.os, 'execvpe') as mocked_exec:
+                    with mock.patch.object(idf_injector, '_reexec_after_bootstrap') as mocked_reexec:
                         idf_injector._bootstrap_for_context(context)
 
             mocked_direct.assert_called_once()
             mocked_discovery.assert_not_called()
-            mocked_exec.assert_called_once()
+            mocked_reexec.assert_called_once_with(context)
             self.assertTrue(_actions_path_contains(managed_dir))
 
     def test_direct_path_rejects_broken_override_path(self) -> None:
@@ -1098,9 +1181,9 @@ class InjectorTests(unittest.TestCase):
             self.assertIn(f'lsof {lock_path}', output)
             self.assertIn(f'fuser -v {lock_path}', output)
 
-    def test_lock_timeout_defaults_to_30_seconds(self) -> None:
+    def test_lock_timeout_defaults_to_60_seconds(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(idf_injector._resolve_lock_timeout(), 30.0)
+            self.assertEqual(idf_injector._resolve_lock_timeout(), 60.0)
 
     def test_lock_timeout_can_be_overridden_by_env(self) -> None:
         with mock.patch.dict(os.environ, {idf_injector.LOCK_TIMEOUT_ENV: '12.5'}):

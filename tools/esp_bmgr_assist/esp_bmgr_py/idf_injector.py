@@ -1261,6 +1261,17 @@ def _reexec_after_bootstrap(context: CliContext) -> None:
     _debug(
         'Re-executing idf.py after bootstrap so bmgr runs with the real board manager extension'
     )
+    if sys.platform == 'win32':
+        # Windows CRT exec can crash and does not wait for the replacement process.
+        # Use CreateProcess via subprocess, preserving stdio and the final exit status.
+        sys.stdout.flush()
+        sys.stderr.flush()
+        result = subprocess.run([sys.executable, *context.argv], env=env, check=False)
+        # Python 3.11 converts SystemExit through a signed Windows C long.
+        status = result.returncode
+        if status >= 0x80000000:
+            status -= 0x100000000
+        raise SystemExit(status)
     os.execvpe(sys.executable, [sys.executable, *context.argv], env)
 
 

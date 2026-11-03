@@ -45,7 +45,7 @@ pip install esp-bmgr-assist
 Install from source:
 
 ```bash
-pip install --no-build-isolation /path/to/esp-bmgr-py
+pip install --no-build-isolation /path/to/esp-board-manager/tools/esp_bmgr_assist
 ```
 
 Upgrade an existing installation from PyPI:
@@ -57,7 +57,7 @@ pip install --upgrade esp-bmgr-assist
 Upgrade from a local checkout after new changes:
 
 ```bash
-pip install --upgrade --no-build-isolation /path/to/esp-bmgr-py
+pip install --upgrade --no-build-isolation /path/to/esp-board-manager/tools/esp_bmgr_assist
 ```
 
 Using `--no-build-isolation` avoids forcing a fresh setuptools/wheel download when you install
@@ -194,7 +194,7 @@ If you installed `0.3.0` before and later saw `check-python-dependencies` failur
 For local checkout installs, prefer:
 
 ```bash
-pip install --no-build-isolation /path/to/esp-bmgr-py
+pip install --no-build-isolation /path/to/esp-board-manager/tools/esp_bmgr_assist
 ```
 
 This reuses the current ESP-IDF Python environment instead of asking pip to create an isolated
@@ -203,7 +203,7 @@ build environment and download a newer setuptools/wheel pair first.
 本地源码安装建议优先使用：
 
 ```bash
-pip install --no-build-isolation /path/to/esp-bmgr-py
+pip install --no-build-isolation /path/to/esp-board-manager/tools/esp_bmgr_assist
 ```
 
 这样会直接复用当前 ESP-IDF Python 环境，避免 `pip` 先创建隔离构建环境并额外下载新的

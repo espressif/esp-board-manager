@@ -32,8 +32,8 @@ Other development boards are available through standalone board-pack components.
 
 - `waveshare/waveshare_boards`
   - GitHub: [waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
-  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards)
 
-- `guition-jc/guition_boards`
+- `guition/guition_boards`
   - GitHub: [Guition-JC/Guition](https://github.com/Guition-JC/Guition)
-  - ESP Component Registry: [guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+  - ESP Component Registry: [guition/guition_boards](https://components.espressif.com/components/guition/guition_boards)

@@ -32,8 +32,8 @@ Board Manager 网页工具：[https://board-manager.espressif.com](https://board
 
 - `waveshare/waveshare_boards`
   - GitHub 链接：[waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
-  - ESP Component Registry 链接：[waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+  - ESP Component Registry 链接：[waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards)
 
-- `guition-jc/guition_boards`
+- `guition/guition_boards`
   - GitHub 链接：[Guition-JC/Guition](https://github.com/Guition-JC/Guition)
-  - ESP Component Registry 链接：[guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+  - ESP Component Registry 链接：[guition/guition_boards](https://components.espressif.com/components/guition/guition_boards)
