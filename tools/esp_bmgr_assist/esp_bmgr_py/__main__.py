@@ -75,7 +75,7 @@ def main() -> int:
             found_pth = True
     if not found_pth:
         print('esp_bmgr_py.pth: NOT FOUND under sys.path site-packages — hook will not run; reinstall with:')
-        print('  pip install --no-cache-dir --no-build-isolation -U /path/to/esp-bmgr-py')
+        print('  pip install --no-cache-dir --no-build-isolation -U /path/to/esp-board-manager/tools/esp_bmgr_assist')
 
     extra = os.environ.get('IDF_EXTRA_ACTIONS_PATH', '')
     if extra:
