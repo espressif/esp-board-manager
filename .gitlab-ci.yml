@@ -7,6 +7,10 @@ stages:
 
 workflow:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1" && $CI_COMMIT_BRANCH && $CI_PIPELINE_SOURCE == "web"'
+    - if: '$ECOSYSTEM_STATS == "1" && $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
       when: never
@@ -34,3 +38,4 @@ include:
   - ".gitlab/ci/build-test-apps.yml"
   - ".gitlab/ci/docs.yml"
   - ".gitlab/ci/deploy.yml"
+  - ".gitlab/ci/ecosystem-stats.yml"

@@ -53,3 +53,8 @@ coverage_report/
 
 .vscode
 .cache/
+
+# Ecosystem scan configuration, review records, and detailed reports stay local.
+/.ecosystem-private/
+/tools/ci/ecosystem_sources.json
+/tools/ci/ecosystem_board_review.json

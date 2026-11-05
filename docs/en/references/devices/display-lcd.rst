@@ -988,6 +988,61 @@ For DSI, the factory receives the DSI bus and the BMGR configuration and handles
 Debugging Tips
 --------------
 
+.. _display-lcd-partial-refresh-align:
+
+QSPI/SPI Partial Refresh Window Alignment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Symptom
+~~~~~~~
+
+Full-screen or full-width row refreshes display normally on the physical panel. Partial dirty-area updates, such as labels, buttons, or modal overlays, show an approximately 45° diagonal skew or tearing (``////``) on the physical screen. Software shadow-framebuffer screenshots still look correct.
+
+Cause
+~~~~~
+
+Some SPI/QSPI LCD controllers, such as CO5300, require the start coordinates and dimensions of the GRAM partial-refresh window to be aligned to 2-pixel or 4-pixel boundaries. The window is set by the column-address command ``0x2A`` (CASET) and the row-address command ``0x2B`` (RASET). The start coordinates are ``x1`` and ``y1``. The dimensions are ``width`` and ``height``.
+
+When an unaligned dirty area is flushed over DMA, the controller wraps each row at the aligned column width, but each line contains fewer pixels. Each scanline shifts by 1 to 3 pixels relative to the previous line. A full-screen or full-width refresh sends a full column window on every line, so the image stays aligned. The shift occurs while the controller writes GRAM. The software shadow framebuffer still stores pixels at their logical coordinates, so a screenshot does not show the skew.
+
+Solution
+~~~~~~~~
+
+Register an area-rounding callback in the upper graphics layer, and expand the refresh area to an aligned boundary before flushing. Call ``esp_lv_adapter_set_area_rounder_cb``, or modify the invalidated area in an LVGL ``LV_EVENT_INVALIDATE_AREA`` callback. Round ``x1`` and ``y1`` down to a multiple of 4, and round ``x2`` and ``y2`` up to ``4 * k - 1``. Clamp the result to ``[0, lcd_width - 1]`` and ``[0, lcd_height - 1]``. ``lcd_width`` and ``lcd_height`` are the panel resolution in pixels.
+
+The callback below matches ``esp_lv_adapter_set_area_rounder_cb``. For ``LV_EVENT_INVALIDATE_AREA``, obtain the ``lv_area_t`` from ``lv_event_get_param()`` and apply the same rounding. The example uses 4-pixel alignment. If the controller only requires 2-pixel alignment, replace ``~3`` and ``| 3`` with ``~1`` and ``| 1``.
+
+.. code-block:: c
+
+   /* lcd_width and lcd_height are the panel resolution in pixels. */
+   static int32_t clamp_axis(int32_t value, int32_t max_value)
+   {
+       if (value < 0) {
+           return 0;
+       }
+       if (value > max_value) {
+           return max_value;
+       }
+       return value;
+   }
+
+   static void round_area_4px(lv_area_t *area, void *user_data)
+   {
+       (void)user_data;
+       const int32_t max_x = lcd_width - 1;
+       const int32_t max_y = lcd_height - 1;
+
+       area->x1 = clamp_axis(area->x1, max_x) & ~3;
+       area->y1 = clamp_axis(area->y1, max_y) & ~3;
+
+       int32_t x2 = clamp_axis(area->x2, max_x) | 3;
+       int32_t y2 = clamp_axis(area->y2, max_y) | 3;
+       area->x2 = x2 > max_x ? max_x : x2;
+       area->y2 = y2 > max_y ? max_y : y2;
+   }
+
+   ESP_ERROR_CHECK(esp_lv_adapter_set_area_rounder_cb(disp, round_area_4px, NULL));
+
 .. _display-lcd-api:
 
 API Reference
