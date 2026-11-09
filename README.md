@@ -1,11 +1,11 @@
 # ESP Board Manager ecosystem / 生态统计
 
-Updated at / 更新时间: **2026-11-06T08:26:19Z**
+Updated at / 更新时间: **2026-11-09T07:11:05Z**
 
 | Metric / 指标 | Count / 数量 |
 | --- | ---: |
 | Reviewed supported boards / 已审阅的支持板卡 | 189 |
-| Public dependent projects / 公开依赖项目 | 70 |
+| Public dependent projects / 公开依赖项目 | 77 |
 
 Board totals include the configured board components and manually approved outside models. Reviewed copies and configuration variants count once; pending candidates are excluded. The total does not imply hardware validation.
 
