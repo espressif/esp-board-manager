@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" fill="none" role="img" aria-labelledby="banner-title banner-description" xml:lang="en">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="356" viewBox="0 0 1200 356" fill="none" role="img" aria-labelledby="banner-title banner-description" xml:lang="en">
   <title id="banner-title">ESP Board Manager ecosystem statistics</title>
   <desc id="banner-description">190 supported boards. 77 projects using Board Manager.</desc>
-  <rect width="1200" height="400" rx="28" fill="#FFFFFF" />
+  <rect width="1200" height="356" fill="#FFFFFF" />
   <g id="brand-artwork" transform="translate(159.74 -4.58) scale(0.62)">
 <path d="M413.888 131.648V143.936H377.504V158.816H410.912V170.624H377.504V187.424H414.56V200H362.624V131.648H413.888ZM475.466 152L461.162 152.096C460.586 145.28 456.266 141.92 448.202 141.92C444.746 141.92 442.058 142.592 440.138 143.936C438.218 145.28 437.162 147.2 437.162 149.696C437.162 150.464 437.354 151.232 437.546 151.904C437.834 152.48 438.314 153.056 438.986 153.632C439.754 154.208 440.426 154.592 441.098 154.976C441.866 155.36 442.922 155.744 444.266 156.128C445.61 156.512 446.858 156.896 448.01 157.28C449.162 157.568 450.698 157.952 452.714 158.528C454.826 159.008 456.554 159.488 458.09 159.968C464.81 161.888 469.898 164.288 473.162 167.168C476.426 170.048 478.058 174.176 478.058 179.552C478.058 183.392 477.29 186.848 475.658 189.728C474.122 192.608 471.914 194.912 469.226 196.64C466.538 198.368 463.562 199.616 460.298 200.384C457.034 201.152 453.578 201.632 449.93 201.632C440.714 201.632 433.418 199.424 428.234 195.2C423.05 190.976 420.362 184.928 420.266 177.248H435.146C435.434 185.792 440.618 190.112 450.602 190.112C454.538 190.112 457.61 189.248 459.914 187.616C462.218 185.984 463.274 183.776 463.274 180.992C463.274 178.592 462.314 176.864 460.202 175.808C458.09 174.656 453.77 173.216 447.05 171.296C446.666 171.2 446.378 171.104 446.186 171.104C445.994 171.008 445.802 170.912 445.418 170.816C445.13 170.72 444.842 170.624 444.554 170.624C442.25 169.952 440.714 169.472 439.754 169.184C438.89 168.896 437.45 168.416 435.53 167.744C433.61 166.976 432.17 166.4 431.306 165.824C430.346 165.248 429.29 164.384 427.946 163.424C426.602 162.368 425.738 161.312 425.162 160.16C424.586 159.008 424.01 157.664 423.53 156.032C423.05 154.4 422.858 152.672 422.858 150.752C422.858 144.512 425.258 139.52 430.058 135.776C434.858 132.128 441.194 130.208 449.162 130.208C456.842 130.208 463.082 132.032 467.978 135.68C472.778 139.328 475.274 144.704 475.466 152ZM487.314 131.648H516.786C524.466 131.648 530.514 133.568 535.026 137.216C539.538 140.864 541.842 146.336 541.842 153.632C541.842 160.832 539.538 166.304 535.122 169.952C530.61 173.6 524.754 175.424 517.554 175.424H502.194V200H487.314V131.648ZM502.194 143.936V163.616H515.538C523.314 163.616 527.25 160.352 527.25 153.824C527.25 147.296 523.314 143.936 515.634 143.936H502.194Z" fill="black" />
 
@@ -10,26 +10,27 @@
 <path fill-rule="evenodd" clip-rule="evenodd" d="M136.357 59C148.897 59 159.063 69.1753 159.063 81.7273V110.642C161.784 109.941 164.637 109.568 167.577 109.568H235.693C254.503 109.568 269.751 124.831 269.751 143.659V208.432H300.971C310.376 208.432 318 216.063 318 225.477V241.955C318 251.368 310.376 259 300.971 259H244.208C236.171 259 229.436 253.427 227.646 245.932H167.577C148.768 245.932 133.519 230.669 133.519 211.841V143.659C133.519 140.716 133.892 137.86 134.592 135.136H105.705C93.1655 135.136 83 124.961 83 112.409V81.7273C83 69.1753 93.1655 59 105.705 59H136.357ZM252.722 225.477C249.587 225.477 247.046 228.021 247.046 231.159V236.273C247.046 239.411 249.587 241.955 252.722 241.955H257.831C260.966 241.955 263.507 239.411 263.507 236.273V231.159C263.507 228.021 260.966 225.477 257.831 225.477H252.722ZM286.78 225.477C283.645 225.477 281.104 228.021 281.104 231.159V236.273C281.104 239.411 283.645 241.955 286.78 241.955H291.889C295.024 241.955 297.565 239.411 297.565 236.273V231.159C297.565 228.021 295.024 225.477 291.889 225.477H286.78ZM178.93 143.659C172.66 143.659 167.577 148.747 167.577 155.023V200.477C167.577 206.753 172.66 211.841 178.93 211.841H224.341C230.61 211.841 235.693 206.753 235.693 200.477V155.023C235.693 148.747 230.61 143.659 224.341 143.659H178.93ZM121.031 84.5682C114.135 84.5682 108.543 90.1646 108.543 97.0682C108.543 103.972 114.135 109.568 121.031 109.568C127.928 109.568 133.519 103.972 133.519 97.0682C133.519 90.1646 127.928 84.5682 121.031 84.5682Z" fill="#E8362D" />
 
   </g>
-  <rect x="56" y="201" width="1088" height="172" rx="26" fill="#E8E2DC" fill-opacity="0.3" id="statistics-shadow" />
-  <rect x="56.5" y="196.5" width="1087" height="171" rx="25.5" fill="#FFFFFF" stroke="#EAE6E1" id="statistics-panel" />
+  <rect x="56" y="200" width="532" height="132" rx="22" fill="#E8E4DF" fill-opacity="0.25" id="statistics-shadow" />
+  <rect x="56.5" y="196.5" width="531" height="131" rx="21.5" fill="#FFFFFF" stroke="#E8E6E3" id="statistics-panel" />
+  <rect x="612" y="200" width="532" height="132" rx="22" fill="#E8E4DF" fill-opacity="0.25" id="projects-shadow" />
+  <rect x="612.5" y="196.5" width="531" height="131" rx="21.5" fill="#FFFFFF" stroke="#E8E6E3" id="projects-panel" />
   <g id="supported-boards-metric">
-    <rect x="92" y="233" width="60" height="60" rx="18" fill="#FFF3F1" id="supported-boards-icon-background" />
-    <g transform="translate(105 246)" stroke="#E8362D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="supported-boards-icon">
-      <rect x="6" y="6" width="22" height="22" rx="5" />
-      <rect x="12" y="12" width="10" height="10" rx="2" />
-      <path d="M12 2V6M22 2V6M12 28V32M22 28V32M2 12H6M2 22H6M28 12H32M28 22H32" />
+    <rect x="84" y="238" width="48" height="48" rx="15" fill="#FFF3F1" id="supported-boards-icon-background" />
+    <g transform="translate(91 245)" stroke="#E8362D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="supported-boards-icon">
+      <rect x="6" y="6" width="22" height="22" rx="3" />
+      <rect x="12" y="12" width="10" height="10" rx="1.5" />
+      <path d="M12 0V6M22 0V6M12 28V34M22 28V34M0 12H6M0 22H6M28 12H34M28 22H34" />
     </g>
-    <text id="supported-boards-count" x="180" y="286" fill="#1B1B1D" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5">190</text>
-    <text id="supported-boards-label" x="181" y="326" fill="#666367" font-family="Arial, Helvetica, sans-serif" font-size="20">Supported boards</text>
+    <text id="supported-boards-count" x="556" y="282" fill="#1B1B1D" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" letter-spacing="-1.5" text-anchor="end">190</text>
+    <text id="supported-boards-label" x="154" y="268" fill="#666367" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400">Supported boards</text>
   </g>
   <g id="projects-metric">
-    <rect x="636" y="233" width="60" height="60" rx="18" fill="#FFF3F1" id="projects-icon-background" />
-    <g transform="translate(649 246)" stroke="#E8362D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="projects-icon">
-      <path d="M9 5H25C27.2 5 29 6.8 29 9V25" />
-      <rect x="4" y="10" width="20" height="20" rx="4" />
-      <path d="M9 16H19M9 21H16" />
+    <rect x="640" y="238" width="48" height="48" rx="15" fill="#FFF3F1" id="projects-icon-background" />
+    <g transform="translate(647 245)" stroke="#E8362D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="projects-icon">
+      <path d="M3 12V7C3 5.3 4.3 4 6 4H13L17 8H28C29.7 8 31 9.3 31 11V28C31 29.7 29.7 31 28 31H6C4.3 31 3 29.7 3 28V12ZM3 12H31" />
+      <path d="M13 17L9 21L13 25M21 17L25 21L21 25" />
     </g>
-    <text id="projects-count" x="724" y="286" fill="#1B1B1D" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" letter-spacing="-2.5">77</text>
-    <text id="projects-label" x="725" y="326" fill="#666367" font-family="Arial, Helvetica, sans-serif" font-size="20">Projects using Board Manager</text>
+    <text id="projects-count" x="1112" y="282" fill="#1B1B1D" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" letter-spacing="-1.5" text-anchor="end">77</text>
+    <text id="projects-label" x="710" y="268" fill="#666367" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400">Projects using Board Manager</text>
   </g>
 </svg>
