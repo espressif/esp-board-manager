@@ -987,6 +987,61 @@ DSI 工厂函数接收 DSI 总线以及 BMGR 配置和句柄，例如：
 调试技巧
 ------------
 
+.. _display-lcd-partial-refresh-align:
+
+QSPI/SPI 部分刷新窗口对齐
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+现象
+~~~~~~
+
+全屏刷新或整行刷新在物理屏上显示正常。局部脏区刷新（例如标签、按钮或模态遮罩）在物理屏上出现约 45° 的斜向错位或撕裂（\ ``////``\ ）。软件侧阴影帧缓冲（shadow framebuffer）截图仍然正常。
+
+原因
+~~~~~~
+
+部分 SPI/QSPI LCD 控制器（例如 CO5300）要求显存（GRAM）部分刷新窗口的起始坐标和尺寸按 2 像素或 4 像素边界对齐。窗口由列地址命令 ``0x2A``\ （CASET）和行地址命令 ``0x2B``\ （RASET）设置。起始坐标为 ``x1``\ 、\ ``y1``\ ，尺寸为 ``width``\ 、\ ``height``\ 。
+
+未对齐的脏区经 DMA 下发时，控制器按对齐后的列宽换行，每行实际收到的像素更少。相邻扫描行相对上一行偏移 1 到 3 个像素。全屏或整行刷新时，每行像素数与列窗口宽度一致，画面保持对齐。错位发生在控制器写入显存的过程中。软件侧阴影帧缓冲仍按逻辑坐标保存像素，截图看不到该错位。
+
+处理方法
+~~~~~~~~~~~~
+
+在上层图形库注册区域对齐回调，将刷新区域扩大到对齐边界后再下发。可调用 ``esp_lv_adapter_set_area_rounder_cb``\ ，或在 LVGL 的 ``LV_EVENT_INVALIDATE_AREA`` 回调中修改失效区域。将 ``x1``\ 、\ ``y1`` 向下对齐到 4 的倍数，将 ``x2``\ 、\ ``y2`` 向上扩展到 ``4 * k - 1``\ ，并限制在 ``[0, lcd_width - 1]`` 与 ``[0, lcd_height - 1]``\ 。\ ``lcd_width`` 与 ``lcd_height`` 为面板分辨率，单位为像素。
+
+下面的回调签名对应 ``esp_lv_adapter_set_area_rounder_cb``\ 。使用 ``LV_EVENT_INVALIDATE_AREA`` 时，通过 ``lv_event_get_param()`` 取得 ``lv_area_t``\ ，再执行相同的对齐。示例按 4 像素对齐。控制器只要求 2 像素对齐时，将 ``~3`` 和 ``| 3`` 改为 ``~1`` 和 ``| 1``\ 。
+
+.. code-block:: c
+
+   /* lcd_width and lcd_height are the panel resolution in pixels. */
+   static int32_t clamp_axis(int32_t value, int32_t max_value)
+   {
+       if (value < 0) {
+           return 0;
+       }
+       if (value > max_value) {
+           return max_value;
+       }
+       return value;
+   }
+
+   static void round_area_4px(lv_area_t *area, void *user_data)
+   {
+       (void)user_data;
+       const int32_t max_x = lcd_width - 1;
+       const int32_t max_y = lcd_height - 1;
+
+       area->x1 = clamp_axis(area->x1, max_x) & ~3;
+       area->y1 = clamp_axis(area->y1, max_y) & ~3;
+
+       int32_t x2 = clamp_axis(area->x2, max_x) | 3;
+       int32_t y2 = clamp_axis(area->y2, max_y) | 3;
+       area->x2 = x2 > max_x ? max_x : x2;
+       area->y2 = y2 > max_y ? max_y : y2;
+   }
+
+   ESP_ERROR_CHECK(esp_lv_adapter_set_area_rounder_cb(disp, round_area_4px, NULL));
+
 .. _display-lcd-api:
 
 API 参考

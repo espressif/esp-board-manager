@@ -1,15 +1,21 @@
 .rules:pre_check:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
 
 .rules:build:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
 
 .rules:deploy:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -38,6 +44,8 @@
 # Schedules are explicitly skipped; docs are validated by MR pipelines.
 .rules:build:docs:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - <<: *if-schedule-docs
       when: never
     - <<: *if-protected-docs
@@ -47,8 +55,14 @@
 # Deploy docs preview on MR events; deploy docs production on protected branches / tags.
 .rules:deploy:docs:preview:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
     - <<: *if-merge_request_event-docs
 
 .rules:deploy:docs:production:
   rules:
+    - if: '$ECOSYSTEM_STATS == "1"'
+      when: never
+    - <<: *if-schedule-docs
+      when: never
     - <<: *if-protected-docs

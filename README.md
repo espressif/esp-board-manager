@@ -1,4 +1,10 @@
-![ESP Board Manager](docs/_static/bmgr_banner.svg)
+<a href="https://github.com/espressif/esp-board-manager/blob/ecosystem-stats/README.md">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/espressif/esp-board-manager/ecosystem-stats/ecosystem-banner-en-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/espressif/esp-board-manager/ecosystem-stats/ecosystem-banner-en-light.svg">
+    <img alt="ESP Board Manager: supported boards and projects using Board Manager" src="https://raw.githubusercontent.com/espressif/esp-board-manager/ecosystem-stats/ecosystem-banner-en-light.svg">
+  </picture>
+</a>
 
 # ESP Board Manager
 
@@ -14,26 +20,22 @@ Documentation for the latest version: [https://docs.espressif.com/projects/esp-b
 
 ## Supported Boards
 
-- Official Espressif development boards: `espressif/esp_boards`
-  - GitHub: [espressif/esp-board-manager/tree/main/esp_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_boards)
-  - ESP Component Registry: [espressif/esp_boards](https://components.espressif.com/components/espressif/esp_boards)
+ESP Board Manager supports development boards from different vendors through the following board-pack components:
 
-The `esp_board_manager` component depends on this component by default, so users can list and select these official boards directly with `idf.py bmgr -l`.
+| Vendor | Board Component | Resources |
+| :---: | --- | --- |
+| [<img src="docs/_static/logos/espressif.svg" alt="Espressif" width="120">](https://www.espressif.com/) | `espressif/esp_boards`<br>Official Espressif development boards | [GitHub](https://github.com/espressif/esp-board-manager/tree/main/esp_boards) · [Component Registry](https://components.espressif.com/components/espressif/esp_boards) |
+| [<img src="docs/_static/logos/espressif.svg" alt="Espressif" width="120">](https://www.espressif.com/) | `espressif/esp_friends_boards`<br>Third-party development boards | [GitHub](https://github.com/espressif/esp-board-manager/tree/main/esp_friends_boards) · [Component Registry](https://components.espressif.com/components/espressif/esp_friends_boards) |
+| [<img src="docs/_static/logos/m5stack.svg" alt="M5Stack" width="120">](https://m5stack.com/) | `espressif/m5stack_boards` | [GitHub](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards) · [Component Registry](https://components.espressif.com/components/espressif/m5stack_boards) |
+| [<img src="docs/_static/logos/waveshare.png" alt="Waveshare" width="120">](https://www.waveshare.com/) | `waveshare/waveshare_boards` | [GitHub](https://github.com/waveshareteam/waveshare_boards) · [Component Registry](https://components.espressif.com/components/waveshare/waveshare_boards) |
+| [<img src="docs/_static/logos/guition.webp" alt="Guition" width="120">](https://www.guition.com/model-selection) | `guition/guition_boards` | [GitHub](https://github.com/Guition-JC/Guition) · [Component Registry](https://components.espressif.com/components/guition/guition_boards) |
 
-Other development boards are available through standalone board-pack components. Add the following components to your project dependencies as needed:
+The `esp_board_manager` component depends on `espressif/esp_boards` by default, so users can list and select these official boards directly with `idf.py bmgr -l`. To use other board-pack components, add the corresponding components to your project dependencies.
 
-- `espressif/esp_friends_boards`
-  - GitHub: [espressif/esp-board-manager/tree/main/esp_friends_boards](https://github.com/espressif/esp-board-manager/tree/main/esp_friends_boards)
-  - ESP Component Registry: [espressif/esp_friends_boards](https://components.espressif.com/components/espressif/esp_friends_boards)
+To create your own board-pack component, refer to the [board-pack component template](https://github.com/LiuCodee/demo_boards).
 
-- `espressif/m5stack_boards`
-  - GitHub: [espressif/esp-board-manager/tree/main/m5stack_boards](https://github.com/espressif/esp-board-manager/tree/main/m5stack_boards)
-  - ESP Component Registry: [espressif/m5stack_boards](https://components.espressif.com/components/espressif/m5stack_boards)
+## Community and Support
 
-- `waveshare/waveshare_boards`
-  - GitHub: [waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
-  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards)
+Scan the QR code below with WeChat to join the ESP Board Manager community’s official discussion and support group.
 
-- `guition/guition_boards`
-  - GitHub: [Guition-JC/Guition](https://github.com/Guition-JC/Guition)
-  - ESP Component Registry: [guition/guition_boards](https://components.espressif.com/components/guition/guition_boards)
+<img src="docs/_static/esp_board_manager_community_qr.png" alt="ESP Board Manager community WeChat QR code" width="240" height="240">

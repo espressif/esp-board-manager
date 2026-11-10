@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+
+# Schedule main with ECOSYSTEM_STATS=1, or manually run any branch with that variable.
+# Configuration comes from this project's Secure Files.
+# Collection uses ECOSYSTEM_GITHUB_TOKEN; publishing uses the existing GH_PUSH_*
+# credentials through tools/ci/utils.sh. The source main branch is never updated.
+update_ecosystem_stats:
+  stage: deploy
+  image: "python:3.11"
+  tags:
+    - build
+  resource_group: ecosystem-stats
+  timeout: 30 minutes
+  needs: []
+  rules:
+    - if: '$ECOSYSTEM_STATS == "1" && $CI_COMMIT_BRANCH && $CI_PIPELINE_SOURCE == "web"'
+    - if: '$ECOSYSTEM_STATS == "1" && $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "schedule"'
+  before_script:
+    - |
+      if ! command -v git >/dev/null; then
+        apt-get update
+        apt-get install --yes --no-install-recommends git
+      fi
+    - git --version
+    - python3 -m pip install 'PyYAML>=6,<7'
+  script:
+    - python3 -m unittest discover -s tools/ci/tests -v
+    - python3 tools/ci/fetch_ecosystem_config.py --output .ecosystem-private/config
+    - python3 tools/ci/collect_ecosystem_stats.py --sources .ecosystem-private/config/ecosystem_sources.json --output .ecosystem-private/report
+    - source "${CI_PROJECT_DIR}/tools/ci/utils.sh"
+    - add_github_https_credentials
+    - python3 tools/ci/publish_ecosystem_stats.py --source .ecosystem-private/report --remote "$(get_github_https_remote)"
+  artifacts:
+    access: developer
+    when: always
+    expire_in: 30 days
+    paths:
+      - .ecosystem-private/report/stats.json
+      - .ecosystem-private/report/supported-boards.svg
+      - .ecosystem-private/report/dependent-projects.svg
+      - .ecosystem-private/report/README.md
