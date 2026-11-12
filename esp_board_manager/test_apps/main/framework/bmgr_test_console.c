@@ -38,6 +38,7 @@ static esp_err_t bmgr_test_console_register_cases(void)
     bmgr_register_led_cases();
     bmgr_register_periph_cases();
     bmgr_register_runtime_override_cases();
+    bmgr_register_touch_cases();
     return ESP_OK;
 }
 

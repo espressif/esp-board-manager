@@ -31,8 +31,8 @@
  * panel supplier (passed through init_cmds) and/or esp_lcd_panel_set_gap() by
  * the application — it is NOT something to derive by trial here.
  *
- * Touch: CST9220, driven by waveshare/esp_lcd_touch_cst9217 (named in
- * board_devices.yaml), whose one entry point covers the CST9217/CST9220 pair.
+ * Touch: CST9220, driven by espressif/esp_lcd_touch_cst9220 (named in
+ * board_devices.yaml), with native contact IDs and multi-touch support.
  * Its own probe runs, so no touch register table is needed.
  */
 
@@ -45,10 +45,10 @@
 #define HAS_CO5300  1
 #include "esp_lcd_co5300.h"
 #endif  /* __has_include(<esp_lcd_co5300.h>) */
-#if __has_include(<esp_lcd_touch_cst9217.h>)
-#define HAS_CST9217  1
-#include "esp_lcd_touch_cst9217.h"
-#endif  /* __has_include(<esp_lcd_touch_cst9217.h>) */
+#if __has_include(<esp_lcd_touch_cst9220.h>)
+#define HAS_CST9220  1
+#include "esp_lcd_touch_cst9220.h"
+#endif  /* __has_include(<esp_lcd_touch_cst9220.h>) */
 #include "esp_log.h"
 
 static const char *TAG = "ESP_MOSAICO_SETUP";
@@ -77,17 +77,17 @@ __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handl
 }
 #endif  /* defined(HAS_CO5300) */
 
-#if defined(HAS_CST9217)
+#if defined(HAS_CST9220)
 __attribute__((weak)) esp_err_t lcd_touch_factory_entry_t(esp_lcd_panel_io_handle_t io, const esp_lcd_touch_config_t *touch_dev_config, esp_lcd_touch_handle_t *ret_touch)
 {
     esp_lcd_touch_config_t touch_cfg = {0};
     memcpy(&touch_cfg, touch_dev_config, sizeof(esp_lcd_touch_config_t));
 
-    esp_err_t ret = esp_lcd_touch_new_i2c_cst9217(io, &touch_cfg, ret_touch);
+    esp_err_t ret = esp_lcd_touch_new_i2c_cst9220(io, &touch_cfg, ret_touch);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create CST9217/CST9220 touch driver: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to create CST9220 touch driver: %s", esp_err_to_name(ret));
         return ret;
     }
     return ESP_OK;
 }
-#endif  /* defined(HAS_CST9217) */
+#endif  /* defined(HAS_CST9220) */

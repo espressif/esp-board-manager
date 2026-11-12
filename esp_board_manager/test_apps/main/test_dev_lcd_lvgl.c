@@ -369,6 +369,10 @@ lcd_lvgl_test_result_t lcd_lvgl_test_run_single(lcd_lvgl_color_t color)
     while (!test_ctx.button_pressed) {
         vTaskDelay(pdMS_TO_TICKS(100));
 
+        if (test_dev_lcd_touch_get_error() != ESP_OK) {
+            cleanup_ui_elements();
+            return LCD_LVGL_TEST_ERROR;
+        }
         if ((xTaskGetTickCount() - start_time) > timeout) {
             ESP_LOGW(TAG, "Test timeout for color %d", color);
             test_ctx.test_results[color] = 0;  // Fail on timeout

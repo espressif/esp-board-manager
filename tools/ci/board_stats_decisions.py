@@ -211,6 +211,7 @@ def apply_board_decisions(boards, review, ledger):
     include_matches = {}
     for index, candidate in enumerate(candidates):
         candidate.pop('target', None)
+        candidate.pop('review_identity', None)
         selectors = _candidate_selectors(candidate, lineages)
         matched = [entry for entry in entries if entry['selectors'] & selectors]
         candidate['decision'] = 'pending'
@@ -227,6 +228,7 @@ def apply_board_decisions(boards, review, ledger):
         if action == 'include':
             if len({entry['id'] for entry in matched}) != 1:
                 raise CollectionError('Different included board identities match candidate: ' + candidate.get('id', ''))
+            candidate['review_identity'] = matched[0]['id']
             include_matches[index] = matched
             continue
         targets = [entry for entry in known.get(target, ()) if _chip(entry['chip']) == _chip(candidate.get('chip'))]

@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from fnmatch import fnmatchcase
 from html import escape
 from http.client import IncompleteRead
@@ -42,12 +43,12 @@ class _SearchPartitionRequired(Exception):
 
 
 class GitHubClient:
-    MAX_RATE_LIMIT_WAIT = 300
+    MAX_HTTP_RETRY_WAIT = 300
 
     def __init__(self, token=None):
         self.token = token
         self.last_search = 0.0
-        self.rate_limit_wait = 0.0
+        self.http_retry_wait = 0.0
 
     def _before_search_request(self):
         time.sleep(max(0, 6.1 - (time.monotonic() - self.last_search)))
@@ -62,8 +63,20 @@ class GitHubClient:
             if isinstance(value, str) and re.fullmatch(r'[0-9]{1,20}', value):
                 numbers[name.lower()] = int(value)
         retry_after = headers.get('Retry-After', '')
-        retry_after = (int(retry_after) if isinstance(retry_after, str)
-                       and re.fullmatch(r'[0-9]{1,20}', retry_after) else None)
+        if isinstance(retry_after, str) and re.fullmatch(r'[0-9]{1,20}', retry_after):
+            retry_after = int(retry_after)
+        else:
+            retry_date = retry_after
+            retry_after = None
+            if isinstance(retry_date, str) and len(retry_date) <= 128:
+                try:
+                    parsed = parsedate_to_datetime(retry_date)
+                    if parsed.tzinfo is None:
+                        # The legacy asctime HTTP-date format also denotes GMT.
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    retry_after = max(0, math.ceil(parsed.timestamp() - time.time()))
+                except (OSError, OverflowError, TypeError, ValueError):
+                    pass
         message = ''
         if error.code in (401, 403, 429):
             try:
@@ -89,6 +102,9 @@ class GitHubClient:
                 if reset_delay > 0:
                     delays.append(reset_delay + 1)
             delay = max(delays) if delays else 60 * 2 ** (attempt - 1)
+        elif error.code in (500, 502, 503, 504):
+            reason = 'server_error'
+            delay = max(2 ** attempt, retry_after or 0)
         elif permission:
             reason = 'permission_denied'
         elif authentication:
@@ -130,10 +146,10 @@ class GitHubClient:
                     raise CollectionError(message) from None
                 if attempt == attempts:
                     raise CollectionError(message + '; request retries exhausted') from None
-                if self.rate_limit_wait + delay > self.MAX_RATE_LIMIT_WAIT:
-                    raise CollectionError(message + '; rate-limit wait budget exhausted ({}s)'.format(
-                        self.MAX_RATE_LIMIT_WAIT)) from None
-                self.rate_limit_wait += delay
+                if self.http_retry_wait + delay > self.MAX_HTTP_RETRY_WAIT:
+                    raise CollectionError(message + '; HTTP retry wait budget exhausted ({}s)'.format(
+                        self.MAX_HTTP_RETRY_WAIT)) from None
+                self.http_retry_wait += delay
                 print(message + '; retrying in {:.1f}s'.format(delay), file=sys.stderr, flush=True)
                 time.sleep(delay)
             except (URLError, TimeoutError, ConnectionError, IncompleteRead) as error:
@@ -428,7 +444,7 @@ def collect_projects(client, excluded, excluded_paths=()):
             except CollectionError:
                 raise CollectionError('Invalid dependency YAML: {}/{}'.format(repo, path)) from None
             if kind:
-                project = projects.setdefault(key, {'repository': repo, 'url': 'https://github.com/' + repo,
+                project = projects.setdefault(key, {'repository_id': key, 'repository': repo, 'url': 'https://github.com/' + repo,
                                                     'revision': revision, 'evidence': []})
                 project['evidence'].append({'path': path, 'kind': kind, 'blob_sha': blob_sha,
                                             'url': 'https://github.com/{}/blob/{}/{}'.format(

@@ -128,7 +128,6 @@ devices:
     type: display_lcd
     sub_type: spi
     power_ctrl_device: lcd_power_ctrl
-    depends_on: lcd_power_ctrl
     version: default
     dependencies:
       espressif/esp_lcd_co5300: "*"
@@ -153,12 +152,12 @@ devices:
 
   # ---------- CST9220 touch controller (shared I2C0, INT GPIO6) ----------
   - name: lcd_touch
-    chip: cst9217              # driver component covers CST9217/CST9220
+    chip: cst9220
     type: lcd_touch
     sub_type: i2c
     version: default
     dependencies:
-      waveshare/esp_lcd_touch_cst9217: "*"
+      espressif/esp_lcd_touch_cst9220: "^0.1.2"
     config:
       touch_config:
         x_max: 480
@@ -185,6 +184,7 @@ devices:
     config:
       active_level: 1
       default_level: 0
+      init_level: 0       # Keep the motor off during device initialization
     peripherals:
       - gpio_name: gpio_vibration_motor
 
@@ -227,7 +227,6 @@ devices:
     version: default
     init_skip: true
     power_ctrl_device: lcd_power_ctrl
-    depends_on: lcd_power_ctrl
     config:
       dvp_config:
         reset_io: 53

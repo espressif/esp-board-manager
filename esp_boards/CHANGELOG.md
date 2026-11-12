@@ -1,10 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.7.3
 
 ### Bug Fixes
 
+- Use the official CST9220 touch driver (`^0.1.2`) on ESP-Mosaico for native contact IDs and correct handling of unusable reports and multi-touch releases.
+- Reset the ESP32-S3-Korvo-2 V3 LCD through TCA9554 pin 2 before panel initialization so controller state is reset after an MCU restart.
+- Declare the ESP32-LyraT-Mini V1.1 ADC's dependency on the DAC so the DAC is initialized first, including when the ADC is initialized individually, and retained until ADC cleanup.
+- Keep the ESP-Mosaico vibration motor off during device initialization with `init_level: 0`; this setting requires ESP Board Manager `0.7.6` or later.
 - Fixed the ESP-Mosaico USB CDC console: it now reports the base MAC as its USB serial number, stops the USB OTG HS controller before a software restart so its DMA cannot corrupt the next image, and mirrors ESP_LOG output to the ESP-IDF console (`CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE`), which now stays on UART0 instead of `CONFIG_ESP_CONSOLE_NONE`.
+
+### Modifications
+
+- Increase the ESP32-S3-Korvo-2 V3 LCD SPI transaction queue depth from 1 to 10 and maximum transfer size from 6400 to 32000 bytes.
+- Remove the explicit `lcd_power_ctrl` dependencies from the ESP-Mosaico LCD and camera; power setup now relies on `power_ctrl_device`.
+- Correct ESP32-S3-BOX-3 LCD model and driver comments without changing its configuration values.
 
 ## 0.7.2
 

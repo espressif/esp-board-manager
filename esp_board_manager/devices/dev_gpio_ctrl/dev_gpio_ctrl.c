@@ -5,13 +5,13 @@
  * See LICENSE file for details.
  */
 
-#include "esp_log.h"
-#include "esp_err.h"
-#include "dev_gpio_ctrl.h"
-#include "driver/gpio.h"
-#include "esp_board_periph.h"
-#include "esp_board_device.h"
 #include <string.h>
+#include "driver/gpio.h"
+#include "esp_err.h"
+#include "esp_log.h"
+#include "dev_gpio_ctrl.h"
+#include "esp_board_device.h"
+#include "esp_board_periph.h"
 
 static const char *TAG = "DEV_GPIO_CTRL";
 
@@ -21,8 +21,18 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
         ESP_LOGE(TAG, "Invalid parameters, cfg: %p, device_handle: %p", cfg, device_handle);
         return -1;
     }
+    if (cfg_size < (int)sizeof(dev_gpio_ctrl_config_t)) {
+        ESP_LOGE(TAG, "Invalid configuration size: %d", cfg_size);
+        return ESP_ERR_INVALID_SIZE;
+    }
 
     const dev_gpio_ctrl_config_t *config = (const dev_gpio_ctrl_config_t *)cfg;
+    if (config->active_level > 1 || config->default_level > 1 ||
+        config->init_level < -1 || config->init_level > 1) {
+        ESP_LOGE(TAG, "Invalid GPIO control levels: active=%d, default=%d, init=%d",
+                 config->active_level, config->default_level, config->init_level);
+        return ESP_ERR_INVALID_ARG;
+    }
 
     // Get GPIO peripheral handle
     periph_gpio_handle_t *gpio_handle = NULL;
@@ -45,15 +55,16 @@ int dev_gpio_ctrl_init(void *cfg, int cfg_size, void **device_handle)
         return -1;
     }
 
-    // Initialize the output to the configured active level.
-    esp_err_t err = gpio_set_level(gpio_handle->gpio_num, config->active_level);
+    // Use the active level unless an explicit initial level was configured.
+    uint8_t initial_level = config->init_level == -1 ? config->active_level : config->init_level;
+    esp_err_t err = gpio_set_level(gpio_handle->gpio_num, initial_level);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set active level for GPIO %d: %s", gpio_handle->gpio_num, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to set initial level for GPIO %d: %s", gpio_handle->gpio_num, esp_err_to_name(err));
         goto cleanup;
     }
 
-    ESP_LOGI(TAG, "Initialized GPIO control device '%s': gpio=%d, set initial level:%d (active_level=%d, default_level=%d)",
-             config->name, gpio_handle->gpio_num, config->active_level, config->active_level, config->default_level);
+    ESP_LOGI(TAG, "Initialized GPIO control device '%s': gpio=%d, set initial level:%d (active_level=%d, default_level=%d, init_level=%d)",
+             config->name, gpio_handle->gpio_num, initial_level, config->active_level, config->default_level, config->init_level);
 
     // Store the GPIO handle for later use
     *device_handle = gpio_handle;

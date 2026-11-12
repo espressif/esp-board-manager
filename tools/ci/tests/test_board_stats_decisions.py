@@ -53,6 +53,7 @@ class BoardDecisionTests(unittest.TestCase):
         self.assertEqual((result['known_count'], result['included_count'], result['approved_count']), (2, 1, 3))
         self.assertEqual((result['aliased_count'], result['pending_count']), (0, 0))
         self.assertEqual(result['candidates'][0]['decision'], 'include')
+        self.assertEqual(result['candidates'][0].get('review_identity'), 'outside-a')
         self.assertEqual((self.boards, self.review), before)
 
     def test_unknown_candidate_stays_pending_even_when_its_name_looks_known(self):
@@ -171,6 +172,8 @@ class BoardDecisionTests(unittest.TestCase):
         alias = next(item for item in result['candidates'] if item['decision'] == 'alias')
         self.assertEqual(alias['target'], dict(included['primary'], board=included['board'], chip=included['chip']))
         self.assertEqual(review, before)
+        self.assertEqual(included.get('review_identity'), 'outside-a')
+        self.assertEqual(alias.get('review_identity'), 'outside-a')
         reversed_result = decisions.apply_board_decisions(self.boards, {'candidates': list(reversed(review['candidates']))}, ledger(entry))
         self.assertEqual({item['id']: item['decision'] for item in result['candidates']},
                          {item['id']: item['decision'] for item in reversed_result['candidates']})

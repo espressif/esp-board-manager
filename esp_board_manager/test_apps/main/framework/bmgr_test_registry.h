@@ -92,6 +92,7 @@ void bmgr_register_lcd_cases(void);
 void bmgr_register_led_cases(void);
 void bmgr_register_periph_cases(void);
 void bmgr_register_runtime_override_cases(void);
+void bmgr_register_touch_cases(void);
 
 #ifdef __cplusplus
 }

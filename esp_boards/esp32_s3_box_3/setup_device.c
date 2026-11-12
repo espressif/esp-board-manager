@@ -49,7 +49,7 @@ static const ili9341_lcd_init_cmd_t vendor_specific_init[] = {
     {0, (uint8_t[]) {0}, 0xff, 0},
 };
 
-// define st77916_vendor_config_t
+// ILI9342C initialization using the ILI9341 driver
 static const ili9341_vendor_config_t vendor_config = {
     .init_cmds      = vendor_specific_init,
     .init_cmds_size = sizeof(vendor_specific_init) / sizeof(vendor_specific_init[0]),

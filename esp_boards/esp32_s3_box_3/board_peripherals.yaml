@@ -56,7 +56,7 @@ peripherals:
       total_slot: 4
       slot_mask: I2S_TDM_SLOT0 | I2S_TDM_SLOT1 | I2S_TDM_SLOT2  # Override specific slot mask
 
-  # LCD SPI Configuration for ST77916 QSPI
+  # LCD SPI Configuration for ILI9342C
   - name: spi_display
     type: spi
     role: master

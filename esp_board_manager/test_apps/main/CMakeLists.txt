@@ -24,6 +24,7 @@ idf_component_register(
         "cases/bmgr_case_lcd.c"
         "cases/bmgr_case_led.c"
         "cases/bmgr_case_periph.c"
+        "cases/bmgr_case_touch.c"
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>:automation/test_dev_lcd_auto.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT}>:automation/test_dev_audio_auto.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_CAMERA_SUPPORT}>:automation/test_dev_camera_auto.c>
@@ -47,6 +48,8 @@ idf_component_register(
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LITTLEFS_SUPPORT}>:test_dev_littlefs.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>:test_dev_lcd_lvgl.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>:test_dev_lcd_init.c>
+        $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT}>:test_dev_lcd_touch.c>
+        $<$<AND:$<BOOL:${CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT}>,$<BOOL:${CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT}>>:test_dev_lcd_touch_view.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_GPIO_CTRL_SUPPORT}>:test_dev_pwr_ctrl.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LEDC_CTRL_SUPPORT}>:test_dev_ledc.c>
         $<$<BOOL:${CONFIG_ESP_BOARD_DEV_LED_STRIP_SUPPORT}>:test_dev_led_strip.c>

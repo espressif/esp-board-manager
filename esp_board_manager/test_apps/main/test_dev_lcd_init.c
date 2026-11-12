@@ -5,10 +5,12 @@
  * See LICENSE file for details.
  */
 
+#include <stdint.h>
 #include <string.h>
 #include "esp_err.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_board_manager.h"
 #include "esp_board_manager_err.h"
 #include "esp_lvgl_port.h"
@@ -31,6 +33,14 @@
 #define LVGL_TASK_PRIORITY       5
 #define LVGL_FALLBACK_BUF_LINES  20
 
+#if defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9
+typedef struct {
+    lv_point_t        point;
+    lv_indev_state_t  state;
+    esp_err_t         error;
+} lcd_touch_state_t;
+#endif  /* defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9 */
+
 // Global handles
 static void *lcd_handle = NULL;
 static void *touch_handle = NULL;
@@ -41,6 +51,52 @@ static esp_lcd_touch_handle_t tp = NULL;
 #endif  /* CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT */
 static lv_display_t *disp = NULL;
 static lv_indev_t *touch_indev = NULL;
+
+#if defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9
+/* Accessed only while holding the LVGL port lock. */
+static lcd_touch_state_t touch_state;
+
+static void lcd_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    (void)indev;
+    data->point = touch_state.point;
+    data->state = touch_state.state;
+    data->continue_reading = false;
+    if (touch_state.error != ESP_OK) {
+        return;
+    }
+
+    esp_lcd_touch_point_data_t points[CONFIG_ESP_LCD_TOUCH_MAX_POINTS] = {0};
+    uint8_t point_count = 0;
+    esp_err_t ret = esp_lcd_touch_read_data(tp);
+    if (ret == ESP_OK) {
+        ret = esp_lcd_touch_get_data(tp, points, &point_count, CONFIG_ESP_LCD_TOUCH_MAX_POINTS);
+    }
+    if (ret == ESP_ERR_NOT_FINISHED) {
+        /* No new snapshot: preserve both the last position and pressed state. */
+        return;
+    }
+    if (ret == ESP_OK && point_count > CONFIG_ESP_LCD_TOUCH_MAX_POINTS) {
+        ret = ESP_ERR_INVALID_RESPONSE;
+    }
+    if (ret != ESP_OK) {
+        touch_state.error = ret;
+        ESP_LOGE(TAG, "LVGL touch acquisition failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    /* This manual LCD test uses a single pointer to operate PASS/FAIL buttons. */
+    if (point_count > 0) {
+        touch_state.point.x = points[0].x;
+        touch_state.point.y = points[0].y;
+        touch_state.state = LV_INDEV_STATE_PRESSED;
+    } else {
+        touch_state.state = LV_INDEV_STATE_RELEASED;
+    }
+    data->point = touch_state.point;
+    data->state = touch_state.state;
+}
+#endif  /* defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9 */
 
 static esp_err_t lcd_lvgl_port_init(void)
 {
@@ -130,6 +186,18 @@ static void lcd_unregister_rgb_callbacks(void)
 
 esp_err_t test_dev_lcd_lvgl_init(void)
 {
+    /* The port owns global LVGL state, including while its task is exiting. */
+    if (disp != NULL || touch_indev != NULL) {
+        ESP_LOGE(TAG, "LVGL is already active or still stopping");
+        return ESP_ERR_INVALID_STATE;
+    }
+#if LVGL_VERSION_MAJOR >= 9
+    if (lv_is_initialized()) {
+        ESP_LOGE(TAG, "LVGL is already active or still stopping");
+        return ESP_ERR_INVALID_STATE;
+    }
+#endif  /* LVGL_VERSION_MAJOR >= 9 */
+
     // Initialize LVGL port
     esp_err_t ret = lcd_lvgl_port_init();
     if (ret != ESP_OK) {
@@ -304,6 +372,9 @@ esp_err_t test_dev_lcd_touch_init(void)
 #ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
     ESP_LOGI(TAG, "Initializing touch input using Board Manager...");
 
+    if (touch_indev != NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
     if (!esp_board_manager_check_name(BMGR_TEST_NAME_LCD_TOUCH)) {
         ESP_LOGI(TAG, "Touch device %s is not present on this board, continuing without touch",
                  BMGR_TEST_NAME_LCD_TOUCH);
@@ -320,13 +391,30 @@ esp_err_t test_dev_lcd_touch_init(void)
         // Cast to the specific device structure
         dev_lcd_touch_handles_t *touch_handles = (dev_lcd_touch_handles_t *)touch_handle;
         tp = touch_handles->touch_handle;
+        if (tp == NULL) {
+            return ESP_ERR_INVALID_STATE;
+        }
         ESP_LOGI(TAG, "Touch device handle obtained: %p, tp: %p", touch_handle, tp);
         const lvgl_port_touch_cfg_t touch_cfg = {
             .disp = disp,  // Use the display we just created
             .handle = tp,
         };
 
+        /* Keep the port's interrupt/ownership context, but install our read
+         * callback before either event or timer processing can use the input. */
+        if (!lvgl_port_lock(0)) {
+            return ESP_ERR_TIMEOUT;
+        }
+#if LVGL_VERSION_MAJOR >= 9
+        touch_state = (lcd_touch_state_t) {.state = LV_INDEV_STATE_RELEASED};
+#endif  /* LVGL_VERSION_MAJOR >= 9 */
         touch_indev = lvgl_port_add_touch(&touch_cfg);
+#if LVGL_VERSION_MAJOR >= 9
+        if (touch_indev != NULL) {
+            lv_indev_set_read_cb(touch_indev, lcd_touch_read_cb);
+        }
+#endif  /* LVGL_VERSION_MAJOR >= 9 */
+        lvgl_port_unlock();
         if (touch_indev == NULL) {
             ESP_LOGW(TAG, "Failed to add touch input (continuing without touch)");
             return ESP_FAIL;
@@ -341,6 +429,21 @@ esp_err_t test_dev_lcd_touch_init(void)
     return ESP_FAIL;
 }
 
+esp_err_t test_dev_lcd_touch_get_error(void)
+{
+#if defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9
+    if (touch_indev != NULL) {
+        if (!lvgl_port_lock(0)) {
+            return ESP_ERR_TIMEOUT;
+        }
+        esp_err_t ret = touch_state.error;
+        lvgl_port_unlock();
+        return ret;
+    }
+#endif  /* defined(CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT) && LVGL_VERSION_MAJOR >= 9 */
+    return ESP_OK;
+}
+
 esp_err_t test_dev_lcd_touch_deinit(void)
 {
     ESP_LOGI(TAG, "Deinitializing touch input...");
@@ -349,13 +452,23 @@ esp_err_t test_dev_lcd_touch_deinit(void)
 
     // Remove touch input device from LVGL
     if (touch_indev != NULL) {
+        if (!lvgl_port_lock(0)) {
+            return ESP_ERR_TIMEOUT;
+        }
         ret = lvgl_port_remove_touch(touch_indev);
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Failed to remove touch input device from LVGL: %s", esp_err_to_name(ret));
         } else {
             ESP_LOGI(TAG, "Touch input device removed from LVGL successfully");
+            touch_indev = NULL;
+#ifdef CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT
+            tp = NULL;
+#endif  /* CONFIG_ESP_BOARD_DEV_LCD_TOUCH_SUPPORT */
         }
-        touch_indev = NULL;
+        lvgl_port_unlock();
+        if (ret != ESP_OK) {
+            return ret;
+        }
     }
     // Clear touch handle
     touch_handle = NULL;
@@ -371,16 +484,42 @@ esp_err_t test_dev_lcd_lvgl_deinit(void)
     esp_err_t ret = ESP_OK;
     // Remove display from LVGL
     if (disp != NULL) {
+        if (!lvgl_port_lock(0)) {
+            return ESP_ERR_TIMEOUT;
+        }
+        dev_display_lcd_config_t *lcd_cfg = NULL;
+        ret = esp_board_manager_get_device_config(BMGR_TEST_NAME_DISPLAY_LCD, (void **)&lcd_cfg);
+        if (ret != ESP_OK || lcd_cfg == NULL) {
+            lvgl_port_unlock();
+            return ret != ESP_OK ? ret : ESP_ERR_INVALID_STATE;
+        }
+        if (io_handle != NULL && strcmp(lcd_cfg->sub_type, ESP_BOARD_DEVICE_LCD_SUB_TYPE_SPI) == 0) {
+            /* SPI tx_param drains queued color transfers before returning. -1
+             * with no parameters sends nothing; other IO types differ here. */
+            ret = esp_lcd_panel_io_tx_param(io_handle, -1, NULL, 0);
+            if (ret == ESP_OK) {
+                esp_lcd_panel_io_callbacks_t callbacks = {0};
+                ret = esp_lcd_panel_io_register_event_callbacks(io_handle, &callbacks, NULL);
+            }
+            if (ret != ESP_OK) {
+                lvgl_port_unlock();
+                return ret;
+            }
+        }
         lcd_unregister_rgb_callbacks();
         ret = lvgl_port_remove_disp(disp);
+        lvgl_port_unlock();
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Failed to remove display from LVGL: %s", esp_err_to_name(ret));
+            return ret;
         } else {
             ESP_LOGI(TAG, "Display removed from LVGL successfully");
         }
         disp = NULL;
     }
     lcd_handle = NULL;
+    panel_handle = NULL;
+    io_handle = NULL;
 
     ret = lvgl_port_stop();
     if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
@@ -391,9 +530,23 @@ esp_err_t test_dev_lcd_lvgl_deinit(void)
     ret = lvgl_port_deinit();
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Failed to deinitialize LVGL port: %s", esp_err_to_name(ret));
+        return ret;
     } else {
         ESP_LOGI(TAG, "LVGL port deinitialized successfully");
     }
+
+#if LVGL_VERSION_MAJOR >= 9
+    /* Port deinit requests shutdown; its task releases the global state later.
+     * Do not permit the next case to overwrite that state before it is gone. */
+    const int64_t deadline = esp_timer_get_time() + INT64_C(2000000);
+    while (lv_is_initialized()) {
+        if (esp_timer_get_time() >= deadline) {
+            ESP_LOGE(TAG, "Timed out waiting for the LVGL task to stop");
+            return ESP_ERR_TIMEOUT;
+        }
+        vTaskDelay(1);
+    }
+#endif  /* LVGL_VERSION_MAJOR >= 9 */
 
     ESP_LOGI(TAG, "LCD display and LVGL deinitialization completed");
     return ESP_OK;

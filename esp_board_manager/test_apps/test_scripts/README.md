@@ -17,6 +17,7 @@ host_tests/
 ├── ethernet/          # RMII/RGMII runtime fixtures and EMAC substitutes
 ├── gpio_expander/     # Expander mapping lifecycle fixture
 ├── gpio/              # Generated native and virtual GPIO configuration fixture
+├── gpio_ctrl/         # Initial-level selection, validation, and cleanup fixture
 └── support/           # Shared host linker sections
 ```
 
@@ -24,6 +25,8 @@ host_tests/
   and cleanup against headers from `IDF_PATH`. MAC/PHY hardware calls are simulated.
 - `test_gpio_expander_mapping.py` checks mapping registration, cleanup failures,
   and generated virtual GPIO configurations, with UBSan enabled for its C fixtures.
+- `test_dev_gpio_ctrl_runtime.py` checks initial-level selection, invalid configurations,
+  reinitialization, and GPIO-write failure cleanup against the real device source with UBSan.
 - `test_interactive_controls.py` checks button selection, callback cleanup, IO
   dispatch, and console argument handling. Its board/driver boundary functions
   are simulated, but their BMGR declarations come from the production headers.
@@ -44,6 +47,81 @@ scheduling do not verify electrical behavior, real concurrency, network traffic,
 or operation on a physical board.
 
 ## Interactive hardware controls
+
+### LCD LVGL touch input
+
+Run `case run lcd.lvgl` to inspect each color screen and select PASS or FAIL.
+With LVGL 9 and an available touch device, the test app installs its own touch
+read callback while retaining the port's interrupt handling and cleanup. This
+case uses a single pointer for its buttons; use `touch.multitouch` below to
+validate contact IDs and multiple simultaneous contacts.
+
+`ESP_ERR_NOT_FINISHED` preserves the last valid pointer position and pressed or
+released state. Only a valid zero-contact report releases the pointer. Other
+acquisition errors stop touch reads, end the manual test, and return the original
+error to the case runner without aborting the firmware. LVGL 8 retains its
+existing port callback.
+
+`test_lcd_lvgl_touch.py` replays valid, skipped, and failed reports through the
+actual test-app callback on the host. It does not validate the controller's I2C
+or ACK protocol on hardware.
+
+### Multi-touch tracking
+
+On a board with the generic `lcd_touch` device and a driver that provides native
+track IDs, run:
+
+```text
+case run touch.multitouch
+```
+
+Within 30 seconds, place two fingers on the panel, move them, lift one while
+keeping the other pressed, then lift the remaining finger. The case prints
+`DOWN`, `MOVE`, and `UP` with each point's native ID and coordinates. IDs are
+matched across valid frames, so a different point order does not become a new
+press. `MOVE` is printed when coordinates change; `UP` uses the last valid
+coordinates. The case passes only after observing simultaneous contacts, a
+partial release that retains an existing contact, and full release in the same
+gesture. No input, one-finger input, or a missing step times out and fails.
+Movement is shown for inspection but is not required for a pass.
+
+When LCD support is enabled and the configured display is present, the same
+case also shows colored contact circles, native IDs, coordinates, and short
+trails (when LVGL's `LV_USE_LINE` is enabled). A released contact disappears;
+the other contacts keep their colors and trails even if the report order
+changes. Skipped reports leave the last valid view intact. Touch coordinates
+are scaled and clipped to the display size without applying touch mirroring
+or swapping a second time. The view briefly shows PASS or FAIL before cleanup.
+It only consumes snapshots from the test and does not register an LVGL touch
+reader. Without a display, the case keeps using the console alone. A configured
+display that fails to initialize causes the case to fail.
+
+The console framework acquires and releases `BMGR_TEST_NAME_LCD_TOUCH`, plus the
+optional display and backlight when LCD support is enabled; a prior
+`bmgr init` is unnecessary. Use the test app's touch device-name override if the
+board uses a different name. Enable `ESP_BOARD_DEV_LCD_TOUCH_SUPPORT` and set
+`ESP_LCD_TOUCH_MAX_POINTS` to at least 2. Drivers without a native `get_track_id`
+callback and valid frames containing duplicate IDs are rejected. A driver that
+supports only one point cannot complete this test.
+
+Run this case with other touch readers stopped. An active LVGL/touch consumer
+recorded in the test context is rejected to avoid concurrent controller reads.
+`ESP_ERR_NOT_FINISHED` skips a report without producing release events; an
+actual I/O error fails the case. Passing this manual test confirms the observed
+touch sequence on that board, not the controller's maximum supported point count.
+
+The automated replay for this case runs on the host:
+
+```sh
+python3 -m pytest -q esp_board_manager/test_apps/test_scripts/test_lcd_touch_multitouch.py
+```
+
+It tests event association, incomplete gestures, skipped reports, invalid IDs,
+and read failures using simulated touch and clock boundaries. It also checks
+that the case compiles when touch support is disabled. It does not exercise
+physical I2C, controller firmware, or concurrent tasks.
+
+### Buttons and IO
 
 The test application's console can monitor one button by its YAML device name,
 or enumerate every `button` device, including GPIO, ADC, and custom buttons:
