@@ -21,6 +21,9 @@ extern "C" {
  *         On success, stdin, stdout, stderr and subsequent ESP_LOG output use TinyUSB
  *         CDC-ACM interface 0. Repeated calls are harmless.
  *
+ *         With CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE, ESP_LOG output is
+ *         also written to the ESP-IDF console selected by CONFIG_ESP_CONSOLE_*.
+ *
  *         When CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD is enabled, the same interface also
  *         emulates the USB-Serial/JTAG DTR/RTS reset behavior and uses its VID/PID, so
  *         idf.py can reset into ROM download mode without extra esptool arguments.

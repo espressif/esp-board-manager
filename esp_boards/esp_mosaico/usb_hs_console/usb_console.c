@@ -9,14 +9,19 @@
 
 extern void __real_app_main(void);
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdatomic.h>
 
 #include "esp_log.h"
+#include "esp_log_write.h"
+#include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "hal/usb_utmi_ll.h"
 #include "soc/lp_system_reg.h"
 #include "soc/soc.h"
+#include "device/dcd.h"
 #include "tinyusb.h"
 #include "tinyusb_cdc_acm.h"
 #include "tinyusb_console.h"
@@ -24,6 +29,110 @@ extern void __real_app_main(void);
 
 static const char *TAG = "bsp_usb_console";
 static bool s_initialized;
+static uint8_t s_rhport;
+
+/**
+ * The S31 CPU reset leaves the USB OTG HS DMA running. Stop it before the next
+ * image reuses RAM, without waiting for or freeing the running USB task.
+ */
+static void usb_console_shutdown(void)
+{
+    dcd_int_disable(s_rhport);
+    usb_utmi_ll_reset_register();
+    usb_utmi_ll_enable_bus_clock(false);
+}
+
+static void usb_console_driver_uninstall(void)
+{
+    (void)esp_unregister_shutdown_handler(usb_console_shutdown);
+    (void)tinyusb_driver_uninstall();
+}
+
+#if CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE
+
+static FILE *s_console_log_stream;
+
+/**
+ * tinyusb_console_init() moves stdout to the CDC port. /dev/console still
+ * reaches the console selected by CONFIG_ESP_CONSOLE_* (and the secondary one),
+ * so ESP_LOG output is written to both.
+ */
+static int log_mirror_vprintf(const char *format, va_list args)
+{
+    va_list console_args;
+    va_copy(console_args, args);
+    const int ret = vprintf(format, args);
+    (void)vfprintf(s_console_log_stream, format, console_args);
+    va_end(console_args);
+    return ret;
+}
+
+static esp_err_t log_mirror_init(void)
+{
+    s_console_log_stream = fopen("/dev/console", "w");
+    if (!s_console_log_stream) {
+        return ESP_FAIL;
+    }
+    setvbuf(s_console_log_stream, NULL, _IONBF, 0);
+    (void)esp_log_set_vprintf(log_mirror_vprintf);
+    return ESP_OK;
+}
+
+#endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE */
+
+/**
+ * The host identifies a serial port by VID, PID and serial number.
+ * esp_tinyusb's default serial is a fixed Kconfig string (version < 2.4.0) or
+ * MAC address without colons (version >= 2.4.0). The bootloader's CDC device has
+ * serial number in format `xx:xx:xx:xx:xx:xx`.
+ *
+ * If the serial number is formatted without colons, macOS assigns a unique port
+ * per device (/dev/cu.usbmodem-xxxxxxxxxxxx) - which is different from the path
+ * of bootloader's CDC device. This causes `idf.py flash monitor` to fail due to
+ * the mismatch in the port path for flashing and monitoring.
+ *
+ * If the serial number is formatted with colons, macOS assigns port based on the
+ * location of the device, similar behaviour as the bootloader's CDC device.
+ */
+
+static char s_usb_serial[18];
+
+/**
+ * Copy of esp_tinyusb's default string table (descriptor_str_default in
+ * usb_descriptors.c, esp_tinyusb v2.0.1 through v3.0.0) with only the serial
+ * replaced. The Kconfig-built configuration descriptor indexes into it.
+ */
+static const char *s_usb_strings[] = {
+    (const char[]){0x09, 0x04},               // 0: English (0x0409)
+    CONFIG_TINYUSB_DESC_MANUFACTURER_STRING,  // 1: Manufacturer
+    CONFIG_TINYUSB_DESC_PRODUCT_STRING,       // 2: Product
+    s_usb_serial,                             // 3: Serial number
+#if CONFIG_TINYUSB_CDC_ENABLED
+    CONFIG_TINYUSB_DESC_CDC_STRING,           // 4: CDC interface
+#endif  /* CONFIG_TINYUSB_CDC_ENABLED */
+#if CONFIG_TINYUSB_MSC_ENABLED
+    CONFIG_TINYUSB_DESC_MSC_STRING,           // MSC interface
+#endif  /* CONFIG_TINYUSB_MSC_ENABLED */
+#if CONFIG_TINYUSB_MTP_ENABLED
+    CONFIG_TINYUSB_DESC_MTP_STRING,           // MTP interface
+#endif  /* CONFIG_TINYUSB_MTP_ENABLED */
+#if CONFIG_TINYUSB_NET_MODE_ECM_RNDIS || CONFIG_TINYUSB_NET_MODE_NCM
+    "USB net",                                // NET interface
+    "",                                       // MAC
+#endif  /* CONFIG_TINYUSB_NET_MODE_ECM_RNDIS || CONFIG_TINYUSB_NET_MODE_NCM */
+#if CFG_TUD_VENDOR
+    "Vendor specific",                        // Vendor interface
+#endif  /* CFG_TUD_VENDOR */
+};
+
+static void usb_serial_from_mac(void)
+{
+    uint8_t mac[6] = {0};
+    if (esp_read_mac(mac, ESP_MAC_BASE) != ESP_OK) {
+        ESP_LOGW(TAG, "Base MAC unavailable, USB serial number is all zeros");
+    }
+    snprintf(s_usb_serial, sizeof(s_usb_serial), MACSTR, MAC2STR(mac));
+}
 
 #if CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
 
@@ -172,9 +281,22 @@ esp_err_t bsp_usb_console_init(void)
     esp_err_t ret;
     tinyusb_config_t tusb_config = TINYUSB_DEFAULT_CONFIG();
 #endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD */
+    usb_serial_from_mac();
+    tusb_config.descriptor.string = s_usb_strings;
+    tusb_config.descriptor.string_count = sizeof(s_usb_strings) / sizeof(s_usb_strings[0]);
 
     ret = tinyusb_driver_install(&tusb_config);
     if (ret != ESP_OK) {
+#if CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
+        auto_download_deinit();
+#endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD */
+        return ret;
+    }
+
+    s_rhport = tusb_config.port;
+    ret = esp_register_shutdown_handler(usb_console_shutdown);
+    if (ret != ESP_OK) {
+        (void)tinyusb_driver_uninstall();
 #if CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
         auto_download_deinit();
 #endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD */
@@ -189,7 +311,7 @@ esp_err_t bsp_usb_console_init(void)
     };
     ret = tinyusb_cdcacm_init(&cdc_config);
     if (ret != ESP_OK) {
-        (void)tinyusb_driver_uninstall();
+        usb_console_driver_uninstall();
 #if CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
         auto_download_deinit();
 #endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD */
@@ -199,7 +321,7 @@ esp_err_t bsp_usb_console_init(void)
     ret = tinyusb_console_init(TINYUSB_CDC_ACM_0);
     if (ret != ESP_OK) {
         (void)tinyusb_cdcacm_deinit(TINYUSB_CDC_ACM_0);
-        (void)tinyusb_driver_uninstall();
+        usb_console_driver_uninstall();
 #if CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD
         auto_download_deinit();
 #endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_AUTO_DOWNLOAD */
@@ -209,6 +331,12 @@ esp_err_t bsp_usb_console_init(void)
     /* Keep application logs observable even when the host opens CDC after app_main starts. */
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
+
+#if CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE
+    if (log_mirror_init() != ESP_OK) {
+        ESP_LOGW(TAG, "Cannot open /dev/console; ESP_LOG output goes to USB only");
+    }
+#endif  /* CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE */
 
     s_initialized = true;
     ESP_LOGI(TAG, "USB-OTG CDC console ready%s",

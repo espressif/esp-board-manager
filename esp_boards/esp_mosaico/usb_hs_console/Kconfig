@@ -17,4 +17,16 @@ menu "USB HS Console Config"
         default n
         help
             Initialize the custom USB CDC console before app_main() starts.
+
+    config USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE
+        bool "Mirror ESP_LOG output to the ESP-IDF console"
+        depends on TINYUSB_CDC_ENABLED
+        depends on !ESP_CONSOLE_USB_CDC
+        depends on !ESP_CONSOLE_NONE
+        default y
+        help
+            Keep writing ESP_LOG output to the console selected by
+            CONFIG_ESP_CONSOLE_* (UART or USB Serial/JTAG, plus any secondary
+            console) after stdin, stdout and stderr move to the USB CDC console.
+            printf output goes to USB CDC only.
 endmenu
