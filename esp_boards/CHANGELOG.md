@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- Fixed the ESP-Mosaico USB CDC console: it now reports the base MAC as its USB serial number, stops the USB OTG HS controller before a software restart so its DMA cannot corrupt the next image, and mirrors ESP_LOG output to the ESP-IDF console (`CONFIG_USB_HS_CONSOLE_USB_CDC_MIRROR_LOG_TO_CONSOLE`), which now stays on UART0 instead of `CONFIG_ESP_CONSOLE_NONE`.
+
 ## 0.7.2
 
 ### Features
