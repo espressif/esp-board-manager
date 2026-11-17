@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.6
+
+### Features
+
+- Added optional `init_level` (`-1`, `0`, or `1`) to `gpio_ctrl`: in YAML, omitted or `-1` initializes at `active_level`, while `0` or `1` selects the initial output independently of the active and inactive levels. Regenerate board configurations with `idf.py bmgr -b <board>` and rebuild after upgrading. Handwritten C configurations must explicitly set `init_level`; use `-1` to preserve initialization at `active_level`.
+- Added the `touch.multitouch` test-console case to verify native contact IDs through simultaneous touches, partial release, and full release. Boards with a display also show contact positions, IDs, and movement trails. Unusable reports are skipped without treating them as releases.
+
+### Bug Fixes
+
+- Keep the final completed camera frame out of the capture queue while saving it, support native RGB565 big-endian JPEG input, and report JPEG encoding or file-write failures to the camera test case. Saved filenames now include the resolution and pixel format.
+- Handle `ESP_ERR_NOT_FINISHED` in the `lcd.lvgl` test's LVGL 9 touch callback without aborting or generating a false release; other acquisition errors fail the case after cleanup.
+- Fix SPI LCD test cleanup by draining queued transfers before removing display callbacks, and wait for LVGL 9 task shutdown before the next case reuses display resources.
+
+### Modifications
+
+- Raised the minimum `esp_boards` version to `0.7.3` and the test application's `esp_lcd_touch` version to `1.2.0`.
+- Corrected component README links and clarified the board pre-init hook contract and the API for explicit runtime preparation.
+
 ## 0.7.5
 
 ### Features

@@ -79,21 +79,19 @@ devices:
       mirror_y: true
       x_max: 320
       y_max: 240
-      need_reset: false
+      need_reset: false                   # Hardware reset is handled by lcd_panel_factory_entry_t
       # esp_lcd_panel_io_spi_config_t fields
       io_spi_config:
-        cs_gpio_num: -1                   # GPIO14 - LCD_CS (BSP_LCD_CS)
-        dc_gpio_num: 2                    # GPIO45 - LCD_DC (BSP_LCD_DC)
+        cs_gpio_num: -1                   # LCD_CS is controlled through TCA9554 pin 3
+        dc_gpio_num: 2                    # GPIO2 - LCD_DC
         spi_mode: 0                       # Traditional SPI mode (0~3)
         pclk_hz: 60000000                 # Frequency of pixel clock
-        trans_queue_depth: 1
+        trans_queue_depth: 10
         flags:
           sio_mode: false                 # Single line mode
-
       lcd_panel_config:
-        reset_gpio_num: -1
+        reset_gpio_num: -1               # LCD_RST is controlled through TCA9554 pin 2
         rgb_ele_order: "LCD_RGB_ELEMENT_ORDER_BGR"
-        # ST77916 specific configuration
         vendor_config: NULL
 
     peripherals:

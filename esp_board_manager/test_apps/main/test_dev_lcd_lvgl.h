@@ -20,6 +20,16 @@ esp_err_t test_dev_lcd_lvgl_init(void);
 
 esp_err_t test_dev_lcd_touch_init(void);
 
+/**
+ * @brief  Get the first acquisition error from the active LVGL 9 touch input.
+ *
+ * @return
+ *       - ESP_OK           No acquisition error, or no active LVGL 9 touch input.
+ *       - ESP_ERR_TIMEOUT  The LVGL port lock could not be acquired.
+ *       - Others           The first touch read/get error since initialization.
+ */
+esp_err_t test_dev_lcd_touch_get_error(void);
+
 esp_err_t test_dev_lcd_lvgl_deinit(void);
 
 esp_err_t test_dev_lcd_touch_deinit(void);

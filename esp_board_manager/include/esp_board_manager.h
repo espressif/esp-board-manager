@@ -31,22 +31,29 @@ typedef struct esp_board_info {
 extern const esp_board_info_t g_esp_board_info;
 
 /**
- * @brief  Board runtime pre-init hook
+ * @brief  Board runtime pre-init customization hook
  *
  *         Weak default returns ESP_OK. A final application may provide exactly
- *         one strong definition to apply BOARD-layer overrides before any
- *         peripheral or device handle is created. Multiple strong definitions
- *         fail at link time; there is no function-pointer registry.
+ *         one strong definition to apply BOARD-layer overrides. Multiple strong
+ *         definitions fail at link time; there is no function-pointer registry.
  *
- *         Prepare/init must be called from a task; during the hook only that
- *         task may call override/set_ops. The hook may edit writable descriptor/
- *         handle tables, apply generated board revisions, call override_config /
- *         set_ops, and initialize temporary resources needed for hardware
- *         detection. Resources created by the hook must be deinitialized before
- *         returning an error; prepare rollback does not release hardware resources.
- *         If resources remain after failure, BMGR preserves the current tables and
- *         configuration and rejects further runtime operations until restart.
+ *         Board Manager automatically invokes this hook through
+ *         esp_board_manager_prepare() before device or peripheral initialization.
+ *
+ *         During the hook, only the prepare-owner task may call override/set_ops.
+ *         The hook may edit writable descriptor/handle tables, apply generated
+ *         board revisions, and initialize temporary resources for hardware
+ *         detection.
+ *
+ *         Resources created by the hook must be deinitialized before returning
+ *         an error; prepare rollback does not release hardware resources.
+ *         If resources remain after failure, BMGR preserves the current tables
+ *         and configuration and rejects further runtime operations until restart.
  *         C-defined nodes and referenced data must remain valid until restart.
+ *
+ * @note  Applications should implement this hook only when board-specific
+ *         runtime customization is required. Do not call this hook directly.
+ *         Normal device/peripheral initialization automatically triggers it.
  *
  * @return
  *       - ESP_OK  On success
@@ -57,20 +64,34 @@ esp_err_t esp_board_runtime_pre_init(void);
 /**
  * @brief  Prepare board runtime overrides
  *
- *         Runs the pre-init hook once when unprepared. Idempotent after success.
- *         A nested call from the prepare-owner task is an idempotent no-op;
- *         calls from other tasks while preparing are rejected. Calls before a
- *         FreeRTOS task exists are also rejected. Single device/peripheral init calls this
- *         before creating a handle so the hook cannot be skipped.
- *         A hook failure without retained resources rolls back immediately and may
- *         retry. If resources remain, BMGR preserves the current topology/config,
- *         rejects further runtime operations and requires a restart.
+ * @note  Applications normally do not need to call this API.
+ *         Board Manager automatically performs runtime preparation before
+ *         device or peripheral initialization, including individual and
+ *         bulk initialization.
+ *
+ *         Call this API explicitly only when runtime preparation must be
+ *         completed before normal device or peripheral initialization.
+ *         Do not add explicit prepare calls to the normal initialization flow.
+ *
+ *         The pre-init hook runs once when unprepared. Subsequent calls are
+ *         idempotent after successful preparation.
+ *
+ *         A nested call from the prepare-owner task is an idempotent no-op.
+ *         Calls from other tasks while preparing are rejected, as are calls
+ *         made before a FreeRTOS task exists.
+ *
+ *         On hook failure, BMGR rolls back table and configuration changes
+ *         if no hardware resources remain, allowing a later retry.
+ *         If resources remain, BMGR preserves the current topology and
+ *         configuration, rejects further runtime operations, and requires
+ *         a restart.
  *
  * @return
  *       - ESP_OK                 On success or already prepared
  *       - ESP_ERR_INVALID_STATE  If called by a non-owner task while preparing,
- *                                without a current task, or after a failure that requires a restart
- *       - Others                 Error codes from the pre-init hook
+ *                                without a current task, or after a failure
+ *                                that requires a restart
+ *       - Others  Error codes from the pre-init hook
  */
 esp_err_t esp_board_manager_prepare(void);
 

@@ -78,7 +78,7 @@ devices:
           d3: 12
 
   - name: display_lcd
-    chip: ili9341
+    chip: ili9341  # ILI9342C LCD using the ILI9341 driver
     type: display_lcd
     sub_type: spi
     version: default
@@ -102,7 +102,7 @@ devices:
         reset_gpio_num: 48
         flags:
           reset_active_high: true
-        # ST77916 specific configuration
+        # ILI9342C configuration using the ILI9341 driver
         vendor_config: NULL
 
     peripherals:

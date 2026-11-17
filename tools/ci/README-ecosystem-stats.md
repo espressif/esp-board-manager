@@ -1,6 +1,6 @@
 # Ecosystem statistics
 
-The GitLab job discovers public ESP Board Manager board definitions and dependent projects, applies maintained review decisions, and publishes aggregate statistics and README banners to the GitHub `ecosystem-stats` branch. Source rules, review records, and detailed results stay outside the public repository.
+The GitLab job discovers public ESP Board Manager board definitions and dependent projects, applies maintained review decisions, archives private daily changes in the existing GitLab project's Package Registry, and publishes aggregate statistics and README banners to the GitHub `ecosystem-stats` branch. Source rules, review records, detailed results, and change history stay outside the public repository.
 
 ## Private configuration
 
@@ -59,7 +59,9 @@ Preview options are `--boards-only` (GitHub board discovery without project coll
 
 The collector writes a **private** `stats.json`, two SVGs, and a detailed `README.md`. The JSON contains source identities, pinned revisions, hashes, evidence, filters, and review records. Use an ignored directory for all local outputs.
 
-Each code-search query has at most three attempts. Changing totals, duplicate results, missing results, or `incomplete_results=true` discard the entire attempt and restart that query from page 1, with the existing request rate limit still applied. Diagnostics identify the query, attempt, page, and inconsistent counts without logging tokens or result inventories. Authentication/HTTP errors, malformed responses, and the 1,000-result search cap stop immediately. If no attempt passes all checks, collection errors occur, or review decisions conflict, the run stops and preserves the previous published result.
+Code-search discovery splits broad queries into disjoint file-size ranges and verifies each final range a second time using repository, path, and blob SHA. Exact-size ranges that still exceed one page use strict pagination; an exact-size range above the 1,000-result API cap stops collection. Each query has at most three consistency attempts. Changing totals, duplicate or missing results, `incomplete_results=true`, or changed range contents discard the failed attempt and restart the affected query. Diagnostics identify the query and inconsistency without logging tokens or result inventories.
+
+Each GET has at most three attempts in total, shared by transport failures, confirmed rate limits, and transient HTTP `500`, `502`, `503`, or `504` responses. Transport and server errors use 2- and 4-second backoff; server errors also honor a longer `Retry-After`, expressed as seconds or an HTTP date. Rate limits follow the server's timing headers or their own longer backoff. Rate-limit and server-error waits share a cumulative 300-second budget for the run. Every search request, including retries, observes the 6.1-second minimum interval and counts toward the 120-request budget. A recovered request retries the same page, then undergoes the normal consistency checks. Authentication/permission errors, other non-retryable HTTP errors, and malformed responses stop immediately. Exhausted attempts or budgets, collection errors, and conflicting review decisions stop the run and preserve the previous published result.
 
 The first successful attempt supplies that query's result set; results from failed attempts are never mixed or selected by their largest `total_count`. The published board/project counts are calculated from the fetched, validated, deduplicated, and reviewed records, not copied from a search total. These checks validate the retrieved pages, but cannot establish exhaustive coverage of GitHub's search index. See [search scope and limits](https://docs.github.com/en/rest/search/search#about-search).
 
@@ -87,7 +89,7 @@ The job keeps detailed scan artifacts for 30 days with `artifacts:access: develo
 
 To verify before merging, first commit and push these CI changes to a branch in this GitLab project. Open **Build > Pipelines > Run pipeline** (or **New pipeline**), choose that branch, and set `ECOSYSTEM_STATS=1`. After merging, the same manual steps work on `main`.
 
-The manual job runs the complete pipeline: tests, configuration download, private snapshot collection, and publication of only the public projection to `ecosystem-stats`. A successful run makes the root README badges available even before merging into `main`. This changes the public statistics branch; the source branch and `main` are not updated. Ensure the GitHub publication credentials are available to the selected branch. There is no remote publication before this setup and a successful job run. See [manual pipelines](https://docs.gitlab.com/ci/pipelines/#run-a-pipeline-manually).
+The manual job runs the complete pipeline: tests, configuration download, private snapshot collection, private history archival, and publication of only the public projection to `ecosystem-stats`. A successful run makes the root README badges available even before merging into `main`. This changes the public statistics branch; the source branch and `main` are not updated. Ensure the GitHub publication credentials are available to the selected branch. There is no remote publication before this setup and a successful job run. See [manual pipelines](https://docs.gitlab.com/ci/pipelines/#run-a-pipeline-manually).
 
 For a daily schedule, use **Build > Pipeline schedules > New schedule**:
 
@@ -122,3 +124,42 @@ The root READMEs use the matching language's banner and link to the aggregate st
 All four banners are generated from the same validated board and project counts using `templates/ecosystem-banner.svg`. The template contains only static artwork and labels; no reviewed inventory or evidence is embedded. Changing banner style or language does not change collection, deduplication, or review decisions. The original two badge URLs remain available for existing links.
 
 The new banner URLs become available after a successful publication using this version of the code. For a preview before merging, commit and push the source branch, then run its statistics pipeline with `ECOSYSTEM_STATS=1`. Until that succeeds, remote README previews cannot display the new images. Merging the code alone does not create the schedule, upload Secure Files, or configure credentials.
+
+## Private daily history
+
+Open **Deploy > Package Registry** in this existing private GitLab project, select the latest version of **ecosystem-history**, and download **changes.md** to see that scan's update. A copy is also available in the current job's artifacts at `.ecosystem-private/report/history/changes.md`.
+
+New versions contain three private files:
+
+| File | Purpose |
+| --- | --- |
+| `changes.md` | The selected scan only: a full inventory for the first baseline, then only added/removed names and links, or an explicit no-change status |
+| `README.md` | Daily closing counts and the cumulative per-scan change timeline, without appending the latest full inventory |
+| `history.json` | Machine-readable comparison state: the latest full inventory and all change events; unchanged schema version 1 |
+
+The readable reports contain:
+
+- A daily table in **Asia/Shanghai (UTC+8)**, with the day's final observed board/project counts and changes from the previous recorded day.
+- Every individual scan, including zero-change scans and multiple manual runs on the same day.
+- Added and removed counted boards and projects, with their source links. Unchanged net totals can still have additions and removals.
+- For histories started with this version, the first baseline's `changes.md` contains the complete counted inventory and its links. Later versions' `changes.md` omit unchanged inventory and show only that run's additions/removals. A zero net change can still show both additions and removals. For existing histories, the original baseline inventory remains in the original version's `README.md`.
+
+Use `changes.md` for "what is new in this run", and `README.md` for daily totals and the full change timeline. `history.json` always retains the current full inventory so the next scan can compare stable identities; its size does not represent the number of new boards/projects. Dates and times in the current-update report use Asia/Shanghai (UTC+8).
+
+"Added" and "removed" describe differences between validated scan results; they do not establish repository creation/deletion dates or hardware release dates. Only known-component boards and approved outside models enter the supported-board history. Aliases and pending candidates remain in the detailed scan report. A review decision can therefore change the counted inventory without changing the source repositories.
+
+The first run creates an explicit **baseline**; it does not call every existing board/project newly added. It cannot reconstruct earlier additions from the public aggregate `stats.json`. Missing calendar days are not invented: the next successful scan compares against the previous archived scan. Past private artifacts would need a separate, ordered import to backfill dates.
+
+Project identity uses GitHub repository ID, so renaming a repository does not make it newly added. Board identity uses permanent review identities, full source paths and chips, and verified lineage identities; commit hashes and evidence URLs are not identities. Metadata and source revisions can refresh without generating false additions. Inconsistent counts, ambiguous identity matches, corrupt history, or out-of-order scans stop archival instead of silently resetting the baseline.
+
+### Storage and pipeline order
+
+`tools/ci/archive_ecosystem_history.py` reads the previous archive, compares the complete scan, and writes `.ecosystem-private/report/history/{history.json,README.md,changes.md}`. It uploads `README.md` and `changes.md` first and the canonical cumulative `history.json` last to a new Generic Package version `1.0.<CI_JOB_ID>`. Each version's machine state contains all changes so far and the latest compact inventory, while `changes.md` contains only that job's update. Completed versions are immutable; a retry with identical contents is safe, and conflicting contents are rejected.
+
+Existing schema-1 archives containing only `history.json` and `README.md` remain valid comparison baselines. The next job continues their history and creates the new three-file version automatically. It does not modify older package versions or add `changes.md` to already completed versions. No Secure File changes or extra variables are needed. To inspect the original complete baseline inventory, open its original package version; a later ledger cannot recover every original name/link after metadata changes.
+
+The job uses the predefined `CI_JOB_TOKEN` and project/job/branch metadata. No new token, variable, repository, branch, or MR is required. Keep this GitLab project **private**, Package Registry enabled, and package access restricted to project members; do not enable anonymous pulls or a cleanup policy that deletes these history packages. Unlike the 30-day diagnostic artifacts, package versions have no expiry configured by this workflow. Project administrators can still delete them, so include them in normal project backups. Package access follows GitLab's package permissions, not the artifacts' Developer-only setting. See [Generic Packages](https://docs.gitlab.com/user/packages/generic_packages/) and [job-token permissions](https://docs.gitlab.com/ci/jobs/ci_job_token/).
+
+The existing `resource_group: ecosystem-stats` serializes archive reads and writes. `main` uses the production package name `ecosystem-history`. Other branches use `ecosystem-history-test-<branch-hash>` so pre-merge manual tests cannot become the production comparison baseline. Choose the corresponding test package to inspect those reports.
+
+Archival happens **after complete collection and validation, before GitHub publication**. An archive failure fails the job and prevents publication. If subsequent GitHub publication fails, the valid scan remains in private history; history therefore tracks validated scans, not a guarantee that every scan was publicly published. Authentication and storage errors do not fall back to an empty history. A package without its final `history.json` is treated as an incomplete upload; invalid canonical JSON fails the run.

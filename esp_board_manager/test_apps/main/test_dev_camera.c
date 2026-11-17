@@ -7,6 +7,8 @@
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -89,7 +91,8 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
     frame_count = 0;
     frame_size = 0;
     int64_t start_time_us = esp_timer_get_time();
-    while (esp_timer_get_time() - start_time_us < (CAPTURE_SECONDS * 1000 * 1000)) {
+    bool frame_held = false;
+    while (1) {
         memset(&buf, 0, sizeof(buf));
         buf.type = type;
         buf.memory = MEMORY_TYPE;
@@ -101,9 +104,16 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
          * If no error, the flags has V4L2_BUF_FLAG_DONE. If error, the flags has V4L2_BUF_FLAG_ERROR.
          * We need to skip these frames, but we also need queue the buffer.
          */
-        if (buf.flags & V4L2_BUF_FLAG_DONE) {
+        bool valid_frame = (buf.flags & V4L2_BUF_FLAG_DONE) && !(buf.flags & V4L2_BUF_FLAG_ERROR) && buf.index < BUFFER_COUNT && buf.bytesused > 0;
+        if (valid_frame) {
             frame_size += buf.bytesused;
             frame_count++;
+        }
+
+        if (esp_timer_get_time() - start_time_us >= (CAPTURE_SECONDS * 1000 * 1000)) {
+            /* Keep the final completed frame out of the driver's queue while saving it. */
+            frame_held = valid_frame;
+            break;
         }
 
         if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
@@ -117,6 +127,11 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
         return ESP_FAIL;
     }
 
+    if (!frame_held) {
+        ESP_LOGE(TAG, "No completed frame available for saving");
+        return ESP_FAIL;
+    }
+
     if (frame_count > 0) {
         ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
         ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
@@ -125,6 +140,9 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
     } else {
         ESP_LOGW(TAG, "No frame captured");
     }
+
+    ESP_LOGI(TAG, "Held frame: index=%" PRIu32 " bytes=%" PRIu32 " flags=0x%" PRIx32,
+             buf.index, buf.bytesused, buf.flags);
 
 #ifdef CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT
     ESP_LOGI(TAG, "Save JPEG file to sd card...");
@@ -151,6 +169,12 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
             jpeg_enc_cfg.src_type = JPEG_PIXEL_FORMAT_RGB565_LE;
             jpeg_enc_cfg.subsampling = JPEG_SUBSAMPLE_420;
             input_src_size = format.fmt.pix.width * format.fmt.pix.height * 2;
+            break;
+        case V4L2_PIX_FMT_RGB565X:
+            jpeg_enc_cfg.src_type = JPEG_PIXEL_FORMAT_RGB565_BE;
+            jpeg_enc_cfg.subsampling = JPEG_SUBSAMPLE_420;
+            input_src_size = format.fmt.pix.width * format.fmt.pix.height * 2;
+            ESP_LOGI(TAG, "JPEG input: native RGB565_BE (no IMGFX conversion)");
             break;
         default: {
             /* esp_jpeg_enc has no native src_type for this camera format (e.g. packed
@@ -189,6 +213,7 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
     int calc_size = jpeg_enc_cfg.width * jpeg_enc_cfg.height * 3 / 8;
     int outbuf_size = (calc_size > (50 * 1024)) ? calc_size : (50 * 1024);
     int out_len = 0;
+    esp_err_t save_ret = ESP_FAIL;
     uint8_t *outbuf = NULL;
     outbuf = (uint8_t *)calloc(1, outbuf_size);
     if (outbuf == NULL) {
@@ -201,15 +226,25 @@ static esp_err_t camera_capture_stream_by_format(int fd, int type, uint32_t v4l2
         goto jpeg_enc_exit;
     }
 
-    FILE *out = NULL;
-    out = fopen("/sdcard/esp_jpeg_encode_one_picture.jpg", "wb");
+    char output_path[96];
+    char fourcc[5];
+    snprintf(output_path, sizeof(output_path), "/sdcard/capture_%" PRIu32 "x%" PRIu32 "_%s.jpg",
+             format.fmt.pix.width, format.fmt.pix.height,
+             camera_convert_fourcc_to_str(format.fmt.pix.pixelformat, fourcc));
+    FILE *out = fopen(output_path, "wb");
     if (out == NULL) {
         ESP_LOGE(TAG, "Failed to open output file");
         goto jpeg_enc_exit;
     }
-    fwrite(outbuf, 1, out_len, out);
-    fclose(out);
-    ESP_LOGI(TAG, "JPEG file saved to /sdcard/esp_jpeg_encode_one_picture.jpg");
+    size_t written = fwrite(outbuf, 1, out_len, out);
+    int close_ret = fclose(out);
+    if (written != (size_t)out_len || close_ret != 0) {
+        ESP_LOGE(TAG, "Failed to save JPEG: written=%u, expected=%d, close=%d",
+                 (unsigned)written, out_len, close_ret);
+        goto jpeg_enc_exit;
+    }
+    save_ret = ESP_OK;
+    ESP_LOGI(TAG, "JPEG file saved to %s (%d bytes)", output_path, out_len);
 
 jpeg_enc_exit:
     jpeg_enc_close(jpeg_enc);
@@ -218,6 +253,9 @@ jpeg_enc_exit:
     }
     if (converted_buf != NULL) {
         heap_caps_free(converted_buf);
+    }
+    if (save_ret != ESP_OK) {
+        return save_ret;
     }
 #endif  // CONFIG_ESP_BOARD_DEV_FS_FAT_SUPPORT
 

@@ -265,7 +265,7 @@ void app_main(void)
 }
 ```
 
-> **注意:** 在 [`example`](example) 路径下提供了使用 `esp_board_manager` 初始化设备并获取句柄进行使用的简单样例可供参考。
+> **注意:** 在 [`examples`](examples) 路径下提供了使用 `esp_board_manager` 初始化设备并获取句柄进行使用的简单样例可供参考。
 
 ## 支持的组件
 
@@ -292,11 +292,11 @@ void app_main(void)
 
 - `waveshare/waveshare_boards`
   - GitHub 链接：[waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
-  - ESP Component Registry 链接：[waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+  - ESP Component Registry 链接：[waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards)
 
-- `guition-jc/guition_boards`
+- `guition/guition_boards`
   - GitHub 链接：[Guition-JC/Guition](https://github.com/Guition-JC/Guition)
-  - ESP Component Registry 链接：[guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+  - ESP Component Registry 链接：[guition/guition_boards](https://components.espressif.com/components/guition/guition_boards)
 
 ### 支持的设备类型
 
@@ -331,11 +331,11 @@ void app_main(void)
 | `ledc_backlight` | LEDC 控制/PWM | ledc | none | [`periph_ledc.yml`](peripherals/periph_ledc/periph_ledc.yml) | - |
 | `uart_1` | UART 通信 | uart | tx<br/>rx | [`periph_uart.yml`](peripherals/periph_uart/periph_uart.yml) | **[`test_periph_uart.c`](test_apps/main/periph/test_periph_uart.c)**<br/>用于串行端口操作的 UART 外设 |
 | `adc_unit_1` | ADC 模数转换 | adc | oneshot<br/>continuous | [`periph_adc.yml`](peripherals/periph_adc/periph_adc.yml) | **[`test_periph_adc.c`](test_apps/main/periph/test_periph_adc.c)**<br/>用于测量特定模拟 IO 管脚模拟信号的 ADC 外设 |
-| `rmt_tx`, `rmt_rx` | 红外遥控 | rmt | tx<br/>rx | [`periph_rmt.yml`](peripherals/periph_rmt/periph_rmt.yml) | **[`test_periph_rmt.c`](test_apps/main/periph/test_periph_rmt.c)**<br/>使用 RMT 外设控制 WS2812 LED 灯带 |
-| `pcnt_unit` | 脉冲计数器 | pcnt | none | [`periph_pcnt.yml`](peripherals/periph_pcnt/periph_pcnt.yml) | **[`test_periph_pcnt.c`](test_apps/main/periph/test_periph_anacmpr.c)**<br/>使用 PCNT 外设解码差分信号 |
+| `rmt_tx`, `rmt_rx` | 红外遥控 | rmt | tx<br/>rx | [ESP-IDF 5.x](peripherals/periph_rmt/idf5/periph_rmt.yml) / [ESP-IDF 6.x](peripherals/periph_rmt/idf6/periph_rmt.yml) | **[`test_periph_rmt.c`](test_apps/main/periph/test_periph_rmt.c)**<br/>使用 RMT 外设控制 WS2812 LED 灯带 |
+| `pcnt_unit` | 脉冲计数器 | pcnt | none | [`periph_pcnt.yml`](peripherals/periph_pcnt/periph_pcnt.yml) | **[`test_periph_pcnt.c`](test_apps/main/periph/test_periph_pcnt.c)**<br/>使用 PCNT 外设解码差分信号 |
 | `anacmpr_unit_0` | 模拟比较器 | anacmpr | none | [`periph_anacmpr.yml`](peripherals/periph_anacmpr/periph_anacmpr.yml) | **[`test_periph_anacmpr.c`](test_apps/main/periph/test_periph_anacmpr.c)**<br/>用于比较源信号与参考信号的模拟比较器外设 |
 | `dac_channel_0` | 数模转换器 | dac | oneshot<br/>continuous<br/>cosine | [`periph_dac.yml`](peripherals/periph_dac/periph_dac.yml) | **[`test_periph_dac.c`](test_apps/main/periph/test_periph_dac.c)**<br/>用于将数字值转换成模拟电压的 DAC 外设 |
-| `mcpwm_group_0` | PWM 生成器 | mcpwm | none | [`periph_mcpwm.yml`](peripherals/periph_mcpwm/periph_mcpwm.yml) | **[`test_periph_mcpwm.c`](test_apps/main/periph/test_periph_mcpwm.c)**<br/>多功能 PWM 生成器外设 |
+| `mcpwm_group_0` | PWM 生成器 | mcpwm | none | [ESP-IDF 5.x](peripherals/periph_mcpwm/idf5/periph_mcpwm.yml) / [ESP-IDF 6.x](peripherals/periph_mcpwm/idf6/periph_mcpwm.yml) | **[`test_periph_mcpwm.c`](test_apps/main/periph/test_periph_mcpwm.c)**<br/>多功能 PWM 生成器外设 |
 | `sdm` | Sigma Delta 调制器 | sdm | none | [`periph_sdm.yml`](peripherals/periph_sdm/periph_sdm.yml) | **[`test_periph_sdm.c`](test_apps/main/periph/test_periph_sdm.c)**<br/>用于脉冲密度调制的 SDM 外设 |
 | `ldo_mipi` | LDO 低压差线性稳压器 | ldo | none | [`periph_ldo.yml`](peripherals/periph_ldo/periph_ldo.yml) | - |
 | `dsi_display` | MIPI-DSI | dsi | none | [`periph_dsi.yml`](peripherals/periph_dsi/periph_dsi.yml) | - |
@@ -482,7 +482,7 @@ ESP Board Manager 使用 `gen_bmgr_config_codes.py` 进行代码生成，它在�
 
 `esp_board_manager` 支持模块化定制自己的开发板，具体的使用方法请参考：[创建开发板指南](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/create-board/index.html)
 
-`esp_board_manager` 提供了在线配置工具 [乐鑫板卡管理器](https://board-manager.espressif.com/)，可以在浏览器中创建开发板配置、导出板卡配置文件，具体用法请参考：[使用网页创建开发板](https://preview-docs.espressif.com/projects/esp-board-manager/zh_CN/feat-bmgr_0_6_0/create-board/web-create.html)
+`esp_board_manager` 提供了在线配置工具 [乐鑫板卡管理器](https://board-manager.espressif.com/)，可以在浏览器中创建开发板配置、导出板卡配置文件，具体用法请参考：[使用网页创建开发板](https://docs.espressif.com/projects/esp-board-manager/zh_CN/latest/create-board/web-create.html)
 
 ## 配置扩展与运行时覆盖
 

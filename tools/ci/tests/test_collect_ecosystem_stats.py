@@ -125,13 +125,13 @@ class RateLimitTests(unittest.TestCase):
         with patch.object(stats, 'urlopen', side_effect=responses) as request, \
                 patch.object(stats.time, 'sleep') as sleep, patch('sys.stderr', new_callable=io.StringIO):
             self.assertEqual(client.get('/first'), {})
-            with self.assertRaisesRegex(stats.CollectionError, 'rate-limit wait budget'):
+            with self.assertRaisesRegex(stats.CollectionError, 'HTTP retry wait budget'):
                 client.get('/second')
         self.assertEqual(request.call_count, 3)
         sleep.assert_called_once_with(300)
         with patch.object(stats, 'urlopen', side_effect=self.error(headers={'Retry-After': '864000'})) as request, \
                 patch.object(stats.time, 'sleep') as sleep:
-            with self.assertRaisesRegex(stats.CollectionError, 'rate-limit wait budget'):
+            with self.assertRaisesRegex(stats.CollectionError, 'HTTP retry wait budget'):
                 stats.GitHubClient().get('/search/code')
         self.assertEqual(request.call_count, 1)
         sleep.assert_not_called()
@@ -156,6 +156,119 @@ class RateLimitTests(unittest.TestCase):
                 client.get('/search/code', search=True)
         self.assertEqual(request.call_count, 1)
         self.assertEqual(client.search_requests, 1)
+
+
+class ServerErrorTests(unittest.TestCase):
+    @staticmethod
+    def error(status=503, headers=None):
+        return HTTPError('https://api.github.com/search/code', status, 'private server response',
+                         headers or {}, io.BytesIO(b'private server response'))
+
+    def test_transient_server_errors_recover_with_backoff_and_safe_diagnostics(self):
+        for status in (500, 502, 503, 504):
+            errors = [self.error(status, {'X-RateLimit-Remaining': '5'}) for _ in range(2)]
+
+            def sleep(seconds):
+                self.assertTrue(errors[request.call_count - 1].closed)
+
+            with self.subTest(status=status), \
+                    patch.object(stats, 'urlopen', side_effect=errors + [io.StringIO('{"ok": true}')]) as request, \
+                    patch.object(stats.time, 'sleep', side_effect=sleep) as wait, \
+                    patch('sys.stderr', new_callable=io.StringIO) as log:
+                self.assertEqual(stats.GitHubClient('private-token').get('/search/code'), {'ok': True})
+                self.assertEqual(request.call_count, 3)
+                self.assertEqual([call.args[0] for call in wait.call_args_list], [2, 4])
+                self.assertIn('server_error', log.getvalue())
+                self.assertNotIn('private', log.getvalue())
+
+    def test_persistent_server_error_stops_after_three_attempts(self):
+        errors = [self.error() for _ in range(3)]
+        with patch.object(stats, 'urlopen', side_effect=errors) as request, \
+                patch.object(stats.time, 'sleep') as sleep, patch('sys.stderr', new_callable=io.StringIO) as log:
+            with self.assertRaisesRegex(stats.CollectionError, '3/3.*request retries exhausted') as caught:
+                stats.GitHubClient('private-token').get('/search/code')
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4])
+        self.assertTrue(all(error.closed for error in errors))
+        self.assertNotIn('private', log.getvalue() + str(caught.exception))
+
+    def test_server_retry_after_preserves_the_minimum_backoff(self):
+        cases = (('0', 2), ('1', 2), ('9', 9), ('-1', 2), ('NaN', 2),
+                 ('Thu, 01 Jan 1970 00:01:50 GMT', 10),
+                 ('Thursday, 01-Jan-70 00:01:50 GMT', 10),
+                 ('Thu Jan  1 00:01:50 1970', 10),
+                 ('Thu, 01 Jan 1970 00:00:00 GMT', 2))
+        for value, delay in cases:
+            with self.subTest(retry_after=value), \
+                    patch.object(stats, 'urlopen', side_effect=[self.error(headers={'Retry-After': value}),
+                                                              io.StringIO('{}')]) as request, \
+                    patch.object(stats.time, 'time', return_value=100), patch.object(stats.time, 'sleep') as sleep, \
+                    patch('sys.stderr', new_callable=io.StringIO):
+                self.assertEqual(stats.GitHubClient().get('/search/code'), {})
+                self.assertEqual(request.call_count, 2)
+                sleep.assert_called_once_with(delay)
+
+    def test_server_retry_after_cannot_exceed_the_wait_budget(self):
+        for value in ('301', 'Thu, 01 Jan 1970 01:00:00 GMT'):
+            error = self.error(headers={'Retry-After': value})
+            with self.subTest(retry_after=value), patch.object(stats, 'urlopen', side_effect=error) as request, \
+                    patch.object(stats.time, 'time', return_value=100), patch.object(stats.time, 'sleep') as sleep:
+                with self.assertRaisesRegex(stats.CollectionError, 'HTTP retry wait budget'):
+                    stats.GitHubClient().get('/search/code')
+                self.assertEqual(request.call_count, 1)
+                sleep.assert_not_called()
+                self.assertTrue(error.closed)
+
+    def test_server_and_rate_limit_waits_share_one_budget_across_queries(self):
+        for first_is_server in (False, True):
+            first = (self.error(headers={'Retry-After': '299'}) if first_is_server else
+                     RateLimitTests.error(headers={'Retry-After': '299'}))
+            last = RateLimitTests.error() if first_is_server else self.error()
+            client = stats.GitHubClient()
+            with self.subTest(first_is_server=first_is_server), \
+                    patch.object(stats, 'urlopen', side_effect=[first, io.StringIO('{}'), last]) as request, \
+                    patch.object(stats.time, 'sleep') as sleep, patch('sys.stderr', new_callable=io.StringIO):
+                self.assertEqual(client.get('/first'), {})
+                with self.assertRaisesRegex(stats.CollectionError, 'HTTP retry wait budget'):
+                    client.get('/second')
+                self.assertEqual(request.call_count, 3)
+                sleep.assert_called_once_with(299)
+                self.assertTrue(first.closed and last.closed)
+
+    def test_server_transport_and_rate_limit_failures_share_three_attempts(self):
+        failures = [RemoteDisconnected('private text'), self.error(), RateLimitTests.error()]
+        with patch.object(stats, 'urlopen', side_effect=failures) as request, \
+                patch.object(stats.time, 'sleep') as sleep, patch('sys.stderr', new_callable=io.StringIO) as log:
+            with self.assertRaisesRegex(stats.CollectionError, '3/3.*request retries exhausted') as caught:
+                stats.GitHubClient('private-token').get('/search/code')
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4])
+        self.assertNotIn('private', log.getvalue() + str(caught.exception))
+
+    def test_server_retries_obey_search_throttle_and_request_budget(self):
+        clock, starts = [100.0], []
+        responses = iter([self.error(), io.StringIO('{}')])
+
+        def sleep(delay):
+            clock[0] += delay
+
+        def send(*args, **kwargs):
+            starts.append(clock[0])
+            response = next(responses)
+            if isinstance(response, HTTPError):
+                raise response
+            return response
+
+        client = stats.PartitionedGitHubClient()
+        with patch.object(client, 'SEARCH_REQUEST_LIMIT', 2), patch.object(stats, 'urlopen', side_effect=send) as request, \
+                patch.object(stats.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(stats.time, 'sleep', side_effect=sleep), patch('sys.stderr', new_callable=io.StringIO):
+            self.assertEqual(client.get('/search/code?q=first', search=True), {})
+            with self.assertRaisesRegex(stats.CollectionError, 'search request budget'):
+                client.get('/search/code?q=second', search=True)
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(client.search_requests, 2)
+        self.assertGreaterEqual(starts[1] - starts[0], 6.1 - 1e-9)
 
 
 class PartitionedSearchTests(unittest.TestCase):
@@ -268,6 +381,19 @@ class PartitionedSearchTests(unittest.TestCase):
             with self.assertRaisesRegex(stats.CollectionError, 'SHA'):
                 client.search_query(self.query)
         self.assertEqual(request.call_count, 1)
+
+    def test_server_recovery_still_rejects_changed_partition_contents(self):
+        old, new = self.item(1), self.item(2)
+        responses = [io.StringIO(json.dumps(self.response([old]))), ServerErrorTests.error(),
+                     io.StringIO(json.dumps(self.response([new]))),
+                     io.StringIO(json.dumps(self.response([new]))),
+                     io.StringIO(json.dumps(self.response([new])))]
+        client = stats.PartitionedGitHubClient()
+        with patch.object(stats, 'urlopen', side_effect=responses) as request, \
+                patch.object(stats.time, 'sleep'), patch('sys.stderr', new_callable=io.StringIO) as log:
+            self.assertEqual(client.search_query(self.query), [new])
+        self.assertEqual(request.call_count, 5)
+        self.assertIn('discarding all partitions and restarting', log.getvalue())
 
     def test_request_budget_includes_transport_retries_and_survives_query_boundaries(self):
         client = stats.PartitionedGitHubClient()
@@ -385,6 +511,7 @@ class CollectorTests(unittest.TestCase):
         result = stats.collect_projects(Client(), [])
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['repository'], 'user/current')
+        self.assertEqual(result[0].get('repository_id'), 123)
         self.assertEqual(len(result[0]['evidence']), 2)
         self.assertEqual(stats.collect_projects(Client(), ['user/current']), [])
 
@@ -466,9 +593,9 @@ class CollectorTests(unittest.TestCase):
         self.assertTrue(interrupted.closed)
         self.assertTrue(complete.closed)
 
-    def test_request_does_not_retry_invalid_json_or_http_errors(self):
+    def test_request_does_not_retry_invalid_json_or_non_transient_http_errors(self):
         failures = [HTTPError('https://api.github.com/repos/user/app', status, 'private text', {}, None)
-                    for status in (401, 403, 422, 429, 500)]
+                    for status in (401, 403, 422, 429, 501, 505)]
         failures.append(io.StringIO('private invalid JSON'))
         for failure in failures:
             with self.subTest(error=getattr(failure, 'code', 'invalid JSON')):
@@ -510,6 +637,16 @@ class CollectorTests(unittest.TestCase):
         responses = [io.StringIO(json.dumps(self._search_response(101, items[:100]))),
                      RemoteDisconnected('connection closed'),
                      io.StringIO(json.dumps(self._search_response(101, items[100:])))]
+        with patch.object(stats, 'urlopen', side_effect=responses) as request, \
+                patch.object(stats.time, 'sleep'), patch('sys.stderr', new_callable=io.StringIO):
+            self.assertEqual(stats.GitHubClient().search('idf_component.yml'), items)
+        self.assertEqual([int(parse_qs(urlparse(call.args[0].full_url).query)['page'][0])
+                          for call in request.call_args_list], [1, 2, 2])
+
+    def test_search_server_error_retries_current_page_without_duplicating_results(self):
+        items = self._search_items(101)
+        responses = [io.StringIO(json.dumps(self._search_response(101, items[:100]))),
+                     ServerErrorTests.error(), io.StringIO(json.dumps(self._search_response(101, items[100:])))]
         with patch.object(stats, 'urlopen', side_effect=responses) as request, \
                 patch.object(stats.time, 'sleep'), patch('sys.stderr', new_callable=io.StringIO):
             self.assertEqual(stats.GitHubClient().search('idf_component.yml'), items)
@@ -625,8 +762,8 @@ class CollectorTests(unittest.TestCase):
                     self.assertEqual(client.search('idf_component.yml'), fresh)
                 self.assertEqual(self._requested_pages(request), pages)
 
-    def test_search_http_errors_are_not_retried(self):
-        for status in (401, 403, 500):
+    def test_search_non_transient_http_errors_are_not_retried(self):
+        for status in (401, 403, 422, 501, 505):
             with self.subTest(status=status):
                 client = stats.GitHubClient('secret-token-not-for-logs')
                 error = HTTPError('https://api.github.com/search/code', status, 'failed', {}, None)

@@ -28,6 +28,7 @@ update_ecosystem_stats:
     - python3 -m unittest discover -s tools/ci/tests -v
     - python3 tools/ci/fetch_ecosystem_config.py --output .ecosystem-private/config
     - python3 tools/ci/collect_ecosystem_stats.py --sources .ecosystem-private/config/ecosystem_sources.json --output .ecosystem-private/report
+    - python3 tools/ci/archive_ecosystem_history.py --source .ecosystem-private/report
     - source "${CI_PROJECT_DIR}/tools/ci/utils.sh"
     - add_github_https_credentials
     - python3 tools/ci/publish_ecosystem_stats.py --source .ecosystem-private/report --remote "$(get_github_https_remote)"
@@ -40,3 +41,4 @@ update_ecosystem_stats:
       - .ecosystem-private/report/supported-boards.svg
       - .ecosystem-private/report/dependent-projects.svg
       - .ecosystem-private/report/README.md
+      - .ecosystem-private/report/history/

@@ -1,4 +1,4 @@
-version: 0.7.5
+version: 0.7.6
 description: Board manager for Espressif
 url: https://github.com/espressif/esp-board-manager
 documentation: https://github.com/espressif/esp-board-manager/blob/main/esp_board_manager/README.md
@@ -21,7 +21,7 @@ examples:
 
 dependencies:
   espressif/esp_boards:
-    version: "~0.7.1"
+    version: "~0.7.3"
 
   espressif/esp_codec_dev:
     require: public

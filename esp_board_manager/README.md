@@ -267,7 +267,7 @@ void app_main(void)
 }
 ```
 
-> **Note:** Simple examples using `esp_board_manager` to initialize devices and obtain handles for use are provided in the [`example`](example) path for reference.
+> **Note:** Simple examples using `esp_board_manager` to initialize devices and obtain handles for use are provided in the [`examples`](examples) path for reference.
 
 ## Supported Components
 
@@ -294,11 +294,11 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 
 - `waveshare/waveshare_boards`
   - GitHub: [waveshareteam/waveshare_boards](https://github.com/waveshareteam/waveshare_boards)
-  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards/versions/0.1.2/readme)
+  - ESP Component Registry: [waveshare/waveshare_boards](https://components.espressif.com/components/waveshare/waveshare_boards)
 
-- `guition-jc/guition_boards`
+- `guition/guition_boards`
   - GitHub: [Guition-JC/Guition](https://github.com/Guition-JC/Guition)
-  - ESP Component Registry: [guition-jc/guition_boards](https://components.espressif.com/components/guition-jc/guition_boards/versions/0.1.3/readme)
+  - ESP Component Registry: [guition/guition_boards](https://components.espressif.com/components/guition/guition_boards)
 
 ### Supported Device Types
 
@@ -333,11 +333,11 @@ For boards that are not officially sold by Espressif, standalone board-pack comp
 | `ledc_backlight` | LEDC control/PWM | ledc | none | [`periph_ledc`](peripherals/periph_ledc/periph_ledc.yml) | - |
 | `uart_1` | UART communication | uart | tx<br/>rx | [`periph_uart`](peripherals/periph_uart/periph_uart.yml) | **[`test_periph_uart.c`](test_apps/main/periph/test_periph_uart.c)**<br/>UART peripheral for serial port operations |
 | `adc_unit_1` | ADC analog-to-digital conversion | adc | oneshot<br/>continuous | [`periph_adc`](peripherals/periph_adc/periph_adc.yml) | **[`test_periph_adc.c`](test_apps/main/periph/test_periph_adc.c)**<br/>ADC peripheral for measuring analog signals on specific analog IO pins |
-| `rmt_tx`, `rmt_rx` | Infrared remote control | rmt | tx<br/>rx | [`periph_rmt`](peripherals/periph_rmt/periph_rmt.yml) | **[`test_periph_rmt.c`](test_apps/main/periph/test_periph_rmt.c)**<br/>Using RMT peripherals to control the WS2812 LED strip |
-| `pcnt_unit` | Pulse counter | pcnt | none | [`periph_pcnt`](peripherals/periph_pcnt/periph_pcnt.yml) | **[`test_periph_pcnt.c`](test_apps/main/periph/test_periph_anacmpr.c)**<br/>Use the PCNT peripheral to decode the differential signals |
+| `rmt_tx`, `rmt_rx` | Infrared remote control | rmt | tx<br/>rx | [ESP-IDF 5.x](peripherals/periph_rmt/idf5/periph_rmt.yml) / [ESP-IDF 6.x](peripherals/periph_rmt/idf6/periph_rmt.yml) | **[`test_periph_rmt.c`](test_apps/main/periph/test_periph_rmt.c)**<br/>Using RMT peripherals to control the WS2812 LED strip |
+| `pcnt_unit` | Pulse counter | pcnt | none | [`periph_pcnt`](peripherals/periph_pcnt/periph_pcnt.yml) | **[`test_periph_pcnt.c`](test_apps/main/periph/test_periph_pcnt.c)**<br/>Use the PCNT peripheral to decode the differential signals |
 | `anacmpr_unit_0` | Analog comparator | anacmpr | none | [`periph_anacmpr`](peripherals/periph_anacmpr/periph_anacmpr.yml) | **[`test_periph_anacmpr.c`](test_apps/main/periph/test_periph_anacmpr.c)**<br/>Analog comparator peripheral for comparing source signals with reference signals |
 | `dac_channel_0` | Digital-to-analog converter | dac | oneshot<br/>continuous<br/>cosine | [`periph_dac`](peripherals/periph_dac/periph_dac.yml) | **[`test_periph_dac.c`](test_apps/main/periph/test_periph_dac.c)**<br/>DAC peripheral for converting digital values to analog voltage |
-| `mcpwm_group_0` | PWM generator | mcpwm | none | [`periph_mcpwm`](peripherals/periph_mcpwm/periph_mcpwm.yml) | **[`test_periph_mcpwm.c`](test_apps/main/periph/test_periph_mcpwm.c)**<br/>Multi-function PWM generator peripheral |
+| `mcpwm_group_0` | PWM generator | mcpwm | none | [ESP-IDF 5.x](peripherals/periph_mcpwm/idf5/periph_mcpwm.yml) / [ESP-IDF 6.x](peripherals/periph_mcpwm/idf6/periph_mcpwm.yml) | **[`test_periph_mcpwm.c`](test_apps/main/periph/test_periph_mcpwm.c)**<br/>Multi-function PWM generator peripheral |
 | `sdm` | Sigma Delta modulator | sdm | none | [`periph_sdm`](peripherals/periph_sdm/periph_sdm.yml) | **[`test_periph_sdm.c`](test_apps/main/periph/test_periph_sdm.c)**<br/>SDM peripheral for pulse density modulation |
 | `ldo_mipi` | LDO low-dropout linear regulator | ldo | none | [`periph_ldo`](peripherals/periph_ldo/periph_ldo.yml) | - |
 | `dsi_display` | MIPI-DSI | dsi | none | [`periph_dsi`](peripherals/periph_dsi/periph_dsi.yml) | - |
@@ -480,7 +480,7 @@ ESP Board Manager uses `gen_bmgr_config_codes.py` for code generation, which han
 
 `esp_board_manager` supports modular customization of your own development board. For specific usage methods, please refer to: [Creating a Board Guide](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/index.html)
 
-`esp_board_manager` provides the online configuration tool [ESP Board Manager](https://board-manager.espressif.com/), which allows you to create board configurations and export board configuration files directly in your browser. For details, see [Create a Board Using the Web Tool](https://preview-docs.espressif.com/projects/esp-board-manager/en/feat-bmgr_0_6_0/create-board/web-create.html).
+`esp_board_manager` provides the online configuration tool [ESP Board Manager](https://board-manager.espressif.com/), which allows you to create board configurations and export board configuration files directly in your browser. For details, see [Create a Board Using the Web Tool](https://docs.espressif.com/projects/esp-board-manager/en/latest/create-board/web-create.html).
 
 ## Configuration Extensions and Runtime Overrides
 

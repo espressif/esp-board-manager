@@ -68,7 +68,7 @@ peripherals:
       mode: GPIO_MODE_OUTPUT
       default_level: 1
 
-  # LCD SPI Configuration for ST77916 QSPI
+  # LCD SPI configuration for ILI9341
   - name: spi_display
     type: spi
     role: master
@@ -78,7 +78,7 @@ peripherals:
         spi_port: SPI2_HOST              # 0: SPI1_HOST, 1: SPI2_HOST, 2: SPI3_HOST
         mosi_io_num: 0                   # MOSI_IO_NUM
         sclk_io_num: 1                   # SPI Clock signal
-        max_transfer_sz: 6400            # Maximum transfer size in bytes : width * 2 * 10
+        max_transfer_sz: 32000           # 320 pixels * 50 lines * 2 bytes (RGB565)
 
   # ADC for Button
   - name: adc_oneshot

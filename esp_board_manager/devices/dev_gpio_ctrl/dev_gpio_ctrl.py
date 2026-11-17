@@ -34,6 +34,16 @@ def parse(name, config, peripherals_dict=None):
     # GPIO control configuration
     active_level = device_config.get('active_level', 1)
     default_level = device_config.get('default_level', 0)
+    init_level = device_config.get('init_level', -1)
+    for field, value, valid_levels in (
+        ('active_level', active_level, (0, 1)),
+        ('default_level', default_level, (0, 1)),
+        ('init_level', init_level, (-1, 0, 1)),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f'GPIO device {name} {field} must be an integer')
+        if value not in valid_levels:
+            raise ValueError(f'GPIO device {name} {field} must be one of {valid_levels}')
 
     # Extract GPIO peripheral name from peripherals list
     explicit = []
@@ -68,7 +78,8 @@ def parse(name, config, peripherals_dict=None):
         'type': str(config.get('type', 'gpio_ctrl')),
         'gpio_name': gpio_name,
         'active_level': active_level,
-        'default_level': default_level
+        'default_level': default_level,
+        'init_level': init_level
     }
 
     return {

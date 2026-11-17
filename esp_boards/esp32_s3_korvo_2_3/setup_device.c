@@ -72,6 +72,12 @@ __attribute__((weak)) esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handl
         return ESP_FAIL;
     }
 
+    // LCD reset is routed through the IO expander, not a native GPIO.
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_level(*io_expander, LCD_RST_GPIO, 0), TAG, "Set LCD reset low failed");
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_level(*io_expander, LCD_RST_GPIO, 1), TAG, "Set LCD reset high failed");
+    vTaskDelay(pdMS_TO_TICKS(200));
+
     ESP_RETURN_ON_ERROR(esp_io_expander_set_level(*io_expander, LCD_CTRL_GPIO, 1), TAG, "Set IO expander pin level failed");
     vTaskDelay(pdMS_TO_TICKS(10));
     ESP_RETURN_ON_ERROR(esp_io_expander_set_level(*io_expander, LCD_CS_GPIO, 1), TAG, "Set IO expander pin level failed");

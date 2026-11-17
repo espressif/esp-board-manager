@@ -10,6 +10,9 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
+#ifdef CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT
+#include "esp_lvgl_port.h"
+#endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT */
 #include "bmgr_test_names.h"
 #include "bmgr_test_registry.h"
 
@@ -101,10 +104,18 @@ static esp_err_t run_lcd_lvgl(bmgr_test_context_t *ctx, int argc, char **argv)
     vTaskDelay(pdMS_TO_TICKS(100));
     esp_err_t show_ret = test_dev_lcd_lvgl_show_menu();
 
+    esp_err_t touch_read_ret = ESP_OK;
     if (touch_inited) {
-        esp_err_t touch_deinit_ret = test_dev_lcd_touch_deinit();
-        if (touch_deinit_ret != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to deinitialize LCD touch: %s", esp_err_to_name(touch_deinit_ret));
+        /* Capture the last read error and remove the input under the same lock. */
+        if (lvgl_port_lock(0)) {
+            touch_read_ret = test_dev_lcd_touch_get_error();
+            esp_err_t touch_deinit_ret = test_dev_lcd_touch_deinit();
+            if (touch_deinit_ret != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to deinitialize LCD touch: %s", esp_err_to_name(touch_deinit_ret));
+            }
+            lvgl_port_unlock();
+        } else {
+            touch_read_ret = ESP_ERR_TIMEOUT;
         }
     }
 
@@ -113,7 +124,7 @@ static esp_err_t run_lcd_lvgl(bmgr_test_context_t *ctx, int argc, char **argv)
         ESP_LOGW(TAG, "Failed to deinitialize LCD LVGL: %s", esp_err_to_name(lvgl_deinit_ret));
     }
 
-    return show_ret != ESP_OK ? show_ret : ESP_OK;
+    return touch_read_ret != ESP_OK ? touch_read_ret : show_ret;
 }
 #endif  /* CONFIG_ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT */
 

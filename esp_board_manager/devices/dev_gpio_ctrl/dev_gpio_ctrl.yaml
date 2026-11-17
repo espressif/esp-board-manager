@@ -6,7 +6,8 @@
   type: gpio_ctrl             # The type of the device, must be unique
   version: 1.0.0
   config:
-    active_level: 1           # [TO_BE_CONFIRMED] Active level (0 or 1) - GPIO level when device is active
-    default_level: 0          # Default level (0 or 1) - GPIO level when device is inactive
+    active_level: 1           # [TO_BE_CONFIRMED] GPIO level (0 or 1) when the control function is active
+    default_level: 0          # Inactive GPIO level (0 or 1); not automatically applied on deinit
+    init_level: -1            # Optional initial level (-1, 0, or 1); omitted or -1 uses active_level
   peripherals:
     - gpio_name: gpio          # [TO_BE_CONFIRMED] GPIO peripheral name (must reference a GPIO peripheral)
