@@ -1,11 +1,11 @@
 # ESP Board Manager ecosystem / 生态统计
 
-Updated at / 更新时间: **2026-11-25T23:49:32Z**
+Updated at / 更新时间: **2026-11-26T23:49:43Z**
 
 | Metric / 指标 | Count / 数量 |
 | --- | ---: |
-| Supported boards / 适配的板卡 | 191 |
-| Projects using Board Manager / 支持的项目 | 81 |
+| Supported boards / 适配的板卡 | 193 |
+| Projects using Board Manager / 支持的项目 | 82 |
 
 Board totals include the configured board components and manually approved outside models. Reviewed copies and configuration variants count once; pending candidates are excluded. The total does not imply hardware validation.
 
